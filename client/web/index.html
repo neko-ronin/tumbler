@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>tumbler - world map (web viewer)</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        background: #14181a;
+        color: #e7e5e4;
+      }
+      header {
+        padding: 10px 16px;
+        border-bottom: 1px solid #2a2f33;
+        display: flex;
+        gap: 16px;
+        align-items: baseline;
+        flex-wrap: wrap;
+      }
+      h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: 0.02em; }
+      #status { color: #a8a29e; }
+      main { padding: 16px; }
+      .stage { position: relative; width: min(96vw, 96vh); }
+      #wave { /* the grass wave: the stamp's 512 cells (centred on vertices at +-2044 m) cover the map's +-2048 m */
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        pointer-events: none; image-rendering: auto; border: 0; background: none;
+      }
+      #map {
+        width: 100%;
+        height: auto;
+        display: block;
+        image-rendering: pixelated;
+        border: 1px solid #2a2f33;
+        background: #f4f1e6;
+      }
+      p.note {
+        max-width: 70ch;
+        color: #a8a29e;
+        margin: 14px 0 0;
+      }
+      code { color: #fbbf24; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>tumbler &mdash; world map</h1>
+      <span id="status">loading&hellip;</span>
+    </header>
+    <main>
+      <div class="stage">
+        <canvas id="map" width="2048" height="2048" aria-label="Top-down map of the world block"></canvas>
+        <canvas id="wave" width="512" height="512" aria-hidden="true"></canvas>
+      </div>
+      <p class="note">
+        A map of committed core output, drawn in a browser. It is <strong>not</strong> a render,
+        and the corner of the picture says so: no engine, no lighting, no aerial perspective.
+        A browser cannot run Python, so this draws the files <code>shared/</code> produced rather
+        than running <code>shared/</code> — see <code>client/web/README.md</code>.
+        Every file it read is stamped with its digest, because a map drawn from stale data
+        looks exactly like one drawn from current data.
+      </p>
+    </main>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

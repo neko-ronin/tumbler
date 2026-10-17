@@ -1,0 +1,15 @@
+{
+  // Cloudflare Workers static assets for tumbler. Pure static site: no Worker
+  // script (`main`), no bindings, no secrets. The assets are dist/web, written
+  // by client/web/tools/package_web.py, which also writes its _headers file.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tumbler",
+  "compatibility_date": "2026-10-16",
+  // Wrangler otherwise sends device ID, OS and Node version on every command;
+  // deploys also set WRANGLER_SEND_METRICS=false, which stops the rest.
+  "send_metrics": false,
+  "assets": {
+    "directory": "./dist/web"
+  },
+  "routes": [{ "pattern": "tumbler.catronin.com", "custom_domain": true }]
+}

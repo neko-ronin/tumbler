@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "units": "metres, seconds, kilograms, watts",
+  "model": "recreational point mass on the ground: gravity along the slope, surface friction, braking, air drag, lean-limited steering, pedal or pole drive, free flight off lips",
+  "snow_cover": "shared/world/out/snow_cover.json",
+  "gravity_mps2": 9.81,
+  "air_density_kgpm3": 1.1,
+  "snow_min_depth_m": 0.1,
+  "liftoff_lookahead_s": 0.15,
+  "absorb_m": 0.1,
+  "world_limit_m": 2040.0,
+  "modes": {
+    "ski": {
+      "label": "Skiing",
+      "asset": "sports/skier.glb",
+      "mass_kg": 80.0,
+      "cda_m2": 0.55,
+      "tuck_cda_fraction": 0.45,
+      "power_w": 0.0,
+      "pole_mps2": 1.2,
+      "pole_fade_mps": 4.0,
+      "pivot_rps": 1.6,
+      "max_lean_deg": 62.0,
+      "hop_mps": 2.4,
+      "crash_landing_mps": 9.0,
+      "body_height_m": 1.0,
+      "body_radius_m": 0.35,
+      "brake_grip_rps": 3.0,
+      "surfaces": {
+        "snow": {
+          "rolling": 0.05,
+          "brake_g": 0.35,
+          "grip_rps": 10.0,
+          "drive_g": 0.2
+        },
+        "trail": {
+          "rolling": 0.6,
+          "brake_g": 0.3,
+          "grip_rps": 12.0,
+          "drive_g": 0.1
+        },
+        "ground": {
+          "rolling": 0.6,
+          "brake_g": 0.3,
+          "grip_rps": 12.0,
+          "drive_g": 0.1
+        }
+      }
+    },
+    "bike": {
+      "label": "Mountain biking",
+      "asset": "sports/bicycle.glb",
+      "mass_kg": 92.0,
+      "cda_m2": 0.5,
+      "tuck_cda_fraction": 0.8,
+      "power_w": 280.0,
+      "pole_mps2": 0.0,
+      "pole_fade_mps": 0.0,
+      "pivot_rps": 1.4,
+      "max_lean_deg": 45.0,
+      "hop_mps": 2.2,
+      "crash_landing_mps": 7.0,
+      "body_height_m": 1.1,
+      "body_radius_m": 0.4,
+      "brake_grip_rps": 0.0,
+      "surfaces": {
+        "trail": {
+          "rolling": 0.015,
+          "brake_g": 0.6,
+          "grip_rps": 10.0,
+          "drive_g": 0.55
+        },
+        "ground": {
+          "rolling": 0.045,
+          "brake_g": 0.45,
+          "grip_rps": 7.0,
+          "drive_g": 0.4
+        },
+        "snow": {
+          "rolling": 0.12,
+          "brake_g": 0.18,
+          "grip_rps": 3.0,
+          "drive_g": 0.12
+        }
+      }
+    }
+  },
+  "starts": [
+    {
+      "id": "granite-cirque",
+      "label": "Granite Cirque",
+      "mode": "ski",
+      "bowl": "granite-cirque",
+      "below_head_m": 120.0
+    },
+    {
+      "id": "granite-trail",
+      "label": "Granite Ridge trail (T5)",
+      "mode": "bike",
+      "track": "T5"
+    },
+    {
+      "id": "east-bowl-trail",
+      "label": "East Bowl trail (T6)",
+      "mode": "bike",
+      "track": "T6"
+    }
+  ]
+}

@@ -1,0 +1,371 @@
+{
+  "version": 1,
+  "fetched": [
+    {
+      "path": "client/web/scene.html",
+      "sha256": "da55a138596db48385a5c9a8885be35e150fe3f42db61ad892409c24c487b631"
+    },
+    {
+      "path": "client/web/src3d/audio.js",
+      "sha256": "18db345f95616f319ae31744bbb80ecdb24b298e6d51cc4f661dff0a1ad9a3b0"
+    },
+    {
+      "path": "client/web/src3d/clouds.js",
+      "sha256": "d7b5d3429baa21fc707528c035c538d39745c514fd992ee7d4795238afe1677c"
+    },
+    {
+      "path": "client/web/src3d/collision.js",
+      "sha256": "09fd82e29131f4f2163cf7981365d0c60fd3a9661fbb97078fd0a5eece75252c"
+    },
+    {
+      "path": "client/web/src3d/controls.js",
+      "sha256": "dc2f43c19fee2ec98641534a56b049728498735f4a9e2925f8b9fe0045e5d71f"
+    },
+    {
+      "path": "client/web/src3d/details.js",
+      "sha256": "3c5c0108b3a0e807f4f7f02eedb8e3bf590ed35a82377e108d8a81719ac52ed1"
+    },
+    {
+      "path": "client/web/src3d/ecology.js",
+      "sha256": "ac0b6c696a2d5097ed769c7b8f48b53d05971311f19072f62c6f6bfe591a8493"
+    },
+    {
+      "path": "client/web/src3d/forest.js",
+      "sha256": "2ea9d76f217b3bbc8b0d4ab913db17ce1df6770a3d9194887680de961b616cd6"
+    },
+    {
+      "path": "client/web/src3d/glb.js",
+      "sha256": "e9aa1ed979989c6578675cbb1ffba9b9d1e37e42bc5625184bc53388fc46d78f"
+    },
+    {
+      "path": "client/web/src3d/groundcover.js",
+      "sha256": "ceaf521dc7688ff3dd713de10a7b8f6e37680cd92fa3ae34171dd02e62b68038"
+    },
+    {
+      "path": "client/web/src3d/heights.js",
+      "sha256": "a985ef9770424e434019fea29b1aa12f0b2ec3d3ffd2edf81f6ec2462a844b79"
+    },
+    {
+      "path": "client/web/src3d/main.js",
+      "sha256": "ae67160b7c6f2a131d0f1249a6230df50aec0171c85a3a48a5deca90df695f7f"
+    },
+    {
+      "path": "client/web/src3d/navigation.js",
+      "sha256": "70861e58c9c3f78c2e4a473e3280b191572232408a2f18de133c6e64678b80d4"
+    },
+    {
+      "path": "client/web/src3d/placements.js",
+      "sha256": "65354d8fd3aa8bc643f75171a3a0894cb2e7ca2b0b5357e980ca4124a4853a6e"
+    },
+    {
+      "path": "client/web/src3d/provenance.js",
+      "sha256": "b7796c19d3b63b19d17104be892800a1d2c3aa5d486ccf11e1c638941bc418b3"
+    },
+    {
+      "path": "client/web/src3d/style.js",
+      "sha256": "bb1c1c96d09b514d29e06ff801a8fc8b0a6dbbd27c96e7f4894c7dbbc85553ab"
+    },
+    {
+      "path": "client/web/src3d/terrain.js",
+      "sha256": "3bea57ef605dadbc90eb008087ae71bf05a04c8f47968d540a56894e477c2b06"
+    },
+    {
+      "path": "client/web/src3d/world.js",
+      "sha256": "1bfff9fed3ce97e6a149cfbf6c84b9d07a0a51dca6c7f1228432423a69568a37"
+    },
+    {
+      "path": "client/web/vendor/three.core.min.js",
+      "sha256": "61ba0df005b05991361d040d8ff670e1aadfd0ce7aeebd1fdb0725957a8957de"
+    },
+    {
+      "path": "client/web/vendor/three.module.min.js",
+      "sha256": "e2b5ee6bccd38fd6d8a2428546b83c5f2426d84b152ef82be8055556e3b40eb6"
+    },
+    {
+      "path": "shared/activities/collision.js",
+      "sha256": "d722c889d00b7d946c10b88595c0aeb3160ffa3ca51c047a9c934ae4b575d8b6"
+    },
+    {
+      "path": "shared/activities/flight.js",
+      "sha256": "62b189b7ef4ed431585b2c14166ea2d4ebabf6509a5b9e39c6f62ac05cdf7e3e"
+    },
+    {
+      "path": "shared/activities/flight.json",
+      "sha256": "ddd17a72e315efe7f3d7a1a74debca1aa78bc80e25068c9b7f6f1f30c26e02ff"
+    },
+    {
+      "path": "shared/activities/ride.js",
+      "sha256": "023687cc9ffa9a24b6ce0bc448e69995b7d49c9b6399e147c60688a6a7b811d1"
+    },
+    {
+      "path": "shared/activities/ride.json",
+      "sha256": "8ce44a7ca65a678a1ae9d86919cf7753d714947b9fa41dbf077d3326b80c75ab"
+    },
+    {
+      "path": "shared/ecology/aquatic.js",
+      "sha256": "a8c039e3c15df53f58c6411e43ef917c2616ce360617c78862a73b154e69af75"
+    },
+    {
+      "path": "shared/ecology/habitats.json",
+      "sha256": "201d9196ceec39ec242ef265c4e8495369c295754ba30dc53697e1cf9d2301fa"
+    },
+    {
+      "path": "shared/ecology/meadow.json",
+      "sha256": "c3139bc801ef267688e5ca01541200a6de731768acd74483da10e7eb5cc361c9"
+    },
+    {
+      "path": "shared/geometry/arboreal/skybridge.glb",
+      "sha256": "5636a1701dcea61b477316c2afee59619b8985cfba0f40ff54284102b475d902"
+    },
+    {
+      "path": "shared/geometry/arboreal/skybridge_20.glb",
+      "sha256": "fd3d752cb63ee456c7bcadadd142e95db4203fc1875e11fffce5bedbbef4ab1e"
+    },
+    {
+      "path": "shared/geometry/arboreal/village_tree.glb",
+      "sha256": "353a3040a88c758b055dfb40095b96e13a5095ab3928e66d8f3a8bd7ffff7096"
+    },
+    {
+      "path": "shared/geometry/arboreal/village_tree_high.glb",
+      "sha256": "a7592727a3c70a098ce969f733382206b98379c7caceb9be3562915ee52192ea"
+    },
+    {
+      "path": "shared/geometry/arboreal/village_tree_low.glb",
+      "sha256": "eb20dba981382234711aae43d8a9be9866f93a0a4abf7971ca59946fe6dfc0d7"
+    },
+    {
+      "path": "shared/geometry/arboreal/village_tree_mid.glb",
+      "sha256": "033eeae155cfdcccb61b2ae0c74a1dc0cba509a573c0728c853482137c96155d"
+    },
+    {
+      "path": "shared/geometry/blimp/blimp.glb",
+      "sha256": "2dce8114f6d30b7de30bf537266b0fde01864476da922976f5392e5032f71b51"
+    },
+    {
+      "path": "shared/geometry/city/tower.glb",
+      "sha256": "c284df1f4ef054b5ce12a6d692d344aef1c0495351d3ccd9a111bbf33eeeb55c"
+    },
+    {
+      "path": "shared/geometry/dome/dome.glb",
+      "sha256": "1c8305cfc7d88cece7e26e240d5ea1bbf2d7d2c1ffbcb93ca3874ab2941d0463"
+    },
+    {
+      "path": "shared/geometry/flight/bee.glb",
+      "sha256": "564d661737709b58de1619f14820a304a5edfe2853c4671a626a2561c34a9c82"
+    },
+    {
+      "path": "shared/geometry/flight/butterfly.glb",
+      "sha256": "3c89e3e864d241577a948e57e7ec3ea3fbe65fe819cb02c68252b11a695ef7ce"
+    },
+    {
+      "path": "shared/geometry/flight/parafoil.glb",
+      "sha256": "eb4b77b3f3f1123eb120018cf91345827d0d9f97caec255278a825f4e4f04a8d"
+    },
+    {
+      "path": "shared/geometry/flight/parakite.glb",
+      "sha256": "9e1793c6307f2ab8b859aecaa2f559d9384aed25ac67aabd1aab87e43c4468c8"
+    },
+    {
+      "path": "shared/geometry/flight/paramotor.glb",
+      "sha256": "a7336d5ba18a28cf6d6c53da681c35ffdad16618250e50c35a35e2a28e279655"
+    },
+    {
+      "path": "shared/geometry/homestead/homestead.glb",
+      "sha256": "8967560b3ddc0e3690a6ef1c194185212675e8fe7955379f5bd76160bdc50169"
+    },
+    {
+      "path": "shared/geometry/mooring/hardstanding.glb",
+      "sha256": "9479634e700ee43b7722a40796752de39edcf4090ea358190bb50e35277e90b8"
+    },
+    {
+      "path": "shared/geometry/mooring/mooring_mast.glb",
+      "sha256": "2e54baa27d851dc19fae94f5a07e9cb3bbb31cf74315fba9c9a6fd4a73305c81"
+    },
+    {
+      "path": "shared/geometry/redwood/giant_redwood.glb",
+      "sha256": "40d4473e4b52709ca21114939752da2df05187e11805a520eedb20f34c425282"
+    },
+    {
+      "path": "shared/geometry/redwood/mountain_pine.glb",
+      "sha256": "36945148e3f0224e4e6904c350a2be83513cdbac6d610f71d1d8ec9492226e5b"
+    },
+    {
+      "path": "shared/geometry/redwood/redwood_canopy.glb",
+      "sha256": "1eede985faf236a720975636432189f33e2f02c1595352f16f1c66a83905d76e"
+    },
+    {
+      "path": "shared/geometry/redwood/silver_fir.glb",
+      "sha256": "f3165972dc778a6d067b4be8366694071cf12a9d747302d9eec3626959b0c68d"
+    },
+    {
+      "path": "shared/geometry/sports/bicycle.glb",
+      "sha256": "5579a3decbe943c2e871ab737082b75c13a6649822712bfc177e10b88e39abfb"
+    },
+    {
+      "path": "shared/geometry/sports/skier.glb",
+      "sha256": "2f2c233f98cbee4518d04e5f7efa2a7e8f2d4f44985ae3f4a35c2dd4f4f44366"
+    },
+    {
+      "path": "shared/geometry/structures/turbine.glb",
+      "sha256": "f635c3bc858270504bd8153ed8c14a5cb4d1c37ea3d90f33a51f1f35f8801ce0"
+    },
+    {
+      "path": "shared/geometry/water/water.glb",
+      "sha256": "bccc8cfb405ee272c5ca4748fb8880d5716fadda8598ffe979ffe2a1d7f6b6aa"
+    },
+    {
+      "path": "shared/geometry/waterside/dragonfly.glb",
+      "sha256": "de7d4b4713126c3ad4e6d315afaeb0eef7c5f9def48c07c7d350510e46d743db"
+    },
+    {
+      "path": "shared/geometry/waterside/dragonfly_wings.glb",
+      "sha256": "f5bbc591199010e726789578cf5bc3bab62a2ebe3a6abf1ef268fe7debaaa897"
+    },
+    {
+      "path": "shared/geometry/waterside/fish_tail.glb",
+      "sha256": "84a41bcd988470bd3c6449962f2d9eeaa24993859a80551e0384e3385b691727"
+    },
+    {
+      "path": "shared/geometry/waterside/frog.glb",
+      "sha256": "7f7420800fe2ade471f7c39c2614cfb6c101313d9744a721048562b4abfb342a"
+    },
+    {
+      "path": "shared/geometry/waterside/gravel.glb",
+      "sha256": "ed9bed65a46abfcb2158b1e5f6efc79f14326a775ba16712e314b3a4e8f65959"
+    },
+    {
+      "path": "shared/geometry/waterside/lilies.glb",
+      "sha256": "937a92bb90a19aead2d696c57b5a2c7cb809a228314cd54ea032434807df4e0c"
+    },
+    {
+      "path": "shared/geometry/waterside/reeds.glb",
+      "sha256": "d5f8b2f00bae854e19338125a470b6e3d69145ba44ddaa1df4a7861fed4ab3e7"
+    },
+    {
+      "path": "shared/geometry/waterside/river_fish.glb",
+      "sha256": "b09dfbe42a8b790ee767e39358c9385deaced7f6fbb63f00ebfe17f70967e70c"
+    },
+    {
+      "path": "shared/geometry/waterside/river_rock.glb",
+      "sha256": "1c6447727cdc9b49c06cf620955fad3e40d268690f7a1b840f4c64dad9ab2653"
+    },
+    {
+      "path": "shared/geometry/waterside/sedge.glb",
+      "sha256": "c9d5b06eee3d31d77bd738dc21ae8b62cd24c3b856e3cbacae3d89163e47eb16"
+    },
+    {
+      "path": "shared/world/out/ground_cover.json",
+      "sha256": "bb7919decbe1724dc85ec0afeb08a72125ff8e35129b56780f26afa491ef4a0b"
+    },
+    {
+      "path": "shared/world/out/placement.json",
+      "sha256": "b38b431230eae73a2f101a02dbf70f300457b8faeadf010e0f392a72c8d8a819"
+    },
+    {
+      "path": "shared/world/out/snow_cover.json",
+      "sha256": "c058c82c1184f469d8b8eb74dbe52c00ecd9acf349326e6968672e72f54a9a63"
+    },
+    {
+      "path": "shared/world/worldmap.json",
+      "sha256": "142d9fed500ba3d0b9ff2202073ad9ffe9b8bc552b14ff07ddf804f4bd3fc808"
+    },
+    {
+      "path": "client/web/data/heightmap.f32",
+      "sha256": "5b9583fb96df956a22e50e0a05865c871a2e9b4ab9552680b96a0486c3e67616"
+    },
+    {
+      "path": "client/web/data/farfield.f32",
+      "sha256": "75736139ffa50e5b6af85e9e0512ae9cf1108013c9c21e6872ea2a7d4e2c3657"
+    }
+  ],
+  "generator": "client/web/tools/make_viewer_data.py",
+  "commit": "31dd243",
+  "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
+  "sources": [
+    {
+      "path": "shared/world/worldmap.json",
+      "sha256_12": "142d9fed500b"
+    },
+    {
+      "path": "shared/world/out/placement.json",
+      "sha256_12": "b38b431230ea"
+    },
+    {
+      "path": "shared/world/out/fields_albedo.png",
+      "sha256_12": "c6170cd8901f"
+    },
+    {
+      "path": "shared/world/out/water_mask.png",
+      "sha256_12": "482a8cdf92be"
+    },
+    {
+      "path": "shared/world/out/heightmap.png",
+      "sha256_12": "949611db689c"
+    },
+    {
+      "path": "shared/world/out/farfield_height.png",
+      "sha256_12": "33d83648c52a"
+    }
+  ],
+  "extent": {
+    "min_xy_m": [
+      -2048.0,
+      -2048.0
+    ],
+    "max_xy_m": [
+      2048.0,
+      2048.0
+    ],
+    "quad_size_m": 8.0,
+    "height_resolution": 512
+  },
+  "heights": {
+    "min_m": 11.993591210803386,
+    "max_m": 1438.3154039826047,
+    "encode_min_m": 0.0,
+    "encode_max_m": 1500.0
+  },
+  "partition": {
+    "digest_core": "e9300a9ec3a61de9",
+    "id_agreed": "b8629ccbff0ccb8d",
+    "id_source": "the agreed binary partition identity: IEEE-754 big-endian doubles at fixed widths, an explicit field order, and no text rendering anywhere. Computed here by partition_id_bytes() and in the browser by client/web/src/partition_id.js, from the same specification. This is the one that is stable under how world.json spells a number, which digest_core is not.",
+    "digest_source": "computed by this script calling shared.terrain.field_layout.digest_partition on a FieldAlbedo rebuilt from world.json:fields_status. The browser recomputes it with client/web/src/digest.js and stamps both, so a difference between the two implementations is visible on the picture rather than in a test nobody reads. This is the one place a second client observes the core.",
+    "cells": 0,
+    "edges": 0
+  },
+  "rasters": {
+    "fields_albedo": "shared/world/out/fields_albedo.png",
+    "water_mask": "shared/world/out/water_mask.png",
+    "hillshade": "client/web/data/hillshade.png"
+  },
+  "height_grids": {
+    "block": {
+      "file": "client/web/data/heightmap.f32",
+      "resolution": 512,
+      "quad_size_m": 8.0,
+      "offset_xy_m": [
+        -2044.0,
+        -2044.0
+      ],
+      "min_m": 11.993591210803386,
+      "max_m": 1438.3154039826047,
+      "row_0": "min_y",
+      "source": "shared/world/out/heightmap.png, decoded by shared.terrain.heightmap.load_heightfield"
+    },
+    "far_field": {
+      "file": "client/web/data/farfield.f32",
+      "resolution": 146,
+      "quad_size_m": 56.0,
+      "offset_xy_m": [
+        -4060.0,
+        -4060.0
+      ],
+      "min_m": 0.0,
+      "max_m": 1359.6704051270312,
+      "row_0": "min_y",
+      "source": "shared/world/out/farfield_height.png, decoded by shared.terrain.heightmap.load_far_field"
+    }
+  },
+  "far_field_note": "The far field is vertex-for-vertex with the block at its edge and carries the block's own heights inside it, so a 3D scene can draw it past the edge as a ring and leave the block's own terrain to cover the middle. It exists because the city stands on it.",
+  "heightmap_note": "heightmap.png is 16-bit grayscale; a browser cannot read its sample values back, which is the only reason hillshade.png and the two .f32 grids exist at all. The 2D viewer never decodes it; the 3D scene reads heightmap.f32 instead."
+}

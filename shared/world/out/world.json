@@ -1,0 +1,166 @@
+{
+  "far_field": {
+    "bit_depth": 16,
+    "colour_type": 0,
+    "encode_max_m": 1500.0,
+    "encode_min_m": 0.0,
+    "file": "farfield_height.png",
+    "grid": {
+      "block_extent_m": 8120.0,
+      "block_min_x_m": -4060.0,
+      "block_min_y_m": -4060.0,
+      "offset_x_m": -4060.0,
+      "offset_y_m": -4060.0,
+      "quad_size_m": 56.0,
+      "resolution": 146
+    },
+    "observed_max_m": 1359.6700357669604,
+    "observed_min_m": 0.0,
+    "range_source": "worldmap.json block.height_range_m (0 to 1500 m), the same range both rasters are encoded against",
+    "row_order_source": "worldmap.json rasters.far_field.row_0 = max_y",
+    "sample_order": "row-major, row 0 is max y, big-endian 16-bit"
+  },
+  "fields_status": {
+    "albedo_file": "fields_albedo.png",
+    "cells": [],
+    "colour_type": 6,
+    "edges": [],
+    "implemented": false,
+    "note": "fields.py is a stub, so the partition was not computed. The albedo is fully transparent on purpose: an empty overlay cannot be mistaken for a flat field of one colour."
+  },
+  "generator": "shared/terrain/worldgen.py",
+  "grid": {
+    "block_extent_m": 4096.0,
+    "block_max_xy_m": [
+      2048.0,
+      2048.0
+    ],
+    "block_min_xy_m": [
+      -2048.0,
+      -2048.0
+    ],
+    "grid_extent_m": 4088.0,
+    "offset_m": [
+      -2044.0,
+      -2044.0,
+      0.0
+    ],
+    "quad_count": 511,
+    "quad_size_m": 8.0,
+    "resolution": 512
+  },
+  "height": {
+    "bit_depth": 16,
+    "colour_type": 0,
+    "encode_max_m": 1500.0,
+    "encode_min_m": 0.0,
+    "encoding_file": "heightmap.png",
+    "observed_max_m": 1438.3109759910762,
+    "observed_min_m": 12.0,
+    "range_source": "worldmap.json block.height_range_m",
+    "row_order_source": "worldmap.json rasters.heightmap.row_0 = max_y",
+    "sample_order": "row-major, row 0 is max y, big-endian 16-bit"
+  },
+  "outputs": [
+    {
+      "bytes": 366605,
+      "name": "heightmap.png",
+      "sha256": "949611db689c2d8cc4f438225066687633ba8c46eb0ac7a31438b5f76326f1e9"
+    },
+    {
+      "bytes": 7921,
+      "name": "water_mask.png",
+      "sha256": "482a8cdf92bee6dfcdfe3bf36e4a93064c0a0f94cdbe2d8ecc991bfc56d69449"
+    },
+    {
+      "bytes": 16375,
+      "name": "fields_albedo.png",
+      "sha256": "c6170cd8901f52986295edd8120c3596958065e39b93e0b0ec2753667b92ca47"
+    },
+    {
+      "bytes": 40622,
+      "name": "farfield_height.png",
+      "sha256": "33d83648c52a3afbb102e766ec4b23f9b52ce43f2843494c12a46862cf6144f2"
+    }
+  ],
+  "params": {
+    "base_frequency": 0.0016,
+    "field_albedo_resolution": 2048,
+    "field_slope_opening_m": 24.0,
+    "gain": 0.5,
+    "hedgerow": {
+      "hex": "#2E3D24",
+      "name": "hedgerow"
+    },
+    "height_max_m": 1500.0,
+    "height_min_m": 0.0,
+    "height_range_authoritative_in": "worldmap.json block.height_range_m",
+    "lacunarity": 2.0,
+    "octaves": 6,
+    "palette": [
+      {
+        "hex": "#C8B24A",
+        "name": "yellow"
+      },
+      {
+        "hex": "#6E8F4A",
+        "name": "green"
+      },
+      {
+        "hex": "#7E8447",
+        "name": "olive"
+      },
+      {
+        "hex": "#BFA772",
+        "name": "tan"
+      }
+    ],
+    "ridge_end_y_m": 950.0,
+    "ridge_height_m": 120.0,
+    "ridge_relief_m": 12.0,
+    "ridge_start_y_m": 250.0,
+    "ridged_bias": 0.42,
+    "ridged_frequency": 0.0032,
+    "ridged_octaves": 4,
+    "seed": 1337,
+    "smoothing_passes": 1,
+    "smoothing_weight": 0.35,
+    "valley_floor_m": 33.0,
+    "valley_relief_m": 12.0,
+    "version": 1,
+    "warp_frequency": 0.0009,
+    "warp_octaves": 2,
+    "warp_strength_m": 140.0,
+    "water": {
+      "hex": "#B7D6D2",
+      "name": "water"
+    },
+    "water_depth_range_m": 64.0
+  },
+  "seed": 1337,
+  "version": 1,
+  "water": [
+    {
+      "bed_z_m": 14.0,
+      "id": "river",
+      "kind": "river",
+      "max_depth_m": 6.0,
+      "surface_z_m": 20.0,
+      "wetted_area_m2": 504704.0
+    },
+    {
+      "bed_z_m": 12.0,
+      "id": "lake",
+      "kind": "lake",
+      "max_depth_m": 8.0,
+      "surface_z_m": 20.0,
+      "wetted_area_m2": 290752.0
+    }
+  ],
+  "worldmap": {
+    "sha256": "142d9fed500ba3d0b9ff2202073ad9ffe9b8bc552b14ff07ddf804f4bd3fc808",
+    "source": "shared/world/worldmap.json",
+    "status": "signed-off",
+    "version": 2
+  }
+}

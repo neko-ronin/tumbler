@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "units": "metres, seconds",
+  "model": "recreational game flight; wind-relative airspeed, polar sink, ridge lift and thermals",
+  "wing_asset": "flight/parafoil.glb",
+  "motor_asset": "flight/paramotor.glb",
+  "wind": {
+    "speed_mps": 4.2,
+    "gust_mps": 1.4
+  },
+  "modes": {
+    "paraglider": {
+      "label": "Paragliding",
+      "trim_mps": 11.5,
+      "sink_mps": 1.1,
+      "turn_rps": 0.48,
+      "powered_climb_mps": 0,
+      "tether_m": 0
+    },
+    "parakite": {
+      "label": "Parakiting",
+      "trim_mps": 19.5,
+      "sink_mps": 1.9,
+      "turn_rps": 0.75,
+      "powered_climb_mps": 0,
+      "tether_m": 0,
+      "flare_efficiency": 0.68,
+      "wing_asset": "flight/parakite.glb"
+    },
+    "paramotor": {
+      "label": "Paramotoring",
+      "trim_mps": 13.0,
+      "sink_mps": 1.3,
+      "turn_rps": 0.42,
+      "powered_climb_mps": 5.0,
+      "tether_m": 0
+    }
+  },
+  "launches": [
+    {
+      "id": "granite-ridge",
+      "label": "Granite Ridge",
+      "xy_m": [
+        -380,
+        1620
+      ],
+      "heading_deg": 270
+    },
+    {
+      "id": "east-bowl",
+      "label": "East Bowl",
+      "xy_m": [
+        1080,
+        1360
+      ],
+      "heading_deg": 250
+    }
+  ],
+  "thermals": [
+    {
+      "xy_m": [
+        -650,
+        900
+      ],
+      "radius_m": 180,
+      "lift_mps": 4.2,
+      "top_m": 1400
+    },
+    {
+      "xy_m": [
+        500,
+        900
+      ],
+      "radius_m": 210,
+      "lift_mps": 4.8,
+      "top_m": 1500
+    },
+    {
+      "xy_m": [
+        -1400,
+        1400
+      ],
+      "radius_m": 170,
+      "lift_mps": 3.8,
+      "top_m": 1450
+    }
+  ],
+  "landing_clearance_m": 1.8,
+  "ceiling_m": 2200,
+  "world_limit_m": 3950,
+  "launch_radius_m": 20.0,
+  "launch_clearance_m": 90.0
+}

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "habitat": "shared/world/out/ground_cover.json",
+  "population": "ephemeral habitat populations; no individual persistence",
+  "species": [{"kind": "butterfly", "asset": "flight/butterfly.glb", "per_hectare": 28, "height_m": [0.5, 2.4]}, {"kind": "bee", "asset": "flight/bee.glb", "per_hectare": 36, "height_m": [0.3, 1.3]}, {"kind": "dragonfly", "asset": "waterside/dragonfly.glb", "per_hectare": 7, "height_m": [0.9, 3.0]}],
+  "windborne": {"kinds": ["petal", "seed", "leaf"], "per_hectare": 65}
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e8e6ce">
+  <title>Tumbler · A quieter place</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: light; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: #34483b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; overflow: hidden; background: #dcd7b8; }
+    #stage, canvas { width: 100vw; height: 100dvh; display: block; }
+    canvas { touch-action: none; outline: none; }
+    .panel { background: #fffbedde; border: 1px solid #fffdf2bb; box-shadow: 0 4px 24px #33452b12; border-radius: 18px; }
+    header { position: absolute; top: 24px; left: 28px; padding: 16px 22px; display: flex; align-items: center; gap: 13px; pointer-events: none; }
+    .sunmark { font-size: 31px; color: #bd8e49; font-weight: 300; }
+    h1 { margin: 0; font-family: Georgia, serif; font-size: 27px; font-weight: normal; letter-spacing: .06em; }
+    #status { font-size: 11px; color: #71806b; margin-top: 3px; letter-spacing: .035em; max-width: 48ch; }
+    .lighting { position: absolute; top: 24px; right: 28px; padding: 12px 17px; display: flex; align-items: center; gap: 12px; }
+    label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7d826a; }
+    select { font: inherit; font-size: 13px; border: 0; color: #41543f; background: transparent; cursor: pointer; padding: 5px; }
+    nav { position: absolute; bottom: 30px; left: 28px; padding: 7px; display: flex; gap: 5px; }
+    button { border: 0; border-radius: 12px; background: transparent; color: #64745c; font: inherit; font-size: 12px; padding: 12px 17px; cursor: pointer; transition: background .15s; }
+    nav button { white-space:nowrap; flex-shrink:0; }
+    button[aria-pressed="true"] { color: #fffbed; background: #617555; }
+    button:hover { background: #e4e8d4; color: #34483b; }
+    button[aria-pressed="true"]:hover { background: #52684a; color: #fffbed; }
+    .activities { position:absolute; top:100px; right:28px; display:flex; align-items:center; padding:6px 14px; gap:6px; }
+    #flight-readout { position:absolute;bottom:150px;left:28px;padding:10px 16px;font-size:12px; }
+    #flight-readout:empty { display:none; }
+    .help { position: absolute; bottom: 100px; left: 30px; font-size: 11px; color: #455640; background: #fffbedbd; padding: 7px 12px; border-radius: 20px; }
+    details { position: absolute; right: 28px; bottom: 30px; padding: 13px 17px; font-size: 11px; max-width: calc(100vw - 40px); }
+    summary { cursor: pointer; color: #64745c; }
+    pre { margin: 12px 0; font: 11px/1.7 ui-monospace, monospace; white-space: pre-wrap; }
+    a { color: #617555; }
+    .quality { display: flex; align-items: center; justify-content: space-between; }
+    :focus-visible { outline: 2px solid #8c9c69; outline-offset: 3px; }
+    @media (max-width: 650px) { header { top: 14px; left: 14px; padding: 12px 16px; } h1 { font-size: 22px; } .lighting { right: 14px; top: 102px; padding: 8px 12px; } nav { left: 14px; bottom: 18px; max-width:calc(100vw - 28px); overflow:auto; } .activities { top:157px; right:14px; left:14px; padding:5px; flex-wrap:wrap; } #flight-readout { left:14px; bottom:180px; max-width:calc(100vw - 28px); } nav button { padding: 11px 12px; } details { right: 14px; bottom: 85px; } .help { bottom: 138px; left: 14px; font-size: 10px; } }
+  </style>
+</head>
+<body>
+  <main id="stage"><canvas id="canvas" tabindex="0" aria-label="Tumbler countryside. Drag to orbit, right-drag to pan, scroll to approach."></canvas></main>
+  <header class="panel"><span class="sunmark" aria-hidden="true">☼</span><div><h1>Tumbler</h1><div id="status" role="status">Opening the countryside…</div></div></header>
+  <div class="panel lighting"><label for="light">The light</label><select id="light"><option value="golden">Golden hour</option><option value="day">Clear morning</option><option value="dusk">Evening glow</option></select></div>
+  <div class="panel activities"><label for="activity">Explore</label><select id="activity"><option value="orbit">Look around</option><option value="walk">Walk the meadow</option><option value="paraglider">Paragliding</option><option value="parakite">Parakiting</option><option value="paramotor">Paramotoring</option><option value="ski">Skiing</option><option value="bike">Mountain biking</option></select><select id="launch-site" aria-label="Start from"><option value="0">Granite Ridge</option><option value="1">East Bowl</option></select><button id="launch">Launch ↗</button><button id="sound" aria-pressed="false">Sound off</button></div>
+  <output class="panel" id="flight-readout" aria-live="off"></output>
+  <p id="help" class="help">Drag to look around · Right-drag to pan · Scroll to wander closer</p>
+  <nav class="panel" aria-label="Places to pause"><button data-view="home" aria-pressed="true">The homestead</button><button data-view="river" aria-pressed="false">By the river</button><button data-view="valley" aria-pressed="false">The mountains</button><button data-view="village" aria-pressed="false">Tree village</button><button data-view="summit" aria-pressed="false">Granite Ridge</button></nav>
+  <details class="panel"><summary>Field notes</summary><pre id="stamp">Preparing the scene…</pre><div class="quality"><label for="resolution">Pixel scale</label><select id="resolution"><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select></div><p>Read-only core world · <a href="./">Open the map</a></p></details>
+  <script type="module" src="src3d/main.js"></script>
+</body>
+</html>
