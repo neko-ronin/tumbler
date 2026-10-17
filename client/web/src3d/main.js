@@ -9,6 +9,7 @@ import { parseGLB, applyImageBytes, mergePrimitives } from './glb.js';
 import { makeSky, style } from './style.js';
 import { createCloudPass } from './clouds.js';
 import { createNavigation } from './navigation.js';
+import { createCharacter } from './character.js';
 import { buildEcology } from './ecology.js';
 import { buildTethers, buildTrails } from './details.js';
 import { createSoundscape } from './audio.js';
@@ -68,6 +69,8 @@ async function main() {
   ]);
   checkVersion(manifest,1,'viewer manifest');checkVersion(worldmap,2,'world map');
   const [meadowData,flightConfig,rideConfig]=await Promise.all([fetchData(worldmap.activities.meadow_life),fetchData(worldmap.activities.flight),fetchData(worldmap.activities.ride)]);
+  const characterConfig=await fetchData(worldmap.activities.character);
+  checkVersion(characterConfig,1,'playable character');
   const snowStamp=await fetchData(rideConfig.snow_cover);
   for(const [value,known,label] of [[worldmap,2,'world map'],[placement,3,'placements'],[stampData,1,'grass stamp'],[habitats,1,'water habitats'],[meadowData,1,'meadow life'],[flightConfig,1,'flight'],[rideConfig,1,'ski and bike rules'],[snowStamp,1,'snow cover']])checkVersion(value,known,label);
   const blockGrid = new HeightGrid({ values: new Float32Array(blockBytes), ...manifest.height_grids.block, kind: 'block' });
@@ -77,6 +80,7 @@ async function main() {
   // Bounded parallel loading avoids a serial network waterfall and limits peak
   // parsing memory. Source bytes fall out of scope as each asset is decoded.
   const paths = [...new Set([...placement.instances.map(i => i.asset),...habitats.plantings.map(i=>i.asset),...meadowData.species.map(i=>i.asset),'waterside/river_fish.glb','waterside/fish_tail.glb','waterside/frog.glb','waterside/dragonfly_wings.glb',flightConfig.wing_asset,flightConfig.motor_asset,...Object.values(flightConfig.modes).map(m=>m.wing_asset).filter(Boolean),...Object.values(rideConfig.modes).map(m=>m.asset)])];
+  paths.push(characterConfig.asset);
   const assets = {};
   let next = 0;
   async function loadAsset() {
@@ -120,7 +124,7 @@ async function main() {
   scene.add(buildTethers(placement,assets),buildTrails(worldmap,ground));
   const rig=new T.Group();rig.name='player_parafoil';
   const wing=mergePrimitives(assets[flightConfig.wing_asset].primitives,'opaque');rig.add(new T.Mesh(wing.geometry,wing.material));
-  const motor=mergePrimitives(assets[flightConfig.motor_asset].primitives,'opaque');const motorMesh=new T.Mesh(motor.geometry,motor.material);motorMesh.position.set(0,.5,-.45);rig.add(motorMesh);
+  const motor=mergePrimitives(assets[flightConfig.motor_asset].primitives,'opaque');const motorMesh=new T.Mesh(motor.geometry,motor.material);motorMesh.position.set(0,.85,-.65);rig.add(motorMesh);
   const parafoilMesh=rig.children[0];
   const kiteAsset=mergePrimitives(assets[flightConfig.modes.parakite.wing_asset].primitives,'opaque');const parakiteMesh=new T.Mesh(kiteAsset.geometry,kiteAsset.material);parakiteMesh.visible=false;rig.add(parakiteMesh);
   rig.visible=false;scene.add(rig);
@@ -130,7 +134,8 @@ async function main() {
   const trail=createTrailSampler(worldmap),surfaceAt=createSurfaceSampler(rideConfig,snowAt,trail);
   const rideHeight=createRideHeight((x,y)=>ground.height(x,y)??0,trail);
   const hitTest=buildWorldCollision(placement,assets);
-  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes});
+  const character=createCharacter(assets[characterConfig.asset],characterConfig);scene.add(character.object);
+  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig);
   const soundscape=createSoundscape(habitats);
   document.getElementById('sound').addEventListener('click',async e=>{const enabled=await soundscape.toggle();e.target.textContent=enabled?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(enabled));});
   const modeSelect=document.getElementById('activity'),siteSelect=document.getElementById('launch-site');
@@ -140,7 +145,7 @@ async function main() {
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
-  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / left stick to walk · Drag / right stick to look · Shift to run',
+  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / left stick to walk · Drag / right stick to orbit the cat · Shift / L3 to run',
     parakite:'A/D steer · W dive / S flare · Drag to look · Launch to restart',
     ski:'A/D carve · W pole · S snowplough · Shift tuck · Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
     bike:'A/D steer · W pedal · S brake · Shift crouch · Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
@@ -245,7 +250,7 @@ async function main() {
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
   // Read-only inspection hook used for repeatable visual/performance checks.
-  window.tumbler = { scene, camera, renderer, controls, navigation, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, cloudPass, ground, ecology, closeMeadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, cloudPass, ground, ecology, closeMeadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   function updateStamp() {
     const ordered = [...samples].sort((a,b) => a-b);
     const percentile = p => ordered[Math.floor((ordered.length - 1) * p)] ?? 0;
@@ -292,7 +297,7 @@ async function main() {
     status.textContent = 'Graphics paused — recovering…';
   });
   canvas.addEventListener('webglcontextrestored', () => { contextLost = false; forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true); status.textContent = 'Ready for the mountains.'; resume(); });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); soundscape.dispose();navigation.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); soundscape.dispose();navigation.dispose();character.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   status.textContent = 'Ready for the mountains.';
   document.body.classList.add('ready');
   resume();

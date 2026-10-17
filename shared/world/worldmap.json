@@ -8284,7 +8284,8 @@
       "asset_scale": 0.28,
       "cluster_m": 200.0
     },
-    "ride": "shared/activities/ride.json"
+    "ride": "shared/activities/ride.json",
+    "character": "shared/characters/player.json"
   },
   "snow": {
     "season": "late spring",

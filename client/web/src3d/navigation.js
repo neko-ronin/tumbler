@@ -2,13 +2,14 @@
 import * as T from '../vendor/three.module.min.js';
 import {launchFlight,stepFlight,sampleAir} from '../../../shared/activities/flight.js';
 import {rideStart,startRide,stepRide} from '../../../shared/activities/ride.js';
-export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride){
+import {stepWalk} from '../../../shared/activities/walk.js';
+export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig){
   let mode='orbit',state=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true;
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
   const keys=new Set(),look=new T.Euler(0,0,0,'YXZ');
   const height=(x,y)=>ground.height(x,y)??0;
   const forward=new T.Vector3(),side=new T.Vector3();
-  let walkY=camera.position.y;
+  const target=new T.Vector3();
   const clear=()=>{keys.clear();drag=false;accumulator=0;};
   function key(e,down){if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&riding())toggleView();
@@ -23,15 +24,22 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const dead=v=>Math.abs(v??0)<.14?0:Math.sign(v)*(Math.abs(v)-.14)/.86;
   function toggleView(){view=view==='chase'?'first':'chase';ride.rig.visible=view==='chase';snap=true;}
   function select(next,site='0'){
+    const previous=mode==='orbit'?null:state;
     clear();mode=next;orbit.enabled=next==='orbit';rig.visible=config.modes[next]!==undefined;ride.rig.visible=riding()&&view==='chase';
+    character.object.visible=characterConfig.modes.includes(next);snap=true;
     if(next==='orbit'){orbit.setTarget(camera.position.x,camera.position.y,camera.position.z-20);return;}
     const direction=new T.Vector3();camera.getWorldDirection(direction);yaw=Math.atan2(-direction.x,-direction.z);pitch=0;
-    if(next==='walk'){walkY=height(camera.position.x,-camera.position.z)+1.8;camera.position.y=walkY;return;}
+    if(next==='walk'){
+      const x=previous?.x??camera.position.x,y=previous?.y??-camera.position.z;
+      state={x,y,z:height(x,y),heading:previous?.heading??yaw+Math.PI/2,speed:0};
+      pitch=-.24;character.object.rotation.set(0,state.heading+Math.PI/2,0);updateWalk(0,0,0,false);return;
+    }
     if(riding()){
       state=startRide(ride.config,rideStart(ride.config,site,worldmap,ride.snowAt),ride.height);yaw=0;pitch=0;snap=true;hop=false;
       for(const [name,mesh] of Object.entries(ride.meshes))mesh.visible=name===next;return;
     }
-    state=launchFlight(config,next,config.launches[Number(site)||0],height);yaw=0;pitch=-.10;
+    state=launchFlight(config,next,config.launches[Number(site)||0],height);yaw=0;pitch=-.18;
+    updateFlightPresentation(0);
   }
   function update(dt){
     if(mode==='orbit'){orbit.update();return;}
@@ -42,20 +50,45 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const y=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-ly;
     if(riding()){updateRide(dt,pad,x,y);return;}
     if(mode==='walk'){
-      forward.set(-Math.sin(yaw),0,-Math.cos(yaw));side.set(Math.cos(yaw),0,-Math.sin(yaw));
-      const speed=(keys.has('ShiftLeft')?9:3.5)*dt;
-      const before=camera.position.clone();camera.position.addScaledVector(forward,y*speed).addScaledVector(side,x*speed);
-      const h=ground.height(camera.position.x,-camera.position.z);
-      if(h===null||Math.abs(h+1.8-walkY)>Math.max(.7,speed*1.8)||hitTest?.([before.x,-before.z,before.y-.9],[camera.position.x,-camera.position.z,(h??0)+.9],.35)){camera.position.copy(before);}else{walkY=h+1.8;camera.position.y=walkY;}
-      look.set(pitch,yaw,0);camera.quaternion.setFromEuler(look);
+      updateWalk(dt,x,y,keys.has('ShiftLeft')||(pad?.buttons[10]?.pressed??false));
     }else{
       accumulator+=Math.min(dt,.05);
       while(accumulator>=1/120){state=stepFlight(state,{turn:x,brake:-y,throttle:Number(keys.has('KeyR'))-Number(keys.has('KeyF'))+(pad?.buttons[7]?.value??0)-(pad?.buttons[6]?.value??0)},1/120,time,config,worldmap.wind.direction_deg,height,hitTest);time+=1/120;accumulator-=1/120;}
-      camera.position.set(state.x,state.z,-state.y);
-      look.set(pitch,state.heading-Math.PI/2+yaw,-state.bank*.28);camera.quaternion.setFromEuler(look);
-      rig.position.set(state.x,state.z-2.1,-state.y);rig.rotation.set(-state.pitch,state.heading+Math.PI/2,-state.bank*.65);
+      updateFlightPresentation(dt);
     }
     orbit.target.copy(camera.position);orbit.target.y=height(camera.position.x,-camera.position.z);
+  }
+  function follow(dt,distance,heading){
+    target.copy(character.object.position).add(new T.Vector3(0,1.1,0));
+    const angle=heading-Math.PI/2+yaw;
+    chase.set(target.x+Math.sin(angle)*Math.cos(pitch)*distance,target.y-Math.sin(pitch)*distance,target.z+Math.cos(angle)*Math.cos(pitch)*distance);
+    chase.y=Math.max(chase.y,height(chase.x,-chase.z)+.45);
+    // Pull the camera in along the same view ray when a tree or home blocks it.
+    const start=[target.x,-target.z,target.y];
+    for(let i=0;i<12&&hitTest?.(start,[chase.x,-chase.z,chase.y],.2);i++)chase.lerp(target,.2);
+    if(snap)camera.position.copy(chase);else camera.position.lerp(chase,1-Math.exp(-dt*10));
+    camera.lookAt(target);snap=false;
+  }
+  function updateWalk(dt,x,y,run){
+    forward.set(-Math.sin(yaw),0,-Math.cos(yaw));side.set(Math.cos(yaw),0,-Math.sin(yaw));
+    const movement=forward.clone().multiplyScalar(y).addScaledVector(side,x);
+    state=stepWalk(state,{x:movement.x,y:-movement.z,run},dt,characterConfig.walk,(x,y)=>ground.height(x,y),hitTest);
+    character.object.position.set(state.x,state.z,-state.y);
+    if(state.speed>0){
+      const goal=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),state.heading+Math.PI/2);
+      character.object.quaternion.slerp(goal,1-Math.exp(-dt*14));
+    }
+    character.update(dt,state.speed>.05?(run?'run':'walk'):'idle',state.speed);
+    // Walk heading follows movement; the camera's yaw stays independently controllable.
+    follow(dt,5.4,Math.PI/2);
+  }
+  function updateFlightPresentation(dt){
+    rig.position.set(state.x,state.z-config.landing_clearance_m,-state.y);
+    rig.rotation.set(-state.pitch,state.heading+Math.PI/2,-state.bank*.65);
+    character.object.position.copy(rig.position);
+    character.object.quaternion.copy(rig.quaternion);
+    character.update(dt,state.grounded?'idle':'flight',0,{mode:state.mode,bank:state.bank,grounded:state.grounded});
+    follow(dt,12,state.heading);
   }
   /** Steer, pedal or pole, brake, tuck and hop; a chase camera, or first person on V / Y. */
   function updateRide(dt,pad,x,y){
@@ -78,5 +111,5 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     snap=false;orbit.target.copy(p);
   }
-  return {select,update,clear,get mode(){return mode;},get state(){return state;},get air(){return state?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {select,update,clear,get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

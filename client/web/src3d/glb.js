@@ -16,7 +16,9 @@
  * | attributes | `POSITION`, `NORMAL`, `TEXCOORD_0`, all float32, tightly packed |
  * | indices | uint16 or uint32, `TRIANGLES` only |
  * | materials | `pbrMetallicRoughness`, `baseColorFactor`, `metallicFactor`, `roughnessFactor`, `doubleSided`, `alphaMode` — and **one** PNG texture in the whole repository (`blimp.glb`) |
- * | not used | animations, skins, morph targets, sparse accessors, interleaved buffer views, extensions, TEXCOORD_1, joint weights, KHR_* |
+ * | animation | node translation/rotation/scale, LINEAR or STEP; inverse-bind skeletons and four-influence skin attributes |
+ * | colours | RGB/RGBA vertex colours, including normalized integer storage |
+ * | not used | morph targets, sparse accessors, interleaved buffer views, extensions, TEXCOORD_1, KHR_* |
  *
  * ## Why it returns primitives rather than a scene
  *
@@ -50,6 +52,17 @@ import {
   Matrix4,
   Mesh,
   Vector3,
+  AnimationClip,
+  QuaternionKeyframeTrack,
+  VectorKeyframeTrack,
+  InterpolateDiscrete,
+  InterpolateLinear,
+  Bone,
+  Skeleton,
+  SkinnedMesh,
+  RepeatWrapping,
+  ClampToEdgeWrapping,
+  MirroredRepeatWrapping,
 } from "../vendor/three.module.min.js";
 
 const MAGIC = 0x46546c67; // "glTF"
@@ -67,7 +80,7 @@ const COMPONENT = {
 };
 
 const NUMERIC = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 };
-const ATTRIBUTES = new Set(["POSITION", "NORMAL", "TEXCOORD_0"]);
+const ATTRIBUTES = new Set(["POSITION", "NORMAL", "TEXCOORD_0", "COLOR_0", "JOINTS_0", "WEIGHTS_0"]);
 
 class GLBError extends Error {}
 
@@ -130,8 +143,6 @@ function readContainer(arrayBuffer) {
   if (!Array.isArray(json.buffers)) refuse("the JSON chunk declares no buffers");
   if (json.buffers.length !== 1) refuse(`${json.buffers.length} buffers: this reader reads exactly one, and the core writes exactly one`);
   if (json.buffers[0].uri) refuse("an external buffer URI: this repository's assets embed their buffer, and an external one is a different thing to trust");
-  if (json.animations?.length) refuse("animations: nothing in this repository's assets is animated, and a reader that silently drops them is how that stops being true");
-  if (json.skins?.length) refuse("skins");
   if (json.extensionsUsed?.length) refuse(`extensions: ${json.extensionsUsed.join(", ")}`);
   if (json.extensions) refuse("extensions declared on the object");
   return { json, bin };
@@ -262,6 +273,12 @@ function buildGeometry(json, bin, primitive, state, where) {
     }
     geometry.setAttribute("uv", new BufferAttribute(uv.values, 2));
   }
+  for (const [source, target, sizes] of [['COLOR_0','color',[3,4]],['JOINTS_0','skinIndex',[4]],['WEIGHTS_0','skinWeight',[4]]]) {
+    if (attributes[source] === undefined) continue;
+    const index = attributes[source], value = readAccessor(json, bin, index, state);
+    if (!sizes.includes(value.numeric) || value.values.length !== vertexCount * value.numeric) refuse(`${where}: invalid ${source} shape`);
+    geometry.setAttribute(target, new BufferAttribute(value.values, value.numeric, Boolean(json.accessors[index].normalized)));
+  }
   if (primitive.indices !== undefined) {
     const index = readAccessor(json, bin, primitive.indices, state);
     if (index.numeric !== 1) refuse(`${where}: indices are not scalars`);
@@ -286,6 +303,8 @@ export function parseGLB(input) {
   const { json, bin } = readContainer(arrayBuffer);
   const state = { accessors: new Map(), ranges: new Map() };
   const primitives = [];
+  const nodes = new Map();
+  const joints = new Set((json.skins ?? []).flatMap(skin => skin.joints ?? []));
   const stats = { vertices: 0, triangles: 0, primitives: 0, meshes: 0, nodes: 0, materials: 0, images: 0 };
 
   const images = (json.images ?? []).map((image) => {
@@ -333,6 +352,7 @@ export function parseGLB(input) {
         baseColorFactor: info.baseColorFactor,
         textureIndex: info.textureIndex,
         imageIndex: info.textureIndex != null ? json.textures?.[info.textureIndex]?.source ?? null : null,
+        sampler: info.textureIndex != null ? json.samplers?.[json.textures?.[info.textureIndex]?.sampler] ?? {} : null,
         doubleSided: Boolean(descriptor?.doubleSided),
         alphaMode,
         metallicFactor: descriptor?.pbrMetallicRoughness?.metallicFactor ?? 0,
@@ -352,7 +372,8 @@ export function parseGLB(input) {
     const node = json.nodes[nodeIndex];
     if (!node) refuse(`node ${nodeIndex} does not exist`);
     stats.nodes += 1;
-    const object = new Group();
+    const object = joints.has(nodeIndex) ? new Bone() : new Group();
+    nodes.set(nodeIndex, object);
     object.name = node.name ?? `node_${nodeIndex}`;
     if (node.translation) object.position.fromArray(node.translation);
     if (node.rotation) object.quaternion.fromArray(node.rotation);
@@ -369,7 +390,8 @@ export function parseGLB(input) {
       const prims = meshes[node.mesh];
       if (!prims) refuse(`${node.name ?? nodeIndex} refers to mesh ${node.mesh}, which does not exist`);
       for (const primitive of prims) {
-        primitives.push({ ...primitive, part: object.name, node: object, local });
+        if (node.skin !== undefined && (!primitive.geometry.attributes.skinIndex || !primitive.geometry.attributes.skinWeight)) refuse(`skin ${node.skin} has no vertex joint/weight attributes`);
+        primitives.push({ ...primitive, part: object.name, node: object, local, skin: node.skin });
       }
     }
     for (const child of node.children ?? []) walk(child, object);
@@ -378,9 +400,41 @@ export function parseGLB(input) {
   for (const index of (json.scenes?.[json.scene ?? 0]?.nodes) ?? json.nodes.map((_, i) => i)) walk(index, root);
 
   root.updateMatrixWorld(true);
+  const skins = (json.skins ?? []).map((skin, index) => {
+    if (!skin.joints?.length || skin.inverseBindMatrices === undefined) refuse(`skin ${index} needs joints and inverse bind matrices`);
+    const inverses = readAccessor(json, bin, skin.inverseBindMatrices, state);
+    if (inverses.numeric !== 16 || inverses.values.length !== skin.joints.length * 16) refuse(`skin ${index} inverse bind matrix count disagrees with its joints`);
+    const bones = skin.joints.map(joint => {
+      const bone = nodes.get(joint);
+      if (!bone?.isBone) refuse(`skin ${index} refers to missing joint ${joint}`);
+      return bone;
+    });
+    return new Skeleton(bones, bones.map((_, i) => new Matrix4().fromArray(inverses.values, i * 16)));
+  });
+  for (const primitive of primitives) if (primitive.skin !== undefined && !skins[primitive.skin]) refuse(`skin ${primitive.skin} does not exist`);
+  const animations = (json.animations ?? []).map(animation => {
+    if (!animation.channels?.length) refuse("animation has no channels");
+    const tracks = animation.channels.map(channel => {
+      const node = nodes.get(channel.target?.node);
+      const path = channel.target?.path;
+      const property = { translation: 'position', rotation: 'quaternion', scale: 'scale' }[path];
+      const sampler = animation.samplers?.[channel.sampler];
+      if (!node || !property || !sampler) refuse("animation target or sampler is unsupported");
+      const interpolation = sampler.interpolation ?? 'LINEAR';
+      if (!['LINEAR', 'STEP'].includes(interpolation)) refuse(`animation interpolation ${interpolation} is unsupported`);
+      const input = readAccessor(json, bin, sampler.input, state);
+      const output = readAccessor(json, bin, sampler.output, state);
+      if (input.numeric !== 1 || output.numeric !== (path === 'rotation' ? 4 : 3) || output.values.length !== input.values.length * output.numeric) refuse('animation sampler sizes disagree');
+      const Track = path === 'rotation' ? QuaternionKeyframeTrack : VectorKeyframeTrack;
+      return new Track(`${node.uuid}.${property}`, input.values, output.values, interpolation === 'STEP' ? InterpolateDiscrete : InterpolateLinear);
+    });
+    return new AnimationClip(animation.name, -1, tracks);
+  });
   stats.images = images.length;
   return {
     root,
+    animations,
+    skins,
     primitives,
     images,
     stats,
@@ -406,9 +460,17 @@ export async function applyImageBytes(asset, decode) {
   for (const [imageIndex, image] of asset.images.entries()) {
     const texture = await decode(image.bytes, image.mimeType);
     if (!texture) refuse(`the image decode returned nothing for ${image.name}`);
+    const textures=new Map();
+    const wraps={10497:RepeatWrapping,33071:ClampToEdgeWrapping,33648:MirroredRepeatWrapping};
     for (const primitive of asset.primitives) {
       if (primitive.imageIndex !== imageIndex) continue;
-      primitive.texture = texture;
+      if(!textures.has(primitive.textureIndex)){
+        const mapped=textures.size?texture.clone():texture;
+        mapped.wrapS=wraps[primitive.sampler?.wrapS??10497];mapped.wrapT=wraps[primitive.sampler?.wrapT??10497];
+        if(mapped.wrapS===undefined||mapped.wrapT===undefined)refuse('unsupported glTF texture wrap mode');
+        mapped.needsUpdate=true;textures.set(primitive.textureIndex,mapped);
+      }
+      primitive.texture = textures.get(primitive.textureIndex);
     }
   }
   return asset;
@@ -421,6 +483,7 @@ export function makeMaterialFor(primitive) {
     // glTF multiplies the base colour factor by the embedded texture.
     color: new Color(...primitive.baseColorFactor.slice(0, 3)),
     map: primitive.texture ?? null,
+    vertexColors: Boolean(primitive.geometry.getAttribute('color')),
     side: primitive.doubleSided ? DoubleSide : FrontSide,
     opacity: primitive.baseColorFactor[3],
     transparent: primitive.alphaMode === "BLEND",
@@ -439,14 +502,20 @@ export function makeMaterialFor(primitive) {
  * drawn 17,208 times use `mergePrimitives` instead, and never go through here.
  */
 export function buildAssetMeshes(asset) {
-  const group = new Group();
-  group.name = asset.root.name;
   for (const primitive of asset.primitives) {
     if (!primitive.node) continue;
-    const mesh = new Mesh(primitive.geometry, makeMaterialFor(primitive));
+    const mesh = primitive.skin === undefined ? new Mesh(primitive.geometry, makeMaterialFor(primitive)) : new SkinnedMesh(primitive.geometry, makeMaterialFor(primitive));
     mesh.name = primitive.name;
-    mesh.applyMatrix4(primitive.local);
+    // The parent already owns the node transform. Applying the cumulative
+    // matrix here a second time breaks bone-parented animated assets.
     primitive.node.add(mesh);
+    if (mesh.isSkinnedMesh) {
+      mesh.normalizeSkinWeights();
+      // glTF inverse bind matrices are already in the asset's bind frame,
+      // as in Three's GLTFLoader; no node transform is applied twice.
+      mesh.bind(asset.skins[primitive.skin], new Matrix4());
+      mesh.frustumCulled = false;
+    }
   }
   return asset.root;
 }
@@ -462,6 +531,7 @@ export function buildAssetMeshes(asset) {
  */
 export function mergePrimitives(primitives, kind = "opaque") {
   const chosen = primitives.filter((p) => (kind === "glass" ? p.alphaMode === "BLEND" : p.alphaMode === "OPAQUE"));
+  if(chosen.some(p=>p.skin!==undefined))refuse('cannot merge skinned meshes: preserve their skeleton and node hierarchy');
   if (chosen.length === 1 && chosen[0].texture) {
     const p = chosen[0];
     return { geometry: p.geometry, material: makeMaterialFor(p), triangles: p.triangles };
@@ -491,6 +561,7 @@ export function mergePrimitives(primitives, kind = "opaque") {
     const position = primitive.geometry.getAttribute("position");
     const normal = primitive.geometry.getAttribute("normal") ?? null;
     const uv = primitive.geometry.getAttribute("uv") ?? null;
+    const tint = primitive.geometry.getAttribute('color') ?? null;
     const [r, g, b] = primitive.baseColorFactor;
     factors.push([...primitive.baseColorFactor]);
     if (indexed) {
@@ -500,14 +571,16 @@ export function mergePrimitives(primitives, kind = "opaque") {
         positions.push(position.getX(v), position.getY(v), position.getZ(v));
         if (normal) normals.push(...(crown ? crownNormal(position, normal, v) : [normal.getX(v), normal.getY(v), normal.getZ(v)]));
         if (uv) uvs.push(uv.getX(v), uv.getY(v));
-        colors.push(r, g, b, primitive.baseColorFactor[3]);
+        if(tint)colors.push(r*tint.getX(v),g*tint.getY(v),b*tint.getZ(v),primitive.baseColorFactor[3]*(tint.itemSize===4?tint.getW(v):1));
+        else colors.push(r, g, b, primitive.baseColorFactor[3]);
       }
     } else {
       for (let v = 0; v < position.count; v += 1) {
         positions.push(position.getX(v), position.getY(v), position.getZ(v));
         if (normal) normals.push(...(crown ? crownNormal(position, normal, v) : [normal.getX(v), normal.getY(v), normal.getZ(v)]));
         if (uv) uvs.push(uv.getX(v), uv.getY(v));
-        colors.push(r, g, b, primitive.baseColorFactor[3]);
+        if(tint)colors.push(r*tint.getX(v),g*tint.getY(v),b*tint.getZ(v),primitive.baseColorFactor[3]*(tint.itemSize===4?tint.getW(v):1));
+        else colors.push(r, g, b, primitive.baseColorFactor[3]);
       }
     }
   }

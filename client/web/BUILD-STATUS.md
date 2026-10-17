@@ -1,3 +1,107 @@
+# Cat Ronin integration verification — 2026-10-17
+
+Combined the character work with main's publishing pipeline, west wind and
+blimp collections. Regenerated shared outputs from the combined map, then the
+browser manifest; terrain and snow bytes are unchanged, and world/placement/
+grass differ from main only in their map provenance. Bicycle geometry, rules
+and tuning are byte-identical. Both handoff histories are retained.
+
+The combined web suite passes **120/120**, packaging **7/7**, and verification
+covers **74 fetched files** plus the 2D map's 17. The package is **92 files /
+50.7 MB**. The exact 123-file public source projection passes the existing
+hygiene screen; the pinned Wrangler 4.142.0 dry run passes. Selected Python
+checking passes. The ordinary local scene reaches Ready and shows the refined
+cat in third-person walking. Publication uses the existing main-merge hook;
+see `docs/HANDOVER.md` for the delivery record and ordered polish followup.
+
+---
+
+# Earlier Cat Ronin fidelity refinement — 2026-10-17
+
+Continues `codex/cat-ronin-player` in the same managed worktree. The model now
+deliberately diverges from the `catronin` source: mustard rib knit, silver-gray
+tabby markings, fuller cheek fur, an open green eye with blinks, continuous
+pleated hakama and a seven-joint ringed tail. Fifteen tail loops cycle through
+idle, walking, running, each flight mode, banking and landing contexts.
+
+The GLB carries the geometry, vertex colours, skin weights, animations and
+embedded shirt texture. The web reader now supports skins/colours and texture
+wrapping. Character-only WebGL materials add four displaced fibre shells and
+fine cloth relief. No dependency was added. The bicycle model/rules and world
+map are byte-identical to the preceding character commit.
+
+Web **119/119**, package tests **5/5**, **74 fetched files verified**. Static
+package: 76 files / 50.1 MB. Selected Python checking passes; whole-worktree
+pyright retains the same 74 errors/1 warning in unchanged files. Opened exported
+Blender renders and live WebGL studio/game captures are documented in
+[`FIDELITY.md`](../../shared/geometry/cat-ronin/FIDELITY.md).
+
+[Character studio](http://127.0.0.1:8002/client/web/tools/character-lab.html)
+offers close-up views and movement selection. It is a local authoring tool and
+is not packaged with the game. [Game preview](http://127.0.0.1:8002/client/web/scene.html).
+Functional integration and deployment are authorized. The ordered polish
+followup is recorded in `docs/HANDOVER.md`; human visual/physical-controller
+acceptance, sustained profiling and Unreal fur/pawn integration remain open.
+
+---
+
+# Earlier Cat Ronin web character — 2026-10-16
+
+Implemented in the managed `codex/cat-ronin-player` worktree, starting at `b903fc4`.
+The original checkout's publishing work is separate. This branch is not merged
+or pushed. Review: <http://127.0.0.1:8002/client/web/scene.html>.
+
+Walking now has a third-person Cat Ronin, camera-relative keyboard/gamepad
+movement, drag/right-stick camera orbit, Shift/L3 running and blended
+idle/walk/run clips. The same rig uses a seated harness clip in paragliding,
+parakiting and paramotoring with a chase camera; terrain contact returns it to
+idle. The wings have a fitted seat/back panel, with the old proxy pilot removed.
+The paramotor cage sits behind the cat. A soft contact footprint follows on
+foot rather than writing the moving character into the world's cached shadows.
+
+The imported Blender generator, clip source and regenerated GLB are together
+at `shared/geometry/cat-ronin/`. `activities.character` selects a versioned,
+schema-checked `shared/characters/player.json` contract. Ground movement lives
+in the engine-neutral `shared/activities/walk.js`. The existing GLB reader now
+retains rigid node animation (LINEAR/STEP); weighted skins remain unsupported.
+No new dependency was added. The browser keeps its existing WebGL toon style,
+with a generated buffalo-check shirt texture; the source website's WebGPU
+shell-fur and ink shaders are not included.
+
+Validation:
+
+- Web suite: **118/118**, including actual animated-paw motion, grounded soles,
+  diagonal-speed normalization, analogue input, collision/step refusal,
+  camera-relative facing and independent camera/avatar positions, activity
+  visibility, and preserved bike/ski view switching.
+- Static-package tests: **5/5**. Startup/package verification covers **73 fetched
+  files**. `package_web.py` produced **75 files, 48.9 MB** in ignored `dist/web/`.
+- Shared authority, ground-cover, placement and world-data checks: **168/168**.
+- Changed Python files: pyright **0 errors, 0 warnings**. Whole-worktree pyright
+  reports **74 errors and 1 warning** in unchanged files, including absent
+  Unreal-generated stubs and existing core/test typing diagnostics.
+- Headed local Chromium at 1440×900, 1×: keyboard walking/running, pointer camera
+  orbit, all three flights and banked turns, forced terrain contact, bike/ski
+  mode switching, bike V view, and walking with a stand-in gamepad. No page or
+  console errors. The 390×844 layout has no document overflow.
+- Opened captures: `output/playwright/cat-ronin/` (`walk-idle`, `walk-moving`,
+  `walk-running`, `walk-front`, flight rear/side/front views, `landed`, `bike`,
+  `ski`, `walk-mobile`; `.png`). `review.json` records states and errors.
+  Verification logs are alongside them as `web-tests.log`, `core-tests.log`,
+  `package-tests.log` and `pyright.log`.
+- Bicycle rules/config and its GLB are byte-identical to the base. The ride
+  navigation function is unchanged. Regenerated world, placement and grass
+  documents differ only in the world-map SHA; geography is unchanged.
+
+These are implementation and short local verification. Physical controller
+feel, human visual acceptance and sustained performance have not been accepted.
+Walking uses a simple puppet cycle without foot IK; tall meadow vegetation
+partly covers the lower legs. Flights have a looping seated pose rather than
+control-specific hand motion or detailed takeoff/touchdown animation. Unreal's
+playable pawn is unchanged.
+
+---
+
 # Ski and bike web build — 2026-10-16
 
 Skiing (Granite Cirque) and mountain biking (graded T5/T6) run the shared

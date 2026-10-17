@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "id": "cat-ronin",
+  "label": "Cat Ronin",
+  "asset": "cat-ronin/ronin.glb",
+  "scale": 1,
+  "sole_y_m": 0.05524,
+  "forward_axis": "+Z",
+  "modes": [
+    "walk",
+    "paraglider",
+    "parakite",
+    "paramotor"
+  ],
+  "clips": {
+    "idle": "idle",
+    "walk": "walk",
+    "run": "run",
+    "flight": "harness"
+  },
+  "walk": {
+    "walk_mps": 3.5,
+    "run_mps": 9,
+    "max_step_m": 0.7,
+    "max_grade": 1.8,
+    "radius_m": 0.35
+  },
+  "tail_clips": {
+    "idle": [
+      "tail_relaxed",
+      "tail_curious",
+      "tail_tip_flick",
+      "tail_alert"
+    ],
+    "walk": [
+      "tail_walk_balance",
+      "tail_walk_sweep"
+    ],
+    "run": [
+      "tail_run_stream",
+      "tail_run_balance"
+    ],
+    "paraglider": [
+      "tail_glide",
+      "tail_glide_flick"
+    ],
+    "parakite": [
+      "tail_kite",
+      "tail_glide_flick"
+    ],
+    "paramotor": [
+      "tail_motor",
+      "tail_glide_flick"
+    ],
+    "turn_left": [
+      "tail_bank_left"
+    ],
+    "turn_right": [
+      "tail_bank_right"
+    ],
+    "landed": [
+      "tail_settle",
+      "tail_relaxed"
+    ]
+  },
+  "blink_clip": "blink"
+}

@@ -2,6 +2,43 @@
 
 The browser client. WebGL.
 
+## Current status — 2026-10-17, Cat Ronin fidelity
+
+The playable cat now has mustard rib knit, a silver-gray tabby coat, fuller
+cheek fur, an alert blinking eye, pleated hakama and a continuously bending
+ringed tail. Fifteen contextual tail loops vary idle, walking, running and
+flight motion. The shared GLB carries shape, markings, cloth texture and rig;
+the browser adds short fibre shells. Bicycle behavior is unchanged.
+
+Inspect details and movement in the local
+[character studio](http://127.0.0.1:8002/client/web/tools/character-lab.html),
+or use the ordinary game scene. See the
+[asset brief](../../shared/geometry/cat-ronin/FIDELITY.md) for opened evidence,
+regeneration and limits. Further pose, surface and performance improvements are
+recorded as a followup task in `docs/HANDOVER.md`.
+
+## Earlier status — 2026-10-16, Cat Ronin
+
+Walk the meadow is now third person, playing the rigged Cat Ronin imported from
+the human's `catronin` project. WASD/left stick moves relative to the camera;
+drag/right stick orbits it; Shift/L3 runs. Idle, walk and run clips crossfade.
+The same character sits in the harness for paragliding, parakiting and
+paramotoring, with a chase camera. Bicycle and ski models, rules, controls and
+V/Y view switching retain their previous behavior.
+
+The GLB, Blender generator and clip source live in
+`shared/geometry/cat-ronin/`; `worldmap.json:activities.character` selects
+`shared/characters/player.json`. Ground movement runs in
+`shared/activities/walk.js`. The web client adds no dependency and retains its
+existing WebGL toon rendering. Run from the worktree root:
+
+```sh
+python3.11 client/web/tools/serve.py --port 8002
+# http://127.0.0.1:8002/client/web/scene.html
+```
+
+See [BUILD-STATUS.md](BUILD-STATUS.md) for validation and limitations.
+
 This is the fast test bed. It is a real product and a real second engine, and it
 exists to try ideas quickly and to catch anything in `shared/` that has quietly
 become Unreal-specific.

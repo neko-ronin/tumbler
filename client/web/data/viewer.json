@@ -10,6 +10,14 @@
       "sha256": "18db345f95616f319ae31744bbb80ecdb24b298e6d51cc4f661dff0a1ad9a3b0"
     },
     {
+      "path": "client/web/src3d/character-surface.js",
+      "sha256": "a0606c894215d848b2f5d70a8f5e5b266da64a6a2ea1ae33c7adb013c790b12b"
+    },
+    {
+      "path": "client/web/src3d/character.js",
+      "sha256": "3feb532bcdd2b060d173ac5d30e8eb2967c190cea5e1544129e24a6dfbc5e15c"
+    },
+    {
       "path": "client/web/src3d/clouds.js",
       "sha256": "bdd1eccde706630003c8af8c7ebea6054c93d82cdd9415aadc7a2b576be5bc0c"
     },
@@ -35,7 +43,7 @@
     },
     {
       "path": "client/web/src3d/glb.js",
-      "sha256": "e9aa1ed979989c6578675cbb1ffba9b9d1e37e42bc5625184bc53388fc46d78f"
+      "sha256": "84c1e5e1ad6563f0d0cfcdbbf21477bbcb9c6cdd4291978ea1ddb6d2bf461a93"
     },
     {
       "path": "client/web/src3d/groundcover.js",
@@ -47,11 +55,11 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "1da4294a3364c30af3e4450f144155a4f14c8d46d57ddd6d653e27e9db106cda"
+      "sha256": "a3c48ed81a9b80b142a0a3b661d9b53b7e661975e05516afc2b6b97d9a5d9382"
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "70861e58c9c3f78c2e4a473e3280b191572232408a2f18de133c6e64678b80d4"
+      "sha256": "71a0c99cb00ad6929de9b1268943589ab672f1deaa7a8bfe7d58f8c6b5987882"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -102,6 +110,14 @@
       "sha256": "8ce44a7ca65a678a1ae9d86919cf7753d714947b9fa41dbf077d3326b80c75ab"
     },
     {
+      "path": "shared/activities/walk.js",
+      "sha256": "d784d02fc536e45fbef8520c76ad932d8e2efbfebcc109ba671821d39996ea07"
+    },
+    {
+      "path": "shared/characters/player.json",
+      "sha256": "4b453c3fd5ff1f4ce6af9023b11cab0157db63e349e3aef8ca7a502d23c527ae"
+    },
+    {
       "path": "shared/ecology/aquatic.js",
       "sha256": "a8c039e3c15df53f58c6411e43ef917c2616ce360617c78862a73b154e69af75"
     },
@@ -142,6 +158,10 @@
       "sha256": "3bd255e08b8c5837696084c9167b228490833506d0be0721438f175b52abb160"
     },
     {
+      "path": "shared/geometry/cat-ronin/ronin.glb",
+      "sha256": "3804560c3c16f817d9d29be45baf38972906bf70a4680d006b14b8a98d092f6e"
+    },
+    {
       "path": "shared/geometry/city/tower.glb",
       "sha256": "c284df1f4ef054b5ce12a6d692d344aef1c0495351d3ccd9a111bbf33eeeb55c"
     },
@@ -159,11 +179,11 @@
     },
     {
       "path": "shared/geometry/flight/parafoil.glb",
-      "sha256": "eb4b77b3f3f1123eb120018cf91345827d0d9f97caec255278a825f4e4f04a8d"
+      "sha256": "477b9ed3dafda14fe6392752e607e288eed4e8ca20452879579d52ab74bebf5e"
     },
     {
       "path": "shared/geometry/flight/parakite.glb",
-      "sha256": "9e1793c6307f2ab8b859aecaa2f559d9384aed25ac67aabd1aab87e43c4468c8"
+      "sha256": "c6b53bf11873ea3b9cdb5e5b0e3483bf6db4922afc63e8a9b8ed7356f268462a"
     },
     {
       "path": "shared/geometry/flight/paramotor.glb",
@@ -255,11 +275,11 @@
     },
     {
       "path": "shared/world/out/ground_cover.json",
-      "sha256": "2bd00ff5cac6c7051ab7c5436c703e213b882d72544915a419bff00485d83597"
+      "sha256": "7d6df872f6078daddb11044327e350c7bdb80c90b1cf8f147ba817922a3bc3c1"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "19e7c4d58a6149ef4087cba61f5b455f54a3d3a8e5be889fafa4f4ccb63054c1"
+      "sha256": "7765422ff4a8b6e55422b6088be10a755c44e64069b38d7c321d0b354aca26f8"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -267,7 +287,7 @@
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "50d5c090a967a080a8c6822d19ed526a7f96f36a3b3f9873a7c1b71a6cb52ba6"
+      "sha256": "af29135e8e191dc49fea24e53865d2a72a6a4c48df6d35a0b7ae0eb3d44ed1a4"
     },
     {
       "path": "client/web/data/heightmap.f32",
@@ -279,16 +299,16 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "b8cc519",
+  "commit": "c70c1e2",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "50d5c090a967"
+      "sha256_12": "af29135e8e19"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "19e7c4d58a61"
+      "sha256_12": "7765422ff4a8"
     },
     {
       "path": "shared/world/out/fields_albedo.png",
