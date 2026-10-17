@@ -11,7 +11,7 @@
     },
     {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "d7b5d3429baa21fc707528c035c538d39745c514fd992ee7d4795238afe1677c"
+      "sha256": "bdd1eccde706630003c8af8c7ebea6054c93d82cdd9415aadc7a2b576be5bc0c"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -23,7 +23,7 @@
     },
     {
       "path": "client/web/src3d/details.js",
-      "sha256": "3c5c0108b3a0e807f4f7f02eedb8e3bf590ed35a82377e108d8a81719ac52ed1"
+      "sha256": "f165ab5d75561233f8084560069761c872f1e73afafa7d52af843a74fc639e57"
     },
     {
       "path": "client/web/src3d/ecology.js",
@@ -47,7 +47,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "ae67160b7c6f2a131d0f1249a6230df50aec0171c85a3a48a5deca90df695f7f"
+      "sha256": "1da4294a3364c30af3e4450f144155a4f14c8d46d57ddd6d653e27e9db106cda"
     },
     {
       "path": "client/web/src3d/navigation.js",
@@ -63,7 +63,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "bb1c1c96d09b514d29e06ff801a8fc8b0a6dbbd27c96e7f4894c7dbbc85553ab"
+      "sha256": "b744d168a7e9776817d8488befaca301f18d336e3bccc1ab7ebca129d9bb32f7"
     },
     {
       "path": "client/web/src3d/terrain.js",
@@ -71,7 +71,7 @@
     },
     {
       "path": "client/web/src3d/world.js",
-      "sha256": "1bfff9fed3ce97e6a149cfbf6c84b9d07a0a51dca6c7f1228432423a69568a37"
+      "sha256": "378440cf0a2c3faacc0d0f5123f994c583d20c4515f1cfd33b5e3eb7a8410934"
     },
     {
       "path": "client/web/vendor/three.core.min.js",
@@ -139,7 +139,7 @@
     },
     {
       "path": "shared/geometry/blimp/blimp.glb",
-      "sha256": "2dce8114f6d30b7de30bf537266b0fde01864476da922976f5392e5032f71b51"
+      "sha256": "3bd255e08b8c5837696084c9167b228490833506d0be0721438f175b52abb160"
     },
     {
       "path": "shared/geometry/city/tower.glb",
@@ -255,19 +255,19 @@
     },
     {
       "path": "shared/world/out/ground_cover.json",
-      "sha256": "bb7919decbe1724dc85ec0afeb08a72125ff8e35129b56780f26afa491ef4a0b"
+      "sha256": "2bd00ff5cac6c7051ab7c5436c703e213b882d72544915a419bff00485d83597"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "b38b431230eae73a2f101a02dbf70f300457b8faeadf010e0f392a72c8d8a819"
+      "sha256": "19e7c4d58a6149ef4087cba61f5b455f54a3d3a8e5be889fafa4f4ccb63054c1"
     },
     {
       "path": "shared/world/out/snow_cover.json",
-      "sha256": "c058c82c1184f469d8b8eb74dbe52c00ecd9acf349326e6968672e72f54a9a63"
+      "sha256": "aa0f9421684b253b60fce3ebe8c909817a08bb0f83d50900850257f59d858745"
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "142d9fed500ba3d0b9ff2202073ad9ffe9b8bc552b14ff07ddf804f4bd3fc808"
+      "sha256": "50d5c090a967a080a8c6822d19ed526a7f96f36a3b3f9873a7c1b71a6cb52ba6"
     },
     {
       "path": "client/web/data/heightmap.f32",
@@ -279,16 +279,16 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "31dd243",
+  "commit": "b8cc519",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "142d9fed500b"
+      "sha256_12": "50d5c090a967"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "b38b431230ea"
+      "sha256_12": "19e7c4d58a61"
     },
     {
       "path": "shared/world/out/fields_albedo.png",

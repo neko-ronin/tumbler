@@ -2,15 +2,15 @@
   "counts": {
     "arboreal_skybridge": 5,
     "arboreal_tree": 6,
-    "blimp": 66,
+    "blimp": 24,
     "city_tower": 12,
     "dome": 5,
-    "forest_tree": 6945,
+    "forest_tree": 6950,
     "hardstanding": 2,
     "homestead": 25,
     "lake": 1,
-    "mooring_mast": 66,
-    "redwood": 2860,
+    "mooring_mast": 24,
+    "redwood": 2862,
     "river": 1,
     "turbine": 11
   },
@@ -1480,7 +1480,7 @@
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 238.2124,
       "kind": "turbine",
       "parts": [
@@ -1516,11 +1516,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 314.7631,
       "kind": "turbine",
       "parts": [
@@ -1556,11 +1556,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 229.7436,
       "kind": "turbine",
       "parts": [
@@ -1596,11 +1596,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 292.9246,
       "kind": "turbine",
       "parts": [
@@ -1636,11 +1636,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 212.5715,
       "kind": "turbine",
       "parts": [
@@ -1676,11 +1676,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 247.5667,
       "kind": "turbine",
       "parts": [
@@ -1716,11 +1716,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 233.9551,
       "kind": "turbine",
       "parts": [
@@ -1756,11 +1756,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 282.3844,
       "kind": "turbine",
       "parts": [
@@ -1796,11 +1796,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 215.4583,
       "kind": "turbine",
       "parts": [
@@ -1836,11 +1836,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 232.7006,
       "kind": "turbine",
       "parts": [
@@ -1876,11 +1876,11 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "structures/turbine.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": 222.4765,
       "kind": "turbine",
       "parts": [
@@ -1916,7 +1916,7 @@
         "crest"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "city/tower.glb",
@@ -2366,7 +2366,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -2388,9 +2388,9 @@
         }
       ],
       "position_m": [
-        -533.364,
-        227.7036,
-        368.2786
+        -531.9793,
+        135.3001,
+        394.4786
       ],
       "scale": [
         1.0,
@@ -2402,7 +2402,7 @@
         "flying"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
@@ -2468,7 +2468,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -2490,9 +2490,9 @@
         }
       ],
       "position_m": [
-        1016.636,
-        427.7036,
-        378.6815
+        1018.0207,
+        335.3001,
+        404.8815
       ],
       "scale": [
         1.0,
@@ -2504,12 +2504,12 @@
         "flying"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 29.5666,
+      "ground_z_m": 33.257,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -2522,9 +2522,9 @@
         }
       ],
       "position_m": [
-        -1645.1667,
-        -532.6079,
-        29.5666
+        -1732.0,
+        -588.0,
+        33.257
       ],
       "scale": [
         0.28,
@@ -2532,7 +2532,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-2-0",
+        "POWER-HS001",
         "house_power"
       ],
       "version": 3,
@@ -2540,7 +2540,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -2562,9 +2562,9 @@
         }
       ],
       "position_m": [
-        -1570.7124,
-        -497.8893,
-        217.7316
+        -1654.4012,
+        -594.789,
+        228.758
       ],
       "scale": [
         0.28,
@@ -2572,17 +2572,17 @@
         0.28
       ],
       "tags": [
-        "POWER-2-0",
+        "POWER-HS001",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 33.6215,
+      "ground_z_m": 33.2129,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -2595,9 +2595,9 @@
         }
       ],
       "position_m": [
-        -1011.8652,
-        -1114.2329,
-        33.6215
+        -1004.0913,
+        -1134.0917,
+        33.2129
       ],
       "scale": [
         0.28,
@@ -2605,7 +2605,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-3-0",
+        "POWER-HS002",
         "house_power"
       ],
       "version": 3,
@@ -2613,7 +2613,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -2635,9 +2635,9 @@
         }
       ],
       "position_m": [
-        -937.4109,
-        -1079.5143,
-        221.7864
+        -926.4925,
+        -1140.8808,
+        228.7138
       ],
       "scale": [
         0.28,
@@ -2645,17 +2645,17 @@
         0.28
       ],
       "tags": [
-        "POWER-3-0",
+        "POWER-HS002",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 32.1591,
+      "ground_z_m": 32.904,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -2668,9 +2668,9 @@
         }
       ],
       "position_m": [
-        1383.0202,
-        -768.3446,
-        32.1591
+        1432.4105,
+        -792.4848,
+        32.904
       ],
       "scale": [
         0.28,
@@ -2678,7 +2678,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-4-0",
+        "POWER-HS003",
         "house_power"
       ],
       "version": 3,
@@ -2686,7 +2686,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -2708,9 +2708,9 @@
         }
       ],
       "position_m": [
-        1457.4745,
-        -733.626,
-        220.3241
+        1510.0094,
+        -799.2738,
+        228.4049
       ],
       "scale": [
         0.28,
@@ -2718,17 +2718,17 @@
         0.28
       ],
       "tags": [
-        "POWER-4-0",
+        "POWER-HS003",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 31.4994,
+      "ground_z_m": 33.6938,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -2741,9 +2741,9 @@
         }
       ],
       "position_m": [
-        1525.0935,
-        -476.838,
-        31.4994
+        1571.9087,
+        -486.0917,
+        33.6938
       ],
       "scale": [
         0.28,
@@ -2751,7 +2751,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-5-0",
+        "POWER-HS004",
         "house_power"
       ],
       "version": 3,
@@ -2759,7 +2759,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -2781,9 +2781,9 @@
         }
       ],
       "position_m": [
-        1599.5479,
-        -442.1194,
-        219.6644
+        1649.5075,
+        -492.8808,
+        229.1947
       ],
       "scale": [
         0.28,
@@ -2791,17 +2791,17 @@
         0.28
       ],
       "tags": [
-        "POWER-5-0",
+        "POWER-HS004",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 35.5084,
+      "ground_z_m": 30.0491,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -2814,9 +2814,9 @@
         }
       ],
       "position_m": [
-        -1773.3766,
-        -627.9886,
-        35.5084
+        990.9732,
+        44.2071,
+        30.0491
       ],
       "scale": [
         0.28,
@@ -2824,7 +2824,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-6-0",
+        "POWER-HS006",
         "house_power"
       ],
       "version": 3,
@@ -2832,7 +2832,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -2854,9 +2854,9 @@
         }
       ],
       "position_m": [
-        -1698.9223,
-        -593.27,
-        223.6733
+        1068.572,
+        37.418,
+        225.55
       ],
       "scale": [
         0.28,
@@ -2864,17 +2864,17 @@
         0.28
       ],
       "tags": [
-        "POWER-6-0",
+        "POWER-HS006",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 29.731,
+      "ground_z_m": 31.5238,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -2887,9 +2887,9 @@
         }
       ],
       "position_m": [
-        988.0316,
-        -50.7684,
-        29.731
+        1211.9087,
+        -862.0917,
+        31.5238
       ],
       "scale": [
         0.28,
@@ -2897,7 +2897,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-7-0",
+        "POWER-HS007",
         "house_power"
       ],
       "version": 3,
@@ -2905,7 +2905,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -2927,9 +2927,9 @@
         }
       ],
       "position_m": [
-        1062.4859,
-        -16.0498,
-        217.8959
+        1289.5075,
+        -868.8808,
+        227.0247
       ],
       "scale": [
         0.28,
@@ -2937,17 +2937,17 @@
         0.28
       ],
       "tags": [
-        "POWER-7-0",
+        "POWER-HS007",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 31.8893,
+      "ground_z_m": 31.7607,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -2960,9 +2960,9 @@
         }
       ],
       "position_m": [
-        1168.5592,
-        -845.9267,
-        31.8893
+        -710.4768,
+        277.2274,
+        31.7607
       ],
       "scale": [
         0.28,
@@ -2970,7 +2970,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-8-0",
+        "POWER-HS008",
         "house_power"
       ],
       "version": 3,
@@ -2978,7 +2978,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3000,9 +3000,9 @@
         }
       ],
       "position_m": [
-        1243.0136,
-        -811.2081,
-        220.0542
+        -632.8779,
+        270.4384,
+        227.2617
       ],
       "scale": [
         0.28,
@@ -3010,17 +3010,17 @@
         0.28
       ],
       "tags": [
-        "POWER-8-0",
+        "POWER-HS008",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 26.9574,
+      "ground_z_m": 34.0981,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3033,9 +3033,9 @@
         }
       ],
       "position_m": [
-        -620.9616,
-        181.2745,
-        26.9574
+        1939.9087,
+        -182.0917,
+        34.0981
       ],
       "scale": [
         0.28,
@@ -3043,7 +3043,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-9-0",
+        "POWER-HS009",
         "house_power"
       ],
       "version": 3,
@@ -3051,7 +3051,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3073,9 +3073,9 @@
         }
       ],
       "position_m": [
-        -546.5073,
-        215.9931,
-        215.1224
+        2017.5075,
+        -188.8808,
+        229.5991
       ],
       "scale": [
         0.28,
@@ -3083,17 +3083,17 @@
         0.28
       ],
       "tags": [
-        "POWER-9-0",
+        "POWER-HS009",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 33.6619,
+      "ground_z_m": 31.7038,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3106,9 +3106,9 @@
         }
       ],
       "position_m": [
-        1892.1052,
-        -177.7552,
-        33.6619
+        611.9087,
+        -334.0917,
+        31.7038
       ],
       "scale": [
         0.28,
@@ -3116,7 +3116,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-10-0",
+        "POWER-HS010",
         "house_power"
       ],
       "version": 3,
@@ -3124,7 +3124,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3146,9 +3146,9 @@
         }
       ],
       "position_m": [
-        1966.5595,
-        -143.0366,
-        221.8268
+        689.5075,
+        -340.8808,
+        227.2047
       ],
       "scale": [
         0.28,
@@ -3156,17 +3156,17 @@
         0.28
       ],
       "tags": [
-        "POWER-10-0",
+        "POWER-HS010",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 32.8746,
+      "ground_z_m": 31.514,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3179,9 +3179,9 @@
         }
       ],
       "position_m": [
-        567.1012,
-        -320.2,
-        32.8746
+        1339.9087,
+        -318.0917,
+        31.514
       ],
       "scale": [
         0.28,
@@ -3189,7 +3189,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-11-0",
+        "POWER-HS011",
         "house_power"
       ],
       "version": 3,
@@ -3197,7 +3197,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3219,9 +3219,9 @@
         }
       ],
       "position_m": [
-        641.5555,
-        -285.4814,
-        221.0395
+        1417.5075,
+        -324.8808,
+        227.015
       ],
       "scale": [
         0.28,
@@ -3229,17 +3229,17 @@
         0.28
       ],
       "tags": [
-        "POWER-11-0",
+        "POWER-HS011",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 30.4839,
+      "ground_z_m": 33.4195,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3252,9 +3252,9 @@
         }
       ],
       "position_m": [
-        1292.6633,
-        -310.3964,
-        30.4839
+        -172.0913,
+        153.9083,
+        33.4195
       ],
       "scale": [
         0.28,
@@ -3262,7 +3262,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-12-0",
+        "POWER-HS012",
         "house_power"
       ],
       "version": 3,
@@ -3270,7 +3270,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3292,9 +3292,9 @@
         }
       ],
       "position_m": [
-        1367.1177,
-        -275.6777,
-        218.6488
+        -94.4925,
+        147.1192,
+        228.9204
       ],
       "scale": [
         0.28,
@@ -3302,17 +3302,17 @@
         0.28
       ],
       "tags": [
-        "POWER-12-0",
+        "POWER-HS012",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 32.9578,
+      "ground_z_m": 34.5789,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3325,9 +3325,9 @@
         }
       ],
       "position_m": [
-        -177.2218,
-        141.0541,
-        32.9578
+        -1336.0,
+        -1248.0,
+        34.5789
       ],
       "scale": [
         0.28,
@@ -3335,7 +3335,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-13-0",
+        "POWER-HS013",
         "house_power"
       ],
       "version": 3,
@@ -3343,7 +3343,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3365,9 +3365,9 @@
         }
       ],
       "position_m": [
-        -102.7675,
-        175.7727,
-        221.1227
+        -1258.4012,
+        -1254.789,
+        230.0798
       ],
       "scale": [
         0.28,
@@ -3375,17 +3375,17 @@
         0.28
       ],
       "tags": [
-        "POWER-13-0",
+        "POWER-HS013",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 33.2782,
+      "ground_z_m": 34.3242,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3398,9 +3398,9 @@
         }
       ],
       "position_m": [
-        -1315.0294,
-        -1315.0294,
-        33.2782
+        -1532.0913,
+        -1326.0917,
+        34.3242
       ],
       "scale": [
         0.28,
@@ -3408,7 +3408,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-14-0",
+        "POWER-HS014",
         "house_power"
       ],
       "version": 3,
@@ -3416,7 +3416,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3438,9 +3438,9 @@
         }
       ],
       "position_m": [
-        -1240.5751,
-        -1280.3108,
-        221.4431
+        -1454.4925,
+        -1332.8808,
+        229.8252
       ],
       "scale": [
         0.28,
@@ -3448,17 +3448,17 @@
         0.28
       ],
       "tags": [
-        "POWER-14-0",
+        "POWER-HS014",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 34.8986,
+      "ground_z_m": 30.4268,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3471,9 +3471,9 @@
         }
       ],
       "position_m": [
-        -1537.7216,
-        -1308.4469,
-        34.8986
+        -1532.0913,
+        -126.0917,
+        30.4268
       ],
       "scale": [
         0.28,
@@ -3481,7 +3481,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-15-0",
+        "POWER-HS015",
         "house_power"
       ],
       "version": 3,
@@ -3489,7 +3489,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3511,9 +3511,9 @@
         }
       ],
       "position_m": [
-        -1463.2673,
-        -1273.7283,
-        223.0635
+        -1454.4925,
+        -132.8808,
+        225.9277
       ],
       "scale": [
         0.28,
@@ -3521,17 +3521,17 @@
         0.28
       ],
       "tags": [
-        "POWER-15-0",
+        "POWER-HS015",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 30.4896,
+      "ground_z_m": 33.2973,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3544,9 +3544,9 @@
         }
       ],
       "position_m": [
-        -1532.0758,
-        -122.0934,
-        30.4896
+        -1940.0913,
+        -214.0917,
+        33.2973
       ],
       "scale": [
         0.28,
@@ -3554,7 +3554,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-16-0",
+        "POWER-HS016",
         "house_power"
       ],
       "version": 3,
@@ -3562,7 +3562,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3584,9 +3584,9 @@
         }
       ],
       "position_m": [
-        -1457.6215,
-        -87.3748,
-        218.6545
+        -1862.4925,
+        -220.8808,
+        228.7982
       ],
       "scale": [
         0.28,
@@ -3594,17 +3594,17 @@
         0.28
       ],
       "tags": [
-        "POWER-16-0",
+        "POWER-HS016",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 33.2278,
+      "ground_z_m": 33.2186,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3617,9 +3617,9 @@
         }
       ],
       "position_m": [
-        -1940.1386,
-        -209.4243,
-        33.2278
+        -436.0913,
+        57.9083,
+        33.2186
       ],
       "scale": [
         0.28,
@@ -3627,7 +3627,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-17-0",
+        "POWER-HS020",
         "house_power"
       ],
       "version": 3,
@@ -3635,7 +3635,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3657,9 +3657,9 @@
         }
       ],
       "position_m": [
-        -1865.6843,
-        -174.7057,
-        221.3927
+        -358.4925,
+        51.1192,
+        228.7196
       ],
       "scale": [
         0.28,
@@ -3667,17 +3667,17 @@
         0.28
       ],
       "tags": [
-        "POWER-17-0",
+        "POWER-HS020",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 30.1515,
+      "ground_z_m": 31.2435,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3690,9 +3690,9 @@
         }
       ],
       "position_m": [
-        988.0823,
-        82.0147,
-        30.1515
+        -1164.0913,
+        -574.0917,
+        31.2435
       ],
       "scale": [
         0.28,
@@ -3700,7 +3700,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-18-0",
+        "POWER-HS021",
         "house_power"
       ],
       "version": 3,
@@ -3708,7 +3708,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3730,9 +3730,9 @@
         }
       ],
       "position_m": [
-        1062.5366,
-        116.7334,
-        218.3165
+        -1086.4925,
+        -580.8808,
+        226.7444
       ],
       "scale": [
         0.28,
@@ -3740,17 +3740,17 @@
         0.28
       ],
       "tags": [
-        "POWER-18-0",
+        "POWER-HS021",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 31.3238,
+      "ground_z_m": 32.6108,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3763,9 +3763,9 @@
         }
       ],
       "position_m": [
-        -789.0153,
-        237.0933,
-        31.3238
+        -1372.0913,
+        -366.0917,
+        32.6108
       ],
       "scale": [
         0.28,
@@ -3773,7 +3773,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-19-0",
+        "POWER-HS022",
         "house_power"
       ],
       "version": 3,
@@ -3781,7 +3781,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3803,9 +3803,9 @@
         }
       ],
       "position_m": [
-        -714.561,
-        271.8119,
-        219.4887
+        -1294.4925,
+        -372.8808,
+        228.1117
       ],
       "scale": [
         0.28,
@@ -3813,17 +3813,17 @@
         0.28
       ],
       "tags": [
-        "POWER-19-0",
+        "POWER-HS022",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 35.495,
+      "ground_z_m": 30.406,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3836,9 +3836,9 @@
         }
       ],
       "position_m": [
-        -1321.8813,
-        -1148.2611,
-        35.495
+        -1332.0913,
+        65.9083,
+        30.406
       ],
       "scale": [
         0.28,
@@ -3846,7 +3846,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-20-0",
+        "POWER-HS023",
         "house_power"
       ],
       "version": 3,
@@ -3854,7 +3854,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3876,9 +3876,9 @@
         }
       ],
       "position_m": [
-        -1247.427,
-        -1113.5425,
-        223.6599
+        -1254.4925,
+        59.1192,
+        225.9069
       ],
       "scale": [
         0.28,
@@ -3886,17 +3886,17 @@
         0.28
       ],
       "tags": [
-        "POWER-20-0",
+        "POWER-HS023",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 33.1881,
+      "ground_z_m": 32.2151,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3909,9 +3909,9 @@
         }
       ],
       "position_m": [
-        -436.2016,
-        56.8959,
-        33.1881
+        -300.0913,
+        -454.0917,
+        32.2151
       ],
       "scale": [
         0.28,
@@ -3919,7 +3919,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-21-0",
+        "POWER-HS024",
         "house_power"
       ],
       "version": 3,
@@ -3927,7 +3927,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -3949,9 +3949,9 @@
         }
       ],
       "position_m": [
-        -361.7473,
-        91.6145,
-        221.353
+        -222.4925,
+        -460.8808,
+        227.716
       ],
       "scale": [
         0.28,
@@ -3959,17 +3959,17 @@
         0.28
       ],
       "tags": [
-        "POWER-21-0",
+        "POWER-HS024",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 31.0371,
+      "ground_z_m": 36.1748,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3982,9 +3982,9 @@
         }
       ],
       "position_m": [
-        -1166.376,
-        -561.5884,
-        31.0371
+        -1964.0913,
+        169.9083,
+        36.1748
       ],
       "scale": [
         0.28,
@@ -3992,7 +3992,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-22-0",
+        "POWER-HS025",
         "house_power"
       ],
       "version": 3,
@@ -4000,7 +4000,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -4022,9 +4022,9 @@
         }
       ],
       "position_m": [
-        -1091.9216,
-        -526.8698,
-        219.202
+        -1886.4925,
+        163.1192,
+        231.6757
       ],
       "scale": [
         0.28,
@@ -4032,17 +4032,17 @@
         0.28
       ],
       "tags": [
-        "POWER-22-0",
+        "POWER-HS025",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 32.2592,
+      "ground_z_m": 56.5973,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -4055,9 +4055,9 @@
         }
       ],
       "position_m": [
-        -1372.7765,
-        -357.9446,
-        32.2592
+        -675.8822,
+        452.4964,
+        56.5973
       ],
       "scale": [
         0.28,
@@ -4065,7 +4065,7 @@
         0.266667
       ],
       "tags": [
-        "POWER-23-0",
+        "POWER-B_canyon",
         "house_power"
       ],
       "version": 3,
@@ -4073,7 +4073,7 @@
     },
     {
       "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
+      "facing_bearing_deg": 275.0,
       "ground_z_m": null,
       "kind": "blimp",
       "parts": [
@@ -4095,9 +4095,9 @@
         }
       ],
       "position_m": [
-        -1298.3222,
-        -323.226,
-        220.4241
+        -598.2834,
+        445.7074,
+        252.0983
       ],
       "scale": [
         0.28,
@@ -4105,3078 +4105,12 @@
         0.28
       ],
       "tags": [
-        "POWER-23-0",
+        "POWER-B_canyon",
         "flying",
         "house_power"
       ],
       "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 30.4117,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -1332.0301,
-        66.798,
-        30.4117
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-24-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -1257.5758,
-        101.5166,
-        218.5766
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-24-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 32.8056,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -310.0176,
-        -432.4938,
-        32.8056
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-25-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -235.5633,
-        -397.7751,
-        220.9705
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-25-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 36.1749,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -1964.0893,
-        169.9313,
-        36.1749
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-26-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -1889.635,
-        204.6499,
-        224.3399
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-26-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -715.0092,
-        425.6411,
-        59.5378
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-27-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -640.5549,
-        460.3597,
-        247.7028
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-27-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -727.4657,
-        421.6266,
-        64.5378
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-27-1",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -653.0113,
-        456.3452,
-        252.7028
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-27-1",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -721.488,
-        432.9813,
-        69.3378
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-27-2",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -647.0337,
-        467.6999,
-        257.5028
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-27-2",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -718.595,
-        419.884,
-        74.6378
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-27-3",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -644.1407,
-        454.6026,
-        262.8028
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-27-3",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -696.8878,
-        426.7515,
-        59.5965
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-28-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -622.4334,
-        461.4701,
-        247.7614
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-28-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -685.6787,
-        433.5069,
-        64.5965
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-28-1",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -611.2243,
-        468.2255,
-        252.7614
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-28-1",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -688.9027,
-        421.0865,
-        69.3965
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-28-2",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -614.4484,
-        455.8052,
-        257.5614
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-28-2",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -694.7128,
-        433.1758,
-        74.6965
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-28-3",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -620.2585,
-        467.8945,
-        262.8614
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-28-3",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -714.2037,
-        447.0753,
-        74.6923
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-29-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -639.7494,
-        481.7939,
-        262.8572
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-29-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -714.4865,
-        455.313,
-        85.0923
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-29-1",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -640.0322,
-        490.0316,
-        273.2572
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-29-1",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -723.3375,
-        457.1531,
-        95.1923
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-29-2",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -648.8832,
-        491.8718,
-        283.3572
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-29-2",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -696.0477,
-        465.0002,
-        69.8391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -621.5933,
-        499.7188,
-        258.004
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -700.6121,
-        477.2658,
-        74.8391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-1",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -626.1578,
-        511.9844,
-        263.004
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-1",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -689.0029,
-        471.799,
-        79.6391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-2",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -614.5486,
-        506.5176,
-        267.804
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-2",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -701.9586,
-        468.3264,
-        84.9391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-3",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -627.5042,
-        503.045,
-        273.104
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-3",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -693.6624,
-        478.5982,
-        90.0391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-4",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -619.2081,
-        513.3168,
-        278.204
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-4",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -692.7535,
-        465.7984,
-        94.8391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-5",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -618.2992,
-        500.517,
-        283.004
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-5",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -702.1183,
-        475.4009,
-        100.1391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-6",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -627.664,
-        510.1195,
-        288.304
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-6",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -689.2483,
-        473.8477,
-        105.0391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-7",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -614.7939,
-        508.5663,
-        293.204
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-7",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -700.1005,
-        466.3267,
-        110.1391
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-30-8",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -625.6462,
-        501.0454,
-        298.304
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-30-8",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -718.977,
-        484.2987,
-        75.0348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -644.5227,
-        519.0173,
-        263.1997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -726.9622,
-        494.6677,
-        80.0348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-1",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -652.5079,
-        529.3863,
-        268.1997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-1",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -714.256,
-        492.8757,
-        84.8348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-2",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -639.8017,
-        527.5943,
-        272.9997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-2",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -725.6069,
-        485.7296,
-        90.1348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-3",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -651.1525,
-        520.4482,
-        278.2997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-3",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -720.7166,
-        497.9943,
-        95.2348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-4",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -646.2623,
-        532.7129,
-        283.3997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-4",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -716.0658,
-        486.0347,
-        100.0348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-5",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -641.6115,
-        520.7533,
-        288.1997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-5",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -727.8501,
-        492.441,
-        105.3348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-6",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -653.3958,
-        527.1596,
-        293.4997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-6",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -715.0958,
-        494.7604,
-        110.2348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-7",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -640.6415,
-        529.479,
-        298.3997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-7",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -723.2409,
-        484.3684,
-        115.3348
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-31-8",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -648.7866,
-        519.087,
-        303.4997
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-31-8",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -691.9549,
-        514.7757,
-        99.9942
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-32-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -617.5006,
-        549.4943,
-        288.1591
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-32-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -681.0761,
-        507.9704,
-        104.7942
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-32-1",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -606.6218,
-        542.689,
-        292.9591
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-32-1",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -694.3523,
-        506.0591,
-        110.0942
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-32-2",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -619.8979,
-        540.7777,
-        298.2591
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-32-2",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -685.5159,
-        515.5444,
-        114.9942
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-32-3",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -611.0616,
-        550.263,
-        303.1591
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-32-3",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -685.8309,
-        502.3445,
-        120.0942
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-32-4",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -611.3766,
-        537.0632,
-        308.2591
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-32-4",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 28.5267,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        925.0533,
-        98.0905,
-        28.5267
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-38-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        999.5076,
-        132.8091,
-        216.6916
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-38-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 33.3115,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -735.5499,
-        301.4579,
-        33.3115
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-39-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -661.0956,
-        336.1765,
-        221.4764
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-39-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 32.9761,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        1439.8011,
-        -793.3868,
-        32.9761
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-40-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        1514.2554,
-        -758.6682,
-        221.141
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-40-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 32.4775,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -663.9681,
-        305.5047,
-        32.4775
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-41-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -589.5138,
-        340.2234,
-        220.6425
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-41-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
-    },
-    {
-      "asset": "mooring/mooring_mast.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 32.8685,
-      "kind": "mooring_mast",
-      "parts": [
-        {
-          "mesh": "mooring_mast",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -631.4108,
-        317.2657,
-        32.8685
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.266667
-      ],
-      "tags": [
-        "POWER-42-0",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "blimp/blimp.glb",
-      "facing_bearing_deg": 245.0,
-      "ground_z_m": null,
-      "kind": "blimp",
-      "parts": [
-        {
-          "mesh": "hull",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "mesh": "rotor",
-          "offset_m": [
-            0.0,
-            0.0,
-            29.0
-          ]
-        }
-      ],
-      "position_m": [
-        -556.9565,
-        351.9843,
-        221.0335
-      ],
-      "scale": [
-        0.28,
-        0.28,
-        0.28
-      ],
-      "tags": [
-        "POWER-42-0",
-        "flying",
-        "house_power"
-      ],
-      "version": 3,
-      "yaw_deg": 295.0
+      "yaw_deg": 265.0
     },
     {
       "asset": "redwood/mountain_pine.glb",
@@ -7712,40 +4646,6 @@
         0.596783,
         0.596783,
         0.596783
-      ],
-      "tags": [
-        "understory",
-        "homestead_screen",
-        "forest",
-        "silver_fir"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "redwood/silver_fir.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 34.1579,
-      "kind": "forest_tree",
-      "parts": [
-        {
-          "mesh": "silver_fir",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -1529.4755,
-        -1330.2926,
-        34.1579
-      ],
-      "scale": [
-        0.658298,
-        0.658298,
-        0.658298
       ],
       "tags": [
         "understory",
@@ -9967,6 +6867,40 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/giant_redwood.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 35.3429,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "giant_redwood",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1317.3389,
+        -1144.6149,
+        35.3429
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "giant_redwood"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 34.6102,
@@ -10513,40 +7447,6 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 33.327,
-      "kind": "forest_tree",
-      "parts": [
-        {
-          "mesh": "mountain_pine",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -1004.7685,
-        -1130.4266,
-        33.327
-      ],
-      "scale": [
-        1.11491,
-        1.11491,
-        1.11491
-      ],
-      "tags": [
-        "overstory",
-        "homestead_screen",
-        "forest",
-        "mountain_pine"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "redwood/mountain_pine.glb",
-      "facing_bearing_deg": null,
       "ground_z_m": 33.7626,
       "kind": "forest_tree",
       "parts": [
@@ -10979,6 +7879,40 @@
       ],
       "tags": [
         "understory",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 33.6692,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1015.289,
+        -1107.8029,
+        33.6692
+      ],
+      "scale": [
+        0.921161,
+        0.921161,
+        0.921161
+      ],
+      "tags": [
+        "main_canopy",
         "homestead_screen",
         "forest",
         "mountain_pine"
@@ -14661,40 +11595,6 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 32.8711,
-      "kind": "forest_tree",
-      "parts": [
-        {
-          "mesh": "mountain_pine",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        1425.5679,
-        -792.0589,
-        32.8711
-      ],
-      "scale": [
-        0.964838,
-        0.964838,
-        0.964838
-      ],
-      "tags": [
-        "main_canopy",
-        "homestead_screen",
-        "forest",
-        "mountain_pine"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "redwood/mountain_pine.glb",
-      "facing_bearing_deg": null,
       "ground_z_m": 33.2886,
       "kind": "forest_tree",
       "parts": [
@@ -14886,6 +11786,40 @@
         0.58752,
         0.58752,
         0.58752
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 32.2785,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        1380.8695,
+        -773.3321,
+        32.2785
+      ],
+      "scale": [
+        0.562559,
+        0.562559,
+        0.562559
       ],
       "tags": [
         "understory",
@@ -17721,6 +14655,40 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
+      "ground_z_m": 35.5964,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1775.2754,
+        -632.5281,
+        35.5964
+      ],
+      "scale": [
+        0.634359,
+        0.634359,
+        0.634359
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
       "ground_z_m": 33.83,
       "kind": "forest_tree",
       "parts": [
@@ -20439,40 +17407,6 @@
       "yaw_deg": 0.0
     },
     {
-      "asset": "redwood/redwood_canopy.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 31.287,
-      "kind": "redwood",
-      "parts": [
-        {
-          "mesh": "redwood_canopy",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -1168.809,
-        -578.3504,
-        31.287
-      ],
-      "scale": [
-        0.66117,
-        0.66117,
-        0.66117
-      ],
-      "tags": [
-        "understory",
-        "homestead_screen",
-        "forest",
-        "redwood_canopy"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
       "asset": "redwood/silver_fir.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 31.2129,
@@ -21221,6 +18155,40 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/giant_redwood.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 30.9937,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "giant_redwood",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1158.1147,
+        -556.2272,
+        30.9937
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "giant_redwood"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/redwood_canopy.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 30.7293,
@@ -21556,6 +18524,40 @@
         "homestead_screen",
         "forest",
         "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/redwood_canopy.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 29.509,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "redwood_canopy",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1649.0539,
+        -537.4125,
+        29.509
+      ],
+      "scale": [
+        0.590466,
+        0.590466,
+        0.590466
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "redwood_canopy"
       ],
       "version": 3,
       "yaw_deg": 0.0
@@ -22338,6 +19340,40 @@
         "homestead_screen",
         "forest",
         "silver_fir"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 29.6417,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1639.9494,
+        -528.739,
+        29.6417
+      ],
+      "scale": [
+        0.676871,
+        0.676871,
+        0.676871
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
       ],
       "version": 3,
       "yaw_deg": 0.0
@@ -26357,40 +23393,6 @@
     {
       "asset": "redwood/redwood_canopy.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 34.0133,
-      "kind": "redwood",
-      "parts": [
-        {
-          "mesh": "redwood_canopy",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        1580.4927,
-        -481.5388,
-        34.0133
-      ],
-      "scale": [
-        0.791,
-        0.791,
-        0.791
-      ],
-      "tags": [
-        "main_canopy",
-        "homestead_screen",
-        "forest",
-        "redwood_canopy"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "redwood/redwood_canopy.glb",
-      "facing_bearing_deg": null,
       "ground_z_m": 37.1274,
       "kind": "redwood",
       "parts": [
@@ -28044,6 +25046,40 @@
         0.505066,
         0.505066,
         0.505066
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 32.715,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -309.36,
+        -436.1081,
+        32.715
+      ],
+      "scale": [
+        0.593675,
+        0.593675,
+        0.593675
       ],
       "tags": [
         "understory",
@@ -31831,6 +28867,40 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
+      "ground_z_m": 32.2641,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1367.7289,
+        -355.4422,
+        32.2641
+      ],
+      "scale": [
+        0.76731,
+        0.76731,
+        0.76731
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
       "ground_z_m": 31.6427,
       "kind": "forest_tree",
       "parts": [
@@ -34007,40 +31077,6 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 31.6379,
-      "kind": "forest_tree",
-      "parts": [
-        {
-          "mesh": "mountain_pine",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        609.5156,
-        -329.5376,
-        31.6379
-      ],
-      "scale": [
-        0.832972,
-        0.832972,
-        0.832972
-      ],
-      "tags": [
-        "main_canopy",
-        "homestead_screen",
-        "forest",
-        "mountain_pine"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "redwood/mountain_pine.glb",
-      "facing_bearing_deg": null,
       "ground_z_m": 31.3185,
       "kind": "forest_tree",
       "parts": [
@@ -34136,40 +31172,6 @@
         "homestead_screen",
         "forest",
         "mountain_pine"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "redwood/silver_fir.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 31.3193,
-      "kind": "forest_tree",
-      "parts": [
-        {
-          "mesh": "silver_fir",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        1337.5807,
-        -324.8126,
-        31.3193
-      ],
-      "scale": [
-        1.108112,
-        1.108112,
-        1.108112
-      ],
-      "tags": [
-        "overstory",
-        "homestead_screen",
-        "forest",
-        "silver_fir"
       ],
       "version": 3,
       "yaw_deg": 0.0
@@ -34816,6 +31818,40 @@
         "homestead_screen",
         "forest",
         "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/silver_fir.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 30.4094,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "silver_fir",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        1290.312,
+        -311.138,
+        30.4094
+      ],
+      "scale": [
+        0.653252,
+        0.653252,
+        0.653252
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "silver_fir"
       ],
       "version": 3,
       "yaw_deg": 0.0
@@ -45329,7 +42365,7 @@
     {
       "asset": "redwood/redwood_canopy.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 34.1135,
+      "ground_z_m": 33.5426,
       "kind": "redwood",
       "parts": [
         {
@@ -45342,17 +42378,17 @@
         }
       ],
       "position_m": [
-        1937.4565,
-        -169.4784,
-        34.1135
+        1886.6123,
+        -176.3234,
+        33.5426
       ],
       "scale": [
-        0.927212,
-        0.927212,
-        0.927212
+        0.646857,
+        0.646857,
+        0.646857
       ],
       "tags": [
-        "main_canopy",
+        "understory",
         "homestead_screen",
         "forest",
         "redwood_canopy"
@@ -53081,6 +50117,40 @@
     {
       "asset": "redwood/redwood_canopy.glb",
       "facing_bearing_deg": null,
+      "ground_z_m": 29.6221,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "redwood_canopy",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        984.4197,
+        -53.5361,
+        29.6221
+      ],
+      "scale": [
+        0.510002,
+        0.510002,
+        0.510002
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "redwood_canopy"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/redwood_canopy.glb",
+      "facing_bearing_deg": null,
       "ground_z_m": 29.6213,
       "kind": "redwood",
       "parts": [
@@ -59675,40 +56745,6 @@
       "yaw_deg": 0.0
     },
     {
-      "asset": "redwood/redwood_canopy.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 30.2765,
-      "kind": "redwood",
-      "parts": [
-        {
-          "mesh": "redwood_canopy",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -1324.1479,
-        55.3391,
-        30.2765
-      ],
-      "scale": [
-        0.844004,
-        0.844004,
-        0.844004
-      ],
-      "tags": [
-        "main_canopy",
-        "homestead_screen",
-        "forest",
-        "redwood_canopy"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 33.32,
@@ -61341,6 +58377,40 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/redwood_canopy.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 30.0165,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "redwood_canopy",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        976.3593,
+        75.0503,
+        30.0165
+      ],
+      "scale": [
+        0.916092,
+        0.916092,
+        0.916092
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "redwood_canopy"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 30.2887,
@@ -62044,6 +59114,40 @@
         0.592905,
         0.592905,
         0.592905
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 30.1636,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        988.8038,
+        84.7321,
+        30.1636
+      ],
+      "scale": [
+        0.633528,
+        0.633528,
+        0.633528
       ],
       "tags": [
         "understory",
@@ -69467,6 +66571,40 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 31.4492,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -790.5607,
+        245.4002,
+        31.4492
+      ],
+      "scale": [
+        0.841202,
+        0.841202,
+        0.841202
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/silver_fir.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 31.157,
@@ -71806,6 +68944,40 @@
       "tags": [
         "understory",
         "river_corridor",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 32.1658,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -658.2523,
+        302.8993,
+        32.1658
+      ],
+      "scale": [
+        0.603175,
+        0.603175,
+        0.603175
+      ],
+      "tags": [
+        "understory",
+        "village_screen",
         "forest",
         "mountain_pine"
       ],
@@ -340561,7 +337733,7 @@
     "version": 2
   },
   "worldmap": {
-    "sha256": "142d9fed500ba3d0b9ff2202073ad9ffe9b8bc552b14ff07ddf804f4bd3fc808",
+    "sha256": "50d5c090a967a080a8c6822d19ed526a7f96f36a3b3f9873a7c1b71a6cb52ba6",
     "source": "shared/world/worldmap.json"
   }
 }

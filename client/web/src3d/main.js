@@ -117,7 +117,7 @@ async function main() {
   scene.add(meadow.group);
   const closeMeadow = buildCloseMeadow(cover,ground);scene.add(closeMeadow.mesh);
   const ecology=buildEcology(habitats,meadowData,assets,ground,closeMeadow,renderer);scene.add(ecology.group);
-  scene.add(buildTethers(placement,worldmap),buildTrails(worldmap,ground));
+  scene.add(buildTethers(placement,assets),buildTrails(worldmap,ground));
   const rig=new T.Group();rig.name='player_parafoil';
   const wing=mergePrimitives(assets[flightConfig.wing_asset].primitives,'opaque');rig.add(new T.Mesh(wing.geometry,wing.material));
   const motor=mergePrimitives(assets[flightConfig.motor_asset].primitives,'opaque');const motorMesh=new T.Mesh(motor.geometry,motor.material);motorMesh.position.set(0,.5,-.45);rig.add(motorMesh);
@@ -151,6 +151,8 @@ async function main() {
   modeSelect.addEventListener('change',e=>setActivity(e.target.value));
   siteSelect.addEventListener('change',()=>{if(rideModes.includes(navigation.mode))setActivity(navigation.mode);});
   document.getElementById('launch').addEventListener('click',()=>setActivity(['orbit','walk'].includes(modeSelect.value)?'paraglider':modeSelect.value));
+  // The bearing is where the wind comes from; it blows toward the opposite one, and north is scene -z.
+  const windFrom = worldmap.wind.direction_deg * Math.PI / 180; style.wind.value.set(-Math.sin(windFrom), Math.cos(windFrom));
   const sky = makeSky(worldmap.mountains?.enclosure?.river_reaches); scene.add(sky);
   const cloudPass=createCloudPass(renderer,scene,camera,worldmap.atmosphere);
   renderer.info.autoReset=false;

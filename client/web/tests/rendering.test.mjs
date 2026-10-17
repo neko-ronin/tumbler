@@ -5,6 +5,7 @@ import { Vector3, Matrix4, Texture } from '../vendor/three.module.min.js';
 import { buildTerrainGeometry, buildWater, buildRiverReaches } from '../src3d/terrain.js';
 import { HeightGrid } from '../src3d/heights.js';
 import { parseGLB, applyImageBytes, mergePrimitives } from '../src3d/glb.js';
+import { buildTethers } from '../src3d/details.js';
 const repo = new URL('../../../', import.meta.url);
 const read = p => readFileSync(new URL(p, repo));
 
@@ -75,4 +76,27 @@ test('the river beyond the block lies on far-field ground the core lowered for i
       assert.ok(far.sample(x, y) < p.getY(row) - 1, `${ribbon.name} at ${x.toFixed(0)}, ${y.toFixed(0)} floats over its ground`);
     }
   }
+});
+
+test('each tether runs from its mast top, up and against the wind, to the underside of the drawn head', () => {
+  const placement=JSON.parse(read('shared/world/out/placement.json')),worldmap=JSON.parse(read('shared/world/worldmap.json'));
+  const blimp=parseGLB(read('shared/geometry/blimp/blimp.glb'));
+  const position=buildTethers(placement,{'blimp/blimp.glb':blimp}).geometry.attributes.position;
+  const hulls=placement.instances.filter(i=>i.kind==='blimp'&&i.tags.includes('flying'));
+  assert.ok(hulls.length>2);assert.equal(position.count,2*hulls.length);
+  const declared=Object.fromEntries(worldmap.blimps.map(b=>[b.id,b])),house=worldmap.activities.house_blimps;
+  // The wind blows toward the opposite of its bearing; in the scene north is -z.
+  const from=worldmap.wind.direction_deg*Math.PI/180,upwind=new Vector3(Math.sin(from),0,-Math.cos(from));
+  hulls.forEach((hull,i)=>{
+    const top=new Vector3().fromBufferAttribute(position,2*i),end=new Vector3().fromBufferAttribute(position,2*i+1);
+    const config=declared[hull.tags[0]]??house,s=hull.scale[0],[x,y,z]=hull.position_m,centre=new Vector3(x,z,-y);
+    assert.ok(Math.abs(top.distanceTo(end)-config.tether_m)<1e-3,`${hull.tags[0]}: tether ${top.distanceTo(end)} m, declared ${config.tether_m}`);
+    const lead=end.clone().sub(top);
+    assert.ok(Math.abs(lead.y-config.tether_m*Math.sin(config.tether_elevation_deg*Math.PI/180))<1e-3,'the tether rises at its declared elevation');
+    assert.ok(lead.setY(0).normalize().dot(upwind)<-.9999,'the hull is pushed downwind: the line leads up and away from the wind');
+    // The drawn end hangs under the hull and ahead of its centre, into the wind: the head's underside.
+    const offset=end.clone().sub(centre);
+    assert.ok(offset.y<-20*s,`${hull.tags[0]}: the tether meets the hull ${offset.y.toFixed(2)} m from its axis, not underneath`);
+    assert.ok(offset.clone().setY(0).dot(upwind)>13*s,`${hull.tags[0]}: the tether meets the hull ${offset.clone().setY(0).dot(upwind).toFixed(2)} m upwind of its centre, not at its head`);
+  });
 });

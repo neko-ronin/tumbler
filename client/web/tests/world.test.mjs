@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { Matrix4, Vector3 } from "../vendor/three.module.min.js";
 
-import { cameraPose, instanceMatrix, toScene, toSceneYaw, yawForward } from "../src3d/world.js";
+import { cameraPose, instanceMatrix, toScene, toSceneYaw } from "../src3d/world.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..", "..", "..");
@@ -55,58 +55,52 @@ test("the mapping is a rotation, not a mirror", () => {
   assert.equal(cross.z, 1, "a mirror would put this at -1 and south-up everything");
 });
 
-test("the core's first camera keyframe looks down the valley", () => {
+// The camera convention's own vector, in the scene: yaw counter-clockwise from
+// east, pitch below the horizon, then (east, up, -north).
+const declared = (keyframe) => {
+  const yaw = (keyframe.yaw_deg * Math.PI) / 180, pitch = (keyframe.pitch_deg * Math.PI) / 180;
+  return new Vector3(Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.sin(yaw) * Math.cos(pitch));
+};
+
+test("the core's first camera keyframe looks across the valley toward the north", () => {
   const keyframe = worldmap.camera.keyframes[0];
   assert.equal(keyframe.t, 0);
-  const matrix = cameraPose(keyframe);
-  const direction = forward(matrix);
-  // Closed form of R_y(toSceneYaw) · R_x(pitch) acting on a camera's own −z:
-  //   (−sin φ · cos θ, sin θ · cos φ, −cos θ · cos φ),  φ = −yaw, θ = pitch
-  // Both scene angles appear in all three components, so a flipped sign on
-  // either, or degrees passed where radians are due, fails here.
-  const phi = toSceneYaw(keyframe.yaw_deg);
-  const theta = (keyframe.pitch_deg * Math.PI) / 180;
-  const expected = new Vector3(-Math.sin(phi) * Math.cos(theta), Math.sin(theta), -Math.cos(phi) * Math.cos(theta));
-  assert.ok(direction.distanceTo(expected) < 1e-9, `direction ${direction.toArray()} vs ${expected.toArray()}`);
-  // The core's yaw is a turn from east: at 62 degrees most of the nose is
-  // eastward, and with pitch -11 some of it is down.
-  assert.ok(direction.x > 0.8, `x ${direction.x} should be mostly east`);
+  assert.match(worldmap.camera.yaw_convention, /counter-clockwise from \+X \(east\)/);
+  const direction = forward(cameraPose(keyframe));
+  assert.ok(direction.distanceTo(declared(keyframe)) < 1e-9, `direction ${direction.toArray()} vs ${declared(keyframe).toArray()}`);
+  // Yaw 72 is past 45, so more of the view is north (scene -z) than east.
+  assert.ok(-direction.z > direction.x && direction.x > 0, `${direction.toArray()} should be north-north-east`);
   assert.ok(direction.y < -0.1, `pitch ${keyframe.pitch_deg} should look down, y=${direction.y}`);
-  assert.ok(Math.abs(Math.hypot(direction.x, direction.y, direction.z) - 1) < 1e-9, "a direction of length 1");
 });
 
-test("every camera keyframe keeps its own pitch, and it is always nose down", () => {
+test("every camera keyframe keeps its own pitch and yaw", () => {
   for (const keyframe of worldmap.camera.keyframes) {
-    const matrix = cameraPose(keyframe);
-    const direction = forward(matrix);
+    const direction = forward(cameraPose(keyframe));
     assert.ok(direction.y < 0, `t=${keyframe.t} pitch=${keyframe.pitch_deg}, y=${direction.y}`);
-    // And against the closed form, so a degrees/radians slip at any keyframe
-    // fails rather than silently aiming the camera somewhere plausible.
-    const phi = toSceneYaw(keyframe.yaw_deg);
-    const theta = (keyframe.pitch_deg * Math.PI) / 180;
-    const expected = new Vector3(-Math.sin(phi) * Math.cos(theta), Math.sin(theta), -Math.cos(phi) * Math.cos(theta));
-    assert.ok(direction.distanceTo(expected) < 1e-9, `t=${keyframe.t}: ${direction.toArray()} vs ${expected.toArray()}`);
+    assert.ok(direction.distanceTo(declared(keyframe)) < 1e-9, `t=${keyframe.t}: ${direction.toArray()} vs ${declared(keyframe).toArray()}`);
   }
 });
 
-test("yaw zero faces north, which is scene -z", () => {
-  const direction = yawForward(0);
-  assert.ok(direction.distanceTo(new Vector3(0, 0, -1)) < 1e-9);
-  // Yaw turns counter-clockwise from east in the world: at 90 degrees the
-  // nose is due north... which in the scene is -z still rotated, so instead
-  // check a turn toward east, the case that fails if the sign is flipped.
-  const eastward = yawForward(90);
-  assert.ok(eastward.x > 0.99 && Math.abs(eastward.z) < 1e-9, `${[eastward.x, eastward.z]}`);
+test("toSceneYaw keeps the sign, and returns radians", () => {
+  const deg = Math.PI / 180;
+  assert.equal(toSceneYaw(62), 62 * deg);
+  assert.equal(toSceneYaw(-90), -90 * deg);
+  assert.equal(toSceneYaw(0) + 0, 0);
+  // World yaw 90 turns the asset's east (+X) to north, which is scene -z.
+  const east = new Vector3(1, 0, 0).transformDirection(instanceMatrix([0, 0, 0], 90, null));
+  assert.ok(east.distanceTo(new Vector3(0, 0, -1)) < 1e-12, `${east.toArray()}`);
 });
 
-test("toSceneYaw negates, and returns radians", () => {
-  const deg = Math.PI / 180;
-  assert.equal(toSceneYaw(62), -62 * deg);
-  assert.equal(toSceneYaw(-90), 90 * deg);
-  assert.equal(toSceneYaw(0) + 0, 0);
-  // Degrees on the way in, radians on the way out: three.js takes radians and
-  // placement.json speaks degrees, and this is the one place they meet.
-  assert.ok(Math.abs(toSceneYaw(90) + Math.PI / 2) < 1e-12, "90 degrees world yaw is a quarter turn the other way");
+test("every turbine and blimp is drawn facing the bearing the core gives it", () => {
+  // The authored nose is glTF +Z for both; the core states where it must point.
+  const faced = placement.instances.filter((i) => i.facing_bearing_deg !== null && i.facing_bearing_deg !== undefined);
+  assert.ok(faced.some((i) => i.kind === "turbine") && faced.some((i) => i.kind === "blimp"));
+  for (const instance of faced) {
+    const nose = new Vector3(0, 0, 1).transformDirection(instanceMatrix(instance.position_m, instance.yaw_deg, instance.scale));
+    const bearing = ((Math.atan2(nose.x, -nose.z) * 180) / Math.PI + 360) % 360;
+    const off = Math.abs(((bearing - instance.facing_bearing_deg + 540) % 360) - 180);
+    assert.ok(off < 1e-6, `${instance.kind} ${instance.tags[0]} drawn facing ${bearing.toFixed(2)}, core says ${instance.facing_bearing_deg}`);
+  }
 });
 
 test("an instance's position lands in scene metres, up on y", () => {

@@ -22,17 +22,18 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
     const sz=Math.min(declaredHeight,atmosphere.cloud_top_m-atmosphere.cloud_base_m);
     const centre=new T.Vector3(x,atmosphere.cloud_base_m+sz*.5,-y),extent=new T.Vector3(sx,sz,sy);
     const material=new T.ShaderMaterial({glslVersion:T.GLSL3,side:T.BackSide,transparent:true,depthWrite:false,depthTest:false,
-      uniforms:{uDepth:{value:opaque.depthTexture},uNoise:{value:texture},uCentre:{value:centre},uExtent:{value:extent},uResolution:{value:size},uNear:{value:camera.near},uFar:{value:camera.far},uForward:forward,uSun:style.sun,uTime:style.time,uSeed:{value:cell.seed}},
+      uniforms:{uDepth:{value:opaque.depthTexture},uNoise:{value:texture},uCentre:{value:centre},uExtent:{value:extent},uResolution:{value:size},uNear:{value:camera.near},uFar:{value:camera.far},uForward:forward,uSun:style.sun,uTime:style.time,uWind:style.wind,uSeed:{value:cell.seed}},
       vertexShader:`out vec3 vWorld;void main(){vWorld=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(vWorld,1.);}`,
       fragmentShader:`precision highp sampler3D;
         in vec3 vWorld;out vec4 fragColor;
-        uniform sampler2D uDepth;uniform sampler3D uNoise;uniform vec3 uCentre,uExtent,uForward,uSun;uniform vec2 uResolution;uniform float uNear,uFar,uTime,uSeed;
+        uniform sampler2D uDepth;uniform sampler3D uNoise;uniform vec3 uCentre,uExtent,uForward,uSun;uniform vec2 uResolution,uWind;uniform float uNear,uFar,uTime,uSeed;
         float density(vec3 world){
           vec3 p=(world-uCentre)/uExtent;
           float shape=1.-length(p*vec3(2.7,2.5,2.7));
           shape=max(shape,.90-length((p-vec3(-.18,.13,.04))*vec3(3.3,3.5,3.)));
           shape=max(shape,.95-length((p-vec3(.17,.10,-.06))*vec3(3.5,3.2,3.3)));
-          float n=texture(uNoise,p*2.6+vec3(uSeed*.13+uTime*.002,0.,0.)).r;
+          // The billows drift downwind at 0.6 m/s inside the core's fixed cell.
+          float n=texture(uNoise,(p-vec3(uWind.x,0.,uWind.y)*uTime*.6/uExtent)*2.6+vec3(uSeed*.13,0.,0.)).r;
           float fine=texture(uNoise,p*9.+uSeed*.071).r;
           float edge=smoothstep(0.,.10,.5-max(abs(p.x),abs(p.z)))*smoothstep(0.,.08,.5-abs(p.y));
           return smoothstep(.02,.24,shape+(n-.55)*.30+(fine-.5)*.07)*smoothstep(-.5,-.34,p.y)*edge;

@@ -8,6 +8,8 @@ export const style = {
   cover: { value: null },
   coverGrid: { value: new T.Vector4() },
   snow: { value: null },
+  // Where the map's wind blows TOWARD, as a unit scene (x, z); main.js sets it from wind.direction_deg.
+  wind: { value: new T.Vector2(1, 0) },
 };
 // Bare ground the vertex colours leave to the shader, so rock and snow can
 // break up per pixel instead of switching at the 8 m sample spacing.
@@ -34,9 +36,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
   const material = terrain ? new T.MeshStandardMaterial({roughness: .96, ...parameters}) : new T.MeshToonMaterial({ gradientMap: foliage ? softRamp : ramp, ...parameters });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = style.time;
+    shader.uniforms.uWind = style.wind;
     shader.uniforms.uSun = style.sun;
     if(terrain){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;}
-    shader.vertexShader = 'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'attribute float petal; attribute vec3 flowerTint; varying float vPetal; varying vec3 vFlower;\n' : '') + shader.vertexShader;
+    shader.vertexShader = 'uniform float uTime; uniform vec2 uWind; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'attribute float petal; attribute vec3 flowerTint; varying float vPetal; varying vec3 vFlower;\n' : '') + shader.vertexShader;
     shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
       #include <begin_vertex>
       ${foliage ? `#ifdef USE_INSTANCING
@@ -45,8 +48,11 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
         vTreeHue = .5;
       #endif` : ''}
       ${meadow ? `vPetal = petal; vFlower = flowerTint; vec3 root = instanceMatrix[3].xyz;
-      transformed.x += sin(uTime * 1.2 + root.x * .025 + root.z * .019 + position.y) * .24 * max(0., position.y);
-      transformed.z += cos(uTime * .9 + root.x * .018) * .12 * max(0., position.y);` : ''}
+      // Gusts travel downwind and bend stems along the wind; the instance turn is undone so every cell agrees.
+      vec3 down = normalize(vec3(uWind.x, 0., uWind.y) * mat3(instanceMatrix)), across = vec3(-down.z, 0., down.x);
+      float bend = max(0., position.y);
+      transformed += down * sin(uTime * 1.2 - dot(root.xz, uWind) * .031 + position.y) * .24 * bend
+        + across * cos(uTime * .9 + root.x * .018) * .12 * bend;` : ''}
     `);
     shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', `
       vec4 place = vec4(transformed, 1.);
@@ -176,10 +182,10 @@ export function makeSky(reaches = []) {
   });
   const sky = new T.Mesh(new T.SphereGeometry(14000, 32, 16), new T.ShaderMaterial({
     side: T.BackSide, depthWrite: false, toneMapped: false,
-    uniforms: { uTime: style.time, uSun: style.sun, uWarmth: style.warmth, uGapA: { value: gaps[0] }, uGapB: { value: gaps[1] } },
+    uniforms: { uTime: style.time, uSun: style.sun, uWarmth: style.warmth, uWind: style.wind, uGapA: { value: gaps[0] }, uGapB: { value: gaps[1] } },
     vertexShader: `varying vec3 vRay; void main(){ vRay = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
     fragmentShader: `
-      varying vec3 vRay; uniform float uTime; uniform vec3 uSun; uniform float uWarmth; uniform vec3 uGapA; uniform vec3 uGapB;
+      varying vec3 vRay; uniform float uTime; uniform vec3 uSun; uniform float uWarmth; uniform vec2 uWind; uniform vec3 uGapA; uniform vec3 uGapB;
       float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y);}
       void main(){
@@ -189,7 +195,7 @@ export function makeSky(reaches = []) {
         col += vec3(.32,.10,.0)*pow(max(0.,dot(ray,uSun)),8.)*uWarmth;
         float sun=pow(max(0.,dot(ray,uSun)),180.);
         col+=vec3(1.,.77,.38)*sun*.6;
-        vec2 p=ray.xz/(.08+max(0.,ray.y))*2.7+vec2(uTime*.003,0.);
+        vec2 p=ray.xz/(.08+max(0.,ray.y))*2.7-uWind*uTime*.003;
         float cloud=noise(p)*.65+noise(p*2.1)*.25+noise(p*4.)*.1;
         float mask=smoothstep(.59,.73,cloud)*smoothstep(.14,.32,h);
         // Cumulus lives in the world volume pass, at the core cloud cells.

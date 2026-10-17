@@ -1,13 +1,19 @@
 /** Small presentation geometry follows named core placements and tracks. */
 import * as T from '../vendor/three.module.min.js';
-export function buildTethers(placement,worldmap){
-  const positions=[];
-  for(const blimp of placement.instances.filter(i=>i.kind==='blimp')){
-    const mast=placement.instances.find(i=>i.kind==='mooring_mast'&&i.tags[0]===blimp.tags[0]);if(!mast)continue;
-    const bearing=worldmap.wind.direction_deg*Math.PI/180;
-    const nose=39.2*(blimp.scale?.[0]??1);
-    const [x,y,z]=blimp.position_m;
-    positions.push(mast.position_m[0],mast.position_m[2]+45*(mast.scale?.[2]??1),-mast.position_m[1],x+Math.sin(bearing)*nose,z,-y-Math.cos(bearing)*nose);
+import {instanceMatrix,toScene} from './world.js';
+/** One line per flying hull, from its mast's top to the hull's own `tether_anchor` node (under the head),
+ * carried by the same instance transform that draws the hull, so the line meets the hull the core placed. */
+export function buildTethers(placement,assets){
+  const positions=[],masts=new Map(placement.instances.filter(i=>i.kind==='mooring_mast').map(i=>[i.tags[0],i]));
+  for(const hull of placement.instances.filter(i=>i.kind==='blimp'&&i.tags.includes('flying'))){
+    const mast=masts.get(hull.tags[0]);if(!mast)continue;
+    const anchor=assets[hull.asset]?.root.getObjectByName('tether_anchor');
+    if(!anchor)throw new Error(`${hull.asset} has no tether_anchor node to tie a tether to`);
+    // A top-level node, so its own translation is its place in the asset, as the core reads it.
+    const end=anchor.position.clone().applyMatrix4(instanceMatrix(hull.position_m,hull.yaw_deg,hull.scale));
+    // The mast model stands 45 m to its cup at scale 1, and the core's tether leaves the cup.
+    const [x,y,z]=mast.position_m,top=toScene([x,y,z+45*(mast.scale?.[2]??1)]);
+    positions.push(top.x,top.y,top.z,end.x,end.y,end.z);
   }
   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));
   const line=new T.LineSegments(geometry,new T.LineBasicMaterial({color:'#b6b7a0',transparent:true,opacity:.65}));line.name='generator_tethers';return line;

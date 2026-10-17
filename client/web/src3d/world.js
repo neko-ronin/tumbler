@@ -15,18 +15,19 @@
  *
  * Its determinant is +1, so it is a rotation and not a mirror: the north axis
  * becomes scene −z, which is *toward* a default three.js camera. The
- * consequence for yaw is the whole reason this module exists. A world yaw θ
- * turns north toward east (counter-clockwise seen from above). In the scene,
- * north is −z and east is +x, so the same physical turn sends −z toward +x —
- * which is a **negative** rotation about scene +y. Hence:
+ * consequence for yaw is the whole reason this module exists. A world yaw θ is
+ * counter-clockwise seen from above: it turns east toward north. In the scene
+ * east is +x and north is −z, and a **positive** rotation about scene +y sends
+ * +x toward −z, the same physical turn. A rotation keeps the sense of every
+ * turn, so:
  *
- *     instance.rotation.y = −yaw_deg
+ *     instance.rotation.y = +yaw_deg
  *
  * Written out rather than left to be re-derived, because the opposite sign
- * mirrors every structure in the world about a vertical axis and still looks
- * like a world: nothing crashes, nothing warns, and the settlement faces the
- * wrong way. `tests/instance.test.mjs` pins this against the core's own
- * camera keyframes, which know the bearing of the valley.
+ * mirrors every facing about the north-south line and still looks like a
+ * world: nothing crashes, nothing warns. This file once negated it, and every
+ * turbine and blimp the core points into a 245° wind faced 115°.
+ * `tests/world.test.mjs` pins it against the core's own `facing_bearing_deg`.
  *
  * What is *not* here: the world→Unreal conversion (`AGENTS.md` /
  * `placement.json:frame` records that Unreal mirrors y and negates yaw,
@@ -48,7 +49,7 @@ export function toScene([x, y, z]) {
 }
 
 /**
- * The world's yaw in degrees, to the rotation about scene +y **in radians**.
+ * The world's yaw in degrees, to the rotation about scene +y **in radians**, sign kept.
  *
  * Radii are kept out of the caller's hands on purpose: three.js takes radians,
  * `placement.json` speaks degrees, and a value passed between them without one
@@ -56,7 +57,7 @@ export function toScene([x, y, z]) {
  * exactly one place the units change.
  */
 export function toSceneYaw(yawDeg) {
-  return (-(yawDeg ?? 0) * Math.PI) / 180;
+  return ((yawDeg ?? 0) * Math.PI) / 180;
 }
 
 /**
@@ -99,32 +100,21 @@ export function instanceMatrix(positionM, yawDeg, scale, local = null, worldSpac
 /**
  * The core's camera pose, as a scene matrix.
  *
- * The core authors the camera in world terms — yaw counter-clockwise from east
- * (so +yaw turns left), pitch negative to look down — and three.js's own
- * convention that a camera looks down −z is what makes the same numbers work
- * here. Both angles are converted from the core's degrees to the scene's
- * radians in one place each:
+ * The core authors the camera in world terms (`camera.yaw_convention`): yaw
+ * counter-clockwise from east, so 90 looks north, and pitch negative to look
+ * down. A three.js camera at rest looks down −z, which is world north, yaw 90:
  *
  * | core writes | scene needs | why |
  * |---|---|---|
- * | yaw 62° at (−1600, −780, 150) | rotation.y = −62° | turning north toward east is a **negative** turn about +y, because north is scene −z |
- * | pitch −11° (nose down) | rotation.x = −11° | the east axis maps to itself, so the pitch keeps its sign and the world frame saw it already as nose-down |
+ * | yaw 72° | rotation.y = 72° − 90° | the yaw keeps its sign (see `toSceneYaw`), less the rest camera's own 90° |
+ * | pitch −12° (nose down) | rotation.x = −12° | applied before the yaw, about the camera's own x, so it keeps its sign |
  *
- * The yaw is the one that mirrors the world if it is got wrong: a settlement
- * would face the wrong way, nothing would crash, and only the valley's own
- * geometry would say so — which is why the test checks the pose against the
- * camera keyframes the core published rather than against this reasoning.
+ * The test checks the pose against the convention's own vector, not against
+ * this reasoning.
  */
 export function cameraPose(keyframe) {
   const yaw = toSceneYaw(keyframe.yaw_deg ?? 0); // radians
   const pitch = ((keyframe.pitch_deg ?? 0) * Math.PI) / 180; // radians
-  const pose = new Matrix4().makeRotationY(yaw).multiply(new Matrix4().makeRotationX(pitch));
+  const pose = new Matrix4().makeRotationY(yaw - Math.PI / 2).multiply(new Matrix4().makeRotationX(pitch));
   return pose.setPosition(toScene(keyframe.location_m));
-}
-
-/** Which way does this world yaw point, as a unit vector in the scene? */
-export function yawForward(yawDeg) {
-  const radians = (yawDeg * Math.PI) / 180;
-  // World (sin, cos) is east/north; scene keeps east and flips north.
-  return new Vector3(Math.sin(radians), 0, -Math.cos(radians));
 }

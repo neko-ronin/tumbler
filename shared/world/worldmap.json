@@ -7739,7 +7739,7 @@
         -700.0,
         150.0
       ],
-      "note": "North of the flight path by roughly 900 m. Moored nose to mast, weathervaning downwind on 245 deg. 2026-10-05: flying, not moored. An airborne wind turbine on a 330 m tether at 64 deg, so the hull rides ~340 m above the ground and ~250 m above the tallest redwoods, downwind of its mast.",
+      "note": "North of the flight path by roughly 900 m. Weathervaning: head into the wind, hull downwind of the mast. 2026-10-05: flying, not moored. An airborne wind turbine on a 330 m tether at 64 deg, tied under the hull's head, so the hull's centre rides ~370 m above the ground and its keel ~250 m above the tallest redwoods, downwind of its mast.",
       "tether_m": 330.0,
       "tether_elevation_deg": 64.0
     },
@@ -7751,7 +7751,7 @@
         850.0,
         350.0
       ],
-      "note": "North of the flight path by roughly 690 m, on the valley floor near FS5. 2026-10-05: flying, not moored. An airborne wind turbine on a 330 m tether at 64 deg, so the hull rides ~340 m above the ground and ~250 m above the tallest redwoods, downwind of its mast.",
+      "note": "North of the flight path by roughly 690 m, on the valley floor near FS5. 2026-10-05: flying, not moored. An airborne wind turbine on a 330 m tether at 64 deg, tied under the hull's head, so the hull's centre rides ~370 m above the ground and its keel ~250 m above the tallest redwoods, downwind of its mast.",
       "tether_m": 330.0,
       "tether_elevation_deg": 64.0
     }
@@ -7907,12 +7907,15 @@
     }
   },
   "wind": {
-    "direction_deg": 245.0,
-    "label": "WSW",
+    "direction_deg": 275.0,
+    "label": "W",
+    "note": "Down the valley, from the west: the bearing is where the wind comes from, so it blows toward 95, the way the river runs from the western gorge (-2048, -100) to the low eastern gap (2048, -420). A deep valley channels the air along its axis. The regional flow over the ring of ridges is the westerly that loads the snow (a compressed Sierra, storms from the west-south-west), and the walls turn it down the valley; the cross-valley part is blocked. The thermal winds are real but diurnal: the up-valley breeze from the east blows only on sunny afternoons and reverses at night, and the down-slope drainage off the northern massif is a shallow night flow, not a wind for generators riding hundreds of metres up. One prevailing wind serves every consumer, and the ones that record climate need it: the snow drifts and the Granite Cirque lie on the lee, east-facing side, and cumulus at 1,000-1,600 m drifts with the westerlies aloft.",
     "shared_by": [
-      "grass wave",
-      "vegetation lean",
-      "cloud shadows"
+      "turbines and generator blimps (face it, trail downwind)",
+      "grass wave and meadow sway",
+      "cloud drift",
+      "ridge lift",
+      "snow loading"
     ]
   },
   "rasters": {
@@ -8035,7 +8038,7 @@
       {
         "id": "granite-cirque",
         "label": "Granite Cirque",
-        "note": "East-south-east, downwind of the WSW wind, under a granite headwall. Least-squares fit to the massif within 80 m of fill; floor 15-35 degrees.",
+        "note": "East-south-east, on the lee of the west wind, under a granite headwall. Least-squares fit to the massif within 80 m of fill; floor 15-35 degrees.",
         "head_xy_m": [
           -360,
           1760
@@ -8279,7 +8282,7 @@
       "tether_m": 190.0,
       "tether_elevation_deg": 68.0,
       "asset_scale": 0.28,
-      "offset_m": 24.0
+      "cluster_m": 200.0
     },
     "ride": "shared/activities/ride.json"
   },
