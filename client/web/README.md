@@ -138,40 +138,35 @@ What the host has to do:
   `immutable` caching would break visitors after a release; revalidation is a
   cheap 304. Other hosts ignore the file; give them the same policy.
 
-### On Cloudflare Pages
+### On Cloudflare (tumbler.catronin.com)
+
+The live site is <https://tumbler.catronin.com>, served by Cloudflare Workers
+static assets: `wrangler.jsonc` at the root of the public repository points
+Wrangler at `dist/web`, with the custom domain as its route. Each deployment
+goes live in one switch, which suits the startup check, and `_headers` keeps
+every file revalidating.
 
 Measured on this package: gzip makes it 12.7 MB and brotli 9.3 MB, against
 47.8 MB raw. Cloudflare compresses JSON, JavaScript and HTML on its own, but
 its default list leaves out `model/gltf-binary` and `application/octet-stream`,
 so the `.glb` models (37.3 MB, 11.2 MB gzipped) and the `.f32` height grids
-(1.1 MB) are sent **uncompressed** unless a rule adds them. That rule needs the
-site on **your own domain proxied through Cloudflare**; a `*.pages.dev` address
-cannot be configured. Compression Rules exist on every plan (10 on Free).
+(1.1 MB) need one compression rule on the zone (Rules → Compression Rules):
 
-1. Package: `python3.11 client/web/tools/package_web.py`.
-2. Deploy `dist/web` as the project's output: in the dashboard, Workers & Pages
-   → Create → Pages → upload the folder (Direct Upload, nothing to install), or
-   `wrangler pages deploy dist/web --project-name <name>` with a pinned Wrangler
-   (an npm package; vet it like any other dependency). Each deployment goes
-   live in one switch, which suits the startup check. Cloudflare recommends
-   Workers static assets for new projects; this folder and `_headers` deploy
-   there unchanged.
-3. Add the custom domain to the project, then add one compression rule on that
-   zone (Rules → Compression Rules → Create rule):
-   - **When incoming requests match:** custom filter expression
-     `(http.request.uri.path.extension in {"glb" "f32"})`
-   - **Then:** Compression options *Custom*, order `Brotli`, `Gzip`
-4. Do not add Cache Rules for this site. Pages keeps files at the edge until
-   the next deploy; a longer edge cache can serve last release's files.
-5. Check, from any machine:
+- **When incoming requests match:** custom filter expression
+  `(http.request.uri.path.extension in {"glb" "f32"})`
+- **Then:** Compression options *Custom*, order `Brotli`, `Gzip`
+
+Do not add Cache Rules for the site; a longer edge cache can serve last
+release's files. Workers static assets redirect `scene.html` to `scene` (307);
+both the page and its startup check follow it. To check the headers:
 
 ```sh
-curl -sI -H 'Accept-Encoding: br, gzip' https://YOUR-DOMAIN/shared/geometry/redwood/giant_redwood.glb | grep -iE '^(content-encoding|cache-control|content-type):'
+curl -sI -H 'Accept-Encoding: br, gzip' https://tumbler.catronin.com/shared/geometry/redwood/giant_redwood.glb | grep -iE '^(content-encoding|cache-control|content-type):'
 ```
 
-Expect `content-encoding: br` (or `gzip`) and
-`cache-control: public, max-age=0, must-revalidate`. Then open the site and look
-for "Verified 69 fetched files" in Field notes.
+Expect `content-encoding: br` once the rule exists, and
+`cache-control: public, max-age=0, must-revalidate`. Field notes in the scene
+should read "Verified 69 fetched files".
 
 ## What this is, stated plainly
 
