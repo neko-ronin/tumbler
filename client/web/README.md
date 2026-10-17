@@ -98,24 +98,28 @@ build step. Package it with:
 python3.11 client/web/tools/package_web.py
 ```
 
-That writes `dist/web/` (about 48 MB): `client/web/data/viewer.json`, the 69
-files it lists, the three.js licence, and a root `index.html` that redirects to
-the scene. Each listed file is checked against the sha256 in `viewer.json`
-before anything is written, so a stale file stops the package rather than a
-visitor's browser. If you changed a source on purpose, run `make_viewer_data.py`
-first. `--check` verifies without writing; `--out DIR` writes elsewhere. The
-2D map (`client/web/index.html`) is not included.
+That writes `dist/web/` (87 files, about 48.5 MB): `client/web/data/viewer.json`,
+the 69 files it fetches, the core outputs it lists as `sources`, the three.js
+licence, and the 2D map the scene links to ("Open the map"). Every fetched file
+and source is checked against the digest in `viewer.json` before anything is
+written, so a stale file stops the package rather than a visitor's browser. If
+you changed a source on purpose, run `make_viewer_data.py` first. `--check`
+verifies without writing; `--out DIR` writes elsewhere.
 
 The package keeps repository paths, because the scene resolves every file
 from the repository root. Upload the **contents** of `dist/web/` to the web
-root, or to any folder, since every path is relative. The scene is at
-`client/web/scene.html`, and `/` redirects there. Try it locally first:
+root, or to any folder, since every path is relative. The root `index.html` **is
+the scene**: the packager generates it from `scene.html` with one
+`<base href="client/web/">` line, so the site's address is the game and
+`client/web/scene.html` keeps working. The map is at `client/web/`. Try it
+locally first:
 
 ```sh
 python3.11 -m http.server 8090 --bind 127.0.0.1 --directory dist/web
 ```
 
-Open <http://127.0.0.1:8090/>; Field notes should read "Verified 69 fetched files".
+Open <http://127.0.0.1:8090/>; Field notes should read "Verified 69 fetched files",
+and "Open the map" should draw the 2D map with no digest warning in its header.
 
 What the host has to do:
 
