@@ -146,25 +146,29 @@ Wrangler at `dist/web`, with the custom domain as its route. Each deployment
 goes live in one switch, which suits the startup check, and `_headers` keeps
 every file revalidating.
 
-Measured on this package: gzip makes it 12.7 MB and brotli 9.3 MB, against
-47.8 MB raw. Cloudflare compresses JSON, JavaScript and HTML on its own, but
-its default list leaves out `model/gltf-binary` and `application/octet-stream`,
-so the `.glb` models (37.3 MB, 11.2 MB gzipped) and the `.f32` height grids
-(1.1 MB) need one compression rule on the zone (Rules → Compression Rules):
+Cloudflare compresses JSON, JavaScript and HTML on its own (Zstandard, then
+Brotli, then Gzip), but its default list leaves out `model/gltf-binary` and
+`application/octet-stream`, so the `.glb` models (37.3 MB) and the `.f32`
+height grids (1.1 MB) need one compression rule on the zone (Rules →
+Compression Rules), scoped to this site:
 
 - **When incoming requests match:** custom filter expression
-  `(http.request.uri.path.extension in {"glb" "f32"})`
-- **Then:** Compression options *Custom*, order `Brotli`, `Gzip`
+  `(http.host eq "tumbler.catronin.com" and http.request.uri.path.extension in {"glb" "f32"})`
+- **Then:** Compression options *Custom*, order `Zstandard`, `Brotli`, `Gzip`
+
+With it, a first visit downloads 12.1 MB instead of 47.8 MB, all of it
+zstd-encoded (measured 2026-10-17); browsers decode it before the startup
+check, which still verifies all 69 files.
 
 Do not add Cache Rules for the site; a longer edge cache can serve last
 release's files. Workers static assets redirect `scene.html` to `scene` (307);
 both the page and its startup check follow it. To check the headers:
 
 ```sh
-curl -sI -H 'Accept-Encoding: br, gzip' https://tumbler.catronin.com/shared/geometry/redwood/giant_redwood.glb | grep -iE '^(content-encoding|cache-control|content-type):'
+curl -sI -H 'Accept-Encoding: gzip, deflate, br, zstd' https://tumbler.catronin.com/shared/geometry/redwood/giant_redwood.glb | grep -iE '^(content-encoding|cache-control|content-type):'
 ```
 
-Expect `content-encoding: br` once the rule exists, and
+Expect `content-encoding: zstd` and
 `cache-control: public, max-age=0, must-revalidate`. Field notes in the scene
 should read "Verified 69 fetched files".
 
