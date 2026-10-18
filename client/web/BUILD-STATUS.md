@@ -9,6 +9,10 @@ The merge hook pushed initial public release `bfcbd05`, passed public web
 and its rendered frame was opened. Documentation-only hook reruns retain the
 same game manifest. The [handoff](../../docs/HANDOVER.md) holds the release receipt.
 
+The publisher also isolates Git identity across nested commit hooks. Its
+**4/4 publishing checks** include real public-commit identity and unaffected
+other-checkout metadata; the hygiene guard remains enabled for every push.
+
 The [flight review](../../docs/reviews/flight-experience-2026-10-18.md) findings
 are fixed in the integrated delivery. Air textures use linear filtering
 only when the renderer supports it, otherwise nearest filtering. Debris spawns
