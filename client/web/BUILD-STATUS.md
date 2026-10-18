@@ -1,12 +1,16 @@
 # Flight v3 delivery — 2026-10-18
 
-Source delivery: `7ea5a75`, `1efb1ca`, `c5f10a8`. The human authorized main
-integration and the normal publishing hook. This checkpoint prepares the
-documentation and roadmap before the merge; publication outcome is pending.
-The [handoff](../../docs/HANDOVER.md) records the subsequent release receipt.
+Source delivery `7ea5a75`, `1efb1ca`, `c5f10a8` and documentation `c993dd3`
+are integrated into `main` and published at **https://tumbler.catronin.com/**.
+The merge hook pushed initial public release `bfcbd05`, passed public web
+**126/126** and packaging **7/7**, deployed Cloudflare version
+`2b4c717f-be8b-4951-b467-75496b84420b`, and verified live manifest
+`df1d70319a77` with zstd model compression. The live root page reached Ready
+and its rendered frame was opened. Documentation-only hook reruns retain the
+same game manifest. The [handoff](../../docs/HANDOVER.md) holds the release receipt.
 
 The [flight review](../../docs/reviews/flight-experience-2026-10-18.md) findings
-are fixed locally on `codex/flight-experience`. Air textures use linear filtering
+are fixed in the integrated delivery. Air textures use linear filtering
 only when the renderer supports it, otherwise nearest filtering. Debris spawns
 inside its eviction circle and retains world-space drift. Shared mode
 coefficient constraints now use `$defs` with equivalent validation.
