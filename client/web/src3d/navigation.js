@@ -5,7 +5,7 @@ import {rideStart,startRide,stepRide} from '../../../shared/activities/ride.js';
 import {flightInput} from './flight-input.js';
 import {stepWalk} from '../../../shared/activities/walk.js';
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
-  let mode='orbit',state=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true;
+  let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true;
   let weather='soaring',siteIndex=0,feedbackTime=0,effects=1;
   const flightPressed=new Set(),flightModes=Object.keys(config.modes);
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
@@ -13,7 +13,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const height=(x,y)=>ground.height(x,y)??0;
   const forward=new T.Vector3(),side=new T.Vector3();
   const target=new T.Vector3();
-  const clear=()=>{keys.clear();drag=false;accumulator=0;};
+  const clear=()=>{keys.clear();drag=false;accumulator=0;previousFlight=null;};
   function key(e,down){if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(riding()||config.modes[mode]))toggleView();
     if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
@@ -68,8 +68,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }else{
       const input=flightInput(pad,keys);
       accumulator+=Math.min(dt,.05);
-      while(accumulator>=1/120){state=stepFlight(state,input,1/120,time,config,worldmap.wind.direction_deg,height,hitTest);time+=1/120;accumulator-=1/120;}
-      updateFlightPresentation(dt);
+      while(accumulator>=1/120){previousFlight=state;state=stepFlight(state,input,1/120,time,config,worldmap.wind.direction_deg,height,hitTest);time+=1/120;accumulator-=1/120;}
+      updateFlightPresentation(dt,flightPose());
       feedbackTime+=dt;
       if(options.haptics?.()!==false&&effects&&feedbackTime>.12&&pad?.vibrationActuator?.playEffect){
         feedbackTime=0;const strength=state.grounded?0:Math.min(.45,Math.abs(state.turbulence)*.07+Math.max(0,state.load-1)*.15);
@@ -102,22 +102,30 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // Walk heading follows movement; the camera's yaw stays independently controllable.
     follow(dt,5.4,Math.PI/2);
   }
-  function updateFlightPresentation(dt){
-    rig.position.set(state.x,state.z-config.landing_clearance_m,-state.y);
-    rig.rotation.set(-state.pitch,state.heading+Math.PI/2,-state.bank*.65);
+  function flightPose(){
+    if(!previousFlight||state.grounded)return state;
+    // Render between physics ticks so both the pilot and camera aim move on
+    // every frame. The simulation and instruments keep the current state.
+    const pose={...state},alpha=accumulator*120;
+    for(const key of ['x','y','z','heading','pitch','bank','speed'])pose[key]=previousFlight[key]+(state[key]-previousFlight[key])*alpha;
+    return pose;
+  }
+  function updateFlightPresentation(dt,pose=state){
+    rig.position.set(pose.x,pose.z-config.landing_clearance_m,-pose.y);
+    rig.rotation.set(-pose.pitch,pose.heading+Math.PI/2,-pose.bank*.65);
     character.object.position.copy(rig.position);
     character.object.quaternion.copy(rig.quaternion);
-    character.object.rotateZ(state.bank*.25);character.object.visible=view==='chase';
-    character.update(dt,state.grounded?'idle':'flight',0,{mode:state.mode,bank:state.bank,grounded:state.grounded});
+    character.object.rotateZ(pose.bank*.25);character.object.visible=view==='chase';
+    character.update(dt,pose.grounded?'idle':'flight',0,{mode:pose.mode,bank:pose.bank,grounded:pose.grounded});
     if(view==='chase'){
-      follow(dt,(12+Math.min(3,state.speed*.08))*Math.max(1,.95/camera.aspect),state.heading);
+      follow(dt,(12+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
     }else{
-      character.object.visible=false;camera.position.set(state.x,state.z+.15,-state.y);
-      look.set(pitch+state.pitch*.2,state.heading-Math.PI/2+yaw,-state.bank*.08*effects);camera.quaternion.setFromEuler(look);snap=false;
+      character.object.visible=false;camera.position.set(pose.x,pose.z+.15,-pose.y);
+      look.set(pitch+pose.pitch*.2,pose.heading-Math.PI/2+yaw,-pose.bank*.08*effects);camera.quaternion.setFromEuler(look);snap=false;
     }
-    const desired=62+Math.min(18,Math.max(0,state.speed-12)*.8)*effects;
+    const desired=62+Math.min(18,Math.max(0,pose.speed-12)*.8)*effects;
     camera.fov+= (desired-camera.fov)*(1-Math.exp(-dt*3));camera.updateProjectionMatrix();
-    rig.userData.flightUpdate?.(dt,state);
+    rig.userData.flightUpdate?.(dt,pose);
   }
   /** Steer, pedal or pole, brake, tuck and hop; a chase camera, or first person on V / Y. */
   function updateRide(dt,pad,x,y){
