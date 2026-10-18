@@ -5,7 +5,7 @@
     "blimp": 24,
     "city_tower": 12,
     "dome": 5,
-    "forest_tree": 6950,
+    "forest_tree": 6949,
     "hardstanding": 2,
     "homestead": 25,
     "lake": 1,
@@ -295584,40 +295584,6 @@
         0.832536,
         0.832536,
         0.832536
-      ],
-      "tags": [
-        "main_canopy",
-        "forest_slope",
-        "forest",
-        "mountain_pine"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "redwood/mountain_pine.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 1024.5005,
-      "kind": "forest_tree",
-      "parts": [
-        {
-          "mesh": "mountain_pine",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -403.9478,
-        1584.3522,
-        1024.5005
-      ],
-      "scale": [
-        0.867233,
-        0.867233,
-        0.867233
       ],
       "tags": [
         "main_canopy",

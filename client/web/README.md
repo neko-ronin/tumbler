@@ -1,5 +1,52 @@
 # client/web
 
+## Current flight delivery — 2026-10-18
+
+Wind rendering now falls back to nearest air samples when linear float texture
+filtering is unavailable. Debris spawns within its eviction circle and keeps
+drifting in world space as the camera moves. The shared schema's repeated mode
+coefficient constraints use common `$defs` with the same validation behavior.
+Web **142/142**, focused Python **19/19**; the
+[review resolution](../../docs/reviews/flight-experience-2026-10-18.md#resolution-and-fresh-verification)
+records regression failures, browser fallback proof and schema equivalence.
+The delivery contains both flight passes and their review fixes. See
+[BUILD-STATUS.md](BUILD-STATUS.md) for current publication status. Physical
+acceptance and sustained profiling remain open in roadmap R0062. The dated
+local-only entries below describe earlier checkpoints.
+
+## Flight second pass — 2026-10-17
+
+Version-3 shared flight adds retained dive/flare energy, held B/Shift maneuver
+rolls/spirals and bounded ground drag relief. Wind cues in vegetation, drifting
+material and water sample the same local air field as the aircraft. Rebuilt
+rounded cells, intakes, reinforcement and riser cascades are visible in the
+opened roll and front views. Flight moves explains controls in the scene.
+
+Current preview: http://127.0.0.1:8004/client/web/scene.html . Local only.
+Web 140/140; see the [flight brief](../../shared/geometry/flight/EXPERIENCE.md)
+for opened evidence, approximations and limits. Physical pad/audio/haptics,
+human visual acceptance and sustained target-size performance remain open.
+
+## First flight upgrade — 2026-10-17
+
+Paragliding, parakiting and paramotoring now use version-2 shared flight/weather
+rules researched from actual manuals. Fly with a controller: left stick shifts
+weight and changes speed demand, LT/RT pull independent handles, LB/RB adjust
+held motor power, right stick looks, A launches/retries, Y changes view, D-pad
+changes wing/ridge, and X cycles weather. Keyboard flight retains A/D, W/S,
+R/F, drag look and adds V view switching.
+
+Inflated cell wings flex with brake, pressure and load. Speed FOV, peripheral
+blur, first-person view, vario/wind audio and motor detail improve feedback.
+Field notes offers reduced effects, haptics, adaptive resolution and Save view.
+Preview: http://127.0.0.1:8003/client/web/scene.html .
+
+Read the [flight brief](../../shared/geometry/flight/EXPERIENCE.md) for source
+manuals, controls, reproducible geometry, tests, opened evidence and limits.
+The flight work is local on `codex/flight-experience`; it has not been deployed.
+Physical-controller feel and sustained performance remain unaccepted. The
+records below describe previous integrations.
+
 The browser client. WebGL.
 
 ## Current status — 2026-10-17, Cat Ronin fidelity

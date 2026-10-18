@@ -1,7 +1,7 @@
 {
-  "version": 1,
+  "version": 3,
   "units": "metres, seconds",
-  "model": "recreational game flight; wind-relative airspeed, polar sink, ridge lift and thermals",
+  "model": "manual-informed recreational flight; retained dive energy, maneuver recovery, bounded ground drag relief and terrain weather; not training software",
   "wing_asset": "flight/parafoil.glb",
   "motor_asset": "flight/paramotor.glb",
   "wind": {
@@ -13,27 +13,71 @@
       "label": "Paragliding",
       "trim_mps": 11.5,
       "sink_mps": 1.1,
-      "turn_rps": 0.48,
+      "turn_rps": 0.85,
       "powered_climb_mps": 0,
-      "tether_m": 0
+      "tether_m": 0,
+      "max_bank_rad": 0.75,
+      "brake_fraction": 0.34,
+      "accelerator_fraction": 0.45,
+      "speed_response": 0.58,
+      "polar_drag": 5,
+      "flare_efficiency": 0.72,
+      "span_m": 11.6,
+      "chord_m": 3.2,
+      "canopy_height_m": 5.4,
+      "arc_m": 1.7,
+      "dive_response": 0.9,
+      "maneuver_bank_rad": 1.12,
+      "recovery_response": 0.68,
+      "roll_damping": 3.7,
+      "ground_drag_relief": 0.23
     },
     "parakite": {
       "label": "Parakiting",
       "trim_mps": 19.5,
       "sink_mps": 1.9,
-      "turn_rps": 0.75,
+      "turn_rps": 1.15,
       "powered_climb_mps": 0,
       "tether_m": 0,
-      "flare_efficiency": 0.68,
-      "wing_asset": "flight/parakite.glb"
+      "flare_efficiency": 0.84,
+      "wing_asset": "flight/parakite.glb",
+      "max_bank_rad": 1.02,
+      "brake_fraction": 0.43,
+      "accelerator_fraction": 0.48,
+      "speed_response": 0.68,
+      "polar_drag": 7,
+      "span_m": 8.5,
+      "chord_m": 2.5,
+      "canopy_height_m": 5.0,
+      "arc_m": 1.25,
+      "dive_response": 0.95,
+      "maneuver_bank_rad": 1.26,
+      "recovery_response": 0.55,
+      "roll_damping": 3.1,
+      "ground_drag_relief": 0.23
     },
     "paramotor": {
       "label": "Paramotoring",
       "trim_mps": 13.0,
       "sink_mps": 1.3,
-      "turn_rps": 0.42,
+      "turn_rps": 0.62,
       "powered_climb_mps": 5.0,
-      "tether_m": 0
+      "tether_m": 0,
+      "max_bank_rad": 0.65,
+      "brake_fraction": 0.32,
+      "accelerator_fraction": 0.32,
+      "speed_response": 0.58,
+      "polar_drag": 5,
+      "flare_efficiency": 0.65,
+      "span_m": 11.6,
+      "chord_m": 3.2,
+      "canopy_height_m": 5.4,
+      "arc_m": 1.7,
+      "dive_response": 0.75,
+      "maneuver_bank_rad": 0.88,
+      "recovery_response": 0.75,
+      "roll_damping": 3.7,
+      "ground_drag_relief": 0.23
     }
   },
   "launches": [
@@ -54,6 +98,16 @@
         1360
       ],
       "heading_deg": 250
+    },
+    {
+      "id": "trail-t5",
+      "label": "T5 \u00b7 trail descent",
+      "xy_m": [
+        -420,
+        1560
+      ],
+      "heading_deg": 225,
+      "clearance_m": 32
     }
   ],
   "thermals": [
@@ -89,5 +143,28 @@
   "ceiling_m": 2200,
   "world_limit_m": 3950,
   "launch_radius_m": 20.0,
-  "launch_clearance_m": 90.0
+  "launch_clearance_m": 90.0,
+  "weather": {
+    "calm": {
+      "label": "Calm air",
+      "wind_scale": 0.45,
+      "gust_scale": 0.12,
+      "thermal_scale": 0.15,
+      "turbulence_mps": 0.08
+    },
+    "soaring": {
+      "label": "Thermal day",
+      "wind_scale": 1,
+      "gust_scale": 0.65,
+      "thermal_scale": 1,
+      "turbulence_mps": 0.5
+    },
+    "alpine": {
+      "label": "Alpine gusts",
+      "wind_scale": 1.65,
+      "gust_scale": 1.7,
+      "thermal_scale": 0.65,
+      "turbulence_mps": 1.8
+    }
+  }
 }

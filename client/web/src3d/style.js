@@ -8,9 +8,17 @@ export const style = {
   cover: { value: null },
   coverGrid: { value: new T.Vector4() },
   snow: { value: null },
-  // Where the map's wind blows TOWARD, as a unit scene (x, z); main.js sets it from wind.direction_deg.
+  // Where the map's wind blows TOWARD, in scene (x, z); main.js sets bearing and relative simulated strength.
+  air: {value:null},
+  airGrid: {value:new T.Vector4(0,0,640,0)},
   wind: { value: new T.Vector2(1, 0) },
 };
+// Shared air samples packed as scene (east, south) velocity, lift, roughness.
+const AIR_GLSL=`uniform sampler2D uAir;uniform vec4 uAirGrid;uniform vec2 uWind;
+vec4 localAir(vec2 p){vec2 uv=(p-uAirGrid.xy)/uAirGrid.z;
+  float inside=step(0.,uv.x)*step(0.,uv.y)*step(uv.x,1.)*step(uv.y,1.)*uAirGrid.w;
+  return mix(vec4(uWind*4.2,0.,0.),texture2D(uAir,clamp(uv,0.,1.)),inside);}
+`;
 // Bare ground the vertex colours leave to the shader, so rock and snow can
 // break up per pixel instead of switching at the 8 m sample spacing.
 const linear = hex => new T.Color(hex).toArray().map(v => v.toFixed(4)).join(',');
@@ -37,9 +45,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = style.time;
     shader.uniforms.uWind = style.wind;
+    shader.uniforms.uAir=style.air;shader.uniforms.uAirGrid=style.airGrid;
     shader.uniforms.uSun = style.sun;
     if(terrain){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;}
-    shader.vertexShader = 'uniform float uTime; uniform vec2 uWind; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'attribute float petal; attribute vec3 flowerTint; varying float vPetal; varying vec3 vFlower;\n' : '') + shader.vertexShader;
+    shader.vertexShader = AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'attribute float petal; attribute vec3 flowerTint; varying float vPetal; varying vec3 vFlower;\n' : '') + shader.vertexShader;
     shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
       #include <begin_vertex>
       ${foliage ? `#ifdef USE_INSTANCING
@@ -47,12 +56,18 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       #else
         vTreeHue = .5;
       #endif` : ''}
+      ${foliage ? `#ifdef USE_INSTANCING
+        vec4 air=localAir(instanceMatrix[3].xz);
+        vec3 localWind=vec3(air.x,0.,air.y)*mat3(instanceMatrix);
+        transformed+=localWind*min(.08,max(0.,position.y)*.002)*(.9+.1*sin(uTime*2.+position.y));
+      #endif` : ''}
       ${meadow ? `vPetal = petal; vFlower = flowerTint; vec3 root = instanceMatrix[3].xyz;
-      // Gusts travel downwind and bend stems along the wind; the instance turn is undone so every cell agrees.
-      vec3 down = normalize(vec3(uWind.x, 0., uWind.y) * mat3(instanceMatrix)), across = vec3(-down.z, 0., down.x);
-      float bend = max(0., position.y);
-      transformed += down * sin(uTime * 1.2 - dot(root.xz, uWind) * .031 + position.y) * .24 * bend
-        + across * cos(uTime * .9 + root.x * .018) * .12 * bend;` : ''}
+      vec4 air=localAir(root.xz);
+      vec3 localWind=vec3(air.x,0.,air.y)*mat3(instanceMatrix);
+      float bend=max(0.,position.y);
+      // Mean lean makes direction readable; small flutter follows sampled roughness.
+      transformed+=localWind*.045*bend*(.85+.15*sin(uTime*3.+position.y*2.))
+        + vec3(-localWind.z,0.,localWind.x)*sin(uTime*4.+root.x)*.009*air.w*bend;` : ''}
     `);
     shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', `
       vec4 place = vec4(transformed, 1.);
@@ -252,7 +267,7 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
     defines: ribbon ? { RIBBON: '' } : {},
     uniforms: { uTime: style.time, uSun: style.sun, uHeights: { value: heights },
       uGrid: { value: new T.Vector4(grid.offsetX, grid.offsetY, grid.quad, grid.resolution) },
-      uFlow:{value:flow},uRiver: { value: river ? 1 : 0 }, ...T.UniformsUtils.merge([T.UniformsLib.fog]) },
+      uAir:style.air,uAirGrid:style.airGrid,uWind:style.wind,uFlow:{value:flow},uRiver: { value: river ? 1 : 0 }, ...T.UniformsUtils.merge([T.UniformsLib.fog]) },
     fog: true,
     vertexShader: `varying vec3 vPlace; varying vec3 vView;
       #ifdef RIBBON
@@ -266,7 +281,7 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
       vec4 mvPosition=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mvPosition;
       #include <fog_vertex>
       }`,
-    fragmentShader: `
+    fragmentShader: AIR_GLSL+`
       uniform float uTime; uniform float uRiver; uniform vec3 uSun; uniform sampler2D uHeights; uniform sampler2D uFlow; uniform vec4 uGrid;
       varying vec3 vPlace; varying vec3 vView;
       #ifdef RIBBON
@@ -313,6 +328,10 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
         // Mean of the two pixel axes: the long axis alone flattens grazing water.
         vec2 axes=vec2(length(dFdx(p)),length(dFdy(p)));float footprint=(axes.x+axes.y)*.5,calm;
         vec2 slope=ripples(p,flow,footprint,calm);
+        vec4 air=localAir(p);float windSpeed=length(air.xy);
+        vec2 down=air.xy/max(.01,windSpeed),across=vec2(-down.y,down.x);
+        float windRipple=sin(dot(p,down)*3.-uTime*windSpeed*1.7+sin(dot(p,across)*.16));
+        slope+=down*windRipple*min(.045,windSpeed*.004)*(1.-smoothstep(.25,1.2,footprint));
         vec3 n=normalize(vec3(-slope.x,1.,-slope.y));
         vec3 eye=normalize(vView);
         float fresnel=.02+.98*pow(1.-max(0.,dot(n,eye)),5.);

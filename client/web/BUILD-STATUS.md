@@ -1,3 +1,90 @@
+# Flight v3 delivery — 2026-10-18
+
+Source delivery: `7ea5a75`, `1efb1ca`, `c5f10a8`. The human authorized main
+integration and the normal publishing hook. This checkpoint prepares the
+documentation and roadmap before the merge; publication outcome is pending.
+The [handoff](../../docs/HANDOVER.md) records the subsequent release receipt.
+
+The [flight review](../../docs/reviews/flight-experience-2026-10-18.md) findings
+are fixed locally on `codex/flight-experience`. Air textures use linear filtering
+only when the renderer supports it, otherwise nearest filtering. Debris spawns
+inside its eviction circle and retains world-space drift. Shared mode
+coefficient constraints now use `$defs` with equivalent validation.
+
+Web **142/142**, focused Python **19/19**, package integrity **78 fetched files**
+plus the map's 17; viewer hashes regenerated. Both new regressions failed before
+the fixes. Browser pixel readback passes with float-linear support present or
+masked, while forced-linear filtering still fails without the extension.
+Schema diagnostics match the old contract across **899 cases**. Root pyright
+retains **132 errors / 1 warning** in existing Python. No dependency, geography,
+flight tuning or bike/ski rule change. Physical, visual and sustained-performance
+acceptance remain open in roadmap R0062; Unreal parity remains separate.
+Older local-only records below are historical checkpoints.
+
+---
+
+# Flight second pass — 2026-10-17
+
+Saved locally on `codex/flight-experience`; no merge, push or deployment.
+Preview: http://127.0.0.1:8004/client/web/scene.html .
+
+Version-3 shared rules retain dive speed, pay flare height from kinetic energy,
+add held B/Shift wingovers/spirals with damped recovery, and model modest
+canopy-clearance-based ground drag relief. Rounded cell wings now show inflated
+skins, intakes, reinforcement and cascaded risers; the browser adds shared-air
+vegetation/debris/water wind cues and a clearer chase view. No new dependency
+or geography/other-activity change was made.
+
+Source research and approximations: [flight manuals](../../docs/design/FLIGHT-MANUALS.md).
+Controls, opened judgment, exact evidence, reproduction and limits:
+[flight experience brief](../../shared/geometry/flight/EXPERIENCE.md).
+Web **140/140**, focused Python **19/19**, changed Python **0 errors**.
+Three deliberate faults fail their properties and were restored. Startup and
+packaging verify **78 fetched files**; static package **96 files / 52.3 MB**.
+Root pyright retains the previous **132 errors / 1 warning** in unchanged files.
+
+Opened ordinary-keyboard T5 dive/flare, loaded roll, intake, motor and matched
+meadow wind views are saved beside the asset, with sampled motion clips.
+A 90.5 s M2/16 GB local flight had three near-60-fps rolling windows at the small
+431×977 viewport; this is not a complete trace or target-size sustained guarantee.
+Physical pad/haptic/audio feel, repeatable near-ground handling, human visual
+acceptance, sustained profiling and Unreal parity remain open. Next: physical-pad
+T5 review, then a complete target-resolution frame trace.
+
+---
+
+# Flight simulation upgrade — 2026-10-17
+
+Implemented locally on `codex/flight-experience`; not merged or published.
+The browser preview is http://127.0.0.1:8003/client/web/scene.html .
+
+Version-2 shared flight rules add manual-informed polars, bank/load response,
+parakite handle semantics, paid dive/flare energy, motor spool/torque and
+terrain-sensitive deterministic weather. The browser adds a complete controller
+flow, flight instruments, moving inflated fabric, motor detail, first-person
+view, adjustable speed effects, antialiasing and a resolution governor that
+retains reductions only when frame pacing improves. T5's core launch clears one
+pine; other geography, ground/snow stamps and bike/ski tuning are unchanged.
+No dependency was added.
+
+Research: [actual manuals](../../docs/design/FLIGHT-MANUALS.md).
+Implementation, controls, opened evidence, measurements and explicit limits:
+[flight experience brief](../../shared/geometry/flight/EXPERIENCE.md).
+Web **133/133**, focused Python **19/19**, changed Python **0 type errors**;
+root pyright retains **132 errors/1 warning** in unchanged files. Startup and
+packaging verify **77 fetched files**. Static package: **95 files / 51.7 MB**.
+Two deliberate physics faults fail the new properties and were restored.
+
+Short early 1280×720 windows were near 60 fps; later windows were near 30 fps,
+including at reduced resolution. This does not establish sustained 60 fps.
+The final governor preserves sharpness when a scale trial does not help.
+Physical controller, haptics and audio acceptance, sustained profiling and
+Unreal parity remain open. Next: use a physical pad on T5, tune feel, and profile
+that route continuously on a named device. The detailed brief records capture
+limits and the stalled browser download.
+
+---
+
 # Cat Ronin integration verification — 2026-10-17
 
 Combined the character work with main's publishing pipeline, west wind and

@@ -5,7 +5,7 @@
 import * as T from '../vendor/three.module.min.js';
 import {style} from './style.js';
 export function createCloudPass(renderer,scene,camera,atmosphere){
-  const opaque=new T.WebGLRenderTarget(1,1,{depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)});
+  const opaque=new T.WebGLRenderTarget(1,1,{samples:Math.min(4,renderer.capabilities.maxSamples),depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)});
   opaque.texture.colorSpace=T.LinearSRGBColorSpace;
   const cloudy=new T.WebGLRenderTarget(1,1,{depthBuffer:false});
   const volumes=new T.Scene(),size=new T.Vector2();
@@ -63,19 +63,43 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
     const box=new T.Mesh(geometry,material);box.position.copy(centre);box.scale.copy(extent);box.name=`cumulus_${cell.seed}`;volumes.add(box);
   }
   const fullscreen=new T.Scene(),quadCamera=new T.OrthographicCamera(-1,1,1,-1,0,1);
+  const flightFX={value:0};
   fullscreen.add(new T.Mesh(new T.PlaneGeometry(2,2),new T.ShaderMaterial({depthWrite:false,depthTest:false,
-    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture}},
+    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uFlightFX:flightFX},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
-    fragmentShader:`uniform sampler2D uWorld,uCloud;varying vec2 vUv;void main(){vec4 sky=texture2D(uCloud,vUv);gl_FragColor=vec4(texture2D(uWorld,vUv).rgb*(1.-sky.a)+sky.rgb,1.);#include <tonemapping_fragment>\n#include <colorspace_fragment>}`.replace(';#include',';\n#include')
+    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth;uniform float uFlightFX;varying vec2 vUv;
+      vec3 composite(vec2 uv){vec4 c=texture2D(uCloud,uv);return texture2D(uWorld,uv).rgb*(1.-c.a)+c.rgb;}
+      void main(){
+        vec2 radial=vUv-.5;float radius=length(radial);
+        float edge=smoothstep(.28,.68,radius)*uFlightFX;
+        vec3 color=composite(vUv);
+        // Depth-aware peripheral radial blur. Centre/path stays sharp; no history buffer.
+        if(edge>.01){
+          float depth=texture2D(uDepth,vUv).r,total=1.;
+          for(int i=1;i<=3;i++){
+            vec2 uv=clamp(vUv-radial*float(i)*.004*edge,vec2(.001),vec2(.999));
+            float agree=1.-smoothstep(.00002,.0006,abs(texture2D(uDepth,uv).r-depth));
+            color+=composite(uv)*agree;total+=agree;
+          }
+          color/=total;
+        }
+        color*=1.-edge*.09;
+        gl_FragColor=vec4(color,1.);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`
+
   })));
-  function render(){
-    const dimensions=renderer.getDrawingBufferSize(new T.Vector2());
+  const dimensions=new T.Vector2(),savedColor=new T.Color();
+  function render({speed=0,strength=1}={}){
+    flightFX.value=speed*strength;
+    renderer.getDrawingBufferSize(dimensions);
     if(opaque.width!==dimensions.x||opaque.height!==dimensions.y){opaque.setSize(dimensions.x,dimensions.y);cloudy.setSize(Math.ceil(dimensions.x*.5),Math.ceil(dimensions.y*.5));size.set(cloudy.width,cloudy.height);}
     camera.getWorldDirection(forward.value);
     renderer.setRenderTarget(opaque);renderer.render(scene,camera);
-    const color=renderer.getClearColor(new T.Color()),alpha=renderer.getClearAlpha();
+    const color=renderer.getClearColor(savedColor),alpha=renderer.getClearAlpha();
     renderer.setClearColor(0,0);renderer.setRenderTarget(cloudy);renderer.clear();renderer.render(volumes,camera);
     renderer.setClearColor(color,alpha);renderer.setRenderTarget(null);renderer.render(fullscreen,quadCamera);
   }
-  return {render,volumes,opaque,cloudy,dispose(){opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();volumes.children.forEach(m=>m.material.dispose());}};
+  return {render,flightFX,volumes,opaque,cloudy,dispose(){opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>m.material.dispose());}};
 }

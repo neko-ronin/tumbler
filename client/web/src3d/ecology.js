@@ -4,7 +4,7 @@ import {mergePrimitives} from './glb.js';
 import {buildStylizedForest} from './forest.js';
 import {style} from './style.js';
 import {createSchool,stepSchool} from '../../../shared/ecology/aquatic.js';
-export function buildEcology(habitats,meadowData,assets,ground,cover,renderer){
+export function buildEcology(habitats,meadowData,assets,ground,cover,renderer,sampleAir){
   const group=new T.Group();group.name='living_habitats';
   const schools=new Map(habitats.habitats.map(h=>[h.id,createSchool(h)]));let lastTime=0;
   const matrix=new T.Matrix4(),position=new T.Vector3(),quat=new T.Quaternion(),scale=new T.Vector3(),up=new T.Vector3(0,1,0);
@@ -25,6 +25,7 @@ transformed.y+=sin(uTime*${species.kind==='butterfly'?'18.':'90.'})*abs(position
   }
   const debris=new T.InstancedMesh(new T.PlaneGeometry(.075,.12),new T.MeshBasicMaterial({color:'#efbd81',side:T.DoubleSide,transparent:true,opacity:.68}),100);debris.frustumCulled=false;group.add(debris);
   for(let i=0;i<100;i++)debris.setColorAt(i,new T.Color(['#e5b1b8','#e8cb8d','#b3ca78','#d8d2ab'][i%4]));
+  const motes=Array.from({length:100},()=>({x:NaN,y:0,z:0}));
   function place(mesh,n,x,z,y,yaw=0,s=1){position.set(x,y,-z);quat.setFromAxisAngle(up,yaw);scale.setScalar(s);matrix.compose(position,quat,scale);mesh.setMatrixAt(n,matrix);}
   function update(camera,time){
     bankForest.update(camera);
@@ -68,11 +69,20 @@ transformed.y+=sin(uTime*${species.kind==='butterfly'?'18.':'90.'})*abs(position
     }
     let count=0;
     for(let i=0;i<Math.min(100,Math.ceil(meadowData.windborne.per_hectare*.25));i++){
-      const x=camera.position.x+((i*7.137+time*.8)%50)-25,y=-camera.position.z+((i*3.71+time*.4)%50)-25;
-      if(!cover.contains(x,y))continue;
-      const z=(ground.height(x,y)??0)+.6+(i%7)*.4+Math.sin(time*.8+i)*.4;
-      if(camera.position.y>z+70)continue;
-      place(debris,count++,x,y,z,time*.6+i,1);
+      const mote=motes[i];
+      if(!Number.isFinite(mote.x)||Math.hypot(mote.x-camera.position.x,mote.y+camera.position.z)>45){
+        // Respawn off-centre, then drift in world space. Never attach motion to the camera.
+        const angle=i*2.399;
+        mote.x=camera.position.x+Math.sin(angle)*35;mote.y=-camera.position.z+Math.cos(angle)*35;
+        mote.z=(ground.height(mote.x,mote.y)??0)+.7+(i%9)*.35;
+      }
+      const air=sampleAir(mote.x,mote.y,mote.z);
+      mote.x+=air.wx*dt;mote.y+=air.wy*dt;
+      const floor=(ground.height(mote.x,mote.y)??0)+.35;
+      mote.z=Math.max(floor,Math.min(floor+4,mote.z+(air.lift*.15-.08)*dt));
+      if(!cover.contains(mote.x,mote.y)||camera.position.y>mote.z+45)continue;
+      const strength=Math.min(2,Math.hypot(air.wx,air.wy)*.16);
+      place(debris,count++,mote.x,mote.y,mote.z,Math.atan2(air.wx,air.wy)+Math.sin(time*3+i)*.12,1+strength*.2);
     }
     debris.count=count;debris.instanceMatrix.needsUpdate=true;
   }
