@@ -106,11 +106,12 @@ test('a controller alone can launch, steer, change wing/ridge/weather, look and 
  const nav=createNavigation(camera,canvas,{target:new T.Vector3(),update(){},setTarget(){}},{height:flat},{...config,launch_clearance_m:500},world,rig,()=>null,{config:ride,rig:rideRig,meshes:{},height:flat,snowAt:()=>1},cat,characterConfig,{onFlightChange:()=>changes++});
  const press=i=>{pad.buttons[i].pressed=true;nav.update(1/60);pad.buttons[i].pressed=false;nav.update(1/60);};
  try{
+  nav.update(0); // Observe released input before accepting the first deliberate A.
   press(0);assert.equal(nav.mode,'paraglider');assert.ok(nav.state.distance>0);
   pad.buttons[0].pressed=true;nav.update(1/60);const first=nav.state.distance;for(let i=0;i<20;i++)nav.update(1/60);assert.ok(nav.state.distance>first+1,'a held retry must not relaunch every frame');pad.buttons[0].pressed=false;nav.update(1/60);
   press(15);assert.equal(nav.mode,'parakite');pad.axes[0]=.65;for(let i=0;i<60;i++)nav.update(1/60);assert.ok(nav.state.bank>.1);pad.axes[0]=1;pad.buttons[1].pressed=true;for(let i=0;i<150;i++)nav.update(1/60);assert.ok(nav.state.bank>config.modes.parakite.max_bank_rad+.1,'B grants maneuver authority');pad.buttons[1].pressed=false;pad.axes[0]=0;for(let i=0;i<240;i++)nav.update(1/60);assert.ok(Math.abs(nav.state.bank)<.05,'releasing B recovers');
   press(15);assert.equal(nav.mode,'paramotor');const throttle=nav.state.throttle;pad.buttons[5].pressed=true;for(let i=0;i<60;i++)nav.update(1/60);assert.ok(nav.state.throttle>throttle);pad.buttons[5].pressed=false;
-  press(13);assert.equal(nav.siteIndex,1);press(2);assert.equal(nav.weather,'alpine');assert.equal(nav.state.weather,'alpine');
+  press(13);assert.equal(nav.siteIndex,1);press(9);assert.equal(nav.weather,'alpine');assert.equal(nav.state.weather,'alpine');
   press(3);assert.equal(nav.view,'first');assert.equal(cat.object.visible,false);
   const view=camera.quaternion.clone();pad.axes[2]=.7;for(let i=0;i<10;i++)nav.update(1/60);assert.ok(camera.quaternion.angleTo(view)>.01);
   press(0);assert.equal(nav.state.grounded,false);assert.ok(changes>0);

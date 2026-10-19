@@ -4,6 +4,7 @@
  */
 import * as T from '../vendor/three.module.min.js';
 import {style} from './style.js';
+import {createSunRays} from './sun-rays.js';
 export function createCloudPass(renderer,scene,camera,atmosphere){
   const opaque=new T.WebGLRenderTarget(1,1,{samples:Math.min(4,renderer.capabilities.maxSamples),depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)});
   opaque.texture.colorSpace=T.LinearSRGBColorSpace;
@@ -64,10 +65,11 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
   }
   const fullscreen=new T.Scene(),quadCamera=new T.OrthographicCamera(-1,1,1,-1,0,1);
   const flightFX={value:0};
+  const rays=createSunRays(opaque.depthTexture,cloudy.texture,opaque.texture);
   fullscreen.add(new T.Mesh(new T.PlaneGeometry(2,2),new T.ShaderMaterial({depthWrite:false,depthTest:false,
-    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uFlightFX:flightFX},
+    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uFlightFX:flightFX,uRays:{value:rays.target.texture},uRayStrength:rays.strength,uWarmth:style.warmth},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
-    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth;uniform float uFlightFX;varying vec2 vUv;
+    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth,uRays;uniform float uFlightFX,uRayStrength,uWarmth;varying vec2 vUv;
       vec3 composite(vec2 uv){vec4 c=texture2D(uCloud,uv);return texture2D(uWorld,uv).rgb*(1.-c.a)+c.rgb;}
       void main(){
         vec2 radial=vUv-.5;float radius=length(radial);
@@ -84,6 +86,13 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
           color/=total;
         }
         color*=1.-edge*.09;
+        // Repeat the full-resolution solid mask after upsampling so rays can
+        // never bleed onto a mountain or through the foreground wing/pilot.
+        if(uRayStrength>.001){
+          float sky=step(.9999998,texture2D(uDepth,vUv).r);
+          color+=texture2D(uRays,vUv).r*uRayStrength*.10*sky*(1.-texture2D(uCloud,vUv).a)
+            *mix(vec3(1.,.91,.72),vec3(1.,.73,.40),uWarmth);
+        }
         gl_FragColor=vec4(color,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -93,13 +102,15 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
   const dimensions=new T.Vector2(),savedColor=new T.Color();
   function render({speed=0,strength=1}={}){
     flightFX.value=speed*strength;
+    style.sunEffects.value=strength;
     renderer.getDrawingBufferSize(dimensions);
     if(opaque.width!==dimensions.x||opaque.height!==dimensions.y){opaque.setSize(dimensions.x,dimensions.y);cloudy.setSize(Math.ceil(dimensions.x*.5),Math.ceil(dimensions.y*.5));size.set(cloudy.width,cloudy.height);}
     camera.getWorldDirection(forward.value);
     renderer.setRenderTarget(opaque);renderer.render(scene,camera);
     const color=renderer.getClearColor(savedColor),alpha=renderer.getClearAlpha();
     renderer.setClearColor(0,0);renderer.setRenderTarget(cloudy);renderer.clear();renderer.render(volumes,camera);
+    rays.render(renderer,camera,dimensions.x,dimensions.y,strength);
     renderer.setClearColor(color,alpha);renderer.setRenderTarget(null);renderer.render(fullscreen,quadCamera);
   }
-  return {render,flightFX,volumes,opaque,cloudy,dispose(){opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>m.material.dispose());}};
+  return {render,flightFX,rays,volumes,opaque,cloudy,dispose(){rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>m.material.dispose());}};
 }

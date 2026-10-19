@@ -1,6 +1,7 @@
 /** Small presentation geometry follows named core placements and tracks. */
 import * as T from '../vendor/three.module.min.js';
 import {instanceMatrix,toScene} from './world.js';
+export const TRAIL_SURFACE_LIFT=.06;
 /** One line per flying hull, from its mast's top to the hull's own `tether_anchor` node (under the head),
  * carried by the same instance transform that draws the hull, so the line meets the hull the core placed. */
 export function buildTethers(placement,assets){
@@ -29,7 +30,7 @@ export function buildTrails(worldmap,ground){
       const a=points[i],b=points[i+1],length=Math.hypot(b[0]-a[0],b[1]-a[1]);if(!length)continue;const steps=Math.ceil(length/6);
       const nx=-(b[1]-a[1])/length*w*.5,ny=(b[0]-a[0])/length*w*.5;
       const edge=(t,side)=>{const x=a[0]+(b[0]-a[0])*t+nx*side,y=a[1]+(b[1]-a[1])*t+ny*side;
-        return [x,profile?profile[i]+(profile[i+1]-profile[i])*t+.06:(ground.height(x,y)??0)+.09,-y];};
+        return [x,profile?profile[i]+(profile[i+1]-profile[i])*t+TRAIL_SURFACE_LIFT:(ground.height(x,y)??0)+.09,-y];};
       for(let j=0;j<steps;j++){
         const [l0,r0,l1,r1]=[edge(j/steps,-1),edge(j/steps,1),edge((j+1)/steps,-1),edge((j+1)/steps,1)];quad(l0,r0,l1,r1);
         if(profile)for(const [p,q] of [[l0,l1],[r0,r1]]){

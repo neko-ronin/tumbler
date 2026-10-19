@@ -42,10 +42,15 @@ export function createCharacter(asset, config) {
   const mixer = new T.AnimationMixer(model);
   const actions = Object.fromEntries(asset.animations.map(clip => [clip.name, mixer.clipAction(clip)]));
   for (const name of Object.values(config.clips)) if (!actions[name]) throw new Error(`Ronin is missing clip ${name}`);
+  for (const name of Object.values(config.jump_clips??{})) if (!actions[name]) throw new Error(`Ronin is missing jump clip ${name}`);
+  const feet=[];model.traverse(node=>{if(node.isMesh&&/^foot\./.test(node.parent?.name??''))feet.push(node);});
+  const footBox=new T.Box3();let lastJump=0;
   let current = null, clipName = null,tailAction=null,tailName=null,tailCategory=null,tailTime=0,tailIndex=0,lastPose=null,landedTime=0,blinkTime=3.7,elapsed=0;
   for(const names of Object.values(config.tail_clips??{}))for(const name of names)if(!actions[name])throw new Error(`Ronin is missing tail clip ${name}`);
   function update(dt, pose, speed = 0, context = {}) {
-    const name = config.clips[pose];
+    const jump=context.jump;
+    const authoredJump=jump&&config.jump_clips?.[jump.jumpStyle];
+    const name = authoredJump??config.clips[pose==='jump'?'idle':pose];
     const action = actions[name];
     if (!action) throw new Error(`Unknown Ronin pose ${pose}`);
     if (action !== current) {
@@ -53,6 +58,12 @@ export function createCharacter(asset, config) {
       current?.fadeOut(.18);
       current = action; clipName = name;
     }
+    if(authoredJump){
+      if(lastJump!==jump.jumpCount){action.reset().setLoop(T.LoopOnce,1).play();lastJump=jump.jumpCount;}
+      const phase=jump.jumpProgress??0;
+      const progress=jump.jumpPhase==='takeoff'?phase/6:jump.jumpPhase==='landing'?5/6+phase/6:1/6+phase*2/3;
+      action.paused=true;action.time=action.getClip().duration*progress;action.clampWhenFinished=true;
+    }else action.paused=false;
     action.timeScale = pose === 'walk' ? Math.max(.25, speed / config.walk.walk_mps)
       : pose === 'run' ? Math.max(.25, speed / config.walk.run_mps) : 1;
     if(lastPose==='flight'&&pose==='idle')landedTime=3;
@@ -72,7 +83,30 @@ export function createCharacter(asset, config) {
     elapsed+=dt;blinkTime-=dt;
     if(blinkTime<=0&&config.blink_clip){const blink=actions[config.blink_clip];blink.reset().setLoop(T.LoopOnce,1).play();blink.clampWhenFinished=true;blinkTime=3.2+1.7*(.5+.5*Math.sin(elapsed*1.37));}
     mixer.update(dt);
+    // Keep the animated soles above the actual terrain, including slope under
+    // either foot. This adjusts the rendered puppet only; physics owns its arc.
+    model.position.y=-config.sole_y_m*config.scale;
+    if(pose!=='flight'&&context.groundZ!==undefined){
+      model.updateWorldMatrix(true,true);let lift=0;
+      for(const foot of feet){
+        footBox.copy(foot.geometry.boundingBox).applyMatrix4(foot.matrixWorld);
+        const centre=footBox.getCenter(new T.Vector3());
+        const floor=context.groundHeight?.(centre.x,-centre.z)??context.groundZ;
+        lift=Math.max(lift,floor-footBox.min.y);
+      }
+      model.position.y+=lift;
+    }
     shadow.visible=pose!=='flight';
+    if(shadow.visible){
+      const gap=Math.max(0,object.position.y-(context.groundZ??object.position.y));
+      shadow.position.y=(context.groundZ??object.position.y)-object.position.y+.025;
+      shadow.material.opacity=1/(1+gap*1.5);shadow.scale.setScalar(1+gap*.2);
+      if(context.groundHeight){
+        const x=object.position.x,y=-object.position.z,h=context.groundHeight;
+        const normal=new T.Vector3((h(x-.4,y)-h(x+.4,y))/.8,1,(h(x,y+.4)-h(x,y-.4))/.8).normalize();
+        shadow.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),normal.applyQuaternion(object.quaternion.clone().invert()));
+      }
+    }
   }
   return { object, model, update, get clip() { return clipName; },get tailClip(){return tailName;}, dispose() { mixer.stopAllAction(); mixer.uncacheRoot(model); surfaces.dispose();for(const s of skeletons)s.dispose();for(const t of textures)t.dispose();for(const g of geometries)g.dispose();plaid.dispose();shadeTexture.dispose();shadow.geometry.dispose();shadow.material.dispose(); } };
 }

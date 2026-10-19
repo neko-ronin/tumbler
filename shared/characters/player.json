@@ -23,7 +23,16 @@
     "run_mps": 9,
     "max_step_m": 0.7,
     "max_grade": 1.8,
-    "radius_m": 0.35
+    "radius_m": 0.35,
+    "jump": {
+      "gravity_mps2": 10.8,
+      "takeoff_mps": 4.8,
+      "hop_mps": 3.8,
+      "takeoff_s": 0.12,
+      "landing_s": 0.18,
+      "air_control_mps2": 2.4,
+      "max_ground_grade": 1.0
+    }
   },
   "tail_clips": {
     "idle": [
@@ -61,7 +70,16 @@
     "landed": [
       "tail_settle",
       "tail_relaxed"
+    ],
+    "jump": [
+      "tail_run_balance"
     ]
   },
-  "blink_clip": "blink"
+  "blink_clip": "blink",
+  "jump_clips": {
+    "celebrate": "jump_celebrate",
+    "heel_click": "jump_heel_click",
+    "star": "jump_star",
+    "hop": "jump_hop"
+  }
 }

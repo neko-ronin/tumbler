@@ -1,9 +1,10 @@
-import {createAirCues} from './air-cues.js';
+import {createAirCues,createMeadowAir} from './air-cues.js';
 /** Browser composition only: the core remains the source of the world. */
 import * as T from '../vendor/three.module.min.js';
 import { createOrbitControls } from './controls.js';
 import { buildBlockTerrain, buildFarFieldRing, buildWater, buildRiverReaches } from './terrain.js';
 import { buildPlacements, buildForest } from './placements.js';
+import { buildTreeGroundShadows } from './forest.js';
 import { GroundSampler, HeightGrid, decodeGroundCover } from './heights.js';
 import { buildMeadowTiles, buildMeadowPatch, buildCloseMeadow } from './groundcover.js';
 import { parseGLB, applyImageBytes, mergePrimitives } from './glb.js';
@@ -14,11 +15,13 @@ import { createFlightRig } from './flight-rig.js';
 import { createNavigation } from './navigation.js';
 import { createCharacter } from './character.js';
 import { buildEcology } from './ecology.js';
-import { buildTethers, buildTrails } from './details.js';
+import { buildTethers, buildTrails, TRAIL_SURFACE_LIFT } from './details.js';
 import { createSoundscape } from './audio.js';
 import { buildWorldCollision } from './collision.js';
 import { sha256, verifyFetched, checkVersion } from './provenance.js';
+import {VERSION} from './version.js';
 import { createSnowSampler, createTrailSampler, createSurfaceSampler, createRideHeight } from '../../../shared/activities/ride.js';
+import { createWalkHeight } from '../../../shared/activities/walk.js';
 
 const root = new URL('../../../', import.meta.url);
 const observed=new Map();
@@ -33,6 +36,8 @@ async function main() {
   const canvas = document.getElementById('canvas');
   const status = document.getElementById('status');
   const stamp = document.getElementById('stamp');
+  const version = document.getElementById('version');
+  if (version) version.textContent = `v${VERSION}`;
   let creationError = '';
   canvas.addEventListener('webglcontextcreationerror', e => { creationError = e.statusMessage; });
   let renderer;
@@ -109,6 +114,7 @@ async function main() {
   scene.add(water, buildRiverReaches(worldmap, farGrid));
   const placements = buildPlacements(placement, assets, { ground }); scene.add(placements.group);
   const forest = buildForest(placement, assets,renderer); scene.add(forest.group);
+  const treeShadows=buildTreeGroundShadows(placement,assets,ground);scene.add(treeShadows.group);
   const cover = decodeGroundCover(stampData);
   const coverTexture=new T.DataTexture(Uint8Array.from(cover.covered,v=>v*255),cover.resolution,cover.resolution,T.RedFormat);
   coverTexture.minFilter=coverTexture.magFilter=T.LinearFilter;coverTexture.needsUpdate=true;
@@ -127,7 +133,7 @@ async function main() {
   const ecology=buildEcology(habitats,meadowData,assets,ground,closeMeadow,renderer,(x,y,z)=>navigation.sampleEnvironment(x,y,z));scene.add(ecology.group);
   scene.add(buildTethers(placement,assets),buildTrails(worldmap,ground));
   const flightRig=createFlightRig(assets,flightConfig),rig=flightRig.group;
-  rig.userData.flightUpdate=flightRig.update;scene.add(rig);
+  scene.add(rig);
   const rideRig=new T.Group();rideRig.name='player_ride';rideRig.rotation.order='YXZ';rideRig.visible=false;
   const rideMeshes=Object.fromEntries(Object.entries(rideConfig.modes).map(([name,m])=>{const merged=mergePrimitives(assets[m.asset].primitives,'opaque');const mesh=new T.Mesh(merged.geometry,merged.material);mesh.castShadow=true;mesh.visible=false;rideRig.add(mesh);return [name,mesh];}));
   scene.add(rideRig);
@@ -135,7 +141,27 @@ async function main() {
   const rideHeight=createRideHeight((x,y)=>ground.height(x,y)??0,trail);
   const hitTest=buildWorldCollision(placement,assets);
   const character=createCharacter(assets[characterConfig.asset],characterConfig);scene.add(character.object);
-  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{onFlightChange:syncFlightUI,haptics:()=>document.getElementById('haptics').checked});
+  const walkHeight=createWalkHeight(worldmap,(x,y)=>ground.height(x,y));
+  // Match the existing presentation lift of the rendered tread. Its authored
+  // profile remains the shared physical floor; this offset only clears pixels.
+  const characterHeight=(x,y)=>{const z=walkHeight.floorHeight(x,y),t=walkHeight.trailAt(x,y);return z===null?null:t?.beyond===0?Math.max(z,t.z+TRAIL_SURFACE_LIFT):z;};
+  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,onFlightChange:syncFlightUI,haptics:()=>document.getElementById('haptics').checked});
+  const clothAir=new T.Vector3(),clothFloor=new T.Vector3(),clothUp=new T.Vector3(),clothInverse=new T.Quaternion();
+  rig.userData.flightUpdate=(dt,state,presentation={})=>{
+    if(!(presentation.grounded??state.grounded)){flightRig.update(dt,state,presentation);return;}
+    rig.updateMatrixWorld(true);clothInverse.copy(rig.quaternion).invert();
+    const air=navigation.sampleEnvironment(state.x,state.y,state.z+2);
+    clothAir.set(air.wx,air.lift,-air.wy).applyQuaternion(clothInverse);
+    clothUp.set(0,1,0).applyQuaternion(rig.quaternion);
+    flightRig.update(dt,state,{...presentation,localAir:presentation.localAir??clothAir,groundAt:presentation.groundAt??((x,z)=>{
+      let y=0;
+      for(let i=0;i<3;i++){
+        clothFloor.set(x,y,z).applyMatrix4(rig.matrixWorld);
+        y+=((characterHeight(clothFloor.x,-clothFloor.z)??0)-clothFloor.y)/Math.max(.2,clothUp.y);
+      }
+      return y;
+    })});
+  };
   const soundscape=createSoundscape(habitats);
   document.getElementById('sound').addEventListener('click',async e=>{const enabled=await soundscape.toggle();e.target.textContent=enabled?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(enabled));});
   const modeSelect=document.getElementById('activity'),siteSelect=document.getElementById('launch-site');
@@ -145,21 +171,22 @@ async function main() {
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
-  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / left stick to walk · Drag / right stick to orbit the cat · Shift / L3 to run',
+  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / stick: walk · Shift / L3: run · Space / A: jump or moving skip · E / X: reharness · Drag / right stick: look',
     parakite:'A/D steer · W dive / S flare · Drag to look · Launch to restart',
     ski:'A/D carve · W pole · S snowplough · Shift tuck · Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
     bike:'A/D steer · W pedal · S brake · Shift crouch · Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
   function syncFlightUI(mode,site,weather){
-    if(flightConfig.modes[mode]){showStarts(mode);siteSelect.value=String(site);modeSelect.value=mode;document.body.dataset.flying='true';}
+    modeSelect.value=mode;document.body.dataset.flying=String(!!flightConfig.modes[mode]);
+    if(flightConfig.modes[mode]){showStarts(mode);siteSelect.value=String(site);}
     document.getElementById('weather').value=weather;updateHelp(mode);
   }
   function updateHelp(mode){
-    const flightHelp='Hold B + stick: wingovers / spirals · Stick: turn / speed · LT/RT: left/right handle · LB/RB: motor · Y: view · A: restart · D-pad: wing / ridge · X: weather';
+    const flightHelp='B + stick: wingovers · LT/RT: handles · LB/RB: motor · Y: view · Land then X: unhook · A: launch / air retry · D-pad: wing / ridge · Menu: weather';
     const pad=[...(navigator.getGamepads?.()??[])].some(p=>p?.connected);
-    const keyboardFlight='Shift + A/D: wingovers / spirals · A/D: turn · W: dive / accelerate · S: flare / brake · R/F: throttle · V: view · Drag: look · Launch: restart';
-    document.getElementById('help').textContent=flightConfig.modes[mode]?(pad?flightHelp:keyboardFlight):pad&&['orbit','walk'].includes(mode)?'A: take flight · D-pad left/right: wing · Up/down: ridge · X: weather':(helps[mode]??helps.orbit);
+    const keyboardFlight='Shift + A/D: wingovers · W/S: dive / flare · R/F: motor · V: view · E: unhook on safe ground · Space: ground launch · Launch: restart';
+    document.getElementById('help').textContent=flightConfig.modes[mode]?(pad?flightHelp:keyboardFlight):pad&&mode==='orbit'?'A: take flight · D-pad: wing / ridge · Menu: weather':(helps[mode]??helps.orbit);
   }
-  function setActivity(mode){showStarts(mode);navigation.select(mode,siteSelect.value);modeSelect.value=mode;document.body.dataset.flying=String(!!flightConfig.modes[mode]);
+  function setActivity(mode){showStarts(mode);navigation.select(mode,siteSelect.value);mode=navigation.mode;modeSelect.value=mode;document.body.dataset.flying=String(!!flightConfig.modes[mode]);
     updateHelp(mode);
     document.getElementById('launch').textContent=mode==='ski'?'Drop in ↘':mode==='bike'?'Ride ↘':'Launch ↗';
     canvas.focus();updateShadow(true);}
@@ -170,6 +197,10 @@ async function main() {
   document.getElementById('launch').addEventListener('click',()=>setActivity(['orbit','walk'].includes(modeSelect.value)?'paraglider':modeSelect.value));
   // The bearing is where the wind comes from; it blows toward the opposite one, and north is scene -z.
   const airCues=createAirCues((x,y,z)=>navigation.sampleEnvironment(x,y,z),ground,{renderer});
+  const meadowAir=createMeadowAir((x,y,z)=>navigation.sampleEnvironment(x,y,z),ground,{
+    x:cover.offsetX,z:-(cover.offsetY+cover.quad*cover.resolution),span:cover.quad*cover.resolution,
+  });
+  meadowAir.update(0);
   const windFrom = worldmap.wind.direction_deg * Math.PI / 180; style.wind.value.set(-Math.sin(windFrom), Math.cos(windFrom));
   const sky = makeSky(worldmap.mountains?.enclosure?.river_reaches); scene.add(sky);
   const weatherSelect=document.getElementById('weather');
@@ -194,9 +225,14 @@ async function main() {
   scene.add(sun, sun.target);
   const hemisphere = new T.HemisphereLight('#afd7e3', '#7a8452', 2.0); scene.add(hemisphere);
   const shadowCentre = new T.Vector3(Infinity, Infinity, Infinity);
+  let shadowRevision=-1,lastShadowTime=0;
+  const shadowFocus=new T.Vector3(Infinity,Infinity,Infinity);
   function updateShadow(force = false) {
     const target = controls.target;
-    if (!force && target.distanceToSquared(shadowCentre) < 80 * 80) return;
+    const now=performance.now();
+    if (!force && target.distanceToSquared(shadowCentre)<80*80 &&
+      ((shadowRevision===forest.stats.shadowRevision&&target.distanceToSquared(shadowFocus)<4*4)||now-lastShadowTime<350))return;
+    shadowRevision=forest.stats.shadowRevision;lastShadowTime=now;shadowFocus.copy(target);
     // Quantized anchor prevents shadow swimming while orbiting a fixed place.
     shadowCentre.set(Math.round(target.x / 40) * 40, target.y, Math.round(target.z / 40) * 40);
     sun.target.position.copy(shadowCentre);
@@ -216,6 +252,7 @@ async function main() {
     hemisphere.color.set(p.fill); hemisphere.intensity = p.ambient;
     scene.fog.color.set(p.fog); scene.background.copy(scene.fog.color);
     renderer.toneMappingExposure = p.exposure;
+    treeShadows.setSun(style.sun.value);forest.rebuildImpostors(style.sun.value);
     updateShadow(true);
   }
   document.getElementById('light').addEventListener('change', e => setLight(e.target.value));
@@ -274,7 +311,7 @@ async function main() {
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
   // Read-only inspection hook used for repeatable visual/performance checks.
-  window.tumbler = { flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, cloudPass, ground, ecology, closeMeadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, ground, ecology, closeMeadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   function updateStamp() {
     const ordered = [...samples].sort((a,b) => a-b);
     const percentile = p => ordered[Math.floor((ordered.length - 1) * p)] ?? 0;
@@ -285,7 +322,7 @@ async function main() {
       `CPU submit ${metrics.cpuMs.toFixed(1)} ms · ${canvas.width} × ${canvas.height}`,
       `${forest.stats.trees.toLocaleString()} trees · ${forest.stats.near} nearby meshes · ${forest.stats.tiles} batches`,
       `${meadow.stats.patches.toLocaleString()} meadow cells · ${meadow.stats.tiles} batches`,
-      `Verified ${verifiedFiles} fetched files · generation ${manifest.commit.slice(0,8)} · local working tree`,
+      `Version ${VERSION} · verified ${verifiedFiles} fetched files · generation ${manifest.commit.slice(0,8)} · local working tree`,
     ].join('\n');
   }
   function animate(time) {
@@ -296,8 +333,8 @@ async function main() {
     if (delta > 0 && delta < 500) { samples.push(delta); if (samples.length > 240) samples.shift(); }
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
-    navigation.update(Math.min(delta,50)/1000);airCues.update(camera,Math.min(delta,50)/1000); updateShadow();
-    forest.update(camera);closeMeadow.update(camera);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
+    navigation.update(Math.min(delta,50)/1000);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
+    forest.update(camera,controls.target);updateShadow();closeMeadow.update(camera);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
 
     // Far grass is represented by terrain shading; visible mesh cells occupy
     // the middle distance and dense blades take over around the observer.
@@ -311,8 +348,8 @@ async function main() {
       const readout=document.getElementById('flight-readout');
       readout.textContent=rider?(rider.crashed?`Contact: ${rider.crashed} · Launch to go again`:
         `${rideConfig.modes[rider.mode].label} · ${(riderSpeed*3.6).toFixed(0)} km/h · ${Math.round(rider.startZ-rider.z)} m down · ${(rider.distance/1000).toFixed(2)} km · ${rider.grounded?rider.surface:'airborne'}`):
-        !airborne?(navigation.mode==='walk'?'On foot':''):
-        flight.grounded?(flight.impact?`Contact with ${flight.impact} · A / Launch to restart`:'Landed · A / Launch to restart'):
+        !airborne?(navigation.mode==='walk'?(navigation.message||`On foot · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
+        flight.grounded?(navigation.message||(flight.impact?`Contact with ${flight.impact} · Launch to restart`:'Landed · E / X: unhook · Space / A: launch here')):
         `${flightConfig.modes[flight.mode].label}  /  ${flightConfig.weather[navigation.weather].label}\n`+
         `${(flight.speed*3.6).toFixed(0)} km/h AIR   ${(flight.groundSpeed*3.6).toFixed(0)} GROUND   ${Math.round(air.agl)} m AGL\n`+
         `${flight.vario>=0?'+':''}${flight.vario.toFixed(1)} m/s   ${flight.load.toFixed(1)} g   Wind from ${Math.round((Math.atan2(-air.wx,-air.wy)*180/Math.PI+360)%360)}° ${(air.windSpeed*3.6).toFixed(0)} km/h`+
@@ -346,7 +383,7 @@ async function main() {
     status.textContent = 'Graphics paused — recovering…';
   });
   canvas.addEventListener('webglcontextrestored', () => { contextLost = false; forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true); status.textContent = 'Ready for the mountains.'; resume(); });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();meadowAir.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   status.textContent = 'Ready for the mountains.';
   document.body.classList.add('ready');
   resume();

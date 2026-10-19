@@ -1,6 +1,6 @@
 /** The core's ground-cover mask, rendered as spatially culled meadow cells.
- * All stamped cells remain represented, using the same bendable grass/flower
- * kit at every distance. Density and plant appearance are client presentation.
+ * All stamped cells remain represented, using bendable grass/flower kits locally and
+ * a filtered opaque grass surface at distance. Density and plant appearance are client presentation.
  * No ground-cover placement instances are persisted into shared/.
  */
 
@@ -64,6 +64,7 @@ export function buildMeadowTiles(cover, ground, patch, options = {}) {
     const matrix = new Matrix4();
     const position = new Vector3();
     const rotation = new Quaternion();
+    const tilt = new Quaternion(),normal = new Vector3(),up = new Vector3(0,1,0);
     const scale = new Vector3(options.patchScale ?? 1, options.patchScale ?? 1, options.patchScale ?? 1);
     for (let i = 0; i < cells.length; i += 1) {
       const cell = cells[i];
@@ -76,7 +77,9 @@ export function buildMeadowTiles(cover, ground, patch, options = {}) {
       position.set(cell.x, cell.height, -cell.y);
       // A deterministic turn per cell: the meadow reads as grown, and two runs
       // over the same committed data produce the same picture.
-      rotation.setFromAxisAngle(new Vector3(0, 1, 0), deterministicTurn(cell.x, cell.y));
+      rotation.setFromAxisAngle(up, deterministicTurn(cell.x, cell.y));
+      meadowUp(ground,cell.x,cell.y,normal);
+      rotation.premultiply(tilt.setFromUnitVectors(up,normal));
       matrix.compose(position, rotation, scale);
       mesh.setMatrixAt(i, matrix);
     }
@@ -125,7 +128,7 @@ export function deterministicTurn(row, column) {
 }
 
 /** One uniform meadow kit: bendable blades and petalled wildflowers, 8 m wide. */
-export function buildMeadowPatch() {
+export function buildMeadowPatch({range=[150,225]}={}) {
   const positions = [], colors = [], petals = [];
   const green = new Color('#668940'), tip = new Color('#93ad58');
   const triangle = (a,b,c,color,petal=0) => {
@@ -155,20 +158,26 @@ export function buildMeadowPatch() {
   geometry.setAttribute('color',new Float32BufferAttribute(colors,3));
   geometry.setAttribute('petal',new Float32BufferAttribute(petals,1));
   geometry.computeVertexNormals();geometry.computeBoundingSphere();
-  const material=toonMaterial({name:'meadow_toon',vertexColors:true,side:DoubleSide},{meadow:true});
+  const material=toonMaterial({name:'meadow_toon',vertexColors:true,side:DoubleSide},{meadow:true,meadowRange:range});
   return {geometry,material,triangles:positions.length/9};
 }
 
-/** Dense close sward, regenerated only on a 12 m cell boundary. Reads the
- * stamp at each root; the distant colour remains the terrain's interpretation.
- */
+/** Ground-tangent placement, in the same east/up/south frame as terrain. */
+function meadowUp(ground,x,y,result){
+  const h=ground.height(x,y),e=ground.height(x+1,y)??h,w=ground.height(x-1,y)??h;
+  const n=ground.height(x,y+1)??h,s=ground.height(x,y-1)??h;
+  return result.set((w-e)*.5,1,(n-s)*.5).normalize();
+}
+
+/** Dense local sward, regenerated on 12 m boundaries and faded before its rim. */
 export function buildCloseMeadow(cover,ground){
-  const patch=buildMeadowPatch(),capacity=6400;
+  const patch=buildMeadowPatch({range:[27,37]}),capacity=6400;
   const mesh=new InstancedMesh(patch.geometry,patch.material,capacity);
   const tint=new Float32Array(capacity*3);mesh.geometry.setAttribute('flowerTint',new InstancedBufferAttribute(tint,3));
   mesh.count=0;mesh.name='close_lush_meadow';mesh.receiveShadow=true;
   let lastX=Infinity,lastY=Infinity;
   const matrix=new Matrix4(),q=new Quaternion(),up=new Vector3(0,1,0),position=new Vector3(),scale=new Vector3(.72,.85,.72);
+  const tilt=new Quaternion(),normal=new Vector3();
   const palette=['#aa82dc','#fff2ca','#f0b05d','#df828d'].map(c=>new Color(c));
   const contains=(x,y)=>{const col=Math.floor((x-cover.offsetX)/cover.quad),row=Math.floor((y-cover.offsetY)/cover.quad);return row>=0&&col>=0&&row<cover.resolution&&col<cover.resolution&&cover.covered[row*cover.resolution+col];};
   function update(camera){
@@ -176,12 +185,15 @@ export function buildCloseMeadow(cover,ground){
     const agl=camera.position.y-(ground.height(cx,cy)??0);
     mesh.visible=agl<140;if(!mesh.visible||cx===lastX&&cy===lastY)return;
     lastX=cx;lastY=cy;let n=0;
+    // The window may move; the lattice stays in world space. 12 m is not a
+    // multiple of 1.35 m, so adding offsets to cx/cy moved every surviving root.
+    const baseX=Math.round(cx/1.35),baseY=Math.round(cy/1.35);
     for(let j=-35;j<=35;j++)for(let i=-35;i<=35;i++){
       if(i*i+j*j>35*35)continue;
-      const x=cx+i*1.35,y=cy+j*1.35;if(!contains(x,y))continue;
+      const x=(baseX+i)*1.35,y=(baseY+j)*1.35;if(!contains(x,y))continue;
       const h=ground.height(x,y);if(h===null)continue;
       const angle=deterministicTurn(x,y);
-      position.set(x,h,-y);q.setFromAxisAngle(up,angle);matrix.compose(position,q,scale);mesh.setMatrixAt(n,matrix);
+      position.set(x,h,-y);q.setFromAxisAngle(up,angle);meadowUp(ground,x,y,normal);q.premultiply(tilt.setFromUnitVectors(up,normal));matrix.compose(position,q,scale);mesh.setMatrixAt(n,matrix);
       palette[Math.floor(deterministicTurn(Math.floor(x/9),Math.floor(y/9))/Math.PI/2*4)%4].toArray(tint,n*3);n++;
     }
     mesh.count=n;mesh.instanceMatrix.needsUpdate=true;mesh.geometry.attributes.flowerTint.needsUpdate=true;mesh.computeBoundingSphere();
