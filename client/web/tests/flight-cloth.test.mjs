@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {parseGLB} from '../src3d/glb.js';
+import {parseGLB,makeMaterialFor} from '../src3d/glb.js';
+import * as T from '../vendor/three.module.min.js';
 import {createFlightRig} from '../src3d/flight-rig.js';
 import {launchFlight,stepFlight} from '../../../shared/activities/flight.js';
 const config=JSON.parse(readFileSync(new URL('../../../shared/activities/flight.json',import.meta.url)));
@@ -92,20 +93,24 @@ test('sewn skin normals agree across material boundaries during loaded turns',()
  rig.dispose();
 });
 
-test('intake lining leaves the forward upper mouth open and places its back wall deeper in the cell',()=>{
+test('profiled ribs enclose cross-ports with cloth above and below, and close the tips',()=>{
  for(const name of ['paraglider','parakite']){
   const mode=config.modes[name],primitives=assets[mode.wing_asset??config.wing_asset].primitives;
-  let forwardFloor=false,deepWall=false;
-  for(const primitive of primitives.filter(p=>/^intake/.test(p.materialName))){
-   const p=primitive.geometry.attributes.position,n=primitive.geometry.attributes.normal;
-   for(let i=0;i<p.count;i++)if(Math.abs(p.getX(i))<.2){
-    if(p.getZ(i)>mode.chord_m*.35){
-     forwardFloor=true;assert.ok(p.getY(i)<mode.canopy_height_m-.03,'front opening contains no opaque upper cap');
-    }
-    if(n.getZ(i)>.7){deepWall=true;assert.ok(p.getZ(i)<mode.chord_m*.25,'back wall is actually recessed');}
+  const rib=primitives.find(p=>p.materialName==='ribs_baffles');
+  const mesh=new T.Mesh(rib.geometry,makeMaterialFor(rib));mesh.updateMatrixWorld(true);
+  try{
+   for(const x of [0,mode.span_m*.5]){
+    const span=x/(mode.span_m*.5),chord=mode.chord_m*(1-.42*span*span);
+    const z=(.52-.47)*chord-span*span*mode.chord_m*.23;
+    const positions=rib.geometry.attributes.position,ys=[];
+    for(let i=0;i<positions.count;i++)if(Math.abs(positions.getX(i)-x)<1e-5&&Math.abs(positions.getZ(i)-z)<1e-5)ys.push(positions.getY(i));
+    assert.ok(ys.length,'section comes from the real shared rib');
+    const lo=Math.min(...ys),hi=Math.max(...ys);
+    const hit=f=>new T.Raycaster(new T.Vector3(x-.02,lo+(hi-lo)*f,z),new T.Vector3(1,0,0),0,.04).intersectObject(mesh).length>0;
+    assert.ok(hit(.1)&&hit(.9),'cloth frames the cross-port above and below');
+    assert.equal(hit(.5),x!==0,'internal cross-port is open; outer wingtip is closed');
    }
-  }
-  assert.ok(forwardFloor&&deepWall,'mouth has a lit floor and a recessed wall');
+  }finally{mesh.material.dispose();}
  }
 });
 

@@ -215,11 +215,11 @@
     },
     {
       "path": "shared/geometry/flight/parafoil.glb",
-      "sha256": "7f2ecc0811f1f3f60e98d390df459d659d142afd879f85714ff1cb0979c33339"
+      "sha256": "5851d1227cdb63bbc1974af05666f706e01237e8095d74d69bdbec39b59037e0"
     },
     {
       "path": "shared/geometry/flight/parakite.glb",
-      "sha256": "77cdf42c6ac6c7bf83b43e715c1ab4cd376c8c44df44bed8e49a3c5630817266"
+      "sha256": "6325c1d8404f8ee742b6266ba99d551335348136783c554bb58665c2cafc7ada"
     },
     {
       "path": "shared/geometry/flight/paramotor.glb",
@@ -335,7 +335,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "f1f6f79",
+  "commit": "d1ad3db",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
