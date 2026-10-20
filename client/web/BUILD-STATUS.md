@@ -1,14 +1,18 @@
-# Sky/cloud first pass approved — 2026-10-20
+# Sky/cloud first pass released — 2026-10-20
 
-The human approved the existing visual checkpoint and requested main integration
-and deployment. Runtime `25e8062` adds broader billows, periodic detail,
-directional self-shadowing and coordinated clear-air colour within the existing
-shared cloud bounds. Web **206/206**, packaging **7/7**, manifest **85 fetched
-files plus 17 map files**. Opened before/after evidence and a camera traversal
-are recorded in the [review brief](../../docs/reviews/web-sky-clouds-2026-10-20.md).
-The primary checkout's normal main hook owns publication; approval is not a
-deployment receipt. See the handoff and publication log for the verified outcome.
-Sustained performance, physical flight and Unreal parity remain separate gates.
+The accepted runtime `25e8062` is integrated on main and live at
+**https://tumbler.catronin.com/**. Initial public release `551853f`, Cloudflare
+version `fbbd6dd3-9097-46d4-96cf-4e01313b3785`, passed publication checks and
+live verification of manifest `8585c9577005` with compressed model delivery.
+
+Private web **206/206**, public web **190/190**, packaging **7/7**, integrity
+**85 fetched plus 17 map files**. The live scene reached Ready; all four sky
+modules match main and shaders compile. An external analytics DNS failure is
+recorded separately in the release report. Sustained performance, physical
+flight and Unreal parity remain open. Further exploration continues on
+`codex/web-sky-clouds-next`; the accepted shared cloud bounds remain unchanged.
+See the [review brief](../../docs/reviews/web-sky-clouds-2026-10-20.md) and handoff
+for evidence, continuation and the publication log's latest receipt.
 
 ---
 
