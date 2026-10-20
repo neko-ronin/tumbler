@@ -66,8 +66,12 @@
       "sha256": "84c1e5e1ad6563f0d0cfcdbbf21477bbcb9c6cdd4291978ea1ddb6d2bf461a93"
     },
     {
+      "path": "client/web/src3d/grass-canopy.js",
+      "sha256": "61cdfedd91782b85d81df06443112cb6b38f585f59f2e2ff708d6267848178b6"
+    },
+    {
       "path": "client/web/src3d/groundcover.js",
-      "sha256": "c5e4a8fd05907855a80f0e9802a2750444134c0b0423aebaef153ee06c60c361"
+      "sha256": "53476a668cfba6c76e501e801d8fa1799eb37b5e9cb318e2218158bbd61668e8"
     },
     {
       "path": "client/web/src3d/heights.js",
@@ -75,11 +79,11 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "0ea87077f9be8099f634d6cad2a90ee8b535eec9a705ba2614049ece7e20dfad"
+      "sha256": "24577d90322ee4dd3f513ad8862bed2f93c42ca9375d36fa137a6cc1c24d37f6"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
-      "sha256": "dc136bda8c7d2fc739eed230416b1e253a2818ea492667880de8a47bd10e84df"
+      "sha256": "e4e15a7ef1a3c0b3bd2b9f44806596645211c8194d7199dc06df6d3e6a0de483"
     },
     {
       "path": "client/web/src3d/navigation.js",
@@ -95,7 +99,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "852bd2d2756583e373f074f7fe546fda0b28e874b1006060eda7be0fc1a5e136"
+      "sha256": "7d8c99f2043643e04c5e36a707f0a59c825ca866e55964bef3994eac86abd3f5"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
@@ -331,7 +335,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "e925818",
+  "commit": "f1f6f79",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

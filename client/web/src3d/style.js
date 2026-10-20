@@ -1,6 +1,6 @@
 /** Client-only art direction. Shared uniforms keep every material on one clock. */
 import * as T from '../vendor/three.module.min.js';
-import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL} from './meadow-shading.js';
+import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
 
 export const style = {
   time: { value: 0 },
@@ -12,6 +12,7 @@ export const style = {
   snow: { value: null },
   meadowAirFrom: {value:null},meadowAirTo: {value:null},
   meadowAirGrid: {value:new T.Vector4(-2048,-2048,4096,1)},meadowAirMix: {value:1},
+  meadowFocus:{value:new T.Vector3()},
   // Where the map's wind blows TOWARD, in scene (x, z); main.js sets bearing and relative simulated strength.
   air: {value:null},
   airGrid: {value:new T.Vector4(0,0,640,0)},
@@ -44,8 +45,8 @@ softRamp.minFilter = softRamp.magFilter = T.LinearFilter;
 softRamp.needsUpdate = true;
 
 /** Real toon lighting, with the renderer's shadows, fog and colour management. */
-export function toonMaterial(parameters = {}, { meadow = false, terrain = false, foliage = false, horizonM = 0, meadowRange = [150,225] } = {}) {
-  const material = terrain ? new T.MeshStandardMaterial({roughness: .96, ...parameters}) : new T.MeshToonMaterial({ gradientMap: foliage ? softRamp : ramp, ...parameters });
+export function toonMaterial(parameters = {}, { meadow = false, terrain = false, foliage = false, horizonM = 0, meadowRange = [150,225], meadowFocused=false, canopy=false,grassBlades=false,canopyStart=[25,44] } = {}) {
+  const material = terrain ? new T.MeshStandardMaterial({roughness: .96, ...parameters}) : new T.MeshToonMaterial({ gradientMap: foliage||meadow ? softRamp : ramp, ...parameters });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = style.time;
     shader.uniforms.uWind = style.wind;
@@ -55,9 +56,44 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       shader.uniforms.uMeadowAirFrom=style.meadowAirFrom;shader.uniforms.uMeadowAirTo=style.meadowAirTo;
       shader.uniforms.uMeadowAirGrid=style.meadowAirGrid;shader.uniforms.uMeadowAirMix=style.meadowAirMix;
     }
-    if(meadow)shader.uniforms.uMeadowRange={value:new T.Vector2(...meadowRange)};
+    if(meadow){shader.uniforms.uMeadowRange={value:new T.Vector2(...meadowRange)};shader.uniforms.uMeadowFocus=style.meadowFocus;}
+    if(canopy)shader.uniforms.uCanopyStart={value:new T.Vector2(...canopyStart)};
     if(terrain||meadow){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;}
-    shader.vertexShader = ((terrain||meadow)?MEADOW_AIR_GLSL:'')+AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'uniform vec2 uMeadowRange; varying float vMeadowFade; attribute float petal; attribute vec3 flowerTint; varying float vPetal; varying vec3 vFlower;\n' : '') + shader.vertexShader;
+    shader.vertexShader = (canopy?'uniform vec2 uCanopyStart;varying vec2 vGrassUv;varying float vGrassSeed;\n':'')+((terrain||meadow)?MEADOW_AIR_GLSL:'')+AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? MEADOW_BEND_GLSL+'uniform vec2 uMeadowRange;uniform vec3 uMeadowFocus; varying float vMeadowFade; attribute float petal; attribute vec3 flowerTint; attribute vec3 bladeRoot; attribute float flex; attribute float plant; attribute vec3 meadowTraits; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.vertexShader;
+    if(meadow)shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
+      vec3 root=(instanceMatrix*vec4(bladeRoot,1.)).xyz;
+      vPlant=step(plant,meadowTraits.x);
+      // Interleave clump endings across twelve metres rather than tracing
+      // the moving window with a single circular contour.
+      float fadeOffset=(meadowTraits.y-1.)*40.;
+      vMeadowFade=1.-smoothstep(uMeadowRange.x+fadeOffset,uMeadowRange.y+fadeOffset,distance(root,${meadowFocused?'uMeadowFocus':'cameraPosition'}));
+      ${canopy?'vMeadowFade*=smoothstep(uCanopyStart.x+fadeOffset,uCanopyStart.y+fadeOffset,distance(root,cameraPosition));':''}
+      vec3 meadowPosition=vec3(bladeRoot.x,0.,bladeRoot.z);
+      // Coarse tile culling also submits plants beyond the fade and unused
+      // blossom forms. They need no eight-read air interpolation or flex work.
+      if(vMeadowFade>.001&&vPlant>.5){
+      vec4 air=meadowAir(root.xz);
+      float speed=length(air.xy);
+      // Core vectors/gusts drive the lean. Small, independently phased tip
+      // flutter is a plant response to that air's roughness, not another gust.
+      vec3 localWind=vec3(air.x,0.,air.y)*mat3(instanceMatrix);
+      localWind/=vec3(dot(instanceMatrix[0].xyz,instanceMatrix[0].xyz),dot(instanceMatrix[1].xyz,instanceMatrix[1].xyz),dot(instanceMatrix[2].xyz,instanceMatrix[2].xyz));
+      localWind.y=0.;localWind/=1.+speed*.055;
+      ${canopy||grassBlades?`// Flexible canopy response amplifies the actual signed gust;
+      // its phase, position and direction still come entirely from shared air.
+      localWind*=1.+clamp(air.z*.4,-.5,1.);`:''}
+      float phase=meadowTraits.z+dot(bladeRoot.xz,vec2(17.1,31.7))+flex*7.;
+      float flutter=(sin(uTime*(2.6+flex)+phase)+.45*sin(uTime*5.3+phase*.7))*.14*air.w*speed/(speed+2.);
+      localWind+=vec3(-localWind.z,0.,localWind.x)*flutter;
+      vec3 coefficient=meadowBendCoefficient(localWind,flex);
+      meadowPosition=meadowBentPosition(position,bladeRoot,coefficient);
+      objectNormal=meadowBentNormal(objectNormal,position,bladeRoot,coefficient);
+      ${canopy||grassBlades?`// Keep the silhouette: coverage fades instead of flattening
+      // the broad carrier onto the terrain.`:`
+      meadowPosition.y*=vMeadowFade;objectNormal.y/=max(.03,vMeadowFade);`}
+      }
+      vLeafTone=meadowTraits.y*(.82+.18*clamp(position.y,0.,1.));
+    `);
     shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
       #include <begin_vertex>
       ${foliage ? `#ifdef USE_INSTANCING
@@ -70,17 +106,8 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
         vec3 localWind=vec3(air.x,0.,air.y)*mat3(instanceMatrix);
         transformed+=localWind*min(.08,max(0.,position.y)*.002)*(.9+.1*sin(uTime*2.+position.y));
       #endif` : ''}
-      ${meadow ? `vPetal = petal; vFlower = flowerTint; vec3 root = instanceMatrix[3].xyz;
-      vec4 air=meadowAir(root.xz);
-      vec3 localWind=vec3(air.x,0.,air.y)*mat3(instanceMatrix);
-      localWind/=vec3(dot(instanceMatrix[0].xyz,instanceMatrix[0].xyz),dot(instanceMatrix[1].xyz,instanceMatrix[1].xyz),dot(instanceMatrix[2].xyz,instanceMatrix[2].xyz));
-      float bend=max(0.,position.y);
-      // A fixed world-space air field drives the same bend as distant turf.
-      transformed+=localWind*.065*bend*bend;
-      transformed.y-=min(.22,length(air.xy)*.018)*bend*bend;
-      // Collapse continuously into the opaque grass surface before culling.
-      vMeadowFade=1.-smoothstep(uMeadowRange.x,uMeadowRange.y,distance(root,cameraPosition));
-      transformed.y*=vMeadowFade;` : ''}
+      ${meadow ? `vPetal=petal;vFlower=flowerTint;transformed=meadowPosition;` : ''}
+      ${canopy?'vGrassUv=uv;vGrassSeed=meadowTraits.z;':''}
     `);
     shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', `
       vec4 place = vec4(transformed, 1.);
@@ -91,13 +118,30 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       ${terrain ? 'vUp = normalize(mat3(modelMatrix) * objectNormal);' : ''}
       #include <project_vertex>
     `);
-    shader.fragmentShader = (terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;\n':'')+(terrain?'varying vec3 vUp;\n'+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower;\n' : '') + shader.fragmentShader;
+    shader.fragmentShader = (canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;\n':'')+(terrain?'varying vec3 vUp;\n'+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
     shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
       #include <color_fragment>
-      ${meadow ? `if(vMeadowFade<=.001)discard;
+      ${meadow ? `if(vMeadowFade<=.001||vPlant<.5)discard;
       vec2 grassUv=(vec2(vPlace.x,-vPlace.z)-uCoverGrid.xy)/(uCoverGrid.z*uCoverGrid.w);
       if(min(grassUv.x,grassUv.y)<0.||max(grassUv.x,grassUv.y)>1.||texture2D(uCover,grassUv).r<.5||texture2D(uSnow,grassUv).r>.03||vPlace.y<22.)discard;
-      diffuseColor.rgb = mix(diffuseColor.rgb, vFlower, vPetal);` : ""}
+      diffuseColor.rgb = mix(diffuseColor.rgb*vLeafTone,vFlower,vPetal);` : ""}
+      ${grassBlades?'diffuseColor.a*=vMeadowFade;':''}
+      ${canopy?`// Individually cut out tapered leaves in crossed, bent cards.
+      float bladeCoordinate=vGrassUv.x*28.,bladeId=floor(bladeCoordinate);
+      float seed=hash(vec2(bladeId,vGrassSeed*51.));
+      float bladeHeight=mix(.48,1.,seed),height=vGrassUv.y/bladeHeight;
+      float centre=.25+.5*hash(vec2(bladeId+17.,vGrassSeed*31.));
+      centre+=(hash(vec2(bladeId+43.,vGrassSeed))-.5)*.38*height*height;
+      float width=(.24+.09*seed)*max(0.,1.-height*height);
+      float edge=abs(fract(bladeCoordinate)-centre),aa=max(.008,fwidth(bladeCoordinate)*.35);
+      float leaf=(1.-smoothstep(width-aa,width+aa,edge))*(1.-smoothstep(1.-fwidth(height),1.+fwidth(height),height));
+      float resolved=1.-smoothstep(.65,1.65,fwidth(bladeCoordinate));
+      // Integrated subpixel coverage, never a solid rectangle with a flat top.
+      float averagedCanopy=.55*(1.-smoothstep(.12,.95,vGrassUv.y));
+      leaf=mix(averagedCanopy,leaf,resolved);
+      diffuseColor.a*=leaf*vMeadowFade;
+      if(diffuseColor.a<.001)discard;
+      diffuseColor.rgb*=mix(1.,mix(.85,1.12,seed),resolved);` : ''}
       ${foliage ? `float leafy = step(diffuseColor.r * 1.1, diffuseColor.g);
       // Neighbouring trees differ a little in green, as a stand does.
       diffuseColor.rgb *= mix(vec3(1.), mix(vec3(.9, 1., .95), vec3(1.08, 1.03, .86), vTreeHue), leafy);` : ""}
@@ -149,7 +193,8 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       float sward=stamped*(1.-coreSnow)*(1.-rockMask)*(1.-snowMask)*smoothstep(22.,24.,vPlace.y);
       vec4 grassAir=meadowAir(vPlace.xz);
       vec3 grass=meadowSurface(vPlace.xz,normalize(vUp),footprint,grassAir);
-      diffuseColor.rgb*=mix(1.,grass.x,sward);
+      // Match the average canopy tone beneath the blade coverage fade.
+      diffuseColor.rgb*=mix(1.,grass.x*.54,sward);
       // The signed core gust travels through this field. Leaf-side exposure
       // amplifies its light/dark response without authoring another wave.
       diffuseColor.rgb*=1.+clamp(grassAir.z*.065,-.18,.18)*sward;
@@ -206,7 +251,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-meadow-v6:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}`;
+  material.customProgramCacheKey = () => `cozy-meadow-v10:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}`;
   return material;
 }
 

@@ -6,7 +6,8 @@ import { buildBlockTerrain, buildFarFieldRing, buildWater, buildRiverReaches } f
 import { buildPlacements, buildForest } from './placements.js';
 import { buildTreeGroundShadows } from './forest.js';
 import { GroundSampler, HeightGrid, decodeGroundCover } from './heights.js';
-import { buildMeadowTiles, buildMeadowPatch, buildCloseMeadow } from './groundcover.js';
+import { buildCloseMeadow, meadowViewFocus } from './groundcover.js';
+import {buildGrassCanopy} from './grass-canopy.js';
 import { parseGLB, applyImageBytes, mergePrimitives } from './glb.js';
 import { makeSky, style } from './style.js';
 import { createCloudPass } from './clouds.js';
@@ -125,11 +126,10 @@ async function main() {
   const snowAt=createSnowSampler(snowStamp);
   const snowTexture=new T.DataTexture(Uint8Array.from(snowAt.depth,d=>Math.round(Math.min(1,d/snowStamp.model.max_depth_m)*255)),snowAt.resolution,snowAt.resolution,T.RedFormat);
   snowTexture.minFilter=snowTexture.magFilter=T.LinearFilter;snowTexture.needsUpdate=true;style.snow.value=snowTexture;
-  const meadow = buildMeadowTiles(cover, ground, buildMeadowPatch(), {
-    tileM: 128, flowerMix: stampData.density.flower_colour_mix,
-  });
+  const grassGl=renderer.getContext();
+  const meadow = buildGrassCanopy(cover,ground,{samples:grassGl.getParameter(grassGl.SAMPLES)});
   scene.add(meadow.group);
-  const closeMeadow = buildCloseMeadow(cover,ground);scene.add(closeMeadow.mesh);
+  const closeMeadow = buildCloseMeadow(cover,ground,{flowerMix:stampData.density.flower_colour_mix});scene.add(closeMeadow.mesh);
   const ecology=buildEcology(habitats,meadowData,assets,ground,closeMeadow,renderer,(x,y,z)=>navigation.sampleEnvironment(x,y,z));scene.add(ecology.group);
   scene.add(buildTethers(placement,assets),buildTrails(worldmap,ground));
   const flightRig=createFlightRig(assets,flightConfig),rig=flightRig.group;
@@ -303,6 +303,8 @@ async function main() {
   setView(new URLSearchParams(location.search).get('view') in views ? new URLSearchParams(location.search).get('view') : 'home');
   setLight('golden');
 
+  const meadowFocus=meadowViewFocus(camera,ground);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
+
   status.textContent = 'Warming the light…';
   await renderer.compileAsync(scene, camera);
 
@@ -311,7 +313,7 @@ async function main() {
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
   // Read-only inspection hook used for repeatable visual/performance checks.
-  window.tumbler = { flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, ground, ecology, closeMeadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, ground, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   function updateStamp() {
     const ordered = [...samples].sort((a,b) => a-b);
     const percentile = p => ordered[Math.floor((ordered.length - 1) * p)] ?? 0;
@@ -334,11 +336,9 @@ async function main() {
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
     navigation.update(Math.min(delta,50)/1000);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
-    forest.update(camera,controls.target);updateShadow();closeMeadow.update(camera);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
+    forest.update(camera,controls.target);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
 
-    // Far grass is represented by terrain shading; visible mesh cells occupy
-    // the middle distance and dense blades take over around the observer.
-    for(const tile of meadow.group.children){const sphere=tile.boundingSphere;tile.visible=!sphere||sphere.center.distanceTo(camera.position)<sphere.radius+230;}
+    // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;
     const rider=rideModes.includes(navigation.mode)?flight:null,riderSpeed=rider?Math.hypot(rider.vx,rider.vy,rider.vz):0;
     const airborne=!!flightConfig.modes[navigation.mode];
@@ -383,7 +383,7 @@ async function main() {
     status.textContent = 'Graphics paused — recovering…';
   });
   canvas.addEventListener('webglcontextrestored', () => { contextLost = false; forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true); status.textContent = 'Ready for the mountains.'; resume(); });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();meadowAir.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   status.textContent = 'Ready for the mountains.';
   document.body.classList.add('ready');
   resume();
