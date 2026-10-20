@@ -1,5 +1,6 @@
 /** Character-only fibre/cloth shading. Shared vertex colours remain the coat's authority. */
 import * as T from '../vendor/three.module.min.js';
+import {sunShadowShader,style} from './style.js';
 
 const FIBRES = `
   float hairHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -30,6 +31,12 @@ export function installCharacterSurfaces(model) {
         metalness:name==='gold' ? .65 : 0,transparent:source.transparent,opacity:source.opacity,depthWrite:true});
       if(name==='iris'){material.emissive.set('#a6b83c');material.emissiveIntensity=.025;}
       material.onBeforeCompile=shader=>{
+        sunShadowShader(shader);shader.uniforms.uSun=style.sun;
+        shader.vertexShader='varying vec3 vSunPlace;\n'+shader.vertexShader;
+        shader.fragmentShader='uniform vec3 uSun;varying vec3 vSunPlace;\n'+shader.fragmentShader;
+        shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`vSunPlace=(modelMatrix*vec4(transformed,1.)).xyz;\n#include <project_vertex>`);
+        shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
+          float sunlight=actorSunLight(vSunPlace)*cloudObjectLight(vSunPlace,uSun);reflectedLight.directDiffuse*=sunlight;reflectedLight.directSpecular*=sunlight;`);
         shader.uniforms.uCoatRest={value:rest};shader.uniforms.uCoatScale={value:scale};shader.uniforms.uCoatEye={value:eye};
         shader.vertexShader='varying vec2 vCoatUv; varying vec3 vCoatRest; uniform mat4 uCoatRest; uniform vec3 uCoatScale;\n'+shader.vertexShader;
         shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
@@ -54,7 +61,7 @@ export function installCharacterSurfaces(model) {
           float det=dot(dx,rx)*faceDirection;
           normal=normalize(abs(det)*normal-sign(det)*(dFdx(weave)*rx+dFdy(weave)*ry)*.00013*detail);`);
       };
-      material.customProgramCacheKey=()=>`ronin-fibre-v1:${name}:${layer}:${length}`;
+      material.customProgramCacheKey=()=>`ronin-fibre-v2:${name}:${layer}:${length}`;
       materials.add(material);return material;
     }
     mesh.material=surface();source.dispose();

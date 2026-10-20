@@ -1,13 +1,29 @@
 # client/web
 
-## Sky/cloud second-pass candidate — local, 2026-10-20
+## Web v0.1.1 — 2026-10-20
+
+The web renderer targets 30 FPS while shared simulation retains elapsed time.
+Moving wing/Ronin shadows update every rendered frame through a stabilized
+actor map. Cached volumetric sunlight reduces repeated cloud work; rounder
+billows and cloud shade on trees, water and Ronin keep the scene coherent.
+Distant tree-ground shade is baked lazily per fixed sun preset, preserving its
+soft crown approximation. Full branch-accurate scene lightmaps are not claimed.
+
+Web **216/216**, packaging **7/7**, integrity **91 scene plus 17 map files**.
+The three-minute fixed-1440×900 trace measured 33.3 ms p50 / 34.2 ms p95,
+including two minutes of normal flight; rare stalls remain in the record.
+See the [v0.1.1 review](../../docs/reviews/web-011.md) for paired GPU evidence,
+static-bake tradeoffs, reproduction and limits. Publication status is recorded
+in [BUILD-STATUS.md](BUILD-STATUS.md).
+
+## Earlier sky/cloud second-pass checkpoint — 2026-10-20
 
 The continuation adds broader shared cloud groups, refined sunlight and moving
 density shadows on terrain/meadow. Cached lattice calculations preserve the
 noise texture while reducing its CPU build cost. Preview and matched comparisons
 run on port 8021, in `codex/web-sky-clouds-next`. See the
 [second-pass brief](../../docs/reviews/web-sky-clouds-next.md) for measurements
-and limits. This candidate has not been merged or deployed.
+and limits. The human subsequently merged this checkpoint at `3ff9552`; v0.1.1 builds on it.
 
 ## Sky/cloud first pass approved — 2026-10-20
 

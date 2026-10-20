@@ -5,7 +5,7 @@
 import * as T from '../vendor/three.module.min.js';
 import { instanceMatrix } from './world.js';
 import { mergePrimitives } from './glb.js';
-import { toonMaterial } from './style.js';
+import { toonMaterial,style,sunShadowShader } from './style.js';
 
 export function stylizedTreeGeometry(asset) {
   const foliage = asset.primitives.filter(p => /foliage/.test(p.materialName));
@@ -104,14 +104,21 @@ function bakeImpostor(asset,renderer){
   function refresh(sunDirection){
   if(sunDirection)light.position.copy(sunDirection).multiplyScalar(100);
   const previous=renderer.getRenderTarget(),color=renderer.getClearColor(new T.Color()),alpha=renderer.getClearAlpha();
-  renderer.setRenderTarget(target);renderer.setClearColor(0,0);renderer.render(scene,camera);
-  renderer.setRenderTarget(topTarget);renderer.render(scene,topCamera);
-  renderer.setRenderTarget(previous);renderer.setClearColor(color,alpha);
+  const cloudReady=style.cloudGroundReady.value,actorReady=style.actorShadowReady.value;
+  style.cloudGroundReady.value=style.actorShadowReady.value=0;
+  try{
+   renderer.setRenderTarget(target);renderer.setClearColor(0,0);renderer.render(scene,camera);
+   renderer.setRenderTarget(topTarget);renderer.render(scene,topCamera);
+  }finally{renderer.setRenderTarget(previous);renderer.setClearColor(color,alpha);style.cloudGroundReady.value=cloudReady;style.actorShadowReady.value=actorReady;}
   }
   refresh();
   const geometry=new T.PlaneGeometry(width,height);geometry.translate(centre.x,centre.y,centre.z);geometry.computeBoundingBox();geometry.computeBoundingSphere();
   const material=new T.MeshBasicMaterial({map:target.texture,alphaTest:.22,side:T.DoubleSide,fog:true});
   material.onBeforeCompile=shader=>{
+    sunShadowShader(shader);shader.uniforms.uSun=style.sun;
+    shader.vertexShader='varying vec3 vCloudPlace;\n'+shader.vertexShader;
+    shader.fragmentShader='uniform vec3 uSun;varying vec3 vCloudPlace;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`outgoingLight*=mix(.60,1.,cloudObjectLight(vCloudPlace,uSun)*actorSunLight(vCloudPlace));\n#include <opaque_fragment>`);
     shader.uniforms.uTop={value:topTarget.texture};shader.uniforms.uCanopyDims={value:new T.Vector2(width,bounds.min.y+size.y*.72)};
     shader.uniforms.uTreeCentre={value:centre};
     shader.vertexShader='uniform vec2 uCanopyDims;uniform vec3 uTreeCentre;varying float vOverhead;\n'+shader.vertexShader;
@@ -127,11 +134,11 @@ function bakeImpostor(asset,renderer){
       vec3 sidePlace=origin.xyz+right*(position.x-uTreeCentre.x)*scale.x+vec3(0.,position.y*scale.y,0.);
       vec3 viewUp=normalize(vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]));
       vec3 topPlace=origin.xyz+right*(position.x-uTreeCentre.x)*scale.x+viewUp*(uv.y-.5)*uCanopyDims.x*scale.x+vec3(0.,uCanopyDims.y*scale.y,0.);
-      vec4 mvPosition=viewMatrix*vec4(mix(sidePlace,topPlace,vOverhead),1.);
+      vCloudPlace=mix(sidePlace,topPlace,vOverhead);vec4 mvPosition=viewMatrix*vec4(vCloudPlace,1.);
       gl_Position=projectionMatrix*mvPosition;
     `);
   };
-  material.customProgramCacheKey=()=> 'forest-impostor-overhead-v2';
+  material.customProgramCacheKey=()=> 'forest-impostor-overhead-v3';
   return {geometry,material,detail:merged,target,refresh};
 }
 /** Vertex clustering keeps the source's branches, gaps and material colours in

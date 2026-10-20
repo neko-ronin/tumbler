@@ -5,4 +5,4 @@
  * changing. `scene.html` shows it beside the title and the Field notes repeat
  * it with the generation, so a visitor can say which release they are at.
  */
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
