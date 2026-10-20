@@ -1,5 +1,6 @@
 /** Client-only art direction. Shared uniforms keep every material on one clock. */
 import * as T from '../vendor/three.module.min.js';
+import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
 import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
 
 export const style = {
@@ -215,10 +216,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     }
     if(horizonM){
       shader.uniforms.uHorizonM={value:horizonM};shader.uniforms.uWarmth=style.warmth;
-      shader.fragmentShader='uniform float uHorizonM;uniform float uWarmth;\n'+shader.fragmentShader;
+      shader.fragmentShader='uniform float uHorizonM;uniform float uWarmth;\n'+ATMOSPHERE_SKY_GLSL+shader.fragmentShader;
       shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>',`#include <fog_fragment>
         vec3 horizonRay=normalize(vPlace-cameraPosition);
-        vec3 horizonColour=vec3(.52,.75,.79)+vec3(.32,.10,0.)*pow(max(0.,dot(horizonRay,uSun)),8.)*uWarmth;
+        vec3 horizonColour=clearSky(normalize(vec3(horizonRay.x,.001,horizonRay.z)),uSun,uWarmth,cameraPosition.y);
         // Only the ring's last stretch fades, so its cut edge vanishes into
         // the painted ranges; the scene fog already hazes it with distance,
         // and a wider fade turned the enclosing ridges into pale curtains.
@@ -255,7 +256,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
   return material;
 }
 
-/** Sky and soft cloud shapes use one background draw, no textures/post process.
+/** Clear sky and the existing distant ranges use one background draw.
  *
  * Past the far field's 3D ring the horizon is an illusion painted here: three
  * mountain ranges at fixed distances, drawn by the elevation angle they would
@@ -278,11 +279,11 @@ export function makeSky(reaches = []) {
       varying vec3 vRay; uniform float uTime; uniform vec3 uSun; uniform float uWarmth; uniform vec2 uWind; uniform vec3 uGapA; uniform vec3 uGapB;
       float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y);}
+      ${ATMOSPHERE_SKY_GLSL}
       void main(){
-        vec3 ray=normalize(vRay); float h=max(0.,ray.y);
-        vec3 horizon=vec3(.52,.75,.79);
-        vec3 col=mix(horizon,vec3(.10,.35,.62),pow(h,.42));
-        col += vec3(.32,.10,.0)*pow(max(0.,dot(ray,uSun)),8.)*uWarmth;
+        vec3 ray=normalize(vRay);
+        vec3 horizon=clearSky(normalize(vec3(ray.x,.001,ray.z)),uSun,uWarmth,cameraPosition.y);
+        vec3 col=clearSky(ray,uSun,uWarmth,cameraPosition.y);
         float alignment=max(0.,dot(ray,uSun));
         // A softly cut painted disc, 1.4 degrees across, inside the old halo.
         // Angular units keep it round and stable as flight FOV changes.
@@ -293,9 +294,6 @@ export function makeSky(reaches = []) {
         vec3 sunTint=mix(vec3(1.,.92,.72),vec3(1.,.70,.32),uWarmth);
         col+=sunTint*(pow(alignment,180.)*.38+rim*.20);
         col=mix(col,mix(vec3(1.8,1.60,1.03),vec3(1.85,1.28,.55),uWarmth),disc);
-        vec2 p=ray.xz/(.08+max(0.,ray.y))*2.7-uWind*uTime*.003;
-        float cloud=noise(p)*.65+noise(p*2.1)*.25+noise(p*4.)*.1;
-        float mask=smoothstep(.59,.73,cloud)*smoothstep(.14,.32,h);
         // Cumulus lives in the world volume pass, at the core cloud cells.
         vec2 dir=normalize(ray.xz+vec2(1e-5,0.));
         float elevation=asin(clamp(ray.y,-1.,1.));

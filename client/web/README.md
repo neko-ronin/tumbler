@@ -1,5 +1,14 @@
 # client/web
 
+## Sky/cloud first pass approved — 2026-10-20
+
+The accepted first pass adds fuller billows, periodic detail, directional
+self-shadowing and coordinated sky/cloud haze while retaining the shared cell
+bounds. The human requested main integration and deployment, with further
+exploration continuing separately. Publication receipts live in the handoff;
+sustained profiling and Unreal parity remain separate followups.
+See [BUILD-STATUS.md](BUILD-STATUS.md).
+
 ## Current flight delivery — 2026-10-18
 
 Wind rendering now falls back to nearest air samples when linear float texture

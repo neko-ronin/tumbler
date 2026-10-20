@@ -10,6 +10,10 @@
       "sha256": "03fcd4a7561f5d2a7fb1c90498b782aa637b543e8512a92c1d2fafd17f7ac985"
     },
     {
+      "path": "client/web/src3d/atmosphere-sky.js",
+      "sha256": "3620dcf8f0871b5b192d2fcdf7f88c68282241183a90f9d15348fd8442768e3f"
+    },
+    {
       "path": "client/web/src3d/audio.js",
       "sha256": "cf7ceb82945c3ecdb5bb562f381341e79521945c3d685fbfc54179b6afb042d9"
     },
@@ -26,8 +30,12 @@
       "sha256": "da86495f0f56f8940aca2579ffc0592d791ba2a2680198211d762867058e8436"
     },
     {
+      "path": "client/web/src3d/cloud-field.js",
+      "sha256": "26a88b39f99ac4e5fe417ccf98fedbe8e22fd110db900d8c9c3aa3ff42d558fb"
+    },
+    {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "94aaaf3cc4631babf09f0f6e3f7082f003777ec7c12cd90242a64ee6083dcfcd"
+      "sha256": "ab74a0d6c9edf271780e19b2bfb7499733dbb8fb3f7f8e5f95b248c0aeefaa5b"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -99,7 +107,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "7d8c99f2043643e04c5e36a707f0a59c825ca866e55964bef3994eac86abd3f5"
+      "sha256": "989c586d735ca3ea6ccdebd464c11f8ef122672aab3111bb0bc72557ed2012ec"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
@@ -335,7 +343,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "d1ad3db",
+  "commit": "e180340",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

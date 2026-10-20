@@ -1,3 +1,17 @@
+# Sky/cloud first pass approved — 2026-10-20
+
+The human approved the existing visual checkpoint and requested main integration
+and deployment. Runtime `25e8062` adds broader billows, periodic detail,
+directional self-shadowing and coordinated clear-air colour within the existing
+shared cloud bounds. Web **206/206**, packaging **7/7**, manifest **85 fetched
+files plus 17 map files**. Opened before/after evidence and a camera traversal
+are recorded in the [review brief](../../docs/reviews/web-sky-clouds-2026-10-20.md).
+The primary checkout's normal main hook owns publication; approval is not a
+deployment receipt. See the handoff and publication log for the verified outcome.
+Sustained performance, physical flight and Unreal parity remain separate gates.
+
+---
+
 # Flight v3 delivery — 2026-10-18
 
 Source delivery `7ea5a75`, `1efb1ca`, `c5f10a8` and documentation `c993dd3`

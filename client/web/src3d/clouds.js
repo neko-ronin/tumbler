@@ -5,17 +5,15 @@
 import * as T from '../vendor/three.module.min.js';
 import {style} from './style.js';
 import {createSunRays} from './sun-rays.js';
+import {buildCloudNoise,CLOUD_DENSITY_GLSL} from './cloud-field.js';
+import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
 export function createCloudPass(renderer,scene,camera,atmosphere){
   const opaque=new T.WebGLRenderTarget(1,1,{samples:Math.min(4,renderer.capabilities.maxSamples),depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)});
   opaque.texture.colorSpace=T.LinearSRGBColorSpace;
   const cloudy=new T.WebGLRenderTarget(1,1,{depthBuffer:false});
   const volumes=new T.Scene(),size=new T.Vector2();
   const forward={value:new T.Vector3()};
-  const noiseData=new Uint8Array(32**3);
-  const hash=(x,y,z)=>{const n=Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453;return n-Math.floor(n);};
-  const noise=(x,y,z)=>{const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);const f=[x-ix,y-iy,z-iz].map(v=>v*v*(3-2*v));let n=0;for(let k=0;k<2;k++)for(let j=0;j<2;j++)for(let i=0;i<2;i++)n+=hash(ix+i,iy+j,iz+k)*(i?f[0]:1-f[0])*(j?f[1]:1-f[1])*(k?f[2]:1-f[2]);return n;};
-  for(let z=0;z<32;z++)for(let y=0;y<32;y++)for(let x=0;x<32;x++)noiseData[(z*32+y)*32+x]=255*noise(x/4,y/4,z/4);
-  const texture=new T.Data3DTexture(noiseData,32,32,32);texture.format=T.RedFormat;
+  const texture=new T.Data3DTexture(buildCloudNoise(),48,48,48);texture.format=T.RGBAFormat;
   texture.minFilter=texture.magFilter=T.LinearFilter;texture.wrapS=texture.wrapT=texture.wrapR=T.RepeatWrapping;texture.needsUpdate=true;
   const geometry=new T.BoxGeometry(1,1,1);
   for(const cell of atmosphere.cloud_cells){
@@ -23,22 +21,14 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
     const sz=Math.min(declaredHeight,atmosphere.cloud_top_m-atmosphere.cloud_base_m);
     const centre=new T.Vector3(x,atmosphere.cloud_base_m+sz*.5,-y),extent=new T.Vector3(sx,sz,sy);
     const material=new T.ShaderMaterial({glslVersion:T.GLSL3,side:T.BackSide,transparent:true,depthWrite:false,depthTest:false,
-      uniforms:{uDepth:{value:opaque.depthTexture},uNoise:{value:texture},uCentre:{value:centre},uExtent:{value:extent},uResolution:{value:size},uNear:{value:camera.near},uFar:{value:camera.far},uForward:forward,uSun:style.sun,uTime:style.time,uWind:style.wind,uSeed:{value:cell.seed}},
+      uniforms:{uDepth:{value:opaque.depthTexture},uNoise:{value:texture},uCentre:{value:centre},uExtent:{value:extent},uResolution:{value:size},uNear:{value:camera.near},uFar:{value:camera.far},uForward:forward,uSun:style.sun,uTime:style.time,uWind:style.wind,uSeed:{value:cell.seed},uWarmth:style.warmth},
       vertexShader:`out vec3 vWorld;void main(){vWorld=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(vWorld,1.);}`,
       fragmentShader:`precision highp sampler3D;
         in vec3 vWorld;out vec4 fragColor;
         uniform sampler2D uDepth;uniform sampler3D uNoise;uniform vec3 uCentre,uExtent,uForward,uSun;uniform vec2 uResolution,uWind;uniform float uNear,uFar,uTime,uSeed;
-        float density(vec3 world){
-          vec3 p=(world-uCentre)/uExtent;
-          float shape=1.-length(p*vec3(2.7,2.5,2.7));
-          shape=max(shape,.90-length((p-vec3(-.18,.13,.04))*vec3(3.3,3.5,3.)));
-          shape=max(shape,.95-length((p-vec3(.17,.10,-.06))*vec3(3.5,3.2,3.3)));
-          // The billows drift downwind at 0.6 m/s inside the core's fixed cell.
-          float n=texture(uNoise,(p-vec3(uWind.x,0.,uWind.y)*uTime*.6/uExtent)*2.6+vec3(uSeed*.13,0.,0.)).r;
-          float fine=texture(uNoise,p*9.+uSeed*.071).r;
-          float edge=smoothstep(0.,.10,.5-max(abs(p.x),abs(p.z)))*smoothstep(0.,.08,.5-abs(p.y));
-          return smoothstep(.02,.24,shape+(n-.55)*.30+(fine-.5)*.07)*smoothstep(-.5,-.34,p.y)*edge;
-        }
+        uniform float uWarmth;
+        ${ATMOSPHERE_SKY_GLSL}
+        ${CLOUD_DENSITY_GLSL}
         void main(){
           vec3 ray=normalize(vWorld-cameraPosition);
           vec3 inv=1./ray;vec3 a=(uCentre-uExtent*.5-cameraPosition)*inv,b=(uCentre+uExtent*.5-cameraPosition)*inv;
@@ -48,17 +38,28 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
           float viewDepth=uNear*uFar/(uFar-depth*(uFar-uNear));
           exit=min(exit,viewDepth/max(.001,dot(ray,uForward)));
           if(exit<=entry)discard;
-          float stepM=(exit-entry)/40.;float trans=1.;vec3 light=vec3(0.);
+          float stepM=(exit-entry)/48.;float trans=1.;vec3 light=vec3(0.);
           float jitter=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);
-          for(int i=0;i<40;i++){
-            vec3 p=cameraPosition+ray*(entry+(float(i)+jitter)*stepM);float d=density(p);
-            if(d>.001){float shade=density(p+uSun*65.);float absorb=1.-exp(-d*stepM*.025);
-              vec3 col=mix(vec3(.37,.47,.53),vec3(1.,.97,.88),clamp(1.-shade*.70,0.,1.));
-              col+=vec3(.13,.12,.10)*pow(max(0.,dot(ray,uSun)),8.);
-              light+=col*absorb*trans;trans*=1.-absorb;if(trans<.015)break;}
+          float forward=pow(max(0.,dot(ray,uSun)),12.);
+          vec3 sunTint=mix(vec3(1.,.98,.90),vec3(1.12,.75,.43),uWarmth);
+          for(int i=0;i<48;i++){
+            vec3 p=cameraPosition+ray*(entry+(float(i)+jitter)*stepM);float d=cloudDensity(p,true);
+            if(d>.001){
+              float sunDepth=cloudSunDepth(p);
+              // Beer-Lambert extinction plus a softer second scattering lobe.
+              float direct=exp(-sunDepth*.028)+.24*exp(-sunDepth*.006);
+              float height=clamp((p.y-uCentre.y)/uExtent.y+.5,0.,1.);
+              vec3 ambient=mix(vec3(.08,.14,.24),vec3(.28,.39,.54),height);
+              vec3 col=ambient+sunTint*(direct*.90+forward*.32*exp(-sunDepth*.006));
+              float absorb=1.-exp(-d*stepM*.014);
+              light+=col*absorb*trans;trans*=1.-absorb;if(trans<.012)break;
+            }
           }
           float alpha=1.-trans;if(alpha<.008)discard;
-          fragColor=vec4(light/max(.001,alpha),alpha);
+          // Haze uses the same clear-air colour as the background at this ray.
+          float haze=1.-exp(-entry*.000065);
+          vec3 colour=mix(light/max(.001,alpha),clearSky(ray,uSun,uWarmth,cameraPosition.y),haze);
+          fragColor=vec4(colour,alpha);
         }`
     });
     const box=new T.Mesh(geometry,material);box.position.copy(centre);box.scale.copy(extent);box.name=`cumulus_${cell.seed}`;volumes.add(box);
