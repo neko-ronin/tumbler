@@ -31,11 +31,19 @@
     },
     {
       "path": "client/web/src3d/cloud-field.js",
-      "sha256": "26a88b39f99ac4e5fe417ccf98fedbe8e22fd110db900d8c9c3aa3ff42d558fb"
+      "sha256": "21bbe6209d32071b02dbfe3f7717181903f2a215d7e8fc2b8770012828efccf7"
+    },
+    {
+      "path": "client/web/src3d/cloud-shadow-field.js",
+      "sha256": "37e81bb85327984b2a330742da3b4e7fda8782d4d122f2684ecf732775bcbb9b"
+    },
+    {
+      "path": "client/web/src3d/cloud-shadows.js",
+      "sha256": "f1939ea5ff900d66ac594b4ca18f0eba5d54378b748f2f025611056fd96e465c"
     },
     {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "ab74a0d6c9edf271780e19b2bfb7499733dbb8fb3f7f8e5f95b248c0aeefaa5b"
+      "sha256": "77298923fc5d7614d02b0c3894b9251ea219cbb39faf0e75c652fdc1dd095e10"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -87,7 +95,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "24577d90322ee4dd3f513ad8862bed2f93c42ca9375d36fa137a6cc1c24d37f6"
+      "sha256": "a5e377f72b81513b7226a03bd1800b1f96d5f51f1408778e192857dc467951d5"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -107,7 +115,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "989c586d735ca3ea6ccdebd464c11f8ef122672aab3111bb0bc72557ed2012ec"
+      "sha256": "e4c48c70879b64659b84c5e3c03125e9ed5ab848cca20d9d041b3b9d6141a13d"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
@@ -331,7 +339,7 @@
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "af29135e8e191dc49fea24e53865d2a72a6a4c48df6d35a0b7ae0eb3d44ed1a4"
+      "sha256": "89ecdf95772cab4b37386c6eb15048a5c5ce0cdb07787780f11ccc7c987ea7fd"
     },
     {
       "path": "client/web/data/heightmap.f32",
@@ -343,12 +351,12 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "e180340",
+  "commit": "877fb40",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "af29135e8e19"
+      "sha256_12": "89ecdf95772c"
     },
     {
       "path": "shared/world/out/placement.json",

@@ -201,7 +201,7 @@ async function main() {
     x:cover.offsetX,z:-(cover.offsetY+cover.quad*cover.resolution),span:cover.quad*cover.resolution,
   });
   meadowAir.update(0);
-  const windFrom = worldmap.wind.direction_deg * Math.PI / 180; style.wind.value.set(-Math.sin(windFrom), Math.cos(windFrom));
+  const windFrom = worldmap.wind.direction_deg * Math.PI / 180; style.wind.value.set(-Math.sin(windFrom), Math.cos(windFrom));style.cloudWind.value.copy(style.wind.value);
   const sky = makeSky(worldmap.mountains?.enclosure?.river_reaches); scene.add(sky);
   const weatherSelect=document.getElementById('weather');
   weatherSelect.replaceChildren(...Object.entries(flightConfig.weather).map(([id,w])=>new Option(w.label,id)));weatherSelect.value=navigation.weather;
@@ -209,7 +209,7 @@ async function main() {
   const motionSelect=document.getElementById('motion');
   motionSelect.value=matchMedia('(prefers-reduced-motion: reduce)').matches?'0':'1';navigation.setEffects(Number(motionSelect.value));
   motionSelect.addEventListener('change',()=>navigation.setEffects(Number(motionSelect.value)));
-  const cloudPass=createCloudPass(renderer,scene,camera,worldmap.atmosphere);
+  const cloudPass=createCloudPass(renderer,scene,camera,worldmap.atmosphere,ground);
   document.getElementById('save-view').addEventListener('click',()=>{
     const speed=flightConfig.modes[navigation.mode]&&!navigation.state.grounded?Math.min(1,Math.max(0,(navigation.state.speed-12)/22)):0;
     cloudPass.render({speed,strength:Number(motionSelect.value)});
@@ -382,7 +382,7 @@ async function main() {
     e.preventDefault(); contextLost = true; cancelAnimationFrame(frame); frame = 0;
     status.textContent = 'Graphics paused — recovering…';
   });
-  canvas.addEventListener('webglcontextrestored', () => { contextLost = false; forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true); status.textContent = 'Ready for the mountains.'; resume(); });
+  canvas.addEventListener('webglcontextrestored', () => { contextLost = false; cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true); status.textContent = 'Ready for the mountains.'; resume(); });
   window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   status.textContent = 'Ready for the mountains.';
   document.body.classList.add('ready');

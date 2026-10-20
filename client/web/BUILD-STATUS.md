@@ -1,3 +1,19 @@
+# Sky/cloud second-pass candidate — local, 2026-10-20
+
+On `codex/web-sky-clouds-next`: wider shared cloud groups, refined volume light,
+cached noise startup and solar-projected terrain/meadow cloud shadows. The
+accepted first-pass release below remains the published baseline.
+
+Web **209/209**, packaging **7/7**, shared-world **5/5**; integrity **87 fetched
+plus 17 map files**. Browser GPU controls cover shared bounds, opaque depth,
+solar/height negatives, evolving density and observer-independent cloud wind.
+The [second-pass brief](../../docs/reviews/web-sky-clouds-next.md) records the
+three-minute profiles, opened comparisons and limits. The candidate trace has
+higher GPU tail cost; a distance-varying sample experiment was rejected and
+removed. Human visual acceptance and Unreal rendering are open; this branch has not been merged or deployed.
+
+---
+
 # Sky/cloud first pass released — 2026-10-20
 
 The accepted runtime `25e8062` is integrated on main and live at

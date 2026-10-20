@@ -1,5 +1,14 @@
 # client/web
 
+## Sky/cloud second-pass candidate — local, 2026-10-20
+
+The continuation adds broader shared cloud groups, refined sunlight and moving
+density shadows on terrain/meadow. Cached lattice calculations preserve the
+noise texture while reducing its CPU build cost. Preview and matched comparisons
+run on port 8021, in `codex/web-sky-clouds-next`. See the
+[second-pass brief](../../docs/reviews/web-sky-clouds-next.md) for measurements
+and limits. This candidate has not been merged or deployed.
+
 ## Sky/cloud first pass approved — 2026-10-20
 
 The accepted first pass adds fuller billows, periodic detail, directional

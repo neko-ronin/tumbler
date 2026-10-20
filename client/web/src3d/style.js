@@ -1,5 +1,6 @@
 /** Client-only art direction. Shared uniforms keep every material on one clock. */
 import * as T from '../vendor/three.module.min.js';
+import {CLOUD_GROUND_LIGHT_GLSL} from './cloud-shadow-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
 import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
 
@@ -8,6 +9,8 @@ export const style = {
   sun: { value: new T.Vector3(-0.6, 0.65, -0.45).normalize() },
   warmth: { value: 1 },
   sunEffects: { value: 1 },
+  cloudGround:{value:null},cloudGroundGrid:{value:new T.Vector4(0,0,1,1)},
+  cloudGroundReady:{value:0},cloudTop:{value:1600},
   cover: { value: null },
   coverGrid: { value: new T.Vector4() },
   snow: { value: null },
@@ -18,6 +21,8 @@ export const style = {
   air: {value:null},
   airGrid: {value:new T.Vector4(0,0,640,0)},
   wind: { value: new T.Vector2(1, 0) },
+  // Regional cloud detail must not change when the observer enters a local gust.
+  cloudWind:{value:new T.Vector2(1,0)},
 };
 // Shared air samples packed as scene (east, south) velocity, lift, roughness.
 const AIR_GLSL=`uniform sampler2D uAir;uniform vec4 uAirGrid;uniform vec2 uWind;
@@ -54,6 +59,13 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     shader.uniforms.uAir=style.air;shader.uniforms.uAirGrid=style.airGrid;
     shader.uniforms.uSun = style.sun;
     if(terrain||meadow){
+      shader.uniforms.uCloudGround=style.cloudGround;shader.uniforms.uCloudGroundGrid=style.cloudGroundGrid;
+      shader.uniforms.uCloudGroundReady=style.cloudGroundReady;shader.uniforms.uCloudTop=style.cloudTop;
+      shader.fragmentShader=CLOUD_GROUND_LIGHT_GLSL+shader.fragmentShader;
+      shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
+        float cloudTransmission=cloudGroundLight(vPlace);
+        reflectedLight.directDiffuse*=cloudTransmission;reflectedLight.directSpecular*=cloudTransmission;
+      `);
       shader.uniforms.uMeadowAirFrom=style.meadowAirFrom;shader.uniforms.uMeadowAirTo=style.meadowAirTo;
       shader.uniforms.uMeadowAirGrid=style.meadowAirGrid;shader.uniforms.uMeadowAirMix=style.meadowAirMix;
     }
@@ -252,7 +264,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-meadow-v10:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}`;
+  material.customProgramCacheKey = () => `cozy-meadow-v11:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}`;
   return material;
 }
 

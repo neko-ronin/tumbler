@@ -4,10 +4,12 @@
  */
 import * as T from '../vendor/three.module.min.js';
 import {style} from './style.js';
+import {createCloudShadows} from './cloud-shadows.js';
+import {cloudCellBounds} from './cloud-shadow-field.js';
 import {createSunRays} from './sun-rays.js';
 import {buildCloudNoise,CLOUD_DENSITY_GLSL} from './cloud-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
-export function createCloudPass(renderer,scene,camera,atmosphere){
+export function createCloudPass(renderer,scene,camera,atmosphere,ground){
   const opaque=new T.WebGLRenderTarget(1,1,{samples:Math.min(4,renderer.capabilities.maxSamples),depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)});
   opaque.texture.colorSpace=T.LinearSRGBColorSpace;
   const cloudy=new T.WebGLRenderTarget(1,1,{depthBuffer:false});
@@ -15,13 +17,12 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
   const forward={value:new T.Vector3()};
   const texture=new T.Data3DTexture(buildCloudNoise(),48,48,48);texture.format=T.RGBAFormat;
   texture.minFilter=texture.magFilter=T.LinearFilter;texture.wrapS=texture.wrapT=texture.wrapR=T.RepeatWrapping;texture.needsUpdate=true;
+  const shadows=createCloudShadows(renderer,atmosphere,texture,ground);
   const geometry=new T.BoxGeometry(1,1,1);
   for(const cell of atmosphere.cloud_cells){
-    const [x,y]=cell.centre_xy_m,[sx,sy,declaredHeight]=cell.size_m;
-    const sz=Math.min(declaredHeight,atmosphere.cloud_top_m-atmosphere.cloud_base_m);
-    const centre=new T.Vector3(x,atmosphere.cloud_base_m+sz*.5,-y),extent=new T.Vector3(sx,sz,sy);
+    const bounds=cloudCellBounds(cell,atmosphere),centre=new T.Vector3(...bounds.centre),extent=new T.Vector3(...bounds.extent);
     const material=new T.ShaderMaterial({glslVersion:T.GLSL3,side:T.BackSide,transparent:true,depthWrite:false,depthTest:false,
-      uniforms:{uDepth:{value:opaque.depthTexture},uNoise:{value:texture},uCentre:{value:centre},uExtent:{value:extent},uResolution:{value:size},uNear:{value:camera.near},uFar:{value:camera.far},uForward:forward,uSun:style.sun,uTime:style.time,uWind:style.wind,uSeed:{value:cell.seed},uWarmth:style.warmth},
+      uniforms:{uDepth:{value:opaque.depthTexture},uNoise:{value:texture},uCentre:{value:centre},uExtent:{value:extent},uResolution:{value:size},uNear:{value:camera.near},uFar:{value:camera.far},uForward:forward,uSun:style.sun,uTime:style.time,uWind:style.cloudWind,uSeed:{value:cell.seed},uWarmth:style.warmth},
       vertexShader:`out vec3 vWorld;void main(){vWorld=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(vWorld,1.);}`,
       fragmentShader:`precision highp sampler3D;
         in vec3 vWorld;out vec4 fragColor;
@@ -47,10 +48,10 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
             if(d>.001){
               float sunDepth=cloudSunDepth(p);
               // Beer-Lambert extinction plus a softer second scattering lobe.
-              float direct=exp(-sunDepth*.028)+.24*exp(-sunDepth*.006);
+              float direct=exp(-sunDepth*.028)+.20*exp(-sunDepth*.006);
               float height=clamp((p.y-uCentre.y)/uExtent.y+.5,0.,1.);
-              vec3 ambient=mix(vec3(.08,.14,.24),vec3(.28,.39,.54),height);
-              vec3 col=ambient+sunTint*(direct*.90+forward*.32*exp(-sunDepth*.006));
+              vec3 ambient=mix(vec3(.065,.12,.21),vec3(.28,.39,.54),height);
+              vec3 col=ambient+sunTint*(direct*1.02+forward*.38*exp(-sunDepth*.006));
               float absorb=1.-exp(-d*stepM*.014);
               light+=col*absorb*trans;trans*=1.-absorb;if(trans<.012)break;
             }
@@ -106,6 +107,7 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
     style.sunEffects.value=strength;
     renderer.getDrawingBufferSize(dimensions);
     if(opaque.width!==dimensions.x||opaque.height!==dimensions.y){opaque.setSize(dimensions.x,dimensions.y);cloudy.setSize(Math.ceil(dimensions.x*.5),Math.ceil(dimensions.y*.5));size.set(cloudy.width,cloudy.height);}
+    shadows.update();
     camera.getWorldDirection(forward.value);
     renderer.setRenderTarget(opaque);renderer.render(scene,camera);
     const color=renderer.getClearColor(savedColor),alpha=renderer.getClearAlpha();
@@ -113,5 +115,5 @@ export function createCloudPass(renderer,scene,camera,atmosphere){
     rays.render(renderer,camera,dimensions.x,dimensions.y,strength);
     renderer.setClearColor(color,alpha);renderer.setRenderTarget(null);renderer.render(fullscreen,quadCamera);
   }
-  return {render,flightFX,rays,volumes,opaque,cloudy,dispose(){rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>m.material.dispose());}};
+  return {render,flightFX,rays,volumes,opaque,cloudy,shadows,dispose(){shadows.dispose();rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>m.material.dispose());}};
 }

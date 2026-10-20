@@ -8,17 +8,30 @@ function hash(x,y,z,p){
  n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);
  return ((n^(n>>>16))>>>0)/4294967296;
 }
+// Reuse the periodic lattice instead of rehashing its same few thousand
+// corners/features millions of times during the synchronous texture build.
+const lattices=new Map();
+function lattice(p){
+ if(lattices.has(p))return lattices.get(p);
+ const values=new Float64Array(p**3),features=new Float64Array(p**3*3);
+ for(let z=0;z<p;z++)for(let y=0;y<p;y++)for(let x=0;x<p;x++){
+  const index=(z*p+y)*p+x,h=hash(x,y,z,p);values[index]=h;
+  const f=h*65536;features[index*3]=(f*13.37)%1;features[index*3+1]=(f*7.19)%1;features[index*3+2]=(f*3.71)%1;
+ }
+ const result={values,features};lattices.set(p,result);return result;
+}
 function value(x,y,z,p){
- const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z),f=[x-ix,y-iy,z-iz].map(v=>v*v*(3-2*v));
+ const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z),fx=x-ix,fy=y-iy,fz=z-iz;
+ const sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),sz=fz*fz*(3-2*fz),data=lattice(p).values;
  let sum=0;
- for(let k=0;k<2;k++)for(let j=0;j<2;j++)for(let i=0;i<2;i++)sum+=hash(ix+i,iy+j,iz+k,p)*(i?f[0]:1-f[0])*(j?f[1]:1-f[1])*(k?f[2]:1-f[2]);
+ for(let k=0;k<2;k++)for(let j=0;j<2;j++)for(let i=0;i<2;i++)sum+=data[(wrap(iz+k,p)*p+wrap(iy+j,p))*p+wrap(ix+i,p)]*(i?sx:1-sx)*(j?sy:1-sy)*(k?sz:1-sz);
  return sum;
 }
 function worley(x,y,z,p){
- const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let distance=3;
+ const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z),fx=x-ix,fy=y-iy,fz=z-iz,data=lattice(p).features;let distance=3;
  for(let k=-1;k<=1;k++)for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){
-  const h=hash(ix+i,iy+j,iz+k,p)*65536;
-  const dx=ix+i+((h*13.37)%1)-x,dy=iy+j+((h*7.19)%1)-y,dz=iz+k+((h*3.71)%1)-z;
+  const n=((wrap(iz+k,p)*p+wrap(iy+j,p))*p+wrap(ix+i,p))*3;
+  const dx=i+data[n]-fx,dy=j+data[n+1]-fy,dz=k+data[n+2]-fz;
   distance=Math.min(distance,dx*dx+dy*dy+dz*dz);
  }
  return 1.-Math.min(1,Math.sqrt(distance));
@@ -55,13 +68,13 @@ float cloudDensity(vec3 world, bool detail) {
  vec3 q=(p-drift)*1.15+vec3(uSeed*.137,uSeed*.071,0.);
  vec3 n=texture(uNoise,q).rgb;
  shape+=(n.r-.5)*.82-(1.-n.g)*.30;
- if(detail)shape-=(1.-texture(uNoise,q*2.7).b)*.18;
+ if(detail)shape-=(1.-texture(uNoise,q*2.7).b)*.26;
  return smoothstep(-.06,.12,shape)*smoothstep(-.45,-.30,p.y)*smoothstep(0.,.06,edge);
 }
 float cloudSunDepth(vec3 p) {
- float depth=0.,stride=8.;
+ float depth=0.,stride=10.;
  for(int j=0;j<5;j++){
-  p+=uSun*stride;depth+=cloudDensity(p,false)*stride;stride*=2.;
+  depth+=cloudDensity(p+uSun*stride*.5,false)*stride;p+=uSun*stride;stride*=2.2;
  }
  return depth;
 }
