@@ -16,7 +16,7 @@ export function createCloudShadows(renderer,atmosphere,noise,ground){
  height.minFilter=height.magFilter=T.NearestFilter;height.needsUpdate=true;
  const target=new T.WebGLRenderTarget(resolution,resolution,{depthBuffer:false});
  target.texture.minFilter=target.texture.magFilter=T.LinearFilter;
- style.cloudGroundHeight.value=height;style.cloudBase.value=atmosphere.cloud_base_m;style.cloudGround.value=target.texture;style.cloudGroundGrid.value.copy(grid);style.cloudTop.value=atmosphere.cloud_top_m;
+ style.cloudGround.value=target.texture;style.cloudGroundGrid.value.copy(grid);style.cloudTop.value=atmosphere.cloud_top_m;
  const scene=new T.Scene(),camera=new T.Camera(),geometry=new T.PlaneGeometry(2,2);
  for(const cell of atmosphere.cloud_cells){
   const bounds=cloudCellBounds(cell,atmosphere),material=new T.ShaderMaterial({glslVersion:T.GLSL3,depthTest:false,depthWrite:false,transparent:true,premultipliedAlpha:true,blending:T.MultiplyBlending,

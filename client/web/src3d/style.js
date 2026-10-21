@@ -1,7 +1,5 @@
 /** Client-only art direction. Shared uniforms keep every material on one clock. */
 import * as T from '../vendor/three.module.min.js';
-import {STATIC_TREE_SHADOW_GLSL} from './static-shadows.js';
-import {ACTOR_SHADOW_GLSL} from './actor-shadow.js';
 import {CLOUD_GROUND_LIGHT_GLSL} from './cloud-shadow-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
 import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
@@ -11,9 +9,6 @@ export const style = {
   sun: { value: new T.Vector3(-0.6, 0.65, -0.45).normalize() },
   warmth: { value: 1 },
   sunEffects: { value: 1 },
-  staticTreeShadow:{value:null},staticTreeGrid:{value:new T.Vector4()},staticTreeReady:{value:0},
-  actorShadow:{value:null},actorShadowMatrix:{value:new T.Matrix4()},actorShadowTexel:{value:new T.Vector2(1/1024,1/1024)},actorShadowReady:{value:0},
-  cloudGroundHeight:{value:null},cloudBase:{value:980},
   cloudGround:{value:null},cloudGroundGrid:{value:new T.Vector4(0,0,1,1)},
   cloudGroundReady:{value:0},cloudTop:{value:1600},
   cover: { value: null },
@@ -55,33 +50,22 @@ const softRamp = ramp.clone();
 softRamp.minFilter = softRamp.magFilter = T.LinearFilter;
 softRamp.needsUpdate = true;
 
-export function sunShadowUniforms(){
- return {uActorShadow:style.actorShadow,uActorShadowMatrix:style.actorShadowMatrix,uActorShadowTexel:style.actorShadowTexel,uActorShadowReady:style.actorShadowReady,
-  uCloudGround:style.cloudGround,uCloudGroundHeight:style.cloudGroundHeight,uCloudGroundGrid:style.cloudGroundGrid,uCloudGroundReady:style.cloudGroundReady,uCloudBase:style.cloudBase,uCloudTop:style.cloudTop};
-}
-export function sunShadowShader(shader){
- Object.assign(shader.uniforms,sunShadowUniforms());shader.fragmentShader=ACTOR_SHADOW_GLSL+CLOUD_GROUND_LIGHT_GLSL+shader.fragmentShader;
-}
-
 /** Real toon lighting, with the renderer's shadows, fog and colour management. */
 export function toonMaterial(parameters = {}, { meadow = false, terrain = false, foliage = false, horizonM = 0, meadowRange = [150,225], meadowFocused=false, canopy=false,grassBlades=false,canopyStart=[25,44] } = {}) {
   const material = terrain ? new T.MeshStandardMaterial({roughness: .96, ...parameters}) : new T.MeshToonMaterial({ gradientMap: foliage||meadow ? softRamp : ramp, ...parameters });
   material.onBeforeCompile = (shader) => {
-    sunShadowShader(shader);
-    if(terrain||meadow){
-      shader.uniforms.uStaticTreeShadow=style.staticTreeShadow;shader.uniforms.uStaticTreeGrid=style.staticTreeGrid;shader.uniforms.uStaticTreeReady=style.staticTreeReady;
-      shader.fragmentShader=STATIC_TREE_SHADOW_GLSL+shader.fragmentShader;
-      shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`outgoingLight=staticTreeShade(outgoingLight,vPlace);\n#include <opaque_fragment>`);
-    }
-    shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
-      float sunlight=actorSunLight(vPlace)*${terrain||meadow?'cloudGroundLight(vPlace)':'cloudObjectLight(vPlace,uSun)'};
-      reflectedLight.directDiffuse*=sunlight;reflectedLight.directSpecular*=sunlight;
-    `);
     shader.uniforms.uTime = style.time;
     shader.uniforms.uWind = style.wind;
     shader.uniforms.uAir=style.air;shader.uniforms.uAirGrid=style.airGrid;
     shader.uniforms.uSun = style.sun;
     if(terrain||meadow){
+      shader.uniforms.uCloudGround=style.cloudGround;shader.uniforms.uCloudGroundGrid=style.cloudGroundGrid;
+      shader.uniforms.uCloudGroundReady=style.cloudGroundReady;shader.uniforms.uCloudTop=style.cloudTop;
+      shader.fragmentShader=CLOUD_GROUND_LIGHT_GLSL+shader.fragmentShader;
+      shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
+        float cloudTransmission=cloudGroundLight(vPlace);
+        reflectedLight.directDiffuse*=cloudTransmission;reflectedLight.directSpecular*=cloudTransmission;
+      `);
       shader.uniforms.uMeadowAirFrom=style.meadowAirFrom;shader.uniforms.uMeadowAirTo=style.meadowAirTo;
       shader.uniforms.uMeadowAirGrid=style.meadowAirGrid;shader.uniforms.uMeadowAirMix=style.meadowAirMix;
     }
@@ -280,7 +264,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-meadow-v14:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}`;
+  material.customProgramCacheKey = () => `cozy-meadow-v11:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}`;
   return material;
 }
 
@@ -374,7 +358,7 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
   return new T.ShaderMaterial({
     name: ribbon ? 'river_reach_optical' : river ? 'river_optical' : 'reservoir_optical', transparent: true, depthWrite: false,
     defines: ribbon ? { RIBBON: '' } : {},
-    uniforms: { ...sunShadowUniforms(),uTime: style.time, uSun: style.sun, uHeights: { value: heights },
+    uniforms: { uTime: style.time, uSun: style.sun, uHeights: { value: heights },
       uGrid: { value: new T.Vector4(grid.offsetX, grid.offsetY, grid.quad, grid.resolution) },
       uAir:style.air,uAirGrid:style.airGrid,uWind:style.wind,uFlow:{value:flow},uRiver: { value: river ? 1 : 0 }, ...T.UniformsUtils.merge([T.UniformsLib.fog]) },
     fog: true,
@@ -390,7 +374,7 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
       vec4 mvPosition=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mvPosition;
       #include <fog_vertex>
       }`,
-    fragmentShader: ACTOR_SHADOW_GLSL+CLOUD_GROUND_LIGHT_GLSL+AIR_GLSL+`
+    fragmentShader: AIR_GLSL+`
       uniform float uTime; uniform float uRiver; uniform vec3 uSun; uniform sampler2D uHeights; uniform sampler2D uFlow; uniform vec4 uGrid;
       varying vec3 vPlace; varying vec3 vView;
       #ifdef RIBBON
@@ -454,10 +438,9 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
         // enough to hold one; distant water keeps the soft path only.
         float sheen=pow(facing,mix(28.,90.,calm))*mix(.06,.16,calm);
         float glint=smoothstep(.8,.97,noised(p*6.3+flow*uTime*.6+vec2(0.,uTime*.35)).x)*pow(facing,900.)*(1.-smoothstep(.03,.2,footprint));
-        float sunlight=cloudObjectLight(vPlace,uSun)*actorSunLight(vPlace);
-        vec3 col=mix(water*mix(.65,1.,sunlight),sky,fresnel*.86)+vec3(1.,.94,.78)*(sheen+glint*4.)*sunlight;
+        vec3 col=mix(water,sky,fresnel*.86)+vec3(1.,.94,.78)*(sheen+glint*4.);
         float caustic=pow(1.-abs(noised(p*.55+vec2(uTime*.11,-uTime*.07)).x*2.-1.),7.)*.05*exp(-depth*.65);
-        col+=vec3(.31,.43,.19)*caustic*sunlight;
+        col+=vec3(.31,.43,.19)*caustic;
         // Lapping foam only where the water thins, travelling up the shore.
         float shore=1.-smoothstep(.03,.38,depth);
         float foam=shore*smoothstep(.45,.95,noised(p*.9+vec2(uTime*.13,0.)).x+.15*sin(uTime*1.1-depth*16.));

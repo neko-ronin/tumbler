@@ -57,22 +57,19 @@ float cloudDensity(vec3 world, bool detail) {
  // Seed variation rotates the billows, never the core-owned box or the wind.
  float angle=uSeed*2.39996;mat2 turn=mat2(cos(angle),-sin(angle),sin(angle),cos(angle));
  p.xz=turn*p.xz;
- // A broad, flat-bottomed body supports unequal rounded rising turrets.
- float lift=.04*sin(uSeed*1.91);
+ // A broad, flat-bottomed body supports several unequal rising turrets.
  float shape=1.20-length((p-vec3(0.,-.13,0.))*vec3(2.15,4.2,2.2));
- shape=max(shape,.97-length((p-vec3(-.17,.04-lift,.02))*vec3(3.6,2.7,3.6)));
- shape=max(shape,.93-length((p-vec3(.15,.09+lift,-.03))*vec3(3.8,3.1,3.6)));
+ shape=max(shape,.97-length((p-vec3(-.17,.04,.02))*vec3(3.6,2.7,3.6)));
+ shape=max(shape,.93-length((p-vec3(.15,.09,-.03))*vec3(3.8,3.1,3.6)));
  shape=max(shape,.60-length((p-vec3(-.26,-.04,-.13))*vec3(4.3,4.2,4.5)));
  shape=max(shape,.65-length((p-vec3(.25,-.03,.12))*vec3(4.3,4.3,4.4)));
- shape=max(shape,.70-length((p-vec3(.03,.17,.10))*vec3(4.7,4.4,4.8)));
- shape=max(shape,.55-length((p-vec3(-.08,.11,.26))*vec3(5.3,4.8,5.3)));
- shape=max(shape,.56-length((p-vec3(.08,.15,-.20))*vec3(5.3,4.8,5.3)));
+ shape=max(shape,.64-length((p-vec3(.01,.20,.13))*vec3(4.7,3.6,4.8)));
  vec3 drift=vec3(uWind.x,0.,uWind.y)*uTime*.6/uExtent;drift.xz=turn*drift.xz;
  vec3 q=(p-drift)*1.15+vec3(uSeed*.137,uSeed*.071,0.);
  vec3 n=texture(uNoise,q).rgb;
  shape+=(n.r-.5)*.82-(1.-n.g)*.30;
  if(detail)shape-=(1.-texture(uNoise,q*2.7).b)*.26;
- return smoothstep(-.09,.14,shape)*smoothstep(-.45,-.30,p.y)*smoothstep(0.,.06,edge);
+ return smoothstep(-.06,.12,shape)*smoothstep(-.45,-.30,p.y)*smoothstep(0.,.06,edge);
 }
 float cloudSunDepth(vec3 p) {
  float depth=0.,stride=10.;

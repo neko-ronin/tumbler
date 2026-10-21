@@ -1,26 +1,4 @@
-# Web v0.1.1 released — 2026-10-20
-
-30 FPS presentation, stabilized per-frame wing/Ronin shadows, cached volumetric
-sunlight, rounded cloud billows and cloud shade on trees/water/Ronin are complete.
-Static tree-ground shade now reuses a lazy bake per fixed sun preset; it preserves
-the previous soft crown approximation, with at most 48 MiB of texture memory.
-It is not a branch-accurate full-scene lightmap.
-
-Private web **216/216**, packaging **7/7**, integrity **91 scene + 17 map files**.
-The three-minute 1440×900 trace measured p50 **33.3 ms**, p95 **34.2 ms** in both
-normal flight and cloud traversal, with five rare intervals over 40 ms retained.
-Actual actor/terrain pixels, static mask reception, graphics recovery and cloud
-bounds/depth/solar negatives pass. See the [v0.1.1 review](../../docs/reviews/web-011.md).
-Live at **https://tumbler.catronin.com/**. Initial public release `98d2b2c`
-verified manifest `7debee5aa228`; public web **200/200** and packaging **7/7**
-pass. The live browser matches all fourteen changed runtime modules, renders
-v0.1.1 at the 30 FPS cap and compiles every shader. The publication log holds
-the latest receipt. Physical controller, human visual approval, longer thermal
-testing and Unreal parity remain separate.
-
----
-
-# Earlier sky/cloud second-pass checkpoint — 2026-10-20
+# Sky/cloud second-pass candidate — local, 2026-10-20
 
 On `codex/web-sky-clouds-next`: wider shared cloud groups, refined volume light,
 cached noise startup and solar-projected terrain/meadow cloud shadows. The
@@ -32,7 +10,7 @@ solar/height negatives, evolving density and observer-independent cloud wind.
 The [second-pass brief](../../docs/reviews/web-sky-clouds-next.md) records the
 three-minute profiles, opened comparisons and limits. The candidate trace has
 higher GPU tail cost; a distance-varying sample experiment was rejected and
-removed. Human visual acceptance and Unreal rendering are open; the human subsequently merged this checkpoint at `3ff9552`.
+removed. Human visual acceptance and Unreal rendering are open; this branch has not been merged or deployed.
 
 ---
 
