@@ -76,10 +76,11 @@ test('middle crown has spatial volume and distant trees survive every selection'
   camera.position.set(20000,20000,20000);forest.update(camera);assert.equal(forest.stats.far,1);
 });
 
-test('changing near/proxy casters and restoration invalidate cached shadows',()=>{
+test('actual caster membership and restoration invalidate cached shadows',()=>{
   const forest=build(),camera=new T.PerspectiveCamera();camera.position.copy(bounds.getCenter(new T.Vector3()));forest.update(camera);
   const revision=forest.stats.shadowRevision;assert.ok(revision>0);
-  camera.position.x=bounds.max.x+170;forest.update(camera);assert.equal(forest.stats.shadowProxies,1);assert.ok(forest.stats.shadowRevision>revision);
+  camera.position.x=bounds.max.x+170;forest.update(camera);assert.equal(forest.stats.shadowProxies,1);assert.equal(forest.stats.shadowRevision,revision,'source-identical visual LOD changes do not invalidate the map');
+  camera.position.x=bounds.max.x+600;forest.update(camera);assert.ok(forest.stats.shadowRevision>revision,'leaving the caster region changes membership');
   const next=forest.stats.shadowRevision;forest.rebuildImpostors(new T.Vector3(-.4,.8,-.4));assert.ok(forest.stats.shadowRevision>next);
   const near=forest.group.children.find(m=>m.name.startsWith('forest_near_'));assert.ok(near.castShadow&&near.receiveShadow);
   assert.ok(!forest.group.children.find(m=>m.name.startsWith('forest_far_')).castShadow,'cards must not cast camera-facing plane shadows');
@@ -162,4 +163,24 @@ test('a bounded projection miss retains local under-canopy darkening',()=>{
   const shadows=buildTreeGroundShadows({instances:[tree]},{[path]:asset},ground);
   shadows.setSun(new T.Vector3(-.64,.48,-.55).normalize());
   assert.equal(shadows.stats.contactFallbacks,1);assert.equal(shadows.stats.patches,1,'a bounded ray miss must not silently remove all tree ground support');
+});
+
+test('detail release retains the same shared caster geometry and core transform',()=>{
+  const forest=build(),camera=new T.PerspectiveCamera(),matrix=new T.Matrix4();
+  camera.position.copy(bounds.getCenter(new T.Vector3()));forest.update(camera);
+  const near=forest.group.children.find(m=>m.name.startsWith('forest_near_'));
+  const proxy=forest.group.children.find(m=>m.name.startsWith('forest_shadow_'));
+  near.getMatrixAt(0,matrix);const original=matrix.clone();
+  camera.position.copy(bounds.getCenter(new T.Vector3())).setX(bounds.max.x+170);forest.update(camera);
+  proxy.getMatrixAt(0,matrix);assert.ok(matrix.equals(original),'LOD cannot move the core caster');
+  assert.ok(proxy.geometry.attributes.position===near.geometry.attributes.position,'switching visual LOD must preserve the actual source shadow silhouette');
+  assert.ok(proxy.geometry.index===near.geometry.index,'caster triangle topology stays identical');
+  assert.equal(proxy.material.side,near.material.side,'thin leaves must cast from the same sides');
+});
+
+test('detailed invisible casters skip beauty geometry while shadow rendering retains it',()=>{
+  const forest=build(),proxy=forest.group.children.find(m=>m.name.startsWith('forest_shadow_'));
+  proxy.onBeforeRender();assert.equal(proxy.geometry.drawRange.count,0);
+  proxy.onBeforeShadow();assert.equal(proxy.geometry.drawRange.count,Infinity);
+  proxy.onBeforeRender();proxy.onAfterRender();assert.equal(proxy.geometry.drawRange.count,Infinity);
 });

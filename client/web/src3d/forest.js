@@ -5,7 +5,7 @@
 import * as T from '../vendor/three.module.min.js';
 import { instanceMatrix } from './world.js';
 import { mergePrimitives } from './glb.js';
-import { toonMaterial } from './style.js';
+import { toonMaterial,style,sunShadowShader } from './style.js';
 
 export function stylizedTreeGeometry(asset) {
   const foliage = asset.primitives.filter(p => /foliage/.test(p.materialName));
@@ -104,14 +104,21 @@ function bakeImpostor(asset,renderer){
   function refresh(sunDirection){
   if(sunDirection)light.position.copy(sunDirection).multiplyScalar(100);
   const previous=renderer.getRenderTarget(),color=renderer.getClearColor(new T.Color()),alpha=renderer.getClearAlpha();
-  renderer.setRenderTarget(target);renderer.setClearColor(0,0);renderer.render(scene,camera);
-  renderer.setRenderTarget(topTarget);renderer.render(scene,topCamera);
-  renderer.setRenderTarget(previous);renderer.setClearColor(color,alpha);
+  const cloudReady=style.cloudGroundReady.value,actorReady=style.actorShadowReady.value;
+  style.cloudGroundReady.value=style.actorShadowReady.value=0;
+  try{
+   renderer.setRenderTarget(target);renderer.setClearColor(0,0);renderer.render(scene,camera);
+   renderer.setRenderTarget(topTarget);renderer.render(scene,topCamera);
+  }finally{renderer.setRenderTarget(previous);renderer.setClearColor(color,alpha);style.cloudGroundReady.value=cloudReady;style.actorShadowReady.value=actorReady;}
   }
   refresh();
   const geometry=new T.PlaneGeometry(width,height);geometry.translate(centre.x,centre.y,centre.z);geometry.computeBoundingBox();geometry.computeBoundingSphere();
   const material=new T.MeshBasicMaterial({map:target.texture,alphaTest:.22,side:T.DoubleSide,fog:true});
   material.onBeforeCompile=shader=>{
+    sunShadowShader(shader);shader.uniforms.uSun=style.sun;
+    shader.vertexShader='varying vec3 vCloudPlace;\n'+shader.vertexShader;
+    shader.fragmentShader='uniform vec3 uSun;varying vec3 vCloudPlace;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`outgoingLight*=mix(.60,1.,cloudObjectLight(vCloudPlace,uSun)*actorSunLight(vCloudPlace));\n#include <opaque_fragment>`);
     shader.uniforms.uTop={value:topTarget.texture};shader.uniforms.uCanopyDims={value:new T.Vector2(width,bounds.min.y+size.y*.72)};
     shader.uniforms.uTreeCentre={value:centre};
     shader.vertexShader='uniform vec2 uCanopyDims;uniform vec3 uTreeCentre;varying float vOverhead;\n'+shader.vertexShader;
@@ -127,11 +134,11 @@ function bakeImpostor(asset,renderer){
       vec3 sidePlace=origin.xyz+right*(position.x-uTreeCentre.x)*scale.x+vec3(0.,position.y*scale.y,0.);
       vec3 viewUp=normalize(vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]));
       vec3 topPlace=origin.xyz+right*(position.x-uTreeCentre.x)*scale.x+viewUp*(uv.y-.5)*uCanopyDims.x*scale.x+vec3(0.,uCanopyDims.y*scale.y,0.);
-      vec4 mvPosition=viewMatrix*vec4(mix(sidePlace,topPlace,vOverhead),1.);
+      vCloudPlace=mix(sidePlace,topPlace,vOverhead);vec4 mvPosition=viewMatrix*vec4(vCloudPlace,1.);
       gl_Position=projectionMatrix*mvPosition;
     `);
   };
-  material.customProgramCacheKey=()=> 'forest-impostor-overhead-v2';
+  material.customProgramCacheKey=()=> 'forest-impostor-overhead-v3';
   return {geometry,material,detail:merged,target,refresh};
 }
 /** Vertex clustering keeps the source's branches, gaps and material colours in
@@ -257,10 +264,17 @@ export function buildStylizedForest(placement, assets, renderer=null, options={}
       const far=make(kit?.geometry??hull.geometry,kit?.material??hullMaterial,'far');
       const near=kit?make(kit.detail.geometry,kit.detail.material,'near'):null;
       const mid=kit?make(middle.geometry,hullMaterial,'mid'):null;
-      // Outside full detail, the inexpensive source envelope casts the cached
-      // local sun shadow. The proxy writes no colour/depth in the beauty pass.
-      const proxy=kit?make(hull.geometry,new T.MeshBasicMaterial({colorWrite:false,depthWrite:false}),'shadow'):null;
-      if(near){near.count=mid.count=proxy.count=0;near.castShadow=near.receiveShadow=true;mid.receiveShadow=true;proxy.castShadow=true;}
+      // Shadow geometry stays source-identical when visual detail changes.
+      // A cheaper crown envelope here made an entire ground shadow pop at once.
+      // Share vertex/index buffers; this mesh writes only to the cached sun map.
+      const proxy=kit?make(kit.detail.geometry,new T.MeshBasicMaterial({side:T.DoubleSide,colorWrite:false,depthWrite:false}),'shadow'):null;
+      if(near){
+        near.count=mid.count=proxy.count=0;near.castShadow=near.receiveShadow=true;mid.receiveShadow=true;proxy.castShadow=true;
+        // Colour/depth writes alone do not avoid vertex work in the beauty pass.
+        // Geometry wrappers are per mesh, so their draw range is independent.
+        proxy.onBeforeRender=()=>proxy.geometry.setDrawRange(0,0);
+        proxy.onAfterRender=proxy.onBeforeShadow=()=>proxy.geometry.setDrawRange(0,Infinity);
+      }
       matrices.forEach((m,i)=>{far.setMatrixAt(i,m);if(kit)far.geometry.attributes.forestInterval.setXY(i,0,1);});far.instanceMatrix.needsUpdate=true;
       batches.push({far,near,mid,proxy,records,matrices,bounds,distances:bounds.map(b=>treeLodDistances(b,options)),selected:new Uint8Array(records.length),casters:new Uint8Array(records.length)});
     }
@@ -280,7 +294,7 @@ export function buildStylizedForest(placement, assets, renderer=null, options={}
       b.bounds.forEach((box,i)=>{
         const d=box.distanceToPoint(last),limits=b.distances[i],weights=treeLodWeights(d,limits);
         const selected=d<(b.selected[i]?limits.nearLeave:limits.nearEnd);
-        if(selected!==!!b.selected[i])changed=true;b.selected[i]=+selected;
+        b.selected[i]=+selected;
         // Retain an empty interval in the hysteresis margin; no visible switch
         // occurs on allocation/release and every tree has total coverage one.
         if(selected)write(b.near,n++,i,0,weights[0]);
@@ -288,9 +302,11 @@ export function buildStylizedForest(placement, assets, renderer=null, options={}
         if(weights[2]>0)write(b.far,f++,i,1-weights[2],1);
         if(weights.filter(w=>w>0).length>1)transitions++;
         const dx=Math.max(box.min.x-anchor.x,0,anchor.x-box.max.x),dz=Math.max(box.min.z-anchor.z,0,anchor.z-box.max.z);
-        const caster=dx*dx+dz*dz<380*380&&!selected;
-        if(caster!==!!b.casters[i])changed=true;b.casters[i]=+caster;
-        if(caster)b.proxy.setMatrixAt(s++,b.matrices[i]);
+        const casts=dx*dx+dz*dz<380*380||selected;
+        // A near/proxy allocation switch preserves identical depth geometry.
+        // Invalidate only actual caster membership, not a visual LOD change.
+        if(casts!==!!b.casters[i])changed=true;b.casters[i]=+casts;
+        if(casts&&!selected)b.proxy.setMatrixAt(s++,b.matrices[i]);
       });
       b.near.count=n;b.mid.count=m;b.far.count=f;b.proxy.count=s;nearTotal+=n;midTotal+=m;farTotal+=f;proxies+=s;
       for(const mesh of [b.near,b.mid,b.far,b.proxy]){mesh.instanceMatrix.needsUpdate=true;mesh.geometry.attributes.forestInterval.needsUpdate=true;}

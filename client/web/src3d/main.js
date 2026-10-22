@@ -11,7 +11,9 @@ import {buildGrassCanopy} from './grass-canopy.js';
 import { parseGLB, applyImageBytes, mergePrimitives } from './glb.js';
 import { makeSky, style } from './style.js';
 import { createCloudPass } from './clouds.js';
+import {createActorShadows,snappedShadowAnchor} from './actor-shadow.js';
 import { createResolutionGovernor } from './flight-quality.js';
+import {createFramePacer,WEB_FPS,WEB_FRAME_MS} from './frame-pacing.js';
 import { createFlightRig } from './flight-rig.js';
 import { createNavigation } from './navigation.js';
 import { createCharacter } from './character.js';
@@ -60,7 +62,8 @@ async function main() {
   camera.position.set(-1600, 200, -780);
   const controls = createOrbitControls(camera, canvas);
   let pixelRatio = 1,qualityScale=1;
-  const resolutionGovernor=createResolutionGovernor();
+  const resolutionGovernor=createResolutionGovernor({frameBudgetMs:WEB_FRAME_MS});
+  const framePacer=createFramePacer();
   function resize() {
     const { width, height } = canvas.getBoundingClientRect();
     camera.aspect = width / Math.max(1, height);
@@ -224,6 +227,8 @@ async function main() {
   sun.shadow.bias = -.00015; sun.shadow.normalBias = .7;
   scene.add(sun, sun.target);
   const hemisphere = new T.HemisphereLight('#afd7e3', '#7a8452', 2.0); scene.add(hemisphere);
+  const actorShadows=createActorShadows(renderer,scene,[rig,character.object,rideRig],style);
+  const actorFocus=new T.Vector3();
   const shadowCentre = new T.Vector3(Infinity, Infinity, Infinity);
   let shadowRevision=-1,lastShadowTime=0;
   const shadowFocus=new T.Vector3(Infinity,Infinity,Infinity);
@@ -232,9 +237,11 @@ async function main() {
     const now=performance.now();
     if (!force && target.distanceToSquared(shadowCentre)<80*80 &&
       ((shadowRevision===forest.stats.shadowRevision&&target.distanceToSquared(shadowFocus)<4*4)||now-lastShadowTime<350))return;
-    shadowRevision=forest.stats.shadowRevision;lastShadowTime=now;shadowFocus.copy(target);
-    // Quantized anchor prevents shadow swimming while orbiting a fixed place.
-    shadowCentre.set(Math.round(target.x / 40) * 40, target.y, Math.round(target.z / 40) * 40);
+    lastShadowTime=now;shadowFocus.copy(target);
+    // Static world shadows retain their light-space texel phase on recenter.
+    // A forty-metre world-axis step changes that phase and makes edges jump.
+    shadowCentre.copy(snappedShadowAnchor(target,style.sun.value,520,2048));
+    forest.update(camera,shadowCentre);shadowRevision=forest.stats.shadowRevision;
     sun.target.position.copy(shadowCentre);
     sun.position.copy(shadowCentre).addScaledVector(style.sun.value, 900);
     sun.target.updateMatrixWorld();
@@ -313,12 +320,12 @@ async function main() {
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
   // Read-only inspection hook used for repeatable visual/performance checks.
-  window.tumbler = { flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, ground, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   function updateStamp() {
     const ordered = [...samples].sort((a,b) => a-b);
     const percentile = p => ordered[Math.floor((ordered.length - 1) * p)] ?? 0;
     stamp.textContent = [
-      `Render scale ${(pixelRatio*qualityScale).toFixed(2)}× · canopy budget 30 Hz`,
+      `Render cap ${WEB_FPS} FPS · scale ${(pixelRatio*qualityScale).toFixed(2)}× · canopy budget 30 Hz`,
       `${renderer.info.render.calls} draws · ${renderer.info.render.triangles.toLocaleString()} triangles`,
       `Frame interval p50 ${percentile(.5).toFixed(1)} ms · p95 ${percentile(.95).toFixed(1)} ms`,
       `CPU submit ${metrics.cpuMs.toFixed(1)} ms · ${canvas.width} × ${canvas.height}`,
@@ -330,13 +337,14 @@ async function main() {
   function animate(time) {
     frame = 0;
     if (contextLost || stopped || document.hidden) return;
+    if(!framePacer.due(time)){frame=requestAnimationFrame(animate);return;}
     const delta = lastFrame ? time - lastFrame : 0;
     lastFrame = time;
     if (delta > 0 && delta < 500) { samples.push(delta); if (samples.length > 240) samples.shift(); }
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
     navigation.update(Math.min(delta,50)/1000);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
-    forest.update(camera,controls.target);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
+    forest.update(camera,shadowCentre);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;
@@ -369,21 +377,27 @@ async function main() {
     }
     sky.position.copy(camera.position);
     const start = performance.now();
-    try { renderer.info.reset(); cloudPass.render({speed:airborne&&!flight.grounded?Math.min(1,Math.max(0,(flight.speed-12)/22)):0,strength:Number(motionSelect.value)}); }
+    try {
+      renderer.info.reset();
+      const pilot=navigation.state;
+      actorFocus.set(pilot?.x??camera.position.x,pilot?.z??camera.position.y,-(pilot?.y??-camera.position.z));
+      actorShadows.update(actorFocus,style.sun.value);
+      cloudPass.render({speed:airborne&&!flight.grounded?Math.min(1,Math.max(0,(flight.speed-12)/22)):0,strength:Number(motionSelect.value)});
+    }
     catch (error) { stopped = true; status.textContent = `Render error: ${error.message}`; console.error(error); return; }
     metrics.cpuMs = performance.now() - start; metrics.frame++;
     Object.assign(metrics.render, renderer.info.render);
     if (time - lastStamp > 700) { updateStamp(); lastStamp = time; }
     frame = requestAnimationFrame(animate);
   }
-  function resume() { lastFrame = 0; if (!frame && !contextLost && !stopped && !document.hidden) frame = requestAnimationFrame(animate); }
+  function resume() { lastFrame = 0;framePacer.reset(); if (!frame && !contextLost && !stopped && !document.hidden) frame = requestAnimationFrame(animate); }
   document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else resume(); });
   canvas.addEventListener('webglcontextlost', e => {
     e.preventDefault(); contextLost = true; cancelAnimationFrame(frame); frame = 0;
     status.textContent = 'Graphics paused — recovering…';
   });
-  canvas.addEventListener('webglcontextrestored', () => { contextLost = false; cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true); status.textContent = 'Ready for the mountains.'; resume(); });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
+  canvas.addEventListener('webglcontextrestored', () => { contextLost = false;treeShadows.setSun(style.sun.value);cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true); status.textContent = 'Ready for the mountains.'; resume(); });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   status.textContent = 'Ready for the mountains.';
   document.body.classList.add('ready');
   resume();

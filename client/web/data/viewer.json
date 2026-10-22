@@ -6,6 +6,10 @@
       "sha256": "b6c13d6b4484a53400e37f4f733284aec3f76eff8dd8aa89b32e0a076aa09f43"
     },
     {
+      "path": "client/web/src3d/actor-shadow.js",
+      "sha256": "36218f6a32346a9aab5909f53475dddb379cc033bfb424f62812e6e111a839bc"
+    },
+    {
       "path": "client/web/src3d/air-cues.js",
       "sha256": "03fcd4a7561f5d2a7fb1c90498b782aa637b543e8512a92c1d2fafd17f7ac985"
     },
@@ -19,11 +23,11 @@
     },
     {
       "path": "client/web/src3d/canopy-light.js",
-      "sha256": "4fa02d4eb6cace01e4acb355e79fd63666f5d2b3917835c75189cd22ca5e32aa"
+      "sha256": "90d423b7714ee459efbed9003824f134b0cc76f210f30be19ee30fb8f21e987e"
     },
     {
       "path": "client/web/src3d/character-surface.js",
-      "sha256": "a0606c894215d848b2f5d70a8f5e5b266da64a6a2ea1ae33c7adb013c790b12b"
+      "sha256": "e34ae7851c96cdcee6e1231872db38d7dee1a74ebf032846318dbec1ed01ca74"
     },
     {
       "path": "client/web/src3d/character.js",
@@ -31,19 +35,23 @@
     },
     {
       "path": "client/web/src3d/cloud-field.js",
-      "sha256": "21bbe6209d32071b02dbfe3f7717181903f2a215d7e8fc2b8770012828efccf7"
+      "sha256": "63cc371da6b1467f36037ec304e91cc29dc43a77dfab7680cfd49366e0222eb1"
+    },
+    {
+      "path": "client/web/src3d/cloud-lighting.js",
+      "sha256": "b684e8905fbe3fe94ce0f23c4e11daf29394a25784ee1717323f5a57f150d008"
     },
     {
       "path": "client/web/src3d/cloud-shadow-field.js",
-      "sha256": "37e81bb85327984b2a330742da3b4e7fda8782d4d122f2684ecf732775bcbb9b"
+      "sha256": "c3fb23cc11f6e96533caf5f9d40bfc56e8bbc492ace6f6be90eb9d9c540bf109"
     },
     {
       "path": "client/web/src3d/cloud-shadows.js",
-      "sha256": "f1939ea5ff900d66ac594b4ca18f0eba5d54378b748f2f025611056fd96e465c"
+      "sha256": "9c99e2a29fe73542c5b285211e1be5b6e781d56814b4b19778d6070b26632d54"
     },
     {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "77298923fc5d7614d02b0c3894b9251ea219cbb39faf0e75c652fdc1dd095e10"
+      "sha256": "286b375ab6936b42cc0c4517c4cf60d8799d9d116371cf9d81c03c546a355b83"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -67,7 +75,7 @@
     },
     {
       "path": "client/web/src3d/flight-quality.js",
-      "sha256": "9f5be68366aff24d476a8b2cea79e2e2a188a09ecebf3c0a6f1c02c1535ef6ca"
+      "sha256": "81ca0057df501f8ac9317ab696803b6339473c0f066a0187fc399b36a6f46a2e"
     },
     {
       "path": "client/web/src3d/flight-rig.js",
@@ -75,7 +83,11 @@
     },
     {
       "path": "client/web/src3d/forest.js",
-      "sha256": "d69728cc96aa3a73e8706d38579eb999d551db584f4e30100e527b2f89ff8b55"
+      "sha256": "51c3567c5dc005b3c8eb8c62de696f9c4247befd9b24d151a48ad1a08abd3c2f"
+    },
+    {
+      "path": "client/web/src3d/frame-pacing.js",
+      "sha256": "be37417fc3481d7ef45e0cb60e33c2eaaeea290406afa886e77d236dfeeab8dd"
     },
     {
       "path": "client/web/src3d/glb.js",
@@ -95,7 +107,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "a5e377f72b81513b7226a03bd1800b1f96d5f51f1408778e192857dc467951d5"
+      "sha256": "f55b2222f2b6224a6980cdea105d1bcc3a5d4ce2af73d19eb2fb3c6112d3e941"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -115,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "e4c48c70879b64659b84c5e3c03125e9ed5ab848cca20d9d041b3b9d6141a13d"
+      "sha256": "fe4962d238aa064fcba46e970f039be184ea1b4dd81a37eb5d949b116d443dfa"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
@@ -127,7 +139,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "f5cb46ac8f5666dd8b10b39b4703cfd375061fed471d0fe8adfd6d7c3faa9975"
+      "sha256": "6998d51fce6af95291954fc019b3bd1a5ef5a537786e53790b6431a85c22f61f"
     },
     {
       "path": "client/web/src3d/world.js",
@@ -351,7 +363,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "877fb40",
+  "commit": "baa733f",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

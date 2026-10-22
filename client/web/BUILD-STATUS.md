@@ -1,4 +1,105 @@
-# Sky/cloud second-pass candidate — local, 2026-10-20
+# Repaired Web v0.1.1 release — approved, 2026-10-22
+
+The human authorizes main integration, publication and cleanup of
+`codex/web-sky-clouds-next`, superseding the local-only boundaries below.
+This release keeps the 30 FPS cap and cloud/sky work, repairs moving and tree
+ground shadows, and removes canopy self-shadow reception. The rejected canopy
+experiment stays on `codex/canopy-self-shadowing-experiment` at `cf34ddf`.
+
+Final source verification: web **218/218**, packaging **7/7**, integrity **90
+scene + 17 map files**. Moving-fabric no-reception and retained ground-shadow
+controls pass in all three lights. This does not close physical-controller,
+audio/haptics, cross-device/thermal performance or Unreal acceptance.
+
+The [release receipt](../../docs/reviews/web-011-repair-release.md) records integration,
+publication and cleanup. All ignored review evidence is preserved in the primary
+checkout under `output/playwright/archives/web-sky-clouds-next-20261022/`, with per-file SHA-256 verification;
+it remains outside Git and the public package. Older paths and status entries
+below describe earlier checkpoints.
+
+---
+
+# Canopy self-shadowing removed — local, 2026-10-22
+
+The human rejects canopy self-shadowing for publication. Preserve the complete
+experiment on `codex/canopy-self-shadowing-experiment` at `cf34ddf` (runtime
+`711e433`); do not merge that branch wholesale. Its ignored captures remain in
+`output/playwright/canopy-banding/` in this worktree. The records below are
+historical and do not imply approval of self-shadowing.
+
+`codex/web-sky-clouds-next` removes reception of the moving-actor shadow map
+from the wing material, while retaining canopy/Ronin casting onto the world.
+Cloud shading, fabric palette, backlighting, normals, toon ramp, Ronin and tree
+rendering remain unchanged. The [removal brief](../../docs/reviews/canopy-self-shadow-removal.md) records exact moving-fabric
+negative controls and retained ground-shadow checks. Main/production remain
+unchanged; this continuation does not authorize deployment.
+
+
+Verified zero actor-mask contribution on both moving canopies in all three
+lights, with ground silhouettes/freshness retained. Web **218/218**, packaging
+**7/7**, integrity **90 scene + 17 map files** pass. New local comparison:
+<http://127.0.0.1:8021/output/playwright/canopy-self-shadow-removal/review.html>.
+
+# Moving canopy shadow refinement — isolated, 2026-10-22
+
+The human accepts the prior repair's stated tradeoffs and confirms the major
+flicker improvement, with remaining moving self-shadow banding. The refinement
+uses continuous PCF coverage and a tighter fixed 24 m flight map with 64 m separated-actor fallback at the same
+texture size. No palette, base-normal, toon-ramp, core asset or physics change.
+
+Six moving-cloth cases cover both wings and every light preset; shadow coverage
+remains complete, the coarse filter-step control passes, and all 30 paired
+shadow-disabled frames are byte-identical. The [banding brief](../../docs/reviews/canopy-banding.md)
+records controls, retained intermediates, ordinary-play evidence and final
+performance. No merge or deployment. Human visual acceptance remains open for
+this refinement; the records below describe earlier checkpoints.
+
+Final retained surface/ground/recovery checks pass. Web **218/218**, packaging
+**7/7**, integrity **90 scene + 17 map files** pass. The final fixed-1440×900 trace averages 29.92–29.98 FPS across flight,
+clouds and forest walking, with 34.1–34.2 ms p95 and isolated longer stalls.
+The opened local comparison and raw evidence are recorded in the banding brief.
+
+---
+
+# Visual repair in progress — isolated, 2026-10-21
+
+The human rejected v0.1.1 after live review. Main rollback `f845716` restores
+the exact prior v0.1.0 tree; no repair has been merged or deployed. The entries
+below record historical publication and do not imply visual acceptance.
+
+Repair branch: `codex/web-sky-clouds-next`. The [repair brief](../../docs/reviews/web-011-repair.md)
+preserves before/after temporal failures, causes and performance limits.
+Corrected actor depth/receiver/map motion and full-source tree casters are
+verified by GPU probes and normal-play recordings. Web **217/217**, packaging
+**7/7**, integrity **90 scene + 17 map files** pass. The 225-second trace has
+33 ms median and 35–48 ms p95 across phases; frame pacing still needs work. The coarse static
+four-metre tree bake has been removed. Human visual acceptance remains open.
+
+---
+
+# Rejected Web v0.1.1 release — 2026-10-20
+
+30 FPS presentation, stabilized per-frame wing/Ronin shadows, cached volumetric
+sunlight, rounded cloud billows and cloud shade on trees/water/Ronin are complete.
+Static tree-ground shade now reuses a lazy bake per fixed sun preset; it preserves
+the previous soft crown approximation, with at most 48 MiB of texture memory.
+It is not a branch-accurate full-scene lightmap.
+
+Private web **216/216**, packaging **7/7**, integrity **91 scene + 17 map files**.
+The three-minute 1440×900 trace measured p50 **33.3 ms**, p95 **34.2 ms** in both
+normal flight and cloud traversal, with five rare intervals over 40 ms retained.
+Actual actor/terrain pixels, static mask reception, graphics recovery and cloud
+bounds/depth/solar negatives pass. See the [v0.1.1 review](../../docs/reviews/web-011.md).
+Live at **https://tumbler.catronin.com/**. Initial public release `98d2b2c`
+verified manifest `7debee5aa228`; public web **200/200** and packaging **7/7**
+pass. The live browser matches all fourteen changed runtime modules, renders
+v0.1.1 at the 30 FPS cap and compiles every shader. The publication log holds
+the latest receipt. Physical controller, human visual approval, longer thermal
+testing and Unreal parity remain separate.
+
+---
+
+# Earlier sky/cloud second-pass checkpoint — 2026-10-20
 
 On `codex/web-sky-clouds-next`: wider shared cloud groups, refined volume light,
 cached noise startup and solar-projected terrain/meadow cloud shadows. The
@@ -10,7 +111,7 @@ solar/height negatives, evolving density and observer-independent cloud wind.
 The [second-pass brief](../../docs/reviews/web-sky-clouds-next.md) records the
 three-minute profiles, opened comparisons and limits. The candidate trace has
 higher GPU tail cost; a distance-varying sample experiment was rejected and
-removed. Human visual acceptance and Unreal rendering are open; this branch has not been merged or deployed.
+removed. Human visual acceptance and Unreal rendering are open; the human subsequently merged this checkpoint at `3ff9552`.
 
 ---
 

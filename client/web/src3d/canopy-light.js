@@ -2,6 +2,8 @@
 import {style} from './style.js';
 
 export function applyCanopyLighting(material) {
+  // Fabric still casts into the actor map, but must not receive that mask.
+  material.userData.receiveActorShadow=false;
   const previous=material.onBeforeCompile;
   const previousKey=material.customProgramCacheKey();
   material.onBeforeCompile=shader=>{
