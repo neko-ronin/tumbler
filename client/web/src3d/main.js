@@ -5,6 +5,9 @@ import { createOrbitControls } from './controls.js';
 import { buildBlockTerrain, buildFarFieldRing, buildWater, buildRiverReaches } from './terrain.js';
 import { buildPlacements, buildForest } from './placements.js';
 import { buildTreeGroundShadows } from './forest.js';
+import {instanceMatrix} from './world.js';
+import {setTreeLighting} from './tree-surface.js';
+import {buildAdoptedRedwoods,releaseCrownSources} from './redwood-rendering.js';
 import { GroundSampler, HeightGrid, decodeGroundCover } from './heights.js';
 import { buildCloseMeadow, meadowViewFocus } from './groundcover.js';
 import {buildGrassCanopy} from './grass-canopy.js';
@@ -22,6 +25,7 @@ import { buildTethers, buildTrails, TRAIL_SURFACE_LIFT } from './details.js';
 import { createSoundscape } from './audio.js';
 import { buildWorldCollision } from './collision.js';
 import { sha256, verifyFetched, checkVersion } from './provenance.js';
+import {fetchAssetBytes} from './asset-bytes.js';
 import {VERSION} from './version.js';
 import { createSnowSampler, createTrailSampler, createSurfaceSampler, createRideHeight } from '../../../shared/activities/ride.js';
 import { createWalkHeight } from '../../../shared/activities/walk.js';
@@ -29,9 +33,7 @@ import { createWalkHeight } from '../../../shared/activities/walk.js';
 const root = new URL('../../../', import.meta.url);
 const observed=new Map();
 async function fetchData(path, json = true) {
-  const response = await fetch(new URL(path, root),{cache:'no-cache'});
-  if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
-  const bytes=await response.arrayBuffer();observed.set(path,sha256(bytes));
+  const bytes=await fetchAssetBytes(path,root);observed.set(path,sha256(bytes));
   return json ? JSON.parse(new TextDecoder().decode(bytes)) : bytes;
 }
 
@@ -83,6 +85,7 @@ async function main() {
   checkVersion(manifest,1,'viewer manifest');checkVersion(worldmap,2,'world map');
   const [meadowData,flightConfig,rideConfig]=await Promise.all([fetchData(worldmap.activities.meadow_life),fetchData(worldmap.activities.flight),fetchData(worldmap.activities.ride)]);
   const characterConfig=await fetchData(worldmap.activities.character);
+  const treePlan=await fetchData('shared/geometry/tree-design/adopted-redwoods.json');checkVersion(treePlan,2,'forest rendering plan');
   checkVersion(characterConfig,1,'playable character');
   const snowStamp=await fetchData(rideConfig.snow_cover);
   for(const [value,known,label] of [[worldmap,2,'world map'],[placement,3,'placements'],[stampData,1,'grass stamp'],[habitats,1,'water habitats'],[meadowData,1,'meadow life'],[flightConfig,3,'flight'],[rideConfig,1,'ski and bike rules'],[snowStamp,1,'snow cover']])checkVersion(value,known,label);
@@ -93,19 +96,24 @@ async function main() {
   // Bounded parallel loading avoids a serial network waterfall and limits peak
   // parsing memory. Source bytes fall out of scope as each asset is decoded.
   const paths = [...new Set([...placement.instances.map(i => i.asset),...habitats.plantings.map(i=>i.asset),...meadowData.species.map(i=>i.asset),'waterside/river_fish.glb','waterside/fish_tail.glb','waterside/frog.glb','waterside/dragonfly_wings.glb',flightConfig.wing_asset,flightConfig.motor_asset,...Object.values(flightConfig.modes).map(m=>m.wing_asset).filter(Boolean),...Object.values(rideConfig.modes).map(m=>m.asset)])];
-  paths.push(characterConfig.asset);
+  for(const path of [characterConfig.asset,...treePlan.stages.map(stage=>stage.asset),...Object.values(treePlan.profiles??{}).flatMap(p=>p.stages.map(s=>s.asset))])if(!paths.includes(path))paths.push(path);
   const assets = {};
+  const decodedImages=new Map();
   let next = 0;
   async function loadAsset() {
     while (next < paths.length) {
       const path = paths[next++];
       const asset = parseGLB(await fetchData(`shared/geometry/${path}`, false));
       await applyImageBytes(asset, async (bytes, mimeType) => {
-        const bitmap = await createImageBitmap(new Blob([bytes], { type: mimeType }), { imageOrientation: 'none' });
-        const texture = new T.Texture(bitmap);
-        texture.colorSpace = T.SRGBColorSpace; texture.flipY = false; texture.needsUpdate = true;
-        texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-        return texture;
+        const imageKey=await sha256(bytes);
+        if(decodedImages.has(imageKey))return decodedImages.get(imageKey);
+        const pending=(async()=>{
+          const bitmap = await createImageBitmap(new Blob([bytes], { type: mimeType }), { imageOrientation: 'none' });
+          const texture = new T.Texture(bitmap);
+          texture.colorSpace = T.SRGBColorSpace; texture.flipY = false; texture.needsUpdate = true;
+          texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+          return texture;
+        })();decodedImages.set(imageKey,pending);return pending;
       });
       assets[path] = asset;
     }
@@ -116,8 +124,24 @@ async function main() {
   scene.add(buildBlockTerrain(blockGrid), buildFarFieldRing(farGrid, blockGrid.maxX));
   const water = buildWater(placement.instances.filter(i => i.kind === 'river' || i.kind === 'lake'), assets, blockGrid,worldmap);
   scene.add(water, buildRiverReaches(worldmap, farGrid));
-  const placements = buildPlacements(placement, assets, { ground }); scene.add(placements.group);
-  const forest = buildForest(placement, assets,renderer); scene.add(forest.group);
+  const placements = buildPlacements(placement, assets, { ground,crownAssets:new Set(Object.keys(treePlan.targets)) }); scene.add(placements.group);
+  // Set the initial sun before expensive atlas bakes; the first preset then
+  // reuses them instead of immediately paying for a second bake.
+  const lightPresets = {
+      golden: { direction: [-.64,.48,-.55], color: '#ffdda2', fill: '#a8cbdc', intensity: 2.0, ambient: 1.8, exposure: 1.1, warmth: 1, fog: '#dcd7b8' },
+      day: { direction: [-.35,.84,-.42], color: '#fff3d6', fill: '#b7ddef', intensity: 2.0, ambient: 1.75, exposure: 1.05, warmth: .15, fog: '#c8dcd6' },
+      dusk: { direction: [.74,.25,-.63], color: '#ffc18d', fill: '#9baccd', intensity: 1.6, ambient: 1.55, exposure: 1.1, warmth: .85, fog: '#d9b7aa' },
+    };
+  setTreeLighting({...lightPresets.golden,sun:lightPresets.golden.color,ground:'#7a8452'});
+  style.sun.value.set(-.64,.48,-.55).normalize();
+  const legacyForest=buildForest(placement,assets,renderer,{filter:i=>i.asset.startsWith('redwood/')&&!treePlan.targets[i.asset]});
+  const adoptedForest=buildAdoptedRedwoods(placement,assets,renderer,treePlan);
+  adoptedForest.stats.releasedSourceBytes=releaseCrownSources(assets,treePlan);
+  const forest={group:new T.Group(),stats:{},update(camera,anchor){legacyForest.update(camera,anchor);adoptedForest.update(camera,anchor);this.refreshStats();},
+    refreshStats(){for(const key of ['trees','near','mid','far','tiles','shadowProxies','shadowRevision'])this.stats[key]=(legacyForest.stats[key]??0)+(adoptedForest.stats[key]??0);this.stats.adopted=adoptedForest.stats;},
+    invalidateShadows(){legacyForest.invalidateShadows();adoptedForest.invalidateShadows();this.refreshStats();},
+    rebuildImpostors(direction){legacyForest.rebuildImpostors(direction);adoptedForest.rebuildImpostors(direction);this.refreshStats();}};
+  forest.group.add(legacyForest.group,adoptedForest.group);forest.refreshStats();scene.add(forest.group);
   const treeShadows=buildTreeGroundShadows(placement,assets,ground);scene.add(treeShadows.group);
   const cover = decodeGroundCover(stampData);
   const coverTexture=new T.DataTexture(Uint8Array.from(cover.covered,v=>v*255),cover.resolution,cover.resolution,T.RedFormat);
@@ -248,12 +272,8 @@ async function main() {
     renderer.shadowMap.needsUpdate = true;
   }
   function setLight(name) {
-    const presets = {
-      golden: { direction: [-.64,.48,-.55], color: '#ffdda2', fill: '#a8cbdc', intensity: 2.0, ambient: 1.8, exposure: 1.1, warmth: 1, fog: '#dcd7b8' },
-      day: { direction: [-.35,.84,-.42], color: '#fff3d6', fill: '#b7ddef', intensity: 2.0, ambient: 1.75, exposure: 1.05, warmth: .15, fog: '#c8dcd6' },
-      dusk: { direction: [.74,.25,-.63], color: '#ffc18d', fill: '#9baccd', intensity: 1.6, ambient: 1.55, exposure: 1.1, warmth: .85, fog: '#d9b7aa' },
-    };
-    const p = presets[name];
+    const p = lightPresets[name];
+    setTreeLighting({...p,sun:p.color,ground:'#7a8452'});
     style.sun.value.fromArray(p.direction).normalize(); style.warmth.value = p.warmth;
     sun.color.set(p.color); sun.intensity = p.intensity;
     hemisphere.color.set(p.fill); hemisphere.intensity = p.ambient;
@@ -287,7 +307,13 @@ async function main() {
   })[0];
   const shoreHabitat=habitats.habitats.filter(h=>h.body==='river').sort((a,b)=>Math.hypot(a.shore_m[0]-hx,a.shore_m[1]-hy)-Math.hypot(b.shore_m[0]-hx,b.shore_m[1]-hy))[0];
   const shore=shoreHabitat.shore_m,school=shoreHabitat.centre_m;
+  // A camera bookmark derived from an existing individual, never a new tree
+  // or a launch-site/world edit. Inspect actual LOD 0 among the live stand.
+  const heroTree=placement.instances.filter(t=>t.asset==='redwood/giant_redwood.glb').sort((a,b)=>Math.hypot(a.position_m[0]+710,a.position_m[1]-450)-Math.hypot(b.position_m[0]+710,b.position_m[1]-450))[0];
+  const heroCrown=new T.Box3();for(const p of assets[heroTree.asset].primitives)if(/foliage/.test(p.materialName))heroCrown.union(p.geometry.boundingBox.clone().applyMatrix4(instanceMatrix(heroTree.position_m,heroTree.yaw_deg,heroTree.scale,p.local)));
+  const heroCentre=heroCrown.getCenter(new T.Vector3()),heroRadius=heroCrown.getSize(new T.Vector3()).x*.5;
   const views = {
+    canopy:{position:heroCentre.clone().add(new T.Vector3(heroRadius*2.1,8,heroRadius*2.3)).toArray(),target:heroCentre.toArray()},
     home: { position: homeCamera, target: [hx, hz + 3, -hy] },
     valley: { position: [-1850,1150,1450], target: [0,450,-1100] },
     summit: { position: [-650,ground.height(-380,1620)+110,-1360], target: [200,500,-700] },
@@ -330,6 +356,7 @@ async function main() {
       `Frame interval p50 ${percentile(.5).toFixed(1)} ms · p95 ${percentile(.95).toFixed(1)} ms`,
       `CPU submit ${metrics.cpuMs.toFixed(1)} ms · ${canvas.width} × ${canvas.height}`,
       `${forest.stats.trees.toLocaleString()} trees · ${forest.stats.near} nearby meshes · ${forest.stats.tiles} batches`,
+      `Redwoods LOD 0 / 1 / 2 / 3: ${forest.stats.adopted.lodCounts.join(" / ")} · ${forest.stats.adopted.culled} culled · select ${forest.stats.adopted.selectionMs.toFixed(1)} ms`,
       `${meadow.stats.patches.toLocaleString()} meadow cells · ${meadow.stats.tiles} batches`,
       `Version ${VERSION} · verified ${verifiedFiles} fetched files · generation ${manifest.commit.slice(0,8)} · local working tree`,
     ].join('\n');
@@ -373,7 +400,7 @@ async function main() {
     if(time-lastQuality>3000&&samples.length>=120){
       lastQuality=time;const ordered=[...samples].sort((a,b)=>a-b),p95=ordered[Math.floor(ordered.length*.95)];
       const next=resolutionGovernor.sample(p95,time,document.getElementById('adaptive').checked);
-      if(Math.abs(next-qualityScale)>.001){qualityScale=next;samples.length=0;renderer.setPixelRatio(pixelRatio*qualityScale);renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);}
+      if(Math.abs(next-qualityScale)>.001){qualityScale=next;adoptedForest.setQuality(qualityScale);samples.length=0;renderer.setPixelRatio(pixelRatio*qualityScale);renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);}
     }
     sky.position.copy(camera.position);
     const start = performance.now();

@@ -93,8 +93,9 @@ export function buildPlacements(placement, assets, options = {}) {
     // Forest instances have their own spatial batches. Drawing them here too
     // would duplicate every tree with full needle geometry.
     if (assetPath.startsWith("redwood/")) continue;
-    const asset = assets[assetPath];
+    let asset = assets[assetPath];
     if (!asset) throw new Error(`placement.json names ${assetPath} and no GLB was loaded for it`);
+    if(options.crownAssets?.has(assetPath)&&assetPath.startsWith('arboreal/'))asset={...asset,primitives:asset.primitives.filter(p=>!/foliage|branch_bark/.test(p.materialName))};
     for (const [partName, primitives] of partsOf(asset)) {
       const askedFor = instances.filter((instance) => (instance.parts ?? []).some((part) => part.mesh === partName));
       const placed = askedFor.filter((instance) => !isWorldSpace(instance));

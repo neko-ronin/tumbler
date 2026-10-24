@@ -13,6 +13,17 @@ const source=new T.Box3();asset.primitives.forEach(p=>source.union(p.geometry.bo
 const bounds=source.clone().applyMatrix4(instanceMatrix(tree.position_m,tree.yaw_deg,tree.scale));
 const build=(record=tree,options={})=>buildStylizedForest({instances:[record]},{[path]:asset},renderer,options);
 
+test('a discarded study releases both baked targets and every owned mesh without disposing shared sources',()=>{
+  const targets=new Set(),disposals=new Map(),track=resource=>{disposals.set(resource,0);resource.addEventListener('dispose',()=>disposals.set(resource,disposals.get(resource)+1));};
+  let sourceDisposals=0;asset.primitives.forEach(p=>p.geometry.addEventListener('dispose',()=>sourceDisposals++));
+  const localRenderer={...renderer,setRenderTarget(target){if(target&&!targets.has(target)){targets.add(target);track(target);}}};
+  const forest=buildStylizedForest({instances:[tree]},{[path]:asset},localRenderer);
+  const owned=new Set();forest.group.traverse(object=>{if(object.isMesh){owned.add(object.geometry);owned.add(object.material);}});owned.forEach(track);
+  forest.dispose();assert.equal(forest.group.children.length,0);assert.equal(targets.size,2);
+  for(const count of disposals.values())assert.equal(count,1,'every owned resource is disposed once');
+  assert.equal(sourceDisposals,0,'discarding a study must not dispose the core source geometry');
+});
+
 test('a giant crown approached vertically gets shared volume, including on first load',()=>{
   const forest=build(),camera=new T.PerspectiveCamera();
   camera.position.copy(bounds.getCenter(new T.Vector3())).setY(bounds.max.y+2);

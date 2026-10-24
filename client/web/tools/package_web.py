@@ -56,6 +56,9 @@ MAP = (
 )
 BASE = '<base href="client/web/">'
 MARKER = ".tumbler-web-package"
+MAX_ASSET_BYTES = 25 * 1024 * 1024
+ASSET_PART_BYTES = 16 * 1024 * 1024
+ASSET_PARTS_MAGIC = b"TUMBLER_ASSET_PARTS_V1\n"
 # Every response is revalidated before use. The file names carry no content
 # hash, and the scene refuses to start when any fetched file differs from
 # viewer.json, so a browser holding last release's copy of one file would break
@@ -127,6 +130,18 @@ def verified_files(repo: Path) -> list[str]:
 
 def write_package(repo: Path, out: Path, files: list[str]) -> int:
     """Copy `files` under `out`, keeping repository paths; returns the bytes copied."""
+    # Large GLBs remain neutral, byte-identical core assets. Only this web
+    # transport changes: every uploaded part stays below the static-host cap.
+    split = {}
+    for rel in files:
+        source = repo / rel
+        if source.suffix == ".glb" and source.stat().st_size > MAX_ASSET_BYTES:
+            size = source.stat().st_size
+            parts = [{"path": rel[:-4] + f".part-{i:03d}.glb", "byteLength": min(ASSET_PART_BYTES, size - offset)}
+                     for i, offset in enumerate(range(0, size, ASSET_PART_BYTES))]
+            if any(part["path"] in files for part in parts):
+                raise PackageError(f"model parts collide with a source path: {rel}")
+            split[rel] = {"byteLength": size, "parts": parts}
     if out.exists() and any(out.iterdir()):
         if not (out / MARKER).is_file():
             raise PackageError(f"{out} is not empty and was not written by this script; refusing to replace it")
@@ -135,11 +150,18 @@ def write_package(repo: Path, out: Path, files: list[str]) -> int:
     for rel in files:
         target = out / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(repo / rel, target)
+        if rel in split:
+            descriptor = split[rel]
+            with open(repo / rel, "rb") as stream:
+                for part in descriptor["parts"]:
+                    (out / part["path"]).write_bytes(stream.read(part["byteLength"]))
+            target.write_bytes(ASSET_PARTS_MAGIC + json.dumps(descriptor, separators=(",", ":")).encode())
+        else:
+            shutil.copyfile(repo / rel, target)
     (out / "index.html").write_text(root_page((repo / ENTRY).read_text(encoding="utf-8")), encoding="utf-8")
     (out / "_headers").write_text(HEADERS, encoding="utf-8")
     (out / MARKER).write_text("Written by client/web/tools/package_web.py; safe for it to replace.\n", encoding="utf-8")
-    return sum((out / rel).stat().st_size for rel in files)
+    return sum(path.stat().st_size for path in out.rglob("*") if path.is_file())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -157,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     except PackageError as error:
         print(error, file=sys.stderr)
         return 1
-    print(f"packaged {len(files)} files ({size / 1e6:.1f} MB) into {args.out}")
+    print(f"packaged {len(files)} source files ({size / 1e6:.1f} MB) into {args.out}")
     print("upload its contents to the web root; the scene is at / (and /client/web/scene.html), the map at /client/web/")
     return 0
 

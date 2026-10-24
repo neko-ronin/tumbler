@@ -3,6 +3,7 @@
     python3.11 -m unittest client.web.tests.test_package_web -v
 """
 from __future__ import annotations
+from unittest import mock
 
 import hashlib
 import importlib.util
@@ -54,6 +55,22 @@ class PackageWeb(unittest.TestCase):
             self.assertTrue((self.out / rel).is_file(), rel)
         self.assertIn("Cache-Control: public, max-age=0, must-revalidate", (self.out / "_headers").read_text())
         pw.write_package(self.repo, self.out, pw.verified_files(self.repo))   # its own folder may be replaced
+
+    def test_large_models_split_losslessly_below_the_host_limit(self) -> None:
+        rel = "shared/geometry/tree.glb"
+        data = b"glTF" + bytes(range(96))
+        fake_repo(self.repo, {**self.files, rel: data})
+        with mock.patch.object(pw, "MAX_ASSET_BYTES", 32), mock.patch.object(pw, "ASSET_PART_BYTES", 16):
+            pw.write_package(self.repo, self.out, pw.verified_files(self.repo))
+        wire = (self.out / rel).read_bytes()
+        self.assertTrue(wire.startswith(pw.ASSET_PARTS_MAGIC))
+        descriptor = json.loads(wire[len(pw.ASSET_PARTS_MAGIC):])
+        parts = [(self.out / p["path"]).read_bytes() for p in descriptor["parts"]]
+        self.assertTrue(all(len(part) <= 32 for part in parts))
+        self.assertEqual(b"".join(parts), data)
+        self.assertEqual(descriptor["byteLength"], len(data))
+        self.assertEqual([len(part) for part in parts], [p["byteLength"] for p in descriptor["parts"]])
+        self.assertEqual((self.repo / rel).read_bytes(), data, "the core GLB stays unchanged")
 
     def test_a_stale_file_writes_nothing(self) -> None:
         fake_repo(self.repo, self.files)

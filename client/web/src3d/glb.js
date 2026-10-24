@@ -13,9 +13,9 @@
  * | container | GLB 2.0, JSON chunk then BIN chunk, one buffer |
  * | nodes | named, a shallow tree, `translation`/`scale` sometimes set |
  * | meshes | one mesh per asset or per world-space part, several primitives per mesh |
- * | attributes | `POSITION`, `NORMAL`, `TEXCOORD_0`, all float32, tightly packed |
+ * | attributes | `POSITION`, `NORMAL` float32; `TEXCOORD_0` float32 or normalized uint16; tightly packed |
  * | indices | uint16 or uint32, `TRIANGLES` only |
- * | materials | `pbrMetallicRoughness`, `baseColorFactor`, `metallicFactor`, `roughnessFactor`, `doubleSided`, `alphaMode` — and **one** PNG texture in the whole repository (`blimp.glb`) |
+ * | materials | `pbrMetallicRoughness`, base colour/roughness, double-sided, OPAQUE/MASK/BLEND; embedded PNGs on the blimp and generated redwood sprays |
  * | animation | node translation/rotation/scale, LINEAR or STEP; inverse-bind skeletons and four-influence skin attributes |
  * | colours | RGB/RGBA vertex colours, including normalized integer storage |
  * | not used | morph targets, sparse accessors, interleaved buffer views, extensions, TEXCOORD_1, KHR_* |
@@ -271,7 +271,7 @@ function buildGeometry(json, bin, primitive, state, where) {
     if (uv.numeric !== 2 || uv.values.length !== vertexCount * 2) {
       refuse(`${where}: TEXCOORD_0 has ${uv.values.length / Math.max(uv.numeric, 1)} vectors for ${vertexCount} vertices`);
     }
-    geometry.setAttribute("uv", new BufferAttribute(uv.values, 2));
+    geometry.setAttribute("uv", new BufferAttribute(uv.values, 2, Boolean(json.accessors[attributes.TEXCOORD_0].normalized)));
   }
   for (const [source, target, sizes] of [['COLOR_0','color',[3,4]],['JOINTS_0','skinIndex',[4]],['WEIGHTS_0','skinWeight',[4]]]) {
     if (attributes[source] === undefined) continue;
@@ -336,7 +336,7 @@ export function parseGLB(input) {
       }
       const descriptor = json.materials?.[primitive.material];
       const alphaMode = descriptor?.alphaMode ?? "OPAQUE";
-      if (alphaMode !== "OPAQUE" && alphaMode !== "BLEND") refuse(`${where}: alphaMode ${alphaMode}: only OPAQUE and BLEND are used here`);
+      if (!["OPAQUE", "MASK", "BLEND"].includes(alphaMode)) refuse(`${where}: alphaMode ${alphaMode} is unsupported`);
       // Everything a caller needs, flattened onto the primitive: merging for
       // instancing and drawing for the individual assets both want the same
       // facts, and keeping them in two parallel objects is how a caller gets
@@ -355,6 +355,7 @@ export function parseGLB(input) {
         sampler: info.textureIndex != null ? json.samplers?.[json.textures?.[info.textureIndex]?.sampler] ?? {} : null,
         doubleSided: Boolean(descriptor?.doubleSided),
         alphaMode,
+        alphaCutoff: descriptor?.alphaCutoff ?? .5,
         metallicFactor: descriptor?.pbrMetallicRoughness?.metallicFactor ?? 0,
         roughnessFactor: descriptor?.pbrMetallicRoughness?.roughnessFactor ?? 1,
         // The named node this primitive came from: `placement.json`'s `parts`
@@ -438,6 +439,7 @@ export function parseGLB(input) {
     primitives,
     images,
     stats,
+    extras: json.extras ?? {},
     generator: json.asset.generator ?? "unknown",
     sources: { meshes: stats.meshes, nodes: stats.nodes, materials: stats.materials, images: stats.images },
   };
@@ -487,6 +489,8 @@ export function makeMaterialFor(primitive) {
     side: primitive.doubleSided ? DoubleSide : FrontSide,
     opacity: primitive.baseColorFactor[3],
     transparent: primitive.alphaMode === "BLEND",
+    alphaTest: primitive.alphaMode === "MASK" ? primitive.alphaCutoff : 0,
+    alphaToCoverage: primitive.alphaMode === "MASK",
     depthWrite: primitive.alphaMode !== "BLEND",
   });
   material.userData.baseColorFactor = [...primitive.baseColorFactor];

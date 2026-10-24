@@ -1,3 +1,15 @@
+# Tree studio and feral forest integrated — 2026-10-23
+
+All studio, tree-update and game-integration work is combined for main at the
+human's request. The persistent studio retains current settings, notes and
+named plans; the game uses species-specific Feral crowns and repaired lighting.
+Main's existing sky/shadow repairs remain. Large model delivery is lossless and
+fits the host limit. See the [integration receipt](../../docs/reviews/tree-main-integration-2026-10-23.md) for conflict choices,
+checks, source identities and publication status. Earlier local-only entries
+below describe their original checkpoints.
+
+---
+
 # Repaired Web v0.1.1 release — approved, 2026-10-22
 
 The human authorizes main integration, publication and cleanup of

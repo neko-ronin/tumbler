@@ -3,7 +3,7 @@
   "fetched": [
     {
       "path": "client/web/scene.html",
-      "sha256": "b6c13d6b4484a53400e37f4f733284aec3f76eff8dd8aa89b32e0a076aa09f43"
+      "sha256": "f0f2f4a3271ddcb33d759f56a6759dc135cfa2bd309a7961b6b5f610b07354f6"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -12,6 +12,10 @@
     {
       "path": "client/web/src3d/air-cues.js",
       "sha256": "03fcd4a7561f5d2a7fb1c90498b782aa637b543e8512a92c1d2fafd17f7ac985"
+    },
+    {
+      "path": "client/web/src3d/asset-bytes.js",
+      "sha256": "2408f01f3932177f8e0c161a3b54eacfe26029c2e19ab00e2eea5d98526834d3"
     },
     {
       "path": "client/web/src3d/atmosphere-sky.js",
@@ -83,7 +87,7 @@
     },
     {
       "path": "client/web/src3d/forest.js",
-      "sha256": "51c3567c5dc005b3c8eb8c62de696f9c4247befd9b24d151a48ad1a08abd3c2f"
+      "sha256": "69d31f3564bcafe99c9ade051b066f7929bbee505844564f7f02cdf09ca29236"
     },
     {
       "path": "client/web/src3d/frame-pacing.js",
@@ -91,7 +95,7 @@
     },
     {
       "path": "client/web/src3d/glb.js",
-      "sha256": "84c1e5e1ad6563f0d0cfcdbbf21477bbcb9c6cdd4291978ea1ddb6d2bf461a93"
+      "sha256": "771e44ed767aa6e03bba4d6f9fa64ac73f18329c57e5dd6a0ebe0c400766d8d7"
     },
     {
       "path": "client/web/src3d/grass-canopy.js",
@@ -107,7 +111,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "f55b2222f2b6224a6980cdea105d1bcc3a5d4ce2af73d19eb2fb3c6112d3e941"
+      "sha256": "cc8b375e9e318e21eb0684753141c41c460b41ed76f2da029a1820e42ce4cc61"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -119,11 +123,15 @@
     },
     {
       "path": "client/web/src3d/placements.js",
-      "sha256": "65354d8fd3aa8bc643f75171a3a0894cb2e7ca2b0b5357e980ca4124a4853a6e"
+      "sha256": "a3a57450ec32498762c227570aa5d6f116325795d3ba54692d587ae99622409f"
     },
     {
       "path": "client/web/src3d/provenance.js",
       "sha256": "b7796c19d3b63b19d17104be892800a1d2c3aa5d486ccf11e1c638941bc418b3"
+    },
+    {
+      "path": "client/web/src3d/redwood-rendering.js",
+      "sha256": "bfc194078ce5ba78d8fb9b5dcb587c7241e39185036357772b76f67b89c9b4a3"
     },
     {
       "path": "client/web/src3d/style.js",
@@ -136,6 +144,26 @@
     {
       "path": "client/web/src3d/terrain.js",
       "sha256": "3bea57ef605dadbc90eb008087ae71bf05a04c8f47968d540a56894e477c2b06"
+    },
+    {
+      "path": "client/web/src3d/tree-budget.js",
+      "sha256": "16ec5a2a56bc6db4b4daa1abd0ab921783003edc83c513368614ff1d890f4d60"
+    },
+    {
+      "path": "client/web/src3d/tree-cards.js",
+      "sha256": "c51b2d31406bae031b7b00a98db22548cf9549648f54669275d12b35e80aeb2b"
+    },
+    {
+      "path": "client/web/src3d/tree-impostors.js",
+      "sha256": "41def808e22d66c4b7e66ff3f567f403b50c9e2c42c27fe3f0e7977aff387dc2"
+    },
+    {
+      "path": "client/web/src3d/tree-material.js",
+      "sha256": "96d80e2958c17bbda50dabf9c987e269f8b315151d46699ea22e887e09e26c55"
+    },
+    {
+      "path": "client/web/src3d/tree-surface.js",
+      "sha256": "a70fecc7955920cfe2ff5947b07f5872f9066eca18656c3539778dd259d9a388"
     },
     {
       "path": "client/web/src3d/version.js",
@@ -294,6 +322,58 @@
       "sha256": "f635c3bc858270504bd8153ed8c14a5cb4d1c37ea3d90f33a51f1f35f8801ce0"
     },
     {
+      "path": "shared/geometry/tree-design/adopted-redwoods.json",
+      "sha256": "b6cf5615a94b7ebe2826087c0b669bfb836748168f0ccc1f667139c366906a38"
+    },
+    {
+      "path": "shared/geometry/tree-design/card-clusters.js",
+      "sha256": "40902fb01c96065c416aa0e8077f70e49509b35a6aaeea4b6baf50e5989e702c"
+    },
+    {
+      "path": "shared/geometry/tree-design/fit-crown.js",
+      "sha256": "571e95b9e411540c3f156412ff4bad485c133b012023f86616f676ce39a0bff1"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-fir-lod0.glb",
+      "sha256": "14b78523e8c48f1f89653abc69ab3c7fd1467e8c1275a7410a27f0fb7688fc24"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-fir-lod1.glb",
+      "sha256": "45bf195031f06845025533bfd2f43cbd8eda35bf4931795ca5ea29a00909e73a"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-giant-lod0.glb",
+      "sha256": "b237953aa76feffafb8eb16b1d4d26fbe6fbc31db7ed021db411e776936a18da"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-giant-lod1.glb",
+      "sha256": "8fcb401268808683dc1689e03aee68ff8fc6c100162346521fff701a3a044c03"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-pine-lod0.glb",
+      "sha256": "3e3f61010883bbbdc37d7ffe5f430061efdb1889b8edffbd03faa28b234f57fc"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-pine-lod1.glb",
+      "sha256": "7c854b240f0f7e91aa5df424a380d2c74a2111d2d227b03960f31374763ae58e"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-redwood-lod0.glb",
+      "sha256": "2f69129357faea1a81550469db563506db70d4af916d506b3cdbddce754799c5"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-redwood-lod1.glb",
+      "sha256": "2d25eeb960329afb2f2f69657c4da1f2ef200b50124d59fdb1b9b18323b54a70"
+    },
+    {
+      "path": "shared/geometry/tree-design/forest-sprays.js",
+      "sha256": "d02d827f396c9ab3e55ef175fff2704ba87c1873a18a35d5db04b02b7985e8da"
+    },
+    {
+      "path": "shared/geometry/tree-design/redwood-sprays.js",
+      "sha256": "56a648d1e851d445f635f778d0e320a6bcff11c365f97e6e59c329b6ca249b25"
+    },
+    {
       "path": "shared/geometry/water/water.glb",
       "sha256": "bccc8cfb405ee272c5ca4748fb8880d5716fadda8598ffe979ffe2a1d7f6b6aa"
     },
@@ -363,7 +443,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "baa733f",
+  "commit": "6b468b5",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

@@ -139,7 +139,10 @@ function bakeImpostor(asset,renderer){
     `);
   };
   material.customProgramCacheKey=()=> 'forest-impostor-overhead-v3';
-  return {geometry,material,detail:merged,target,refresh};
+  const resources=[merged.geometry,merged.material,bakeMaterial,geometry,material];
+  return {geometry,material,detail:merged,target,refresh,resources,dispose(){
+    target.dispose();topTarget.dispose();resources.forEach(resource=>resource.dispose());
+  }};
 }
 /** Vertex clustering keeps the source's branches, gaps and material colours in
  * the middle distance. The cell size grows only until the per-species budget is
@@ -234,7 +237,7 @@ export function buildStylizedForest(placement, assets, renderer=null, options={}
     return buildBakedPlantings({instances:trees},assets,renderer,{...options,filter:()=>true});
   }
   const group=new T.Group();group.name=options.name??'forest';
-  const types=new Map(),batches=[],kits=[];
+  const types=new Map(),batches=[],kits=[],resources=new Set();
   for(const tree of trees){if(!types.has(tree.asset))types.set(tree.asset,[]);types.get(tree.asset).push(tree);}
   const stats={trees:trees.length,tiles:0,trianglesPerTree:0,near:0,mid:0,far:trees.length,transitioning:0,shadowProxies:0,shadowRevision:0,midTrianglesByAsset:{},
     presentation:renderer?'shared mesh / clustered source mesh / source-baked distant views':'source-envelope crown'};
@@ -242,6 +245,7 @@ export function buildStylizedForest(placement, assets, renderer=null, options={}
     const asset=assets[path];if(!asset)throw new Error(`No tree source: ${path}`);
     const kit=renderer?bakeImpostor(asset,renderer):null,hull=stylizedTreeGeometry(asset);
     const middle=kit?clusteredTreeGeometry(kit.detail.geometry):hull;
+    resources.add(hull.geometry);resources.add(middle.geometry);
     stats.midTrianglesByAsset[path]=middle.triangles;
     if(kit){kit.detail.material.side=T.DoubleSide;intervalMaterial(kit.detail.material);intervalMaterial(kit.material);kits.push(kit);}
     const hullMaterial=toonMaterial({vertexColors:true,side:T.DoubleSide},{foliage:true});
@@ -314,7 +318,11 @@ export function buildStylizedForest(placement, assets, renderer=null, options={}
     stats.near=nearTotal;stats.mid=midTotal;stats.far=farTotal;stats.transitioning=transitions;stats.shadowProxies=proxies;
     if(changed)invalidateShadows();return changed;
   }
-  return {group,stats,update,invalidateShadows,rebuildImpostors(direction){kits.forEach(kit=>kit.refresh(direction));invalidateShadows();}};
+  return {group,stats,update,invalidateShadows,rebuildImpostors(direction){kits.forEach(kit=>kit.refresh(direction));invalidateShadows();},dispose(){
+    group.traverse(object=>{if(object.isMesh){resources.add(object.geometry);resources.add(object.material);}});
+    kits.forEach(kit=>kit.resources.forEach(resource=>resources.delete(resource)));
+    resources.forEach(resource=>resource.dispose());kits.forEach(kit=>kit.dispose());group.clear();
+  }};
 }
 
 /** Coarse canopy ground darkening beyond the cached sun map. These are soft,

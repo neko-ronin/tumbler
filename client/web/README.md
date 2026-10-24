@@ -1,3 +1,32 @@
+# Tree studio and feral forest integrated — 2026-10-23
+
+All studio, tree-update and game-integration work is combined for main at the
+human's request. The persistent studio retains current settings, notes and
+named plans; the game uses species-specific Feral crowns and repaired lighting.
+Main's existing sky/shadow repairs remain. Large model delivery is lossless and
+fits the host limit. See the [integration receipt](../../docs/reviews/tree-main-integration-2026-10-23.md) for conflict choices,
+checks, source identities and publication status. Earlier local-only entries
+below describe their original checkpoints.
+
+---
+
+# Connected redwood foliage revision — local review, 2026-10-23
+
+The bulb-like studio adoption was rejected. Giant, Canopy and Village redwoods
+now use connected branches, flattened needle sprays and the exact original
+per-species bark/foliage palettes. LOD 0 mixes folded leaves and curved sprays;
+LOD 1 groups the same contours into detailed bough cards. Original silhouettes,
+placements, occupied structures and collision sources remain unchanged.
+
+The [adoption brief](../../shared/geometry/tree-design/ADOPTED-REDWOODS.md)
+records the current recipe, costs, six-angle coverage audit, checks and limits.
+The original studio study and mutable human settings stay in their own worktree.
+This is a local review candidate, not a published release.
+
+Start with `python3.11 client/web/tools/serve.py --port 8005`:
+- [Game canopy](http://127.0.0.1:8005/client/web/scene.html?view=canopy)
+- [Species / LOD angle inspector](http://127.0.0.1:8005/client/web/tree-review/)
+
 # Repaired Web v0.1.1 release — approved, 2026-10-22
 
 The human authorizes main integration, publication and cleanup of
@@ -743,3 +772,33 @@ data and seed; and the only things standing between `shared/` and a browser are
 five modules that derive their data directory from `Path(__file__)`, which is a
 core refactor worth doing on its own merits and not a browser concession.
 Those are enumerated in the proposal's §11.
+
+## Feral forest preview (2026-10-23)
+
+The isolated forest lane now includes pine and fir, irregular crowns for both
+redwoods and village trees, and repaired foliage lighting. Original core
+placements, palette values and maximum crown envelopes remain unchanged.
+See [source, cost and visual evidence](../../docs/reviews/feral-forest-2026-10-23.md).
+Run `python3.11 client/web/tools/serve.py --port 8032`; inspect
+`/client/web/tree-review/` and `/client/web/tree-review/lighting.html`.
+Regenerate assets with `node shared/geometry/tree-design/build-forest-sprays.mjs`,
+then run `python3.11 client/web/tools/make_viewer_data.py` before packaging.
+This branch is local and has not been merged or published.
+
+## Tree leaf/branch studies — local, 2026-10-21
+
+The tree studio now has separate Spiral leaf fans, Feathered branchlets and
+Leaf-cloud volumes approaches. The original study and saved adjustments are
+preserved. Each approach has independent controls, lighting, camera and notes,
+with leaf close-ups, backlit sun-shaft inspection and named proposal images.
+See the [studio guide](tree-lab/README.md) and
+[verification](../../docs/reviews/tree-leaf-studies-2026-10-21.md).
+
+## Tree design studio — local, 2026-10-21
+
+The isolated [tree studio](tree-lab/README.md) compares the current game trees
+with editable 3D designs. It saves manual recipes, camera/light settings and
+named image/JSON looks in the worktree. Run
+`python3.11 client/web/tools/tree_lab_server.py --port 8031`, then open
+<http://127.0.0.1:8031/client/web/tree-lab/>. This is the design sandbox before
+forest adoption; no current species or world placements are changed.
