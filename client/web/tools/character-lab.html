@@ -5,16 +5,17 @@
 *{box-sizing:border-box}body{margin:0;background:#e4dfd4;color:#293532;font:14px system-ui}canvas{display:block;width:100vw;height:100vh}header{position:absolute;left:24px;top:20px}h1{font:500 26px Georgia;margin:0 0 5px}p{margin:5px 0;color:#5f6b63}.bar{position:absolute;bottom:22px;left:24px;right:24px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:#f4f0e7e8;border:1px solid #fff;padding:12px 18px;border-radius:15px}select,button{font:inherit;border:1px solid #bec5b7;border-radius:8px;background:#faf8ef;padding:7px;color:inherit}label{display:flex;gap:7px;align-items:center}#status{font-size:12px;margin-left:auto}@media(max-width:600px){header{top:12px;left:12px}.bar{bottom:12px;left:12px;right:12px;gap:8px;padding:10px}h1{font-size:22px}#status{margin:0}}
 </style>
 <canvas id="canvas" aria-label="Cat Ronin character. Drag to turn the model."></canvas>
-<header><h1>Cat Ronin</h1><p>Silver tabby · mustard knit · indigo hakama</p><p>Drag to turn · choose a view or movement below</p></header>
+<header><h1>Cat Ronin</h1><p>Grey mackerel tabby · mustard knit · jogger hakama · retractable katana</p><p>Drag to turn · choose a view or movement below</p></header>
 <div class="bar">
-<label>View <select id="view"><option value="threequarter">Three-quarter</option><option value="front">Front</option><option value="face">Face and fur</option><option value="back">Tail and back</option><option value="side">Side</option></select></label>
+<label>View <select id="view"><option value="threequarter">Three-quarter</option><option value="front">Front</option><option value="face">Face and fur</option><option value="eye">Eye</option><option value="back">Tail and back</option><option value="side">Side</option></select></label>
 <label>Movement <select id="pose"><option value="idle">Idle</option><option value="walk">Walk</option><option value="run">Run</option><option value="paraglider">Paraglider</option><option value="parakite">Parakite</option><option value="paramotor">Paramotor</option><option value="turn_left">Bank left</option><option value="turn_right">Bank right</option><option value="landed">After landing</option></select></label>
-<button id="pause">Pause</button><output id="status">Opening character…</output>
+<button id="katana">Draw katana</button><button id="sound" aria-pressed="false">Sound off</button><button id="pause">Pause</button><output id="status">Opening character…</output>
 </div>
 <script type="module">
 import * as T from '../vendor/three.module.min.js';
 import {parseGLB,applyImageBytes} from '../src3d/glb.js';
 import {createCharacter} from '../src3d/character.js';
+import {createCuePlayer} from '../src3d/audio.js';
 const repo=new URL('../../../',import.meta.url),canvas=document.querySelector('canvas'),status=document.querySelector('#status');
 try{
  const renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(2,devicePixelRatio));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
@@ -28,12 +29,16 @@ try{
  await applyImageBytes(asset,async(bytes,type)=>{const image=await createImageBitmap(new Blob([bytes],{type}));const texture=new T.Texture(image);texture.colorSpace=T.SRGBColorSpace;texture.flipY=false;texture.needsUpdate=true;return texture;});
  const cat=createCharacter(asset,config);cat.object.visible=true;scene.add(cat.object);
  const floor=new T.Mesh(new T.PlaneGeometry(200,200),new T.MeshStandardMaterial({color:'#d6d4c8',roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.004;scene.add(floor);
- const views={threequarter:[[2.7,1.8,4.7],[0,1,0],0],front:[[0,1.25,4.9],[0,1,0],0],face:[[.13,1.42,1.85],[0,1.42,.03],0],back:[[2.8,1.8,-4.6],[0,1,0],0],side:[[4.8,1.6,.4],[0,1,0],0]};
+ const views={threequarter:[[2.7,1.8,4.7],[0,1,0],0],front:[[0,1.25,4.9],[0,1,0],0],face:[[.13,1.42,1.85],[0,1.42,.03],0],eye:[[.16,1.36,.95],[.1,1.34,.2],0],back:[[2.8,1.8,-4.6],[0,1,0],0],side:[[4.8,1.6,.4],[0,1,0],0]};
  function view(reset=true){const name=document.querySelector('#view').value,[p,t]=views[name],target=new T.Vector3(...t);camera.position.fromArray(p);if(name==='face')camera.position.sub(target).multiplyScalar(Math.max(1,.8/camera.aspect)).add(target);camera.lookAt(...t);if(reset)cat.object.rotation.y=0;}
  document.querySelector('#view').onchange=()=>view();view();
  let running=true,drag=false,lastX=0,last=performance.now(),time=0;
  canvas.onpointerdown=e=>{drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId);};canvas.onpointerup=()=>drag=false;
  canvas.onpointermove=e=>{if(drag){cat.object.rotation.y+=(e.clientX-lastX)*.008;lastX=e.clientX;}};
+ const katanaButton=document.querySelector('#katana');katanaButton.onclick=()=>cat.toggleKatana();
+ let audio=null,cue=null;cat.onCue=name=>{if(audio?.state==='running')cue(name);};
+ document.querySelector('#sound').onclick=async e=>{audio??=new AudioContext();cue??=createCuePlayer(audio);
+  await (audio.state==='running'?audio.suspend():audio.resume());const on=audio.state==='running';e.target.textContent=on?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(on));};
  document.querySelector('#pause').onclick=e=>{running=!running;e.target.textContent=running?'Pause':'Play';};
  function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();view(false);}addEventListener('resize',resize);resize();
  function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;time+=dt;
@@ -41,7 +46,8 @@ try{
   const pose=flight?'flight':choice==='landed'?'idle':choice;
   if(running)cat.update(dt,pose,pose==='run'?9:pose==='walk'?3.5:0,{mode:choice,bank:choice==='turn_left'?-.5:choice==='turn_right'?.5:0});
   renderer.render(scene,camera);
-  const message=cat.tailClip+' · '+asset.stats.triangles.toLocaleString()+' source triangles';if(status.textContent!==message)status.textContent=message;
+  katanaButton.textContent=cat.katana==='holstered'?'Draw katana':cat.katana==='drawn'?'Sheathe katana':'…';
+  const message=cat.katana+' · '+cat.tailClip+' · '+asset.stats.triangles.toLocaleString()+' source triangles';if(status.textContent!==message)status.textContent=message;
   requestAnimationFrame(frame);
  }
  requestAnimationFrame(frame);

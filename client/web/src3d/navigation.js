@@ -20,6 +20,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(down&&(['Space','KeyE'].includes(e.code))&&(e.repeat||blockedActions.has(e.code)))return;
     if(down&&e.code==='Space')queuedPrimary=true;if(down&&e.code==='KeyE')queuedHarness=true;
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(riding()||config.modes[mode]))toggleView();
+    if(down&&!e.repeat&&e.code==='KeyF'&&mode==='walk')character.toggleKatana?.();
     if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyE'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
   const kd=e=>key(e,true),ku=e=>key(e,false);
   window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);window.addEventListener('blur',clear);
@@ -84,6 +85,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       }else if(primaryEdge&&mode==='orbit')select('paraglider',siteIndex);
       else if(primaryEdge&&pad?.buttons[0]?.pressed&&config.modes[mode]&&!state.grounded)select(mode,siteIndex);
       if(changeView&&config.modes[mode])toggleView();
+      if(changeView&&mode==='walk')character.toggleKatana?.();
       if(changeWeather){const names=Object.keys(config.weather),i=names.indexOf(weather);setWeather(names[(i+1)%names.length]);}
     }
     if(mode==='orbit'){time+=Math.min(dt,.05);orbit.update();return;}

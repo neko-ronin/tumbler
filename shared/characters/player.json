@@ -81,5 +81,21 @@
     "heel_click": "jump_heel_click",
     "star": "jump_star",
     "hop": "jump_hop"
+  },
+  "katana": {
+    "holstered": "katana_holstered",
+    "draw": "katana_draw",
+    "drawn": "katana_drawn",
+    "sheathe": "katana_sheathe",
+    "arm_weight": 6
+  },
+  "eyepatch": {
+    "worn": "hex",
+    "cuts": [
+      "round",
+      "almond",
+      "shield",
+      "hex"
+    ]
   }
 }

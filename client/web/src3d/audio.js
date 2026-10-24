@@ -2,12 +2,13 @@
  * Original procedural sound, started only by the user's sound button.
  */
 export function createSoundscape(habitats){
-  let context=null,water=null,motor=null,wind=null,vario=null,enabled=false;
+  let context=null,water=null,motor=null,wind=null,vario=null,cues=null,enabled=false;
   async function toggle(){
     if(!context){
       context=new AudioContext();const length=context.sampleRate*3;
       const buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);
       let last=0;for(let i=0;i<length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;data[i]=last*3.5;}
+      cues=createCuePlayer(context);
       function noise(frequency,gain,spatial=false){const source=context.createBufferSource();source.buffer=buffer;source.loop=true;
         const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=frequency;
         const level=context.createGain();level.gain.value=gain;source.connect(filter).connect(level);
@@ -36,5 +37,37 @@ export function createSoundscape(habitats){
     const throttle=navigation.mode==='paramotor'&&!navigation.state?.grounded?navigation.state.throttle:0;
     motor.level.gain.setTargetAtTime(throttle*.032,t,.1);motor.oscillator.frequency.setTargetAtTime(65+throttle*65,t,.1);
   }
-  return {toggle,update,dispose(){context?.close();}};
+  return {toggle,update,cue:name=>{if(enabled)cues?.(name);},dispose(){context?.close();}};
+}
+/** One-shot character cues (the katana's latch, slides and locks) on an existing AudioContext. */
+export function createCuePlayer(context){
+  const hiss=context.createBuffer(1,context.sampleRate,context.sampleRate),white=hiss.getChannelData(0);
+  for(let i=0;i<white.length;i++)white[i]=Math.random()*2-1;
+  let lockRun=0,lastLock=-1;
+  return function cue(name){
+    const t=context.currentTime,out=context.createGain();out.gain.value=.5;out.connect(context.destination);
+    const burst=(dur,type,frequency,q,gain,sweep)=>{
+      const source=context.createBufferSource();source.buffer=hiss;
+      const filter=context.createBiquadFilter();filter.type=type;filter.Q.value=q;filter.frequency.setValueAtTime(frequency,t);
+      if(sweep)filter.frequency.exponentialRampToValueAtTime(sweep,t+dur);
+      const level=context.createGain();level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(gain,t+.004);level.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      source.connect(filter).connect(level).connect(out);source.start(t,Math.random()*.8);source.stop(t+dur+.02);
+    };
+    const ring=(dur,frequency,gain,type='sine')=>{
+      const tone=context.createOscillator();tone.type=type;tone.frequency.value=frequency;
+      const level=context.createGain();level.gain.setValueAtTime(gain,t);level.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      tone.connect(level).connect(out);tone.start(t);tone.stop(t+dur+.02);
+    };
+    if(name==='latch'){burst(.03,'highpass',4200,.7,.45);ring(.05,2400,.06);}
+    else if(name==='eject'){burst(.16,'bandpass',900,2,.3,3200);ring(.12,1300,.025);}
+    else if(name==='catch'){burst(.06,'lowpass',600,.7,.5);ring(.09,160,.22);}
+    else if(name==='slide')burst(.11,'bandpass',2600,6,.32,5200);
+    else if(name==='lock'||name==='seat'){
+      // Consecutive locks climb a little in pitch, so the chain reads as one mechanism.
+      lockRun=t-lastLock<.5?lockRun+1:0;lastLock=t;const k=name==='seat'?.6:1.06**lockRun;
+      burst(.02,'highpass',5000,.7,.6);ring(.18,2100*k,.1);ring(.12,3350*k,.06);ring(.06,5200*k,.035);
+      if(name==='seat')ring(.1,150,.2);
+    }
+    else if(name==='hum'){ring(.9,110,.05,'sawtooth');ring(.9,220,.04);}
+  }
 }

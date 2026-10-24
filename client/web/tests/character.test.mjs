@@ -18,7 +18,7 @@ test('Ronin retains bone-parented meshes and playable clips animate actual geome
   cat.update(.2, 'idle');cat.object.updateMatrixWorld(true);
   const box = new T.Box3().setFromObject(cat.object);
   assert.ok(Math.abs(box.min.y) < .07, 'idle soles remain on the ground');
-  assert.ok(box.max.y > 1.7 && box.max.y < 2.2, 'metre-scale character, without doubled node transforms');
+  assert.ok(box.max.y > 1.5 && box.max.y < 2.2, 'metre-scale character (ear tips ~1.7 m), without doubled node transforms');
   let paw;
   cat.model.traverse(node => { if (node.isMesh && node.parent.name === 'paw.L') paw = node; });
   assert.ok(paw, 'test a rendered paw, not just an action name');
@@ -102,4 +102,26 @@ test('third-person navigation moves the cat, keeps the camera separate and hides
     }
     nav.select('orbit');assert.equal(cat.object.visible,false);assert.equal(rideRig.visible,false);
   } finally { nav.dispose();cat.dispose();for(const [name,descriptor] of previous) descriptor?Object.defineProperty(globalThis,name,descriptor):delete globalThis[name]; }
+});
+
+test('katana layer hands the chest handle to the paw, extends the blade with a chain of locks, and holsters for flight', () => {
+  const cat=character(),cues=[];cat.onCue=name=>cues.push(name);
+  const bone=name=>{let found;cat.model.traverse(n=>{if(n.isBone&&n.name===name)found=n;});assert.ok(found,`bone ${name}`);return found;};
+  const shown=name=>{cat.object.updateMatrixWorld(true);return bone(name).getWorldScale(new T.Vector3()).x;};
+  const reach=()=>{cat.object.updateMatrixWorld(true);return bone('katana').getWorldPosition(new T.Vector3()).distanceTo(bone('blade.4').getWorldPosition(new T.Vector3()));};
+  const settle=state=>{for(let i=0;i<200&&cat.katana!==state;i++)cat.update(1/30,'walk',3.5);assert.equal(cat.katana,state);};
+  cat.update(.1,'idle');
+  assert.equal(cat.katana,'holstered');assert.ok(shown('katana')<.01&&shown('katana.sheathed')>.99,'only the chest handle shows');
+  const collapsed=reach();
+  assert.equal(cat.toggleKatana(),'draw');assert.equal(cat.toggleKatana(),'draw','a second press mid-draw is ignored');
+  settle('drawn');
+  assert.ok(shown('katana')>.99&&shown('katana.sheathed')<.01,'the paw holds the only handle');
+  assert.ok(reach()-collapsed>.35,'four segments slid out of the handle');
+  assert.deepEqual(cues.slice(0,3),['latch','eject','catch']);
+  assert.deepEqual(cues.filter(c=>c==='lock').length,4);assert.ok(cues.indexOf('catch')<cues.indexOf('slide'));
+  cues.length=0;cat.toggleKatana();settle('holstered');
+  assert.equal(cues.at(-1),'seat');assert.ok(shown('katana')<.01&&shown('katana.sheathed')>.99);
+  cat.toggleKatana();cat.update(.2,'idle');cat.update(.1,'flight',0,{mode:'paraglider'});
+  assert.equal(cat.katana,'holstered','the blade is put away for the harness');
+  cat.dispose();
 });

@@ -1,3 +1,16 @@
+# Cat Ronin iteration 1 — merged, 2026-10-23
+
+The redesigned character (see [`FIDELITY.md`](../../shared/geometry/cat-ronin/FIDELITY.md))
+is integrated: new `ronin.glb` (102,100 source triangles, 36 clips, three
+embedded textures), a katana clip layer with glTF `extras.events` cues read by
+`glb.js`, katana input in `navigation.js`, cue synthesis in `audio.js`, and
+character-only shading in `character-surface.js` (whisker glint/halo, ear
+translucency, hair cards, fur fog, eye/eyepatch fur cut-outs whose centres
+mirror the core's `EYE` and patch). The [character studio](tools/character-lab.html)
+adds draw/sheathe, sound and an eye view. Web **265/265**.
+
+---
+
 # Tree studio and feral forest integrated — 2026-10-23
 
 All studio, tree-update and game-integration work is combined for main at the

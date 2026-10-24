@@ -47,6 +47,19 @@ export function createCharacter(asset, config) {
   const footBox=new T.Box3();let lastJump=0;
   let current = null, clipName = null,tailAction=null,tailName=null,tailCategory=null,tailTime=0,tailIndex=0,lastPose=null,landedTime=0,blinkTime=3.7,elapsed=0;
   for(const names of Object.values(config.tail_clips??{}))for(const name of names)if(!actions[name])throw new Error(`Ronin is missing tail clip ${name}`);
+  // Katana layer: holstered/drawn loops and the draw/sheathe transitions. It is
+  // the only layer that moves the katana bones, and while the blade is out it
+  // outweighs the body clip on the arm it authors. Cues ride in the clip.
+  const katana=config.katana;let katanaState=null,katanaAction=null,cueIndex=0;
+  if(katana)for(const state of ['holstered','draw','drawn','sheathe'])if(!actions[katana[state]])throw new Error(`Ronin is missing katana clip ${katana[state]}`);
+  function playKatana(state,fade){
+    const next=actions[katana[state]].reset().setEffectiveWeight(state==='holstered'?1:katana.arm_weight);
+    if(state==='draw'||state==='sheathe'){next.setLoop(T.LoopOnce,1);next.clampWhenFinished=true;}
+    if(fade)next.fadeIn(fade);next.play();
+    if(katanaAction&&katanaAction!==next)fade?katanaAction.fadeOut(fade):katanaAction.stop();
+    katanaAction=next;katanaState=state;cueIndex=0;
+  }
+  if(katana)playKatana('holstered',0);
   function update(dt, pose, speed = 0, context = {}) {
     const jump=context.jump;
     const authoredJump=jump&&config.jump_clips?.[jump.jumpStyle];
@@ -82,7 +95,15 @@ export function createCharacter(asset, config) {
     }
     elapsed+=dt;blinkTime-=dt;
     if(blinkTime<=0&&config.blink_clip){const blink=actions[config.blink_clip];blink.reset().setLoop(T.LoopOnce,1).play();blink.clampWhenFinished=true;blinkTime=3.2+1.7*(.5+.5*Math.sin(elapsed*1.37));}
+    if(katana&&pose==='flight'&&katanaState!=='holstered')playKatana('holstered',.1);
     mixer.update(dt);
+    if(katana){
+      const events=katanaAction.getClip().userData?.events??[];
+      while(cueIndex<events.length&&events[cueIndex].time<=katanaAction.time)api.onCue?.(events[cueIndex++].name);
+      const finished=katanaAction.time>=katanaAction.getClip().duration-1e-4;
+      if(finished&&katanaState==='draw')playKatana('drawn',.1);
+      else if(finished&&katanaState==='sheathe')playKatana('holstered',.1);
+    }
     // Keep the animated soles above the actual terrain, including slope under
     // either foot. This adjusts the rendered puppet only; physics owns its arc.
     model.position.y=-config.sole_y_m*config.scale;
@@ -108,5 +129,12 @@ export function createCharacter(asset, config) {
       }
     }
   }
-  return { object, model, update, get clip() { return clipName; },get tailClip(){return tailName;}, dispose() { mixer.stopAllAction(); mixer.uncacheRoot(model); surfaces.dispose();for(const s of skeletons)s.dispose();for(const t of textures)t.dispose();for(const g of geometries)g.dispose();plaid.dispose();shadeTexture.dispose();shadow.geometry.dispose();shadow.material.dispose(); } };
+  /** Draw when holstered, sheathe when drawn; ignored mid-transition. */
+  function toggleKatana(){
+    if(katanaState==='holstered')playKatana('draw',.08);
+    else if(katanaState==='drawn')playKatana('sheathe',.08);
+    return katanaState;
+  }
+  const api = { object, model, update, toggleKatana, onCue:null, get clip() { return clipName; },get tailClip(){return tailName;},get katana(){return katanaState;}, dispose() { mixer.stopAllAction(); mixer.uncacheRoot(model); surfaces.dispose();for(const s of skeletons)s.dispose();for(const t of textures)t.dispose();for(const g of geometries)g.dispose();plaid.dispose();shadeTexture.dispose();shadow.geometry.dispose();shadow.material.dispose(); } };
+  return api;
 }
