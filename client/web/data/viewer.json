@@ -43,7 +43,7 @@
     },
     {
       "path": "client/web/src3d/cloud-field.js",
-      "sha256": "63cc371da6b1467f36037ec304e91cc29dc43a77dfab7680cfd49366e0222eb1"
+      "sha256": "dbef0c0732b0ed5ef3ffda4ded1be335b59affc0a887dc9b1b1f00245104e674"
     },
     {
       "path": "client/web/src3d/cloud-lighting.js",
@@ -59,7 +59,7 @@
     },
     {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "087bdc066761fafe64ba9650ceb1be05603bfea4a7a1a04dd210292c4fdc821d"
+      "sha256": "e9b7beb700f14d42907db998ab18266dc59185b8d173252921035aa505b8f506"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -451,7 +451,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "20f7464",
+  "commit": "36b9575",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

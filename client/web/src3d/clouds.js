@@ -45,10 +45,16 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
           exit=min(exit,viewDepth/max(.001,dot(ray,uForward)));
           if(exit<=entry)discard;
           float stepM=(exit-entry)/${CLOUD_VIEW_STEPS}.;float trans=1.;vec3 light=vec3(0.);
+#ifdef CLOUD_EMPTY_SKIP
+          cloudDensityRate=5.3*length(ray/uExtent)*stepM;
+#endif
           float jitter=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);
           float forward=pow(max(0.,dot(ray,uSun)),12.);
           vec3 sunTint=mix(vec3(1.,.98,.90),vec3(1.12,.75,.43),uWarmth);
           for(int i=0;i<${CLOUD_VIEW_STEPS};i++){
+#ifdef CLOUD_EMPTY_SKIP
+            cloudEmptySteps=0.;
+#endif
             vec3 p=cameraPosition+ray*(entry+(float(i)+jitter)*stepM);float d=cloudDensity(p,true);
             if(d>.001){
               vec2 sunTransmission=cachedCloudLight(p);
@@ -60,6 +66,9 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
               float absorb=1.-exp(-d*stepM*.014);
               light+=col*absorb*trans;trans*=1.-absorb;if(trans<.012)break;
             }
+#ifdef CLOUD_EMPTY_SKIP
+            i+=int(cloudEmptySteps);
+#endif
           }
           float alpha=1.-trans;if(alpha<.008)discard;
           // Haze uses the same clear-air colour as the background at this ray.
@@ -68,7 +77,9 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
           fragColor=vec4(colour,alpha);
         }`
     });
-    const box=new T.Mesh(geometry,material);box.position.copy(centre);box.scale.copy(extent);box.name=`cumulus_${cell.seed}`;volumes.add(box);
+    const exterior=new T.ShaderMaterial({glslVersion:T.GLSL3,side:T.BackSide,transparent:true,depthWrite:false,depthTest:false,
+      defines:{CLOUD_EMPTY_SKIP:1},uniforms:material.uniforms,vertexShader:material.vertexShader,fragmentShader:material.fragmentShader});
+    const box=new T.Mesh(geometry,material);box.userData.cloudMarch={full:material,skip:exterior};box.position.copy(centre);box.scale.copy(extent);box.name=`cumulus_${cell.seed}`;volumes.add(box);
   }
   const fullscreen=new T.Scene(),quadCamera=new T.OrthographicCamera(-1,1,1,-1,0,1);
   const flightFX={value:0};
@@ -107,18 +118,37 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
 
   })));
   const dimensions=new T.Vector2(),savedColor=new T.Color();
+  let marchWarm=false;
+  const resetMarch=()=>{marchWarm=false;};renderer.domElement.addEventListener('webglcontextrestored',resetMarch);
+  function selectMarch(){
+    // Only above-cloud views showed a repeatable gain. Edge and inside views
+    // retain the original shader, including its cost and sample locations.
+    const above=camera.position.y>atmosphere.cloud_top_m;
+    for(const box of volumes.children)box.material=box.userData.cloudMarch[above?'skip':'full'];
+  }
   function render({speed=0,strength=1}={}){
     flightFX.value=speed*strength;
     style.sunEffects.value=strength;
     renderer.getDrawingBufferSize(dimensions);
     if(opaque.width!==dimensions.x||opaque.height!==dimensions.y){opaque.setSize(dimensions.x,dimensions.y);cloudy.setSize(Math.ceil(dimensions.x*.5),Math.ceil(dimensions.y*.5));size.set(cloudy.width,cloudy.height);}
     lighting.update();shadows.update();
+    selectMarch();
     camera.getWorldDirection(forward.value);
     renderer.setRenderTarget(opaque);renderer.render(scene,camera);
     const color=renderer.getClearColor(savedColor),alpha=renderer.getClearAlpha();
-    renderer.setClearColor(0,0);renderer.setRenderTarget(cloudy);renderer.clear();renderer.render(volumes,camera);
+    renderer.setClearColor(0,0);renderer.setRenderTarget(cloudy);renderer.clear();
+    if(!marchWarm){
+      // Draw both real pipelines against initialized world depth. The journal's
+      // GPU fence includes this work, so crossing cloud top cannot compile a
+      // new path after the scene has been revealed. Repeat after context loss.
+      for(const box of volumes.children)box.material=box.userData.cloudMarch.full;
+      renderer.render(volumes,camera);
+      for(const box of volumes.children)box.material=box.userData.cloudMarch.skip;
+      renderer.render(volumes,camera);marchWarm=true;selectMarch();
+    }
+    renderer.render(volumes,camera);
     rays.render(renderer,camera,dimensions.x,dimensions.y,strength);
     renderer.setClearColor(color,alpha);renderer.setRenderTarget(null);renderer.render(fullscreen,quadCamera);
   }
-  return {render,flightFX,rays,volumes,opaque,cloudy,shadows,lighting,dispose(){lighting.dispose();shadows.dispose();rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>m.material.dispose());}};
+  return {render,flightFX,rays,volumes,opaque,cloudy,shadows,lighting,dispose(){renderer.domElement.removeEventListener('webglcontextrestored',resetMarch);lighting.dispose();shadows.dispose();rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>{m.userData.cloudMarch.full.dispose();m.userData.cloudMarch.skip.dispose();});}};
 }

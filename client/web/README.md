@@ -1,3 +1,11 @@
+# Cloud performance — 2026-10-24
+
+Above-cloud views skip only sample positions proven to have zero density,
+reducing the measured cloud GPU pass by about 15% while retaining 96 occupied
+sample positions. Edge and inside views keep the full march. All 84 moving
+poses preserve cloud/environment pixels; ordinary-flight stalls remain open.
+See the [performance evidence and limits](../../docs/reviews/cloud-performance-2026-10-24.md).
+
 # Approved hand-sketched loading journal — 2026-10-24
 
 The approved generated alpine journal artwork replaces the initial line sketch;

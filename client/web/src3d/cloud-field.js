@@ -50,6 +50,9 @@ export function buildCloudNoise(size=48){
  return data;
 }
 export const CLOUD_DENSITY_GLSL=`
+#ifdef CLOUD_EMPTY_SKIP
+float cloudEmptySteps=0.;float cloudDensityRate=0.;
+#endif
 float cloudDensity(vec3 world, bool detail) {
  vec3 p=(world-uCentre)/uExtent;
  float edge=.5-max(max(abs(p.x),abs(p.y)),abs(p.z));
@@ -67,6 +70,12 @@ float cloudDensity(vec3 world, bool detail) {
  shape=max(shape,.70-length((p-vec3(.03,.17,.10))*vec3(4.7,4.4,4.8)));
  shape=max(shape,.55-length((p-vec3(-.08,.11,.26))*vec3(5.3,4.8,5.3)));
  shape=max(shape,.56-length((p-vec3(.08,.15,-.20))*vec3(5.3,4.8,5.3)));
+#ifdef CLOUD_EMPTY_SKIP
+ // Positive noise contributes at most .41, and density starts at -.09.
+ // The max billow gradient is 5.3. Advance only past sample indices that
+ // cannot reach that support; occupied sample positions remain unchanged.
+ if(shape<-.501){cloudEmptySteps=max(0.,floor((-.501-shape)/max(cloudDensityRate,.000001))-1.);return 0.;}
+#endif
  vec3 drift=vec3(uWind.x,0.,uWind.y)*uTime*.6/uExtent;drift.xz=turn*drift.xz;
  vec3 q=(p-drift)*1.15+vec3(uSeed*.137,uSeed*.071,0.);
  vec3 n=texture(uNoise,q).rgb;
