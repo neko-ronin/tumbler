@@ -1,3 +1,27 @@
+# Mario-style jump and sun-only ear glow — released, 2026-10-25
+
+He leaves the ground on the frame that sees Space / A; the 0.12 s crouch is gone.
+A fresh press is buffered 0.2 s and accepted during the landing crouch, and
+controller A is latched between 30 FPS frames. The jump uses Super Mario 64's
+tuning at body scale: tap to hop, hold to float through an eased peak, a running
+lift, and a double then a somersaulting triple for presses within 0.25 s of
+touchdown (a full-stick walk is enough; measured 2.9 / 4.2 / 5.9 m walking).
+Letting go eases the rise instead of stopping it; the chase camera's aim follows
+his height on a critically damped spring, so he rises in the frame, and he
+stretches and squats. In the air he cannot pass over a collider, since the floor
+is terrain only. Ear translucency is 70% dimmer, and it, the fur rim and the
+whisker glints now apply the scene sun map, so none shows in shade. The human
+approved merge and publication. Web **320/320**, public web **276/276**,
+packaging **8/8**, byte verification **122 fetched + 17 map files**. Release
+identities are in [PUBLISHING.md](../../docs/PUBLISHING.md).
+
+Remaining work: physical-controller feel, live in-browser startup from the review
+browser (its site permissions block the domain; live bytes match main by hash)
+and Unreal, which has no jump port. Older entries below describe their original
+checkpoints.
+
+---
+
 # Redwood and village repairs — accepted release, 2026-10-24
 
 Canopy and Giant Redwood share redder bark with the refined village bole. All
