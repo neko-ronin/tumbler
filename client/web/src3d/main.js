@@ -310,17 +310,6 @@ export async function main() {
   const home = placement.instances.find(i => i.kind === 'homestead');
   const [hx,hy,hz] = home.position_m;
   // These are camera bookmarks, never placement decisions.
-  const river = worldmap.water.bodies.find(b => b.kind === 'river');
-  let riverIndex = 0, nearest = Infinity;
-  river.polyline.forEach(([x,y],i) => { const d=(x-hx)**2+(y-hy)**2; if(d<nearest){nearest=d;riverIndex=i;} });
-  const centre = river.polyline[riverIndex];
-  const before = river.polyline[Math.max(0,riverIndex-1)], after=river.polyline[Math.min(river.polyline.length-1,riverIndex+1)];
-  const tangent = new T.Vector2(after[0]-before[0],after[1]-before[1]).normalize();
-  const bank = new T.Vector2(hx-centre[0],hy-centre[1]).normalize();
-  const width = river.width_start_m + (river.width_end_m-river.width_start_m)*riverIndex/(river.polyline.length-1);
-  const bankX=centre[0]+bank.x*(width*.1)-tangent.x*25;
-  const bankY=centre[1]+bank.y*(width*.1)-tangent.y*25;
-
   const homePoses=Array.from({length:16},(_,i)=>{const a=i*Math.PI/8;return [hx+Math.cos(a)*38,hz+10,-hy+Math.sin(a)*38];});
   const nearby=placement.instances.filter(i=>i.asset.startsWith('redwood/')&&Math.hypot(i.position_m[0]-hx,i.position_m[1]-hy)<100);
   const masts=placement.instances.filter(i=>i.kind==='mooring_mast'&&Math.hypot(i.position_m[0]-hx,i.position_m[1]-hy)<80);
@@ -328,21 +317,21 @@ export async function main() {
     const clearance=p=>Math.min(...[...nearby,...masts].map(t=>{const x=t.position_m[0],z=-t.position_m[1],dx=p[0]-hx,dz=p[2]+hy;const along=Math.max(.05,Math.min(1,((x-hx)*dx+(z+hy)*dz)/(dx*dx+dz*dz)));return Math.hypot(x-hx-dx*along,z+hy-dz*along)-(t.kind==='mooring_mast'?3:4);}));
     return clearance(b)-clearance(a);
   })[0];
-  const shoreHabitat=habitats.habitats.filter(h=>h.body==='river').sort((a,b)=>Math.hypot(a.shore_m[0]-hx,a.shore_m[1]-hy)-Math.hypot(b.shore_m[0]-hx,b.shore_m[1]-hy))[0];
-  const shore=shoreHabitat.shore_m,school=shoreHabitat.centre_m;
   // A camera bookmark derived from an existing individual, never a new tree
   // or a launch-site/world edit. Inspect actual LOD 0 among the live stand.
   const heroTree=placement.instances.filter(t=>t.asset==='redwood/giant_redwood.glb').sort((a,b)=>Math.hypot(a.position_m[0]+710,a.position_m[1]-450)-Math.hypot(b.position_m[0]+710,b.position_m[1]-450))[0];
   const heroCrown=new T.Box3();for(const p of assets[heroTree.asset].primitives)if(/foliage/.test(p.materialName))heroCrown.union(p.geometry.boundingBox.clone().applyMatrix4(instanceMatrix(heroTree.position_m,heroTree.yaw_deg,heroTree.scale,p.local)));
   const heroCentre=heroCrown.getCenter(new T.Vector3()),heroRadius=heroCrown.getSize(new T.Vector3()).x*.5;
+  // Look-around camera bookmarks use the existing terrain and launch location.
+  const launch=ground.height(-380,1620);
   const views = {
     canopy:{position:heroCentre.clone().add(new T.Vector3(heroRadius*2.1,8,heroRadius*2.3)).toArray(),target:heroCentre.toArray()},
     home: { position: homeCamera, target: [hx, hz + 3, -hy] },
-    valley: { position: [-1850,1150,1450], target: [0,450,-1100] },
-    summit: { position: [-650,ground.height(-380,1620)+110,-1360], target: [200,500,-700] },
+    valley: { position: [-700,ground.height(-700,-700)+140,700], target: [-380,150,-1900] },
+    summit: { position: [-150,launch+14,-1350], target: [-380,launch+10,-1620] },
     // Matched to the approved game-village.png capture (62 degree field of view).
     village: { position: [-672,73.8391,-442], target: [-696,89.8391,-472] },
-    river: { position: [shore[0],shore[2]+2,-shore[1]], target: [school[0],school[2]-.7,-school[1]] },
+    river: { position: [-640,ground.height(-640,-40)+5,40], target: [-700,20,-500] },
   };
   function setView(name) {
     if(navigation.mode!=='orbit'){setActivity('orbit');}
