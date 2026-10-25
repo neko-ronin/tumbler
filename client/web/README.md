@@ -1,3 +1,16 @@
+# Forest afternoon — approved for main, 2026-10-24
+
+The human approved the forest pass for merge and deployment. It unifies bark/LOD
+lighting, restores filtered card color, strengthens thin-leaf transmission, adds
+partial-sun shafts and a stamped forest floor, and enables first-person walking
+on V / right-stick click. All 9,817 tree placements remain. This integration
+retains main's approved journal and cloud optimizations. [Evidence and limits](../../docs/reviews/forest-afternoon-2026-10-24.md).
+Next priority: redder Canopy/Giant bark matching the village tree, updated village
+tree bodies, and verified inter-tree shadow reception for every representation.
+Deployment verification is recorded in the private release receipt.
+
+---
+
 # Cloud performance — 2026-10-24
 
 Above-cloud views skip only sample positions proven to have zero density,

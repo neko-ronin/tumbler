@@ -8,7 +8,7 @@ export function bakeCards(renderer, geometry, material, representation, settings
   const views = representation === 'multiview' ? settings.views : representation === 'crossed' ? 2 : 1;
   const columns = Math.min(4, views + 1), rows = Math.ceil((views + 1) / columns), resolution = settings.resolution;
   const target = new T.WebGLRenderTarget(columns * resolution, rows * resolution);
-  target.texture.colorSpace = T.SRGBColorSpace;
+  target.texture.colorSpace = T.LinearSRGBColorSpace;
   target.texture.generateMipmaps = true; target.texture.minFilter = T.LinearMipmapLinearFilter;
   geometry.computeBoundingBox();
   const box = geometry.boundingBox, size = box.getSize(new T.Vector3()), centre = box.getCenter(new T.Vector3());
@@ -73,6 +73,9 @@ export function bakeCards(renderer, geometry, material, representation, settings
       vec2 safeUv=clamp(cardUv,vec2(.5/${resolution.toFixed(1)}),vec2(1.-.5/${resolution.toFixed(1)}));
       vec4 sideA=texture2D(map,(tileA+safeUv)/uAtlas),sideB=texture2D(map,(tileB+safeUv)/uAtlas);
       vec4 sampleColor=mix(mix(sideA,sideB,vCardViews.z),texture2D(map,(tileTop+safeUv)/uAtlas),vCardViews.w);
+      // Filtering transparent captures produces coverage-weighted color.
+      // Recover it after blending views, exactly once, in linear light.
+      sampleColor.rgb/=max(sampleColor.a,.001);
       diffuseColor*=sampleColor;
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`outgoingLight*=mix(.60,1.,cloudObjectLight(vCardWorld,uCardSun)*actorSunLight(vCardWorld));\n#include <opaque_fragment>`);
@@ -80,7 +83,7 @@ export function bakeCards(renderer, geometry, material, representation, settings
       float threshold=fract(dot(floor(gl_FragCoord.xy),vec2(.754877666,.569840296)));
       if(threshold<vStudyInterval.x||threshold>=vStudyInterval.y)discard;`);
   };
-  shaderMaterial.customProgramCacheKey = () => `studio-cards-v1-${representation}-${views}-${resolution}`;
+  shaderMaterial.customProgramCacheKey = () => `studio-cards-v2-${representation}-${views}-${resolution}`;
   plane.computeBoundingBox(); plane.computeBoundingSphere();
   return {geometry: plane, material: shaderMaterial, target, views, columns, rows, resolution,
     textureBytes: columns * rows * resolution * resolution * 4 * 4 / 3,

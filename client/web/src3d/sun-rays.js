@@ -19,7 +19,14 @@ export function createSunRays(depth,cloud,world) {
       void main(){
         // The bright source also rejects the painted distant mountain ranges,
         // which intentionally do not write scene depth.
-        float disc=openSky(uSource.xy)*smoothstep(.82,1.05,texture2D(uWorld,uSource.xy).r);
+        float disc=openSky(uSource.xy)*.5;
+        float sourceLight=openSky(uSource.xy)*smoothstep(.72,1.05,texture2D(uWorld,uSource.xy).r);
+        for(int i=0;i<8;i++){
+          float a=float(i)*.785398;
+          vec2 uv=uSource.xy+vec2(cos(a)/uShape.x,sin(a))*uShape.y*.12;
+          disc+=openSky(uv)*.0625;
+          sourceLight=max(sourceLight,openSky(uv)*smoothstep(.72,1.05,texture2D(uWorld,uv).r));
+        }
         float neighbourhood=0.;
         for(int i=0;i<8;i++){
           float a=float(i)*.785398;
@@ -27,7 +34,8 @@ export function createSunRays(depth,cloud,world) {
         }
         neighbourhood*=.125;
         // Rays are an occasional partial-occlusion cue, absent in clear sky.
-        float occasion=disc*4.*neighbourhood*(1.-neighbourhood);
+        float partial=max(4.*neighbourhood*(1.-neighbourhood),4.*disc*(1.-disc));
+        float occasion=disc*partial*sourceLight;
         vec2 offset=vUv-uSource.xy;
         float radius=length(offset*vec2(uShape.x,1.));
         float light=0.;
@@ -39,7 +47,8 @@ export function createSunRays(depth,cloud,world) {
         float fade=1.-smoothstep(.04,.46,radius);
         // Store a normalized mask; applying the small gain after upsampling
         // avoids quantizing a subtle beam to two or three 8-bit levels.
-        gl_FragColor=vec4(vec3(light*occasion*fade),1.);
+        float corona=exp(-radius*radius/.0012)*occasion*.35;
+        gl_FragColor=vec4(vec3(light*occasion*fade+corona),1.);
       }`
   });
   const quad=new T.Mesh(new T.PlaneGeometry(2,2),material);scene.add(quad);
@@ -60,5 +69,5 @@ export function createSunRays(depth,cloud,world) {
     if(target.width!==w||target.height!==h)target.setSize(w,h);
     renderer.setRenderTarget(target);renderer.render(scene,camera);
   }
-  return {target,strength,source,render,dispose(){target.dispose();quad.geometry.dispose();material.dispose();}};
+  return {target,strength,source,material,render,dispose(){target.dispose();quad.geometry.dispose();material.dispose();}};
 }

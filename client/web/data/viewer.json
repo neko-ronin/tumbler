@@ -7,7 +7,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "b87118e582022a550cb7858f334c8a155483263c00704ac76e14bc5e9a244280"
+      "sha256": "b11eb466d57adc80e921da61af3689e3bba2191fffc6a9571cf9d2c536edb6de"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -59,7 +59,7 @@
     },
     {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "e9b7beb700f14d42907db998ab18266dc59185b8d173252921035aa505b8f506"
+      "sha256": "b126644facb3c19e15015124890cf902504bcc74de67a12671cdac5724e82d9b"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -88,6 +88,14 @@
     {
       "path": "client/web/src3d/flight-rig.js",
       "sha256": "db01e01a1e4604d0c2da006ff62715586af95f4bc498fd88d49cef05ce058339"
+    },
+    {
+      "path": "client/web/src3d/forest-field.js",
+      "sha256": "c04f8714322f8f7c08a24b2e96b9d51604ff91e3e49baefd9a7cfbff05915dee"
+    },
+    {
+      "path": "client/web/src3d/forest-floor.js",
+      "sha256": "7ef5d1886aea28625ea8991e3ccdc70a1dedbf47ede75e3abb9ea4411eeeaf71"
     },
     {
       "path": "client/web/src3d/forest.js",
@@ -119,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "cbfbcf144b9084bfbd761e2d99ac063a245d7738e1254ccfabdc3048ef604dac"
+      "sha256": "24f3ce698541832f6c3ce7cf5bad6870c48501f69fab3b3ad8d8d081e9c8f31e"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -127,7 +135,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "06bba061429b343ed5848c020eaa836e485147dbc3139d825d5365dad5993d5d"
+      "sha256": "5f7e3bea6aea539cb09efe1094f4bcf38c68c1e9c39aed36c7720aef4260b85d"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -143,11 +151,11 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "fe4962d238aa064fcba46e970f039be184ea1b4dd81a37eb5d949b116d443dfa"
+      "sha256": "c9d8beba0ca191cf8a48976e4c128a154cfa40f7235b43dc37324deaeeb82e9e"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
-      "sha256": "e562584ca76e3a2188b79c38b8aee9092e80838f27a69e7b23f9df02eeb9612f"
+      "sha256": "bd5952e984227e3853c66091b3c00932869d735875fb68923dc956cacd3bbb7f"
     },
     {
       "path": "client/web/src3d/terrain.js",
@@ -155,15 +163,19 @@
     },
     {
       "path": "client/web/src3d/tree-budget.js",
-      "sha256": "16ec5a2a56bc6db4b4daa1abd0ab921783003edc83c513368614ff1d890f4d60"
+      "sha256": "fb1f8614df7daefc0068f482ce303b2493600171bdf06251577b4b2aeba6929b"
     },
     {
       "path": "client/web/src3d/tree-cards.js",
-      "sha256": "c51b2d31406bae031b7b00a98db22548cf9549648f54669275d12b35e80aeb2b"
+      "sha256": "9c58600622e2a8acb589f7f533719ebefc3ee2d6e5d003d9e0fba869569107cd"
     },
     {
       "path": "client/web/src3d/tree-impostors.js",
-      "sha256": "41def808e22d66c4b7e66ff3f567f403b50c9e2c42c27fe3f0e7977aff387dc2"
+      "sha256": "e2e9b69996cc1a9ebac497f42e379af2b5e6981aa7731307da6d9ecb070ebef3"
+    },
+    {
+      "path": "client/web/src3d/tree-lighting.js",
+      "sha256": "e37c3b0021d1cf403ba6f5d4dd977479a8fcd177506eb178a553309011dc15ea"
     },
     {
       "path": "client/web/src3d/tree-material.js",
@@ -171,7 +183,7 @@
     },
     {
       "path": "client/web/src3d/tree-surface.js",
-      "sha256": "a70fecc7955920cfe2ff5947b07f5872f9066eca18656c3539778dd259d9a388"
+      "sha256": "36d095d950959f240aeaccb4db3262aadeeea116666c7878e3abc811ad8b4264"
     },
     {
       "path": "client/web/src3d/version.js",
@@ -180,6 +192,10 @@
     {
       "path": "client/web/src3d/world.js",
       "sha256": "378440cf0a2c3faacc0d0f5123f994c583d20c4515f1cfd33b5e3eb7a8410934"
+    },
+    {
+      "path": "client/web/textures/forest-litter-v1.png",
+      "sha256": "8cddfb33413d7725931f8ee536de23a3b55ea619de3a1d7836fef6513e1a9382"
     },
     {
       "path": "client/web/vendor/three.core.min.js",
@@ -426,6 +442,10 @@
       "sha256": "c9d5b06eee3d31d77bd738dc21ae8b62cd24c3b856e3cbacae3d89163e47eb16"
     },
     {
+      "path": "shared/world/out/forest_floor.json",
+      "sha256": "702db42d4ed690ad7ff011a2b7d6d3f79e8764bd0d07a8ce22f274f26b98bd41"
+    },
+    {
       "path": "shared/world/out/ground_cover.json",
       "sha256": "7d6df872f6078daddb11044327e350c7bdb80c90b1cf8f147ba817922a3bc3c1"
     },
@@ -451,7 +471,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "36b9575",
+  "commit": "0c1441e",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

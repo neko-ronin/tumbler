@@ -3,6 +3,9 @@
  * All islands and wood share one instanced draw and one bounded atlas. */
 import * as T from '../vendor/three.module.min.js';
 import {style,sunShadowShader} from './style.js';
+import {treeLighting} from './tree-surface.js';
+import {TREE_WOOD_GLSL} from './tree-lighting.js';
+import {FOREST_FIELD_GLSL,forestUniforms} from './forest-field.js';
 import {partitionFoliage, retainWood, BOUGH_PROFILES} from '../../../shared/geometry/tree-design/card-clusters.js';
 
 export {BOUGH_PROFILES};
@@ -69,13 +72,13 @@ export function bakeBoughCards(renderer, source, sourceMaterial, representation,
   source.computeBoundingBox();geometry.boundingBox=source.boundingBox.clone();for(const cluster of clusters){const b=new T.Box3().setFromCenterAndSize(new T.Vector3(...cluster.centre),new T.Vector3().setScalar(cluster.diameter*Math.SQRT2));geometry.boundingBox.union(b);}geometry.boundingSphere=geometry.boundingBox.getBoundingSphere(new T.Sphere());
   const material=new T.MeshBasicMaterial({map:target.texture,vertexColors:true,side:T.DoubleSide,alphaTest:settings.alphaCutoff,alphaToCoverage:true,toneMapped:false,fog:true});
   material.onBeforeCompile=shader=>{
-    sunShadowShader(shader);
-    shader.vertexShader='varying vec3 vCardWorld;\n'+shader.vertexShader;shader.fragmentShader='varying vec3 vCardWorld;uniform vec3 uCardSun;\n'+shader.fragmentShader;shader.uniforms.uCardSun=style.sun;
+    sunShadowShader(shader);Object.assign(shader.uniforms,forestUniforms());
+    shader.vertexShader='varying vec3 vCardWorld;\n'+shader.vertexShader;shader.fragmentShader='varying vec3 vCardWorld;uniform vec3 uCardSun;\n'+shader.fragmentShader;shader.uniforms.uCardSun=style.sun;Object.assign(shader.uniforms,{uWoodSun:treeLighting.sun,uWoodSky:treeLighting.fill,uWoodGround:treeLighting.ground});
     Object.assign(shader.uniforms,{uAtlas:{value:new T.Vector2(columns,rows)},uSideViews:{value:sideViews},uYaw:{value:yawOffset},uPolar:{value:new T.Vector2(settings.topStart*Math.PI/180,settings.topEnd*Math.PI/180)},uBoughSun:style.sun});
-    shader.vertexShader='attribute vec3 cardCentre;attribute vec4 cardInfo;attribute vec2 forestInterval;uniform float uSideViews,uYaw;uniform vec2 uPolar;uniform vec3 uBoughSun;varying vec4 vBough;varying vec2 vInterval;varying float vWoodLight;\n'+shader.vertexShader;
-    shader.fragmentShader='uniform vec2 uAtlas;varying vec4 vBough;varying vec2 vInterval;varying float vWoodLight;\n'+shader.fragmentShader;
+    shader.vertexShader='attribute vec3 cardCentre;attribute vec4 cardInfo;attribute vec2 forestInterval;uniform float uSideViews,uYaw;uniform vec2 uPolar;uniform vec3 uBoughSun;varying vec4 vBough;varying vec2 vInterval;varying vec3 vWoodNormal,vWoodLocal;\n'+shader.vertexShader;
+    shader.fragmentShader='uniform vec3 uWoodSun,uWoodSky,uWoodGround;uniform vec2 uAtlas;varying vec4 vBough;varying vec2 vInterval;varying vec3 vWoodNormal,vWoodLocal;\n'+FOREST_FIELD_GLSL+TREE_WOOD_GLSL+shader.fragmentShader;
     shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`
-      vInterval=forestInterval;vBough=vec4(-1.,0.,1.,0.);vWoodLight=1.;
+      vInterval=forestInterval;vBough=vec4(-1.,0.,1.,0.);vWoodLocal=position;vWoodNormal=normal;
       vec3 placed=position;
       if(cardInfo.z>=0.){
         mat4 world=modelMatrix*instanceMatrix;
@@ -95,8 +98,8 @@ export function bakeBoughCards(renderer, source, sourceMaterial, representation,
         placed=cardCentre+right*cardInfo.x+up*cardInfo.y;
         vBough=vec4(cardInfo.z+index,start,end,1.);
       }else{
-        vec3 N=normalize(mat3(modelMatrix*instanceMatrix)*normal);
-        float d=dot(N,normalize(uBoughSun))*.5+.5;vWoodLight=.48+.5*(floor(d*3.)+smoothstep(.35,.65,fract(d*3.)))/3.;
+        mat3 basis=mat3(modelMatrix*instanceMatrix);
+        vWoodNormal=normalize(cross(basis[1],basis[2])*normal.x+cross(basis[2],basis[0])*normal.y+cross(basis[0],basis[1])*normal.z);
       }
       vCardWorld=(modelMatrix*instanceMatrix*vec4(placed,1.)).xyz;vec4 mvPosition=modelViewMatrix*instanceMatrix*vec4(placed,1.);gl_Position=projectionMatrix*mvPosition;
     `);
@@ -110,15 +113,17 @@ export function bakeBoughCards(renderer, source, sourceMaterial, representation,
         leafSample.rgb/=max(leafSample.a,.001);diffuseColor*=leafSample;
         float choice=fract(dot(floor(gl_FragCoord.xy),vec2(.06711056,.00583715))*52.9829189);
         if(choice<vBough.y||choice>=vBough.z)discard;
-      }else diffuseColor.rgb*=vWoodLight;
+      }
     `);
-    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`outgoingLight*=mix(.60,1.,cloudObjectLight(vCardWorld,uCardSun)*actorSunLight(vCardWorld));\n#include <opaque_fragment>`);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`float sunlight=cloudObjectLight(vCardWorld,uCardSun)*actorSunLight(vCardWorld);
+      if(vBough.w>.5)outgoingLight*=mix(.60,1.,sunlight);
+      else outgoingLight=treeWoodLight(diffuseColor.rgb,vWoodLocal,vCardWorld,normalize(vWoodNormal)*(gl_FrontFacing?1.:-1.),normalize(uCardSun),uWoodSun,uWoodSky,uWoodGround,sunlight*forestCanopyLight(vCardWorld),1.);\n#include <opaque_fragment>`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>',`if(diffuseColor.a<alphaTest)discard;
       float threshold=fract(dot(floor(gl_FragCoord.xy),vec2(.754877666,.569840296)));
       if(threshold<vInterval.x||threshold>=vInterval.y)discard;
     `);
   };
-  material.customProgramCacheKey=()=>`studio-bough-v1-${fixed}-${sideViews}-${resolution}`;
+  material.customProgramCacheKey=()=>`studio-bough-v2-${fixed}-${sideViews}-${resolution}`;
   const atlasBytes=columns*rows*resolution*resolution;
   return {geometry,material,target,views:sideViews,columns,rows,resolution,textureBytes:atlasBytes*4*4/3,
     detail:{profile:representation,clusters:clusters.length,cards:clusters.length*3,woodTriangles,woodComponents:retained.components,keptWoodComponents:retained.keptComponents,sourceLeafTriangles:clusters.reduce((n,c)=>n+c.indices.length/3,0),captureViews:views,bakeMs:performance.now()-started,depthBytes:atlasBytes*4},

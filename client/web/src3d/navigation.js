@@ -19,7 +19,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(!down)blockedActions.delete(e.code);
     if(down&&(['Space','KeyE'].includes(e.code))&&(e.repeat||blockedActions.has(e.code)))return;
     if(down&&e.code==='Space')queuedPrimary=true;if(down&&e.code==='KeyE')queuedHarness=true;
-    if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(riding()||config.modes[mode]))toggleView();
+    if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||riding()||config.modes[mode]))toggleView();
     if(down&&!e.repeat&&e.code==='KeyF'&&mode==='walk')character.toggleKatana?.();
     if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyE'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
   const kd=e=>key(e,true),ku=e=>key(e,false);
@@ -86,6 +86,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       else if(primaryEdge&&pad?.buttons[0]?.pressed&&config.modes[mode]&&!state.grounded)select(mode,siteIndex);
       if(changeView&&config.modes[mode])toggleView();
       if(changeView&&mode==='walk')character.toggleKatana?.();
+      if(edge(11)&&mode==='walk')toggleView();
       if(changeWeather){const names=Object.keys(config.weather),i=names.indexOf(weather);setWeather(names[(i+1)%names.length]);}
     }
     if(mode==='orbit'){time+=Math.min(dt,.05);orbit.update();return;}
@@ -134,7 +135,11 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     character.update(dt,jumping?'jump':state.speed>.05?(run?'run':'walk'):'idle',state.speed,{jump:jumping?state:null,groundZ:characterHeight(state.x,state.y),groundHeight:characterHeight});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);
     // Walk heading follows movement; the camera's yaw stays independently controllable.
-    follow(dt,5.4,Math.PI/2);
+    character.object.visible=view==='chase';
+    if(view==='first'){
+      camera.position.set(state.x,state.z+1.65,-state.y);
+      look.set(pitch,yaw,0);camera.quaternion.setFromEuler(look);snap=false;
+    }else follow(dt,5.4,Math.PI/2);
   }
   function flightPose(){
     if(!previousFlight||state.grounded)return state;

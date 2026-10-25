@@ -2,6 +2,7 @@
  * complete geometry costs, including both sides of a fade, reserve the budget.
  * Far impostors are never subject to a population/distance cutoff. */
 export const TREE_BUDGETS=[800000,1050000,550000];
+export const TREE_FADE_MS=380;
 export function treeBudgetsForQuality(quality=1) {
   const scale=Math.max(.65,Math.min(1,quality));
   // Keep one full-detail hero tree. Lower render resolution alone cannot fix
@@ -18,7 +19,8 @@ export function preferredTreeLod(pixels, previous=-1) {
 }
 export function allocateTreeLods(trees,budgets=TREE_BUDGETS) {
   const remaining=[...budgets],used=[0,0,0,0],result=[];
-  const ordered=[...trees].sort((a,b)=>b.priority-a.priority||a.id-b.id);
+  const priority=tree=>tree.priority*(tree.previous===0?1.15:tree.previous===1?1.05:1);
+  const ordered=[...trees].sort((a,b)=>priority(b)-priority(a)||a.id-b.id);
   for(const tree of ordered){
     let lod=preferredTreeLod(tree.pixels,tree.previous);
     // A camera inside/just above a crown always gets spatial geometry. LOD 1
@@ -34,10 +36,28 @@ export function allocateTreeLods(trees,budgets=TREE_BUDGETS) {
 /** Reserve outgoing geometry too. An exhausted budget completes the handoff
  * immediately; it cannot submit an unbudgeted second dense tree for a fade. */
 export function treeTransitionDraws(allocation,budgets,now) {
+  // A dense hero often fills more than half of LOD 0's entire budget. Admit
+  // its replacement at LOD 1 while the departing hero fades, then promote it.
+  // Otherwise the outgoing-cost check below forces an immediate visible cut.
+  const heroes=allocation.result.filter(({tree,lod})=>
+    (tree.previous===0&&lod!==0)||(tree.from===0&&tree.previous===lod&&now-tree.changedAt<TREE_FADE_MS));
+  let reserved=0;
+  for(const {tree:outgoing}of heroes){
+    const cost=outgoing.costs[0];
+    if(allocation.used[0]+reserved+cost>budgets[0]){
+      const arrivals=allocation.result.filter(({tree,lod})=>lod===0&&tree.previous!==0).reverse();
+      for(const entry of arrivals){
+        let fallback=1;while(fallback<3&&allocation.used[fallback]+entry.tree.costs[fallback]>budgets[fallback])fallback++;
+        allocation.used[0]-=entry.tree.costs[0];allocation.used[fallback]+=entry.tree.costs[fallback];entry.lod=fallback;
+        if(allocation.used[0]+reserved+cost<=budgets[0])break;
+      }
+    }
+    if(allocation.used[0]+reserved+cost<=budgets[0])reserved+=cost;
+  }
   const used=[...allocation.used],draws=[];let transitioning=0;
   for(const {tree,lod}of allocation.result){
     if(tree.previous!==lod){tree.from=tree.previous;tree.changedAt=now;}tree.previous=lod;
-    let amount=1;const from=tree.from,elapsed=(now-tree.changedAt)/220;
+    let amount=1;const from=tree.from,elapsed=(now-tree.changedAt)/TREE_FADE_MS;
     if(from>=0&&from!==lod&&elapsed<1&&(from===3||used[from]+tree.costs[from]<=budgets[from])){
       amount=elapsed*elapsed*(3-2*elapsed);transitioning++;used[from]+=tree.costs[from];
       draws.push({tree,lod:from,lo:amount,hi:1});

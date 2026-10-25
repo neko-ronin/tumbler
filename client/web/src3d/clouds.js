@@ -85,9 +85,9 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
   const flightFX={value:0};
   const rays=createSunRays(opaque.depthTexture,cloudy.texture,opaque.texture);
   fullscreen.add(new T.Mesh(new T.PlaneGeometry(2,2),new T.ShaderMaterial({depthWrite:false,depthTest:false,
-    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uFlightFX:flightFX,uRays:{value:rays.target.texture},uRayStrength:rays.strength,uWarmth:style.warmth},
+    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uFlightFX:flightFX,uRays:{value:rays.target.texture},uRayStrength:rays.strength,uRayDepth:{value:new T.Vector2(camera.near,camera.far)},uWarmth:style.warmth},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
-    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth,uRays;uniform float uFlightFX,uRayStrength,uWarmth;varying vec2 vUv;
+    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth,uRays;uniform float uFlightFX,uRayStrength,uWarmth;uniform vec2 uRayDepth;varying vec2 vUv;
       vec3 composite(vec2 uv){vec4 c=texture2D(uCloud,uv);return texture2D(uWorld,uv).rgb*(1.-c.a)+c.rgb;}
       void main(){
         vec2 radial=vUv-.5;float radius=length(radial);
@@ -104,11 +104,14 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
           color/=total;
         }
         color*=1.-edge*.09;
-        // Repeat the full-resolution solid mask after upsampling so rays can
-        // never bleed onto a mountain or through the foreground wing/pilot.
+        // A small amount of aerial scattering is visible in front of distant
+        // forest surfaces too. Reject nearby solids with full-resolution depth;
+        // the source aperture itself rejects a sun hidden behind a ridge.
         if(uRayStrength>.001){
-          float sky=step(.9999998,texture2D(uDepth,vUv).r);
-          color+=texture2D(uRays,vUv).r*uRayStrength*.10*sky*(1.-texture2D(uCloud,vUv).a)
+          float depth=texture2D(uDepth,vUv).r,sky=step(.9999998,depth);
+          float metres=uRayDepth.x*uRayDepth.y/(uRayDepth.y-depth*(uRayDepth.y-uRayDepth.x));
+          float airPath=mix(smoothstep(8.,100.,metres)*.38,1.,sky);
+          color+=texture2D(uRays,vUv).r*uRayStrength*.13*airPath*(1.-texture2D(uCloud,vUv).a)
             *mix(vec3(1.,.91,.72),vec3(1.,.73,.40),uWarmth);
         }
         gl_FragColor=vec4(color,1.);

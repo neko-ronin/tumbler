@@ -1,5 +1,6 @@
 /** Client-only art direction. Shared uniforms keep every material on one clock. */
 import * as T from '../vendor/three.module.min.js';
+import {FOREST_FIELD_GLSL,forestUniforms} from './forest-field.js';
 import {ACTOR_SHADOW_GLSL} from './actor-shadow.js';
 import {CLOUD_GROUND_LIGHT_GLSL} from './cloud-shadow-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
@@ -80,6 +81,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     }
     if(meadow){shader.uniforms.uMeadowRange={value:new T.Vector2(...meadowRange)};shader.uniforms.uMeadowFocus=style.meadowFocus;}
     if(canopy)shader.uniforms.uCanopyStart={value:new T.Vector2(...canopyStart)};
+    if(terrain)Object.assign(shader.uniforms,forestUniforms());
     if(terrain||meadow){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;}
     shader.vertexShader = (canopy?'uniform vec2 uCanopyStart;varying vec2 vGrassUv;varying float vGrassSeed;\n':'')+((terrain||meadow)?MEADOW_AIR_GLSL:'')+AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? MEADOW_BEND_GLSL+'uniform vec2 uMeadowRange;uniform vec3 uMeadowFocus; varying float vMeadowFade; attribute float petal; attribute vec3 flowerTint; attribute vec3 bladeRoot; attribute float flex; attribute float plant; attribute vec3 meadowTraits; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.vertexShader;
     if(meadow)shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
@@ -140,7 +142,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       ${terrain ? 'vUp = normalize(mat3(modelMatrix) * objectNormal);' : ''}
       #include <project_vertex>
     `);
-    shader.fragmentShader = (canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;\n':'')+(terrain?'varying vec3 vUp;\n'+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
+    shader.fragmentShader = (canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;\n':'')+(terrain?'varying vec3 vUp;\n'+FOREST_FIELD_GLSL+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
     shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
       #include <color_fragment>
       ${meadow ? `if(vMeadowFade<=.001||vPlant<.5)discard;
@@ -221,7 +223,17 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       // amplifies its light/dark response without authoring another wave.
       diffuseColor.rgb*=1.+clamp(grassAir.z*.065,-.18,.18)*sward;
       diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(1.14,1.12,.92),grass.z*sward*.48);
-      float relief=sward*grass.y+(rockMask*(mass*2.2-joint*.4)+(1.-rockMask)*clump*.12)*(1.-smoothstep(1.5,5.,footprint));` : ''}
+      // A needle bed belongs beneath existing forest crowns. Its footprint
+      // comes from the core individuals, so meadow and clearings keep turf.
+      vec4 forestSoil=forestAt(vPlace);
+      float forestMask=forestCoverAt(vPlace)*knownGround*(1.-coreSnow)*(1.-rockMask);
+      float moss=smoothstep(.43,.68,fbm(ground*.45)+.12*(clump-.5));
+      vec3 litterTexture=forestLitter(ground);
+      vec3 litter=litterTexture*mix(.85,1.14,clump);
+      litter=mix(litter,litter*vec3(.77,.96,.65),moss*.25);
+      litter*=mix(1.,.87,forestSoil.b);
+      diffuseColor.rgb=mix(diffuseColor.rgb,litter,forestMask);
+      float relief=forestMask*(grain*.007+dot(litterTexture,vec3(.2126,.7152,.0722))*.018)+sward*grass.y*(1.-forestMask)+(rockMask*(mass*2.2-joint*.4)+(1.-rockMask)*clump*.12)*(1.-smoothstep(1.5,5.,footprint));` : ''}
     `);
     if(terrain){
       // Bump the lighting normal by the same relief, so rock catches the sun.
@@ -273,7 +285,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-meadow-v16:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
+  material.customProgramCacheKey = () => `cozy-meadow-v17:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
   return material;
 }
 

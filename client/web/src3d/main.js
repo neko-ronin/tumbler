@@ -7,6 +7,8 @@ import { buildPlacements, buildForest } from './placements.js';
 import { buildTreeGroundShadows } from './forest.js';
 import {instanceMatrix} from './world.js';
 import {setTreeLighting} from './tree-surface.js';
+import {buildForestField,forestField} from './forest-field.js';
+import {buildForestFloor} from './forest-floor.js';
 import {buildAdoptedRedwoods,releaseCrownSources} from './redwood-rendering.js';
 import { GroundSampler, HeightGrid, decodeGroundCover } from './heights.js';
 import { buildCloseMeadow, meadowViewFocus } from './groundcover.js';
@@ -94,6 +96,11 @@ export async function main() {
   const characterConfig=await fetchData(worldmap.activities.character);
   const treePlan=await fetchData('shared/geometry/tree-design/adopted-redwoods.json');checkVersion(treePlan,2,'forest rendering plan');
   checkVersion(characterConfig,1,'playable character');
+  const forestCover=await fetchData('shared/world/out/forest_floor.json');checkVersion(forestCover,1,'forest ground cover');
+  const litterBytes=await fetchData('client/web/textures/forest-litter-v1.png',false);
+  const litterBitmap=await createImageBitmap(new Blob([litterBytes],{type:'image/png'}));
+  const forestLitterTexture=new T.Texture(litterBitmap);forestLitterTexture.colorSpace=T.SRGBColorSpace;
+  forestLitterTexture.wrapS=forestLitterTexture.wrapT=T.RepeatWrapping;forestLitterTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());forestLitterTexture.needsUpdate=true;forestField.litter.value=forestLitterTexture;
   const snowStamp=await fetchData(rideConfig.snow_cover);
   for(const [value,known,label] of [[worldmap,2,'world map'],[placement,3,'placements'],[stampData,1,'grass stamp'],[habitats,1,'water habitats'],[meadowData,1,'meadow life'],[flightConfig,3,'flight'],[rideConfig,1,'ski and bike rules'],[snowStamp,1,'snow cover']])checkVersion(value,known,label);
   const blockGrid = new HeightGrid({ values: new Float32Array(blockBytes), ...manifest.height_grids.block, kind: 'block' });
@@ -146,6 +153,7 @@ export async function main() {
     };
   setTreeLighting({...lightPresets.golden,sun:lightPresets.golden.color,ground:'#7a8452'});
   style.sun.value.set(-.64,.48,-.55).normalize();
+  const forestSoil=buildForestField(placement,assets,forestCover.habitat,{stamp:forestCover});
   const legacyForest=buildForest(placement,assets,renderer,{filter:i=>i.asset.startsWith('redwood/')&&!treePlan.targets[i.asset]});
   const adoptedForest=buildAdoptedRedwoods(placement,assets,renderer,treePlan);
   adoptedForest.stats.releasedSourceBytes=releaseCrownSources(assets,treePlan);
@@ -165,6 +173,7 @@ export async function main() {
   const snowAt=createSnowSampler(snowStamp);
   const snowTexture=new T.DataTexture(Uint8Array.from(snowAt.depth,d=>Math.round(Math.min(1,d/snowStamp.model.max_depth_m)*255)),snowAt.resolution,snowAt.resolution,T.RedFormat);
   snowTexture.minFilter=snowTexture.magFilter=T.LinearFilter;snowTexture.needsUpdate=true;style.snow.value=snowTexture;
+  const forestFloor=buildForestFloor(forestCover,forestSoil,ground,snowAt,(x,y)=>surfaceAt(x,y)==='trail');scene.add(forestFloor.group);
   const grassGl=renderer.getContext();
   const meadow = buildGrassCanopy(cover,ground,{samples:grassGl.getParameter(grassGl.SAMPLES)});
   scene.add(meadow.group);
@@ -358,13 +367,13 @@ export async function main() {
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
   const startup={ready:false,frames:0};
   // Read-only inspection hook used for repeatable visual/performance checks.
-  window.tumbler = { startup,flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { startup,flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;
     loading.show();status.textContent='Letting the light settle…';
     const result=await warmScene({
       prepare(){
-        forest.update(camera,shadowCentre);updateShadow();
+        forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();
         meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
         airCues.update(camera,0);ecology.update(camera,elapsed);sky.position.copy(camera.position);
         const wind=navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);
@@ -378,7 +387,7 @@ export async function main() {
         actorShadows.update(actorFocus,style.sun.value);
         cloudPass.render({strength:Number(motionSelect.value)});
       },
-      signature:()=>JSON.stringify([renderer.info.memory,renderer.info.programs.length,forest.stats.adopted.lodCounts,meadow.stats.tiles]),
+      signature:()=>JSON.stringify([renderer.info.memory,renderer.info.programs.length,forest.stats.adopted.lodCounts,meadow.stats.tiles,forestFloor.stats.plants]),
       pending:()=>forest.stats.adopted.transitioning>0,
       finish:()=>finishGpu(renderer.getContext()),
     });
@@ -413,7 +422,7 @@ export async function main() {
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
     navigation.update(Math.min(delta,50)/1000);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
-    forest.update(camera,shadowCentre);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
+    forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;
@@ -425,7 +434,7 @@ export async function main() {
       const readout=document.getElementById('flight-readout');
       readout.textContent=rider?(rider.crashed?`Contact: ${rider.crashed} · Launch to go again`:
         `${rideConfig.modes[rider.mode].label} · ${(riderSpeed*3.6).toFixed(0)} km/h · ${Math.round(rider.startZ-rider.z)} m down · ${(rider.distance/1000).toFixed(2)} km · ${rider.grounded?rider.surface:'airborne'}`):
-        !airborne?(navigation.mode==='walk'?(navigation.message||`On foot · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
+        !airborne?(navigation.mode==='walk'?(navigation.message||`On foot · V / R3: ${navigation.view==='first'?'chase view':'first person'} · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
         flight.grounded?(navigation.message||(flight.impact?`Contact with ${flight.impact} · Launch to restart`:'Landed · E / X: unhook · Space / A: launch here')):
         `${flightConfig.modes[flight.mode].label}  /  ${flightConfig.weather[navigation.weather].label}\n`+
         `${(flight.speed*3.6).toFixed(0)} km/h AIR   ${(flight.groundSpeed*3.6).toFixed(0)} GROUND   ${Math.round(air.agl)} m AGL\n`+
@@ -470,6 +479,6 @@ export async function main() {
     try { contextLost=false;treeShadows.setSun(style.sun.value);cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
     catch(error){stopped=true;loading.fail(error);console.error(error);}
   });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
 }
