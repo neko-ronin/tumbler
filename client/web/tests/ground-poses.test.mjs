@@ -33,7 +33,7 @@ test('authored jump poses move real hands/feet, read distinctly at apex, retain 
  const spread=p=>Math.abs(p['foot.L'].x-p['foot.R'].x);
  assert.ok(spread(apex[2])>spread(apex[1])+.15,'star spreads feet; heel click brings them together');
  assert.ok(spread(apex[1])>.13&&spread(apex[1])<.24,'heel click retains two distinct feet meeting near centre');
- assert.ok(Math.abs(apex[3]['foot.L'].z-apex[3]['foot.R'].z)>.12,'skip separates the leading and trailing foot');
+ assert.ok(Math.abs(apex[3]['foot.L'].z-apex[3]['foot.R'].z)>.12,'the running leap separates the leading and trailing foot');
  cat.dispose();
 });
 
@@ -132,15 +132,18 @@ test('climbing clips keep the front paws on the bark across trunk sizes, and the
  cat.update(1/60,'jump',0,{jump:{jumpPhase:'tumble',jumpProgress:.4,jumpStyle:'hop',jumpCount:1}});assert.equal(cat.clip,config.fall_clips.tumble);
  cat.dispose();
 });
-test('the triple jump somersaults forward about his middle and is upright again by the apex',()=>{
- const cat=createCharacter(asset(),config),jump=(jumpTier,jumpProgress)=>({jumpPhase:'airborne',jumpStyle:'hop',jumpCount:3,jumpTier,jumpProgress});
+test('the triple jump somersaults forward about his middle, from just before the apex into the drop',()=>{
+ const cat=createCharacter(asset(),config),jump=(jumpTier,jumpProgress)=>({jumpPhase:'airborne',jumpStyle:'flip',jumpCount:3,jumpTier,jumpProgress});
  const middle=()=>{cat.object.updateMatrixWorld(true);return new T.Vector3(0,.85,0).applyMatrix4(cat.model.matrix);};
- cat.update(1/60,'jump',0,{jump:jump(2,.25)});const upright=middle();
- cat.update(1/60,'jump',0,{jump:jump(3,.25)});
- assert.ok(Math.abs(cat.model.rotation.x-Math.PI)<.05,`half-way up he is upside down: ${cat.model.rotation.x.toFixed(2)} rad`);
+ cat.update(1/60,'jump',0,{jump:jump(2,.635)});const upright=middle();
+ cat.update(1/60,'jump',0,{jump:jump(3,.3)});assert.ok(Math.abs(cat.model.rotation.x)<.05,'still upright on the way up');
+ cat.update(1/60,'jump',0,{jump:jump(3,.5)});
+ assert.ok(cat.model.rotation.x>.05&&cat.model.rotation.x<Math.PI/2,`turning, not yet inverted, at the apex: ${cat.model.rotation.x.toFixed(2)} rad`);
+ cat.update(1/60,'jump',0,{jump:jump(3,.635)});
+ assert.ok(Math.abs(cat.model.rotation.x-Math.PI)<.05,`upside down early in the drop: ${cat.model.rotation.x.toFixed(2)} rad`);
  assert.ok(middle().distanceTo(upright)<.02,'the somersault turns about his middle, not his soles');
- cat.update(1/60,'jump',0,{jump:jump(3,.5)});assert.ok(Math.abs(cat.model.rotation.x-2*Math.PI)<.05);
- cat.update(1/60,'jump',0,{jump:jump(2,.25)});assert.ok(Math.abs(cat.model.rotation.x)<.05,'a double jump does not flip');
+ cat.update(1/60,'jump',0,{jump:jump(3,.85)});assert.ok(Math.abs(cat.model.rotation.x-2*Math.PI)<.05,'upright again before touchdown');
+ cat.update(1/60,'jump',0,{jump:jump(2,.635)});assert.ok(Math.abs(cat.model.rotation.x)<.05,'a double jump does not flip');
  cat.dispose();
 });
 test('he stretches at launch, rounds out at the peak, squats on touchdown and keeps his volume',()=>{
@@ -169,5 +172,41 @@ test('his ear glow, fur rim and whisker glints all apply the scene sun shadow, s
   }
  });
  assert.deepEqual([...seen].sort(),['ear','halo','rim','whisker']);
+ cat.dispose();
+});
+
+test('each new jump grunts once at push-off, by its tier in the chain',()=>{
+ const cat=createCharacter(asset(),config),heard=[];cat.onCue=name=>heard.push(name);
+ for(const [jumpCount,jumpTier,jumpStyle] of [[1,1,'leap'],[2,2,'tuck'],[3,3,'flip']])
+  for(const jumpPhase of ['takeoff','airborne','landing'])cat.update(1/60,'jump',5,{jump:{jumpPhase,jumpProgress:.5,jumpStyle,jumpCount,jumpTier}});
+ assert.deepEqual(heard.filter(n=>n.startsWith('grunt')),['grunt1','grunt2','grunt3']);
+ cat.dispose();
+});
+test('moving jumps play their own athletic clips',()=>{
+ const cat=createCharacter(asset(),config);
+ for(const style of ['leap','tuck','flip','push']){cat.update(1/60,'jump',5,{jump:{jumpPhase:'airborne',jumpProgress:.5,jumpStyle:style,jumpCount:1,jumpTier:1}});assert.equal(cat.clip,config.jump_clips[style]);}
+ cat.dispose();
+});
+test('landing on the move runs straight out in his gait; from a standstill he lands in the jump clip',()=>{
+ const cat=createCharacter(asset(),config),landing={jumpPhase:'landing',jumpProgress:.3,landingSpeed:config.walk.jump.takeoff_mps,jumpStyle:'leap',jumpCount:1,jumpTier:1};
+ cat.update(1/60,'jump',config.walk.run_mps,{jump:landing,groundZ:0});assert.equal(cat.clip,config.clips.run);
+ cat.update(1/60,'jump',config.walk.walk_mps,{jump:landing,groundZ:0});assert.equal(cat.clip,config.clips.walk);
+ cat.update(1/60,'jump',0,{jump:{...landing,jumpStyle:'celebrate'},groundZ:0});assert.equal(cat.clip,config.jump_clips.celebrate);
+ cat.dispose();
+});
+test('a heavy landing at speed rolls forward once, low and clear of the ground; standing still it crouches',()=>{
+ const cat=createCharacter(asset(),config),heavy=p=>({jumpPhase:'landing',jumpProgress:p,landingSpeed:config.landing.heavy_mps+2,jumpStyle:'leap',jumpCount:1,jumpTier:1});
+ const flat=()=>0,fast=config.landing.roll_min_mps+3,turns=[];
+ for(let i=0;i<=40;i++){
+  const p=i/40;cat.update(1/60,'jump',fast,{jump:heavy(p),groundZ:0,groundHeight:flat});assert.equal(cat.clip,config.landing.roll);
+  turns.push(cat.model.rotation.x);cat.object.updateMatrixWorld(true);
+  // The tail tip may sweep the ground as he turns over; the body may not.
+  const box=new T.Box3();cat.model.traverse(n=>{if(n.isMesh&&!/^cat_tail/.test(n.name))box.union(new T.Box3().setFromObject(n));});
+  assert.ok(box.min.y>-.06,`at ${p} he dips ${box.min.y.toFixed(3)} m into the ground`);
+  assert.ok(box.max.y<1.9,`at ${p} the roll stays low: top at ${box.max.y.toFixed(2)} m`);
+ }
+ assert.ok(Math.abs(turns[0])<.25&&Math.abs(turns.at(-1)-2*Math.PI)<.25,`one forward turn: ${turns[0].toFixed(2)} to ${turns.at(-1).toFixed(2)} rad`);
+ assert.ok(turns.every((x,i)=>i===0||x>=turns[i-1]-1e-9),'always turning forward');
+ cat.update(1/60,'jump',0,{jump:heavy(.3),groundZ:0});assert.equal(cat.clip,config.landing.heavy);
  cat.dispose();
 });

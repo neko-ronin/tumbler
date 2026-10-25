@@ -3,7 +3,8 @@ import * as T from '../vendor/three.module.min.js';
 import { buildAssetMeshes } from './glb.js';
 import { installCharacterSurfaces } from './character-surface.js';
 import { trunkRadiusAt } from '../../../shared/activities/climb.js';
-const PAW_RADIUS=.05,FLIP_PIVOT_M=.85,STRETCH=.1,SQUASH=.16;
+import { gaitFor } from '../../../shared/activities/walk.js';
+const PAW_RADIUS=.05,FOOT_REACH_M=.2,PLANTED_M=.03,BODY_RISE_S=.07,BODY_DROP_S=.006,FLIP_PIVOT_M=.85,FLIP_START=.42,FLIP_END=.85,ROLL_PIVOT_M=.42,ROLL_START=.12,ROLL_END=.78,STRETCH=.1,SQUASH=.16;
 
 export function createCharacter(asset, config) {
   const object = new T.Group();
@@ -45,11 +46,42 @@ export function createCharacter(asset, config) {
   const actions = Object.fromEntries(asset.animations.map(clip => [clip.name, mixer.clipAction(clip)]));
   for (const name of Object.values(config.clips)) if (!actions[name]) throw new Error(`Ronin is missing clip ${name}`);
   for (const name of Object.values(config.jump_clips??{})) if (!actions[name]) throw new Error(`Ronin is missing jump clip ${name}`);
-  const feet=[],paws={};model.traverse(node=>{if(node.isMesh&&/^foot\./.test(node.parent?.name??''))feet.push(node);if(node.isMesh&&/^paw\./.test(node.parent?.name??''))paws[node.parent.name]=node;});
-  const footBox=new T.Box3();let lastJump=0;
+  const feet=[],paws={},bodyMeshes=[];model.traverse(node=>{if(node.isMesh&&!node.isSkinnedMesh&&node.geometry.boundingBox)bodyMeshes.push(node);});model.traverse(node=>{if(node.isMesh&&/^foot\./.test(node.parent?.name??''))feet.push(node);if(node.isMesh&&/^paw\./.test(node.parent?.name??''))paws[node.parent.name]=node;});
+  const footBox=new T.Box3(),meshBox=new T.Box3();let lastJump=0,bodyLift=0,bodyWorld=null;
+  // Legs for foot planting: hip (thigh), knee (shin), ankle (heel) and the foot meshes.
+  const legs=['L','R'].map(side=>({thigh:model.getObjectByName('thigh.'+side),shin:model.getObjectByName('shin.'+side),heel:model.getObjectByName('heel.'+side),
+    meshes:feet.filter(mesh=>mesh.parent.name==='foot.'+side)})).filter(leg=>leg.thigh&&leg.shin&&leg.heel&&leg.meshes.length);
+  // Leg rotations as the clip left them, put back before the mixer runs so IK
+  // never accumulates on a channel the playing clip does not animate.
+  const legPose=[];
+  const v=()=>new T.Vector3(),q=()=>new T.Quaternion();
+  /** Turn a bone by a world-space rotation. */
+  function turnWorld(bone,rotation){
+    const parent=bone.parent.getWorldQuaternion(q()).invert(),world=bone.getWorldQuaternion(q());
+    bone.quaternion.copy(parent.multiply(rotation).multiply(world));bone.updateWorldMatrix(false,true);
+  }
+  /** Raise this leg's ankle `rise` metres (world up) with two-bone IK: bend the
+   * knee in the plane it already bends in, swing the thigh onto the target and
+   * keep the foot's world orientation, so the paw stays as level as the clip had it. */
+  function raiseFoot(leg,rise){
+    for(const bone of [leg.thigh,leg.shin,leg.heel])legPose.push([bone,bone.quaternion.clone()]);
+    const hip=leg.thigh.getWorldPosition(v()),knee=leg.shin.getWorldPosition(v()),ankle=leg.heel.getWorldPosition(v());
+    const shinBefore=leg.shin.getWorldQuaternion(q()),target=ankle.clone().setY(ankle.y+rise);
+    const upper=knee.clone().sub(hip),lower=ankle.clone().sub(knee),a=upper.length(),b=lower.length();
+    const reach=Math.max(Math.abs(a-b)+1e-3,Math.min(a+b-1e-4,target.distanceTo(hip)));
+    const bend=Math.acos(Math.max(-1,Math.min(1,(reach*reach-a*a-b*b)/(2*a*b))))-upper.angleTo(lower);
+    let axis=v().crossVectors(upper,lower);
+    // A straight leg bends its knee forward (+Z in the model is his front).
+    if(axis.lengthSq()<1e-10)axis.crossVectors(v().set(0,0,1).transformDirection(model.matrixWorld),upper);
+    turnWorld(leg.shin,q().setFromAxisAngle(axis.normalize(),bend));
+    const bent=leg.heel.getWorldPosition(v()).sub(hip).normalize();
+    turnWorld(leg.thigh,q().setFromUnitVectors(bent,target.sub(hip).normalize()));
+    // Undo the shin's turn at the ankle (relative, so decomposition error cancels).
+    leg.heel.quaternion.premultiply(leg.shin.getWorldQuaternion(q()).invert().multiply(shinBefore));leg.heel.updateWorldMatrix(false,true);
+  }
   let current = null, clipName = null,lean=0,barkFit=0,swimShot=null,swimShotLeft=0,pitch=0,idleTime=0,pivotClip=null,pivotLeft=0,tailAction=null,tailName=null,tailCategory=null,tailTime=0,tailIndex=0,lastPose=null,landedTime=0,blinkTime=3.7,elapsed=0;
   for(const names of Object.values(config.tail_clips??{}))for(const name of names)if(!actions[name])throw new Error(`Ronin is missing tail clip ${name}`);
-  for(const name of [config.landing?.heavy,config.pivot?.left,config.pivot?.right,...(config.idle_sequence??[]).map(step=>step.clip),...Object.values(config.climb_clips??{}),...Object.values(config.fall_clips??{}),...Object.values(config.swim_clips??{})])
+  for(const name of [config.landing?.heavy,config.landing?.roll,config.pivot?.left,config.pivot?.right,...(config.idle_sequence??[]).map(step=>step.clip),...Object.values(config.climb_clips??{}),...Object.values(config.fall_clips??{}),...Object.values(config.swim_clips??{})])
     if(name&&!actions[name])throw new Error(`Ronin is missing clip ${name}`);
   // Idle extras: after `after_s` seconds standing, play the clip once, or keep
   // it (`hold`) until he moves. The latest step that is due wins.
@@ -87,7 +119,11 @@ export function createCharacter(asset, config) {
     const heavy=jump?.jumpPhase==='landing'&&config.landing&&jump.landingSpeed>config.landing.heavy_mps;
     // Bounce and tumble after a high fall play their own clips when the contract names them.
     const fall=['bounce','tumble'].includes(jump?.jumpPhase)&&config.fall_clips?.[jump.jumpPhase];
-    const authoredJump=jump&&(fall||(heavy?config.landing.heavy:config.jump_clips?.[jump.jumpStyle]));
+    // Landing variants: a heavy landing at speed rolls forward out of it; an
+    // ordinary one on the move runs straight out in the gait for his speed.
+    const roll=heavy&&config.landing.roll&&speed>config.landing.roll_min_mps;
+    const runOut=jump?.jumpPhase==='landing'&&!heavy&&speed>(config.walk.stroll_mps??1.6);
+    const authoredJump=!jump||runOut?null:(fall||(heavy?(roll?config.landing.roll:config.landing.heavy):config.jump_clips?.[jump.jumpStyle]??config.jump_clips?.hop));
     idleTime=pose==='idle'&&!context.grounded?idleTime+dt:0;
     // A sharp turn from near standstill steps round: context.facing is the signed
     // angle (rad, positive left) from where the model faces to where it travels.
@@ -101,7 +137,7 @@ export function createCharacter(asset, config) {
     if(swims&&(pose==='swim')!==(lastPose==='swim')&&lastPose!==null){swimShot=pose==='swim'?swims.enter:swims.exit;swimShotLeft=actions[swimShot].getClip().duration;actions[swimShot].reset();}
     const shot=swimShotLeft>0?swimShot:null;
     // context.bodyClip / context.tailClip audition a named clip on that layer (studio).
-    const name = context.bodyClip??shot??authoredJump??(pivoting?pivotClip:null)??(pose==='idle'?idleExtra():null)??(pose==='climb'?climbClip(context.climb):null)??(pose==='swim'?swimClip(context.swim):null)??config.clips[['jump','climb','swim'].includes(pose)?'idle':pose];
+    const name = context.bodyClip??shot??authoredJump??(pivoting?pivotClip:null)??(pose==='idle'?idleExtra():null)??(pose==='climb'?climbClip(context.climb):null)??(pose==='swim'?swimClip(context.swim):null)??config.clips[runOut?gaitFor(speed,config.walk,config.clips):['jump','climb','swim'].includes(pose)?'idle':pose];
     const action = actions[name];
     if (!action) throw new Error(`Unknown Ronin pose ${pose}`);
     if (action !== current) {
@@ -118,7 +154,7 @@ export function createCharacter(asset, config) {
       current = action; clipName = name;
     }
     if(authoredJump&&!context.bodyClip){
-      if(lastJump!==jump.jumpCount&&!heavy&&!fall){action.reset().setLoop(T.LoopOnce,1).play();lastJump=jump.jumpCount;}
+      if(lastJump!==jump.jumpCount&&!heavy&&!fall){action.reset().setLoop(T.LoopOnce,1).play();lastJump=jump.jumpCount;api.onCue?.(`grunt${jump.jumpTier??1}`);}
       const phase=jump.jumpProgress??0;
       const progress=heavy||fall?phase:jump.jumpPhase==='takeoff'?phase/6:jump.jumpPhase==='landing'?5/6+phase/6:1/6+phase*2/3;
       action.paused=true;action.time=action.getClip().duration*progress;action.clampWhenFinished=true;
@@ -134,9 +170,14 @@ export function createCharacter(asset, config) {
     const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))
       // A dive points his (prone) body along its path: nose down going down.
       :pose==='swim'&&context.swim?.swimPhase==='dive'?Math.max(-1.2,Math.min(1.2,Math.atan2(-(context.swim.vz??0),Math.max(.1,context.swim.speed??0)))):0;
-    // The chain's third jump somersaults forward, finishing by the apex.
-    const t=Math.min(1,(jump?.jumpProgress??0)/.5),flip=jump?.jumpTier===3&&jump.jumpPhase==='airborne'?2*Math.PI*t*t*(3-2*t):0;
-    pitch+=(pitchGoal-pitch)*(1-Math.exp(-dt*10));model.rotation.x=pitch+flip;
+    // The chain's third jump somersaults forward, starting just before the apex
+    // and upright again early in the drop (air progress FLIP_START..FLIP_END).
+    // ponytail: progress is by vertical speed, so landing on a ledge above the
+    // takeoff can cut the turn short and snap upright; drive it by height if seen.
+    const t=Math.min(1,Math.max(0,((jump?.jumpProgress??0)-FLIP_START)/(FLIP_END-FLIP_START))),flip=jump?.jumpTier===3&&jump.jumpPhase==='airborne'?2*Math.PI*t*t*(3-2*t):0;
+    // The roll turns him once forward about a low pivot over the landing phase.
+    const r=Math.min(1,Math.max(0,((jump?.jumpProgress??0)-ROLL_START)/(ROLL_END-ROLL_START))),rollTurn=roll?2*Math.PI*r*r*(3-2*r):0;
+    pitch+=(pitchGoal-pitch)*(1-Math.exp(-dt*10));model.rotation.x=pitch+flip+rollTurn;
     // Squash and stretch, volume kept: long while he moves fast vertically (the
     // launch, the drop), round through the hang at the peak, squat at touchdown
     // and springing back up over the landing.
@@ -161,6 +202,7 @@ export function createCharacter(asset, config) {
     elapsed+=dt;blinkTime-=dt;
     if(blinkTime<=0&&config.blink_clip){const blink=actions[config.blink_clip];blink.reset().setLoop(T.LoopOnce,1).play();blink.clampWhenFinished=true;blinkTime=3.2+1.7*(.5+.5*Math.sin(elapsed*1.37));}
     if(katana&&pose==='flight'&&katanaState!=='holstered')playKatana('holstered',.1);
+    for(const [bone,rotation] of legPose.reverse())bone.quaternion.copy(rotation);legPose.length=0;
     mixer.update(dt);
     if(katana){
       const events=katanaAction.getClip().userData?.events??[];
@@ -190,15 +232,41 @@ export function createCharacter(asset, config) {
     }else barkFit=0;
     // Turn the somersault about his middle rather than his soles.
     if(flip){model.position.y+=FLIP_PIVOT_M*(1-Math.cos(flip));model.position.z-=FLIP_PIVOT_M*Math.sin(flip);}
+    if(rollTurn){model.position.y+=ROLL_PIVOT_M*(1-Math.cos(rollTurn));model.position.z-=ROLL_PIVOT_M*Math.sin(rollTurn);}
     if(pose!=='flight'&&context.groundZ!==undefined){
-      model.updateWorldMatrix(true,true);let lift=0;
-      for(const foot of feet){
-        footBox.copy(foot.geometry.boundingBox).applyMatrix4(foot.matrixWorld);
-        const centre=footBox.getCenter(new T.Vector3());
-        const floor=context.groundHeight?.(centre.x,-centre.z)??context.groundZ;
-        lift=Math.max(lift,floor-footBox.min.y);
+      model.updateWorldMatrix(true,true);
+      // Each foot: how far it must rise. A planted paw stands on its own floor;
+      // a paw the clip has in the air only has to stay out of the ground.
+      const base=object.position.y,needs=[],planted=[];let clear=0;
+      for(const leg of legs){
+        footBox.makeEmpty();for(const mesh of leg.meshes)footBox.union(meshBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld));
+        const centre=footBox.getCenter(new T.Vector3()),floor=context.groundHeight?.(centre.x,-centre.z)??context.groundZ;
+        const down=footBox.min.y-base<PLANTED_M;planted.push(down);
+        needs.push(down?floor+Math.max(0,footBox.min.y-base)-footBox.min.y:floor-footBox.min.y);clear=Math.max(clear,floor-footBox.min.y);
       }
-      model.position.y+=lift;
+      const high=Math.max(clear,...needs);
+      // Standing and walking: the body follows the lower planted paw and the
+      // other leg bends to its higher floor (at most FOOT_REACH_M), so on a slope
+      // the downhill paw no longer floats; a paw in the air is only ever lifted.
+      // The body's height eases in the world, where a planted paw's floor holds
+      // still: a raised tread is stepped onto leg first instead of popping. In
+      // the air he keeps his height over his own centre. It rises slowly (the bent leg covers the
+      // lag) and drops fast (a lag there would hang a paw in the air).
+      if(legs.length===2&&!jump&&['idle','stroll','walk','run'].includes(pose)&&name===config.clips[pose]){
+        const support=needs.filter((need,i)=>planted[i]);
+        if(!support.length||bodyWorld===null)bodyWorld=base+(support.length?Math.min(...support):bodyLift);
+        else{const target=base+Math.min(...support);bodyWorld+=(target-bodyWorld)*(1-Math.exp(-dt/(target>bodyWorld?BODY_RISE_S:BODY_DROP_S)));}
+        bodyLift=Math.max(bodyWorld-base,high-FOOT_REACH_M);bodyWorld=base+bodyLift;
+        model.position.y+=bodyLift;model.updateWorldMatrix(true,true);
+        legs.forEach((leg,i)=>{if(needs[i]-bodyLift>1e-3)raiseFoot(leg,needs[i]-bodyLift);});
+      }else{
+        // Rolling, any part of him may lead into the ground, not only the soles.
+        if(rollTurn)for(const mesh of bodyMeshes){
+          meshBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
+          const centre=meshBox.getCenter(new T.Vector3());clear=Math.max(clear,(context.groundHeight?.(centre.x,-centre.z)??context.groundZ)-meshBox.min.y);
+        }
+        bodyLift=clear;bodyWorld=null;model.position.y+=clear;
+      }
     }
     shadow.visible=pose!=='flight';
     if(shadow.visible){

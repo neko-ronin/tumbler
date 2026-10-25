@@ -78,5 +78,26 @@ export function createCuePlayer(context){
       if(name==='seat')ring(.1,150,.2);
     }
     else if(name==='hum'){ring(.9,110,.05,'sawtooth');ring(.9,220,.04);}
+    else if(/^grunt[123]$/.test(name)){
+      // A gruff cat effort grunt: a low voice through two mouth formants, roughened
+      // by a fast flutter (the growl), over a breathy push. The chain's later jumps
+      // grunt harder and longer; the triple's rises into a short shout.
+      const tier=+name[5],k=1+(Math.random()-.5)*.1,dur=[.2,.24,.36][tier-1],peak=[.7,.8,.9][tier-1];
+      const voice=context.createOscillator(),flutter=context.createOscillator(),rough=context.createGain(),level=context.createGain();
+      voice.type='sawtooth';const f=[118,132,124][tier-1]*k;
+      voice.frequency.setValueAtTime(f*1.12,t);
+      if(tier===3){voice.frequency.linearRampToValueAtTime(f*1.45,t+dur*.45);voice.frequency.exponentialRampToValueAtTime(f*.85,t+dur);}
+      else voice.frequency.exponentialRampToValueAtTime(f*.78,t+dur);
+      // The flutter swings the rough stage's gain between 0.4 and 1, inside the envelope.
+      const depth=context.createGain();flutter.frequency.value=34*k;depth.gain.value=.3;rough.gain.value=.7;
+      flutter.connect(depth).connect(rough.gain);
+      level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(peak,t+.012);level.gain.setValueAtTime(peak,t+dur*.5);level.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      for(const [frequency,q,gain] of [[640,4,1],[1350,6,.45]]){
+        const formant=context.createBiquadFilter(),mix=context.createGain();formant.type='bandpass';formant.frequency.value=frequency*(tier===3?1.15:1);formant.Q.value=q;mix.gain.value=gain;
+        voice.connect(formant).connect(mix).connect(rough);
+      }
+      rough.connect(level).connect(out);voice.start(t);flutter.start(t);voice.stop(t+dur+.02);flutter.stop(t+dur+.02);
+      burst(dur*.7,'lowpass',900,.7,.12);
+    }
   }
 }

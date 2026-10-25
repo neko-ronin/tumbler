@@ -96,6 +96,7 @@ test('jumping off pushes away from the bark and falls as ground',()=>{
  const out=[s.x-s.trunk.x,s.y-s.trunk.y].map(v=>v/Math.hypot(s.x-s.trunk.x,s.y-s.trunk.y));
  s=stepMoves(s,{x:0,y:0,stick:[0,0],jump:true},1/60,walkConfig,w);
  assert.equal(s.mode,'ground');assert.equal(s.grounded,false);
+ assert.equal(s.jumpStyle,'push','a jump off the bark has its own push-off, not the playful skip');
  assert.ok(s.vx*out[0]+s.vy*out[1]>=walkConfig.climb.jump_out_mps-1e-6,'pushed away from the trunk');
  const from=Math.hypot(s.x-s.trunk.x,s.y-s.trunk.y);
  s=run(s,{x:0,y:0,jump:false},.3,w);assert.ok(Math.hypot(s.x-s.trunk.x,s.y-s.trunk.y)-from>.5,'actually leaves the bark');

@@ -27,7 +27,7 @@
     },
     {
       "path": "client/web/src3d/audio.js",
-      "sha256": "f0ed58aecee5d3258b1d4b70b5736b773a02b8f8efec2e646ba70c1c15999e5b"
+      "sha256": "3633c906c3c0d6bf57b237854550295e49510a23d48f965ae7a625f953e36f3e"
     },
     {
       "path": "client/web/src3d/canopy-light.js",
@@ -39,7 +39,7 @@
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "e2a16c5e91f521a8fd79e2073f6b29e999f196b138fc46a95f5bc0119a4a2882"
+      "sha256": "4f805cc54568dcc0bbc1474dd26bcc996a5f460540524aff46f2f6a94e04459d"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -227,7 +227,7 @@
     },
     {
       "path": "shared/activities/climb.js",
-      "sha256": "ad55e3dd7d37331b4e0ed6ce060bd3e884927872860f709d25bcbd58887b3446"
+      "sha256": "94e35d720b0f197586298eb3ff735e89411da7f8b35786c4a451dc1e715cddd0"
     },
     {
       "path": "shared/activities/collision.js",
@@ -259,11 +259,11 @@
     },
     {
       "path": "shared/activities/walk.js",
-      "sha256": "0b1c7a6e3dc037e690aa732977c86b7421057da8c6ec8aeb2f07164a4bf1f4c7"
+      "sha256": "e6619634c25c80f393134fc7bd17f4a79991bdad96b972091cc8b78e55a0c536"
     },
     {
       "path": "shared/characters/player.json",
-      "sha256": "6be383b243c55888e1f17237fb29382f881428d7175e6b4f623c9c0294742ad7"
+      "sha256": "178fd25b170c8f27165a146eaad99bef8e7bdd78bfaae68b408bc182d94eb3af"
     },
     {
       "path": "shared/ecology/aquatic.js",
@@ -307,7 +307,7 @@
     },
     {
       "path": "shared/geometry/cat-ronin/ronin.glb",
-      "sha256": "b664b2fcde0e16b7013409942dddfcd5717b19144dabc387b3fab96655aa9d5c"
+      "sha256": "2239ca52ecc541b5032f052a456b224334bef37aa89456cc8df717f4ca65de71"
     },
     {
       "path": "shared/geometry/city/tower.glb",
@@ -507,7 +507,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "e41d027",
+  "commit": "503e11e",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

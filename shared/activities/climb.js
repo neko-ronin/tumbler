@@ -73,7 +73,7 @@ export function stepClimb(state,input,dt,config,world){
   if(s.climbPhase==='mount'){if(s.climbTime>=c.mount_s)s.climbPhase='grip';return mount(s,c);}
   if(edge){
     const out=[Math.cos(s.angle),Math.sin(s.angle)];
-    return {...s,...clearOf(s,config),mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'hop',jumpTime:0,jumpCount:(s.jumpCount??0)+1,jumpTier:1,
+    return {...s,...clearOf(s,config),mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'push',jumpTime:0,jumpCount:(s.jumpCount??0)+1,jumpTier:1,
       vx:out[0]*c.jump_out_mps,vy:out[1]*c.jump_out_mps,vz:c.jump_up_mps,jumpVz:c.jump_up_mps,speed:c.jump_out_mps,heading:s.angle,climbCooldown:.5,climbPhase:undefined};
   }
   const [sx,sy]=input.stick??[0,0],fast=input.run?c.fast_factor:1,top=s.trunk.top_z-c.top_clearance_m;

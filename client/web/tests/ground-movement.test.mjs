@@ -93,7 +93,8 @@ test('jumping again at touchdown climbs to a double, then a triple that needs hi
   return {s,tiers,peaks,styles};
  };
  const run=chain({x:1,y:0,run:true});
- assert.deepEqual(run.tiers,[1,2,3]);assert.deepEqual(run.styles.slice(1),['star','hop']);
+ assert.deepEqual(run.tiers,[1,2,3]);assert.deepEqual(run.styles,['leap','tuck','flip'],'moving jumps are athletic, never the playful poses');
+ assert.deepEqual(chain({x:.4,y:0}).styles,['leap','tuck','leap']);
  assert.ok(run.peaks[0]<run.peaks[1]&&run.peaks[1]<run.peaks[2],`peaks ${run.peaks.map(p=>p.toFixed(1))}`);
  assert.deepEqual(chain({x:1,y:0}).tiers,[1,2,3],'a full-stick walk is enough: no run button needed');
  assert.deepEqual(chain({x:.4,y:0}).tiers,[1,2,1],'a creep is too slow for the triple');
@@ -115,7 +116,7 @@ test('a jump never carries him over a structure to land inside its box',()=>{
 test('moving hop preserves launch momentum, blocks swept contact, cliffs and unsupported landing surfaces',()=>{
  let s=origin();for(let i=0;i<14;i++)s=walk.stepWalk(s,{x:1,y:0,run:true},.05,character.walk,flat);
  const runUp=s.x;assert.equal(s.speed,character.walk.run_mps);
- s=walk.stepWalk(s,{x:1,y:0,run:true,jump:true},.05,character.walk,flat);assert.equal(s.jumpStyle,'hop');
+ s=walk.stepWalk(s,{x:1,y:0,run:true,jump:true},.05,character.walk,flat);assert.equal(s.jumpStyle,'leap');
  for(let i=0;i<15;i++)s=walk.stepWalk(s,{x:0,y:0,jump:true},1/60,character.walk,flat);
  assert.ok(s.x-runUp>1.8,'released direction retains forward air momentum');assert.ok(s.z>.3);
  const blocked=walk.stepWalk(s,{x:1,y:0},.05,character.walk,flat,()=>({kind:'tree'}));assert.equal(blocked.x,s.x);

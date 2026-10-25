@@ -128,7 +128,11 @@
     "celebrate": "jump_celebrate",
     "heel_click": "jump_heel_click",
     "star": "jump_star",
-    "hop": "jump_hop"
+    "hop": "jump_hop",
+    "leap": "jump_run_leap",
+    "tuck": "jump_run_tuck",
+    "flip": "jump_run_flip",
+    "push": "jump_push_off"
   },
   "climb_clips": {
     "mount": "climb_mount",
@@ -152,7 +156,9 @@
   },
   "landing": {
     "heavy": "land_heavy",
-    "heavy_mps": 20
+    "heavy_mps": 20,
+    "roll": "land_roll",
+    "roll_min_mps": 4
   },
   "pivot": {
     "left": "pivot_left",

@@ -84,7 +84,9 @@ export function stepWalk(state,input,dt,config,height,hitTest){
     // double and triple jump; its last link needs chain_speed_mps of ground speed.
     const last=1+j.chain_mps.length,tier=s.chainLeft>0&&(s.jumpTier??1)<last?(s.jumpTier??1)+1:1;
     s.jumpTier=tier===last&&tier>1&&s.speed<j.chain_speed_mps?1:tier;
-    s.jumpStyle=s.jumpTier===3?'hop':s.jumpTier===2?'star':speed>.5?'hop':['celebrate','heel_click','star'][s.jumpCount%3];
+    // Standing jumps play; moving ones are athletic: leap, tuck, then the flip.
+    const moving=Math.max(speed,s.speed??0)>.5;
+    s.jumpStyle=moving?['leap','tuck','flip'][s.jumpTier-1]:s.jumpTier>1?'star':['celebrate','heel_click','star'][s.jumpCount%3];
     s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;s.jumpBuffer=0;
     if(!(config.accel_mps2<Infinity)){s.vx=vx;s.vy=vy;}
   }
@@ -129,7 +131,7 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       if(s.jumpTime>=j.takeoff_s){
         s.grounded=false;s.jumpPhase='airborne';s.jumpTime=0;
         // A running start adds speed_lift of the ground speed to the launch.
-        s.vz=s.jumpVz=(s.jumpTier>1?j.chain_mps[s.jumpTier-2]:s.jumpStyle==='hop'?j.hop_mps:j.takeoff_mps)+j.speed_lift*s.speed;
+        s.vz=s.jumpVz=(s.jumpTier>1?j.chain_mps[s.jumpTier-2]:['hop','leap'].includes(s.jumpStyle)?j.hop_mps:j.takeoff_mps)+j.speed_lift*s.speed;
       }
     }else if(!s.grounded){
       // Stylized gravity: letting go on the way up raises it, ending the rise
