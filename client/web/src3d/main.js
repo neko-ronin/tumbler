@@ -29,6 +29,7 @@ import {fetchAssetBytes} from './asset-bytes.js';
 import {VERSION} from './version.js';
 import { createSnowSampler, createTrailSampler, createSurfaceSampler, createRideHeight } from '../../../shared/activities/ride.js';
 import { createWalkHeight } from '../../../shared/activities/walk.js';
+import {createLoadingScreen,warmScene,finishGpu,nextPaint} from './loading.js';
 
 const root = new URL('../../../', import.meta.url);
 const observed=new Map();
@@ -37,7 +38,11 @@ async function fetchData(path, json = true) {
   return json ? JSON.parse(new TextDecoder().decode(bytes)) : bytes;
 }
 
-async function main() {
+export async function main() {
+  const loading=createLoadingScreen();
+  // Let the journal paint before any synchronous geometry/renderer work.
+  await nextPaint();await nextPaint();
+  await document.getElementById('journal-art-image').decode();
   const canvas = document.getElementById('canvas');
   const status = document.getElementById('status');
   const stamp = document.getElementById('stamp');
@@ -57,6 +62,7 @@ async function main() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate = false;
+  renderer.debug.onShaderError=()=>{throw new Error('The light could not be prepared on this graphics device. Please try again.');};
   const scene = new T.Scene();
   scene.background = new T.Color('#dcdcc1');
   scene.fog = new T.Fog('#dcdcc1', 2500, 11500);
@@ -76,6 +82,7 @@ async function main() {
   window.addEventListener('resize', resize); resize();
 
   status.textContent = 'Finding our place…';
+  loading.phase('Finding our place in the mountains…',0);
   const [manifest, placement, stampData, blockBytes, farBytes, worldmap, habitats] = await Promise.all([
     fetchData('client/web/data/viewer.json'), fetchData('shared/world/out/placement.json'),
     fetchData('shared/world/out/ground_cover.json'), fetchData('client/web/data/heightmap.f32', false),
@@ -93,13 +100,14 @@ async function main() {
   const farGrid = new HeightGrid({ values: new Float32Array(farBytes), ...manifest.height_grids.far_field, kind: 'far field' });
   const ground = new GroundSampler(blockGrid, farGrid);
   status.textContent = 'Opening the meadow…';
+  loading.phase('Unpacking the meadow, homes and trees…',1);
   // Bounded parallel loading avoids a serial network waterfall and limits peak
   // parsing memory. Source bytes fall out of scope as each asset is decoded.
   const paths = [...new Set([...placement.instances.map(i => i.asset),...habitats.plantings.map(i=>i.asset),...meadowData.species.map(i=>i.asset),'waterside/river_fish.glb','waterside/fish_tail.glb','waterside/frog.glb','waterside/dragonfly_wings.glb',flightConfig.wing_asset,flightConfig.motor_asset,...Object.values(flightConfig.modes).map(m=>m.wing_asset).filter(Boolean),...Object.values(rideConfig.modes).map(m=>m.asset)])];
   for(const path of [characterConfig.asset,...treePlan.stages.map(stage=>stage.asset),...Object.values(treePlan.profiles??{}).flatMap(p=>p.stages.map(s=>s.asset))])if(!paths.includes(path))paths.push(path);
   const assets = {};
   const decodedImages=new Map();
-  let next = 0;
+  let next = 0,loaded=0;
   async function loadAsset() {
     while (next < paths.length) {
       const path = paths[next++];
@@ -116,11 +124,15 @@ async function main() {
         })();decodedImages.set(imageKey,pending);return pending;
       });
       assets[path] = asset;
+      loading.phase(`Unpacking the meadow, homes and trees… ${++loaded} / ${paths.length}`,1+loaded/paths.length);
     }
   }
   await Promise.all([loadAsset(), loadAsset(), loadAsset()]);
   status.textContent='Checking world bytes…';
+  loading.phase('Checking every page of the world…',2);
   const verifiedFiles=await verifyFetched(manifest.fetched,observed,p=>fetchData(p,false));
+  loading.phase('Sketches into sunlight. Growing the world…',3);
+  await nextPaint();await nextPaint();
   scene.add(buildBlockTerrain(blockGrid), buildFarFieldRing(farGrid, blockGrid.maxX));
   const water = buildWater(placement.instances.filter(i => i.kind === 'river' || i.kind === 'lake'), assets, blockGrid,worldmap);
   scene.add(water, buildRiverReaches(worldmap, farGrid));
@@ -339,15 +351,44 @@ async function main() {
 
   const meadowFocus=meadowViewFocus(camera,ground);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
 
-  status.textContent = 'Warming the light…';
-  await renderer.compileAsync(scene, camera);
-
   let frame = 0, contextLost = false, stopped = false, lastFrame = 0, lastStamp = 0;
+  let presenting=false;
   let elapsed = 0,lastReadout=0,lastQuality=0;
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
+  const startup={ready:false,frames:0};
   // Read-only inspection hook used for repeatable visual/performance checks.
-  window.tumbler = { flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { startup,flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  async function prepareFirstView(){
+    presenting=false;startup.ready=false;
+    loading.show();status.textContent='Letting the light settle…';
+    const result=await warmScene({
+      prepare(){
+        forest.update(camera,shadowCentre);updateShadow();
+        meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
+        airCues.update(camera,0);ecology.update(camera,elapsed);sky.position.copy(camera.position);
+        const wind=navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);
+        style.wind.value.set(wind.wx/Math.max(1,flightConfig.wind.speed_mps),-wind.wy/Math.max(1,flightConfig.wind.speed_mps));
+      },
+      compile:()=>renderer.compileAsync(scene,camera),
+      render(){
+        renderer.info.reset();
+        const pilot=navigation.state;
+        actorFocus.set(pilot?.x??camera.position.x,pilot?.z??camera.position.y,-(pilot?.y??-camera.position.z));
+        actorShadows.update(actorFocus,style.sun.value);
+        cloudPass.render({strength:Number(motionSelect.value)});
+      },
+      signature:()=>JSON.stringify([renderer.info.memory,renderer.info.programs.length,forest.stats.adopted.lodCounts,meadow.stats.tiles]),
+      pending:()=>forest.stats.adopted.transitioning>0,
+      finish:()=>finishGpu(renderer.getContext()),
+    });
+    if(contextLost||stopped)return;
+    Object.assign(startup,result,{ready:true});
+    // Warm-up costs must not enter play's clock or adaptive-quality samples.
+    samples.length=0;lastFrame=0;lastQuality=performance.now();
+    status.textContent='Ready for the mountains.';updateStamp();
+    presenting=true;loading.reveal();resume();
+  }
   function updateStamp() {
     const ordered = [...samples].sort((a,b) => a-b);
     const percentile = p => ordered[Math.floor((ordered.length - 1) * p)] ?? 0;
@@ -364,7 +405,7 @@ async function main() {
   }
   function animate(time) {
     frame = 0;
-    if (contextLost || stopped || document.hidden) return;
+    if (!presenting || contextLost || stopped || document.hidden) return;
     if(!framePacer.due(time)){frame=requestAnimationFrame(animate);return;}
     const delta = lastFrame ? time - lastFrame : 0;
     lastFrame = time;
@@ -412,22 +453,23 @@ async function main() {
       actorShadows.update(actorFocus,style.sun.value);
       cloudPass.render({speed:airborne&&!flight.grounded?Math.min(1,Math.max(0,(flight.speed-12)/22)):0,strength:Number(motionSelect.value)});
     }
-    catch (error) { stopped = true; status.textContent = `Render error: ${error.message}`; console.error(error); return; }
+    catch (error) { stopped = true;presenting=false;loading.fail(error);status.textContent = `Render error: ${error.message}`; console.error(error); return; }
     metrics.cpuMs = performance.now() - start; metrics.frame++;
     Object.assign(metrics.render, renderer.info.render);
     if (time - lastStamp > 700) { updateStamp(); lastStamp = time; }
     frame = requestAnimationFrame(animate);
   }
-  function resume() { lastFrame = 0;framePacer.reset(); if (!frame && !contextLost && !stopped && !document.hidden) frame = requestAnimationFrame(animate); }
+  function resume() { lastFrame = 0;framePacer.reset(); if (presenting && !frame && !contextLost && !stopped && !document.hidden) frame = requestAnimationFrame(animate); }
   document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else resume(); });
   canvas.addEventListener('webglcontextlost', e => {
     e.preventDefault(); contextLost = true; cancelAnimationFrame(frame); frame = 0;
+    presenting=false;startup.ready=false;loading.show('The light slipped away. Preparing it again…');
     status.textContent = 'Graphics paused — recovering…';
   });
-  canvas.addEventListener('webglcontextrestored', () => { contextLost = false;treeShadows.setSun(style.sun.value);cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true); status.textContent = 'Ready for the mountains.'; resume(); });
+  canvas.addEventListener('webglcontextrestored', async () => {
+    try { contextLost=false;treeShadows.setSun(style.sun.value);cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
+    catch(error){stopped=true;loading.fail(error);console.error(error);}
+  });
   window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); airCues.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
-  status.textContent = 'Ready for the mountains.';
-  document.body.classList.add('ready');
-  resume();
+  await prepareFirstView();
 }
-main().catch(error => { console.error(error); document.getElementById('status').textContent = error.message; });

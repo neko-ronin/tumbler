@@ -1,3 +1,12 @@
+# Approved hand-sketched loading journal — 2026-10-24
+
+The approved generated alpine journal artwork replaces the initial line sketch;
+the original SVG and complete earlier page are preserved in `art/loading/history/`.
+The scene and controls remain hidden until assets, verification, vegetation,
+shader compilation and GPU draws finish. Input/simulation begin after the reveal;
+retry and graphics recovery use the same journal. See the [implementation,
+history and verification](../../docs/reviews/journal-loading-2026-10-24.md).
+
 # Cloud motion — approved for main, 2026-10-24
 
 Cloud view rays use 96 samples to reduce crawling density bands during flight.

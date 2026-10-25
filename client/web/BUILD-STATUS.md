@@ -1,3 +1,14 @@
+# Approved hand-sketched loading journal — 2026-10-24
+
+The human approved the generated journal artwork and main integration. The
+original SVG and full earlier loading page are preserved in
+`client/web/art/loading/history/`. The world stays hidden until assets,
+verification, vegetation, shaders and completed GPU draws settle. Retry and
+graphics recovery retain the journal. Web **269/269**, packaging **8/8** and
+**112 fetched + 17 map files** pass; three direct starts show no new resources
+after reveal. Existing Python type errors and sustained-performance acceptance
+remain open. See the [implementation, history and release receipt](../../docs/reviews/journal-loading-2026-10-24.md).
+
 # Cat Ronin iteration 1 — merged, 2026-10-23
 
 The redesigned character (see [`FIDELITY.md`](../../shared/geometry/cat-ronin/FIDELITY.md))

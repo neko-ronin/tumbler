@@ -2,8 +2,12 @@
   "version": 1,
   "fetched": [
     {
+      "path": "client/web/art/loading/journal-hand-sketch-v1.png",
+      "sha256": "53afa6c28496da3dbd63571722ab9fc14653c602991ca8c6f3df739fe96d8dc3"
+    },
+    {
       "path": "client/web/scene.html",
-      "sha256": "5c44f68a833d526c25a7339a58ddc24a4dee952afdc94f661c08bed8c76e7c69"
+      "sha256": "b87118e582022a550cb7858f334c8a155483263c00704ac76e14bc5e9a244280"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -110,8 +114,12 @@
       "sha256": "a985ef9770424e434019fea29b1aa12f0b2ec3d3ffd2edf81f6ec2462a844b79"
     },
     {
+      "path": "client/web/src3d/loading.js",
+      "sha256": "1068b8078ae08335bb6d926b9c6b81d1af32d37e9509295aaa23d9221bae8c46"
+    },
+    {
       "path": "client/web/src3d/main.js",
-      "sha256": "5ca3af1fec09767fd61e332016e82ed45db9f7250aaa8f299b887a09e85ff1b7"
+      "sha256": "cbfbcf144b9084bfbd761e2d99ac063a245d7738e1254ccfabdc3048ef604dac"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -443,7 +451,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "160ecf8",
+  "commit": "20f7464",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
