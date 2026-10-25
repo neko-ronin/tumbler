@@ -418,7 +418,7 @@ export async function main() {
   function animate(time) {
     frame = 0;
     if (!presenting || contextLost || stopped || document.hidden) return;
-    if(!framePacer.due(time)){frame=requestAnimationFrame(animate);return;}
+    if(!framePacer.due(time)){navigation.poll();frame=requestAnimationFrame(animate);return;}
     const delta = lastFrame ? time - lastFrame : 0;
     lastFrame = time;
     if (delta > 0 && delta < 500) { samples.push(delta); if (samples.length > 240) samples.shift(); }

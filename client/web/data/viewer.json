@@ -35,11 +35,11 @@
     },
     {
       "path": "client/web/src3d/character-surface.js",
-      "sha256": "fcf022f370938adaaa91473d9619f72f3b7d823fe1125bc6e383d18120515f24"
+      "sha256": "b951dd113fad5c1e459e3ff01553eeedbb7c4a2080c8006497403495ef10c0c9"
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "8c9da2cbdf3350022596b29a9c3b8afd98f033cdcd5edec6907d41b40822ea8f"
+      "sha256": "e2a16c5e91f521a8fd79e2073f6b29e999f196b138fc46a95f5bc0119a4a2882"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -127,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "7e0e2f5ca7c91cc0263cc2a9c84e61f1826015879b84bbbff6fddeec926fa09d"
+      "sha256": "fa624c2e24ec3bff637c73df84b11539d0b921b577756b79e3ee23b9cb530f39"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -135,7 +135,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "1ebb188099ee22211fd513e1c1af705f19566b3c6e01516c835751a4fd3417da"
+      "sha256": "0c57377c951cfb1a4099057429d40d0860a14eb5344ef4e313e79f219f06e751"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -215,7 +215,7 @@
     },
     {
       "path": "shared/activities/climb.js",
-      "sha256": "25d4c7d99cea84ac8002e40ea2d5ba42961f5d7acc0bf0f67b81b57806e36ee3"
+      "sha256": "ad55e3dd7d37331b4e0ed6ce060bd3e884927872860f709d25bcbd58887b3446"
     },
     {
       "path": "shared/activities/collision.js",
@@ -231,7 +231,7 @@
     },
     {
       "path": "shared/activities/moves.js",
-      "sha256": "5965f54741a0dc4092daf053d8d9e898e443bf77ec1698fb3536eef28da6d682"
+      "sha256": "c558dc604e8b643627cacfb967e7e7d8d3c0714e7da9657de2bf66f589ffbaeb"
     },
     {
       "path": "shared/activities/ride.js",
@@ -247,11 +247,11 @@
     },
     {
       "path": "shared/activities/walk.js",
-      "sha256": "53b6faf059b5b68b3f2948afd61b418a978d45cc914a368ae157a7e476f24af5"
+      "sha256": "0b1c7a6e3dc037e690aa732977c86b7421057da8c6ec8aeb2f07164a4bf1f4c7"
     },
     {
       "path": "shared/characters/player.json",
-      "sha256": "e087f50c11dd8822e9dd3a4458d6452fac61c61c6c4fc518e0677b710245b6dc"
+      "sha256": "6be383b243c55888e1f17237fb29382f881428d7175e6b4f623c9c0294742ad7"
     },
     {
       "path": "shared/ecology/aquatic.js",
@@ -491,7 +491,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "96899bd",
+  "commit": "818eea9",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

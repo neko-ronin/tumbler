@@ -19,7 +19,7 @@ export function stepMoves(state,input,dt,config,world){
   let s=stepWalk(state,input,dt,config,swims?bed:world.height,world.hitTest);
   const water=swims&&world.waterAt(s.x,s.y);
   if(water&&water.depth>=config.swim.exit_depth_m&&(s.grounded||s.z<=water.surface_z+1e-6||s.jumpPhase==='bounce'))
-    s={...s,mode:'swim',grounded:false,jumpPhase:'grounded',jumpTime:0,vz:0,swimPhase:'wade',climbPush:0};
+    s={...s,mode:'swim',grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vz:0,swimPhase:'wade',climbPush:0};
   if(s.mode==='swim')return s;
   const c=config.climb;
   if(!c)return s;

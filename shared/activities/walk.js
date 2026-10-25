@@ -4,11 +4,14 @@
  */
 import {launchFlight} from './flight.js';
 import {createTrailSampler} from './ride.js';
-const jumpDefaults={gravity_mps2:10.8,takeoff_mps:4.8,hop_mps:3.8,takeoff_s:.12,landing_s:.18,air_control_mps2:2.4,max_ground_grade:1};
+// The optional chain, release, apex, buffer and lift fields default to the
+// original single fixed-height jump under constant gravity.
+const jumpDefaults={gravity_mps2:10.8,takeoff_mps:4.8,hop_mps:3.8,takeoff_s:.12,landing_s:.18,air_control_mps2:2.4,max_ground_grade:1,
+  speed_lift:0,release_gravity:1,apex_mps:0,apex_gravity:1,buffer_s:0,chain_s:0,chain_mps:[],chain_speed_mps:0};
 const rules=config=>({...jumpDefaults,...config.jump});
-// Recovery grows with touchdown speed beyond a standing jump's, up to 2.8x: a
-// big drop needs a deeper, longer crouch than a hop.
-const landingTime=(s,j)=>j.landing_s*Math.min(2.8,Math.max(1,1+((s.landingSpeed??0)-j.takeoff_mps)/4));
+// Recovery grows with touchdown speed beyond the jump's own launch speed, up to
+// 2.8x: a big drop needs a deeper, longer crouch than a hop on level ground.
+const landingTime=(s,j)=>j.landing_s*Math.min(2.8,Math.max(1,1+((s.landingSpeed??0)-(s.jumpVz??j.takeoff_mps))/4));
 
 /** Exclude submerged ground using the core's named water footprints and bank
  * envelope. Height decides the shoreline inside that envelope, as for carving.
@@ -71,18 +74,28 @@ export function stepWalk(state,input,dt,config,height,hitTest){
   const magnitude=Math.hypot(input.x??0,input.y??0),speed=(input.run?config.run_mps:config.walk_mps)*Math.min(1,magnitude);
   const vx=magnitude?(input.x/magnitude)*speed:0,vy=magnitude?(input.y/magnitude)*speed:0;
   const edge=!!input.jump&&!s.jumpHeld;s.jumpHeld=!!input.jump;
+  // A fresh press keeps for buffer_s, so one made just before touchdown still
+  // jumps; so does one during the landing crouch. Holding never presses again.
+  if(edge)s.jumpBuffer=j.buffer_s;
   // A jump keeps the velocity the feet actually have; older contracts snap to
   // input, so for them that is still the held direction.
-  if(edge&&s.jumpPhase==='grounded'&&safeWalkGround(s.x,s.y,config,height,hitTest,{dropOffs:true})!==null){
-    s.jumpStyle=speed>.5?'hop':['celebrate','heel_click','star'][s.jumpCount%3];
-    s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;
+  if((edge||s.jumpBuffer>0)&&(s.jumpPhase==='grounded'||s.jumpPhase==='landing')&&safeWalkGround(s.x,s.y,config,height,hitTest,{dropOffs:true})!==null){
+    // Jumping again within chain_s of touchdown climbs the chain, like Mario's
+    // double and triple jump; its last link needs chain_speed_mps of ground speed.
+    const last=1+j.chain_mps.length,tier=s.chainLeft>0&&(s.jumpTier??1)<last?(s.jumpTier??1)+1:1;
+    s.jumpTier=tier===last&&tier>1&&s.speed<j.chain_speed_mps?1:tier;
+    s.jumpStyle=s.jumpTier===3?'hop':s.jumpTier===2?'star':speed>.5?'hop':['celebrate','heel_click','star'][s.jumpCount%3];
+    s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;s.jumpBuffer=0;
     if(!(config.accel_mps2<Infinity)){s.vx=vx;s.vy=vy;}
   }
   const heading=s.heading??0;
   const blocked=(x,y)=>{
     const z=height(x,y),distance=Math.hypot(x-s.x,y-s.y);
     return !Number.isFinite(z)||(s.grounded?Math.abs(z-s.z)>Math.max(config.max_step_m,distance*config.max_grade):z>s.z+config.max_step_m)
-      ||[config.radius_m,.9,1.5].some(h=>hitTest?.([s.x,s.y,s.z+h],[x,y,(s.grounded?z:s.z)+h],config.radius_m));
+      ||[config.radius_m,.9,1.5].some(h=>hitTest?.([s.x,s.y,s.z+h],[x,y,(s.grounded?z:s.z)+h],config.radius_m))
+      // The floor is terrain only, so passing over a structure in the air would
+      // land him inside its box, where nothing can move him again.
+      ||(!s.grounded&&!!hitTest?.([x,y,s.z+config.radius_m],[x,y,z+config.radius_m],config.radius_m));
   };
   for(let remaining=duration;remaining>1e-10;){
     const step=Math.min(remaining,1/120);remaining-=step;
@@ -113,11 +126,20 @@ export function stepWalk(state,input,dt,config,height,hitTest){
     if(s.speed>.01)s.heading=Math.atan2(s.vy,s.vx);
     if(s.jumpPhase==='takeoff'){
       s.jumpTime+=step;
-      if(s.jumpTime>=j.takeoff_s){s.grounded=false;s.jumpPhase='airborne';s.jumpTime=0;s.vz=s.jumpStyle==='hop'?j.hop_mps:j.takeoff_mps;}
+      if(s.jumpTime>=j.takeoff_s){
+        s.grounded=false;s.jumpPhase='airborne';s.jumpTime=0;
+        // A running start adds speed_lift of the ground speed to the launch.
+        s.vz=s.jumpVz=(s.jumpTier>1?j.chain_mps[s.jumpTier-2]:s.jumpStyle==='hop'?j.hop_mps:j.takeoff_mps)+j.speed_lift*s.speed;
+      }
     }else if(!s.grounded){
-      const next=s.z+s.vz*step-.5*j.gravity_mps2*step*step;
+      // Stylized gravity: letting go on the way up raises it, ending the rise
+      // early but smoothly, and holding through the top eases it so he hangs at
+      // the peak (tap for a crisp hop, hold to float). A held arc stays
+      // symmetric about the apex, so he lands as fast as he launched.
+      const g=j.gravity_mps2*(s.jumpPhase!=='airborne'?1:!input.jump&&s.vz>0?j.release_gravity:input.jump&&Math.abs(s.vz)<j.apex_mps?j.apex_gravity:1);
+      const next=s.z+s.vz*step-.5*g*step*step;
       const ceiling=hitTest?.([s.x,s.y,s.z+1.5],[s.x,s.y,next+1.5],config.radius_m);
-      s.vz-=j.gravity_mps2*step;
+      s.vz-=g*step;
       if(ceiling&&next>s.z)s.vz=Math.min(0,s.vz);else s.z=next;
       const floor=height(s.x,s.y)??oldFloor;
       if(Number.isFinite(floor)&&s.z<=floor){
@@ -125,7 +147,7 @@ export function stepWalk(state,input,dt,config,height,hitTest){
         const impact=-s.vz;s.z=floor;s.vz=0;s.jumpTime=0;
         if(s.jumpPhase==='bounce'){s.grounded=true;s.jumpPhase='tumble';}
         else if(j.tumble_mps&&impact>j.tumble_mps){s.landingSpeed=impact;s.vz=impact*j.rebound;s.jumpPhase='bounce';}
-        else{s.landingSpeed=impact;s.grounded=true;s.jumpPhase='landing';}
+        else{s.landingSpeed=impact;s.grounded=true;s.jumpPhase='landing';s.chainLeft=j.chain_s;}
       }
       else s.jumpTime+=step;
     }else if(s.jumpPhase==='landing'||s.jumpPhase==='tumble'){
@@ -136,10 +158,13 @@ export function stepWalk(state,input,dt,config,height,hitTest){
   s.groundZ=height(s.x,s.y)??state.groundZ??state.z;
   // Signed yaw rate (rad/s, positive turning left) for leaning and turn clips.
   const turn=s.heading-heading;s.turnRate=Math.atan2(Math.sin(turn),Math.cos(turn))/duration;
+  s.jumpBuffer=Math.max(0,(s.jumpBuffer??0)-duration);s.chainLeft=Math.max(0,(s.chainLeft??0)-duration);
   const phaseDuration=s.jumpPhase==='takeoff'?j.takeoff_s:s.jumpPhase==='landing'?landingTime(s,j):s.jumpPhase==='tumble'?j.tumble_s:
-    s.jumpPhase==='bounce'?2*s.landingSpeed*j.rebound/j.gravity_mps2:
-    2*(s.jumpStyle==='hop'?j.hop_mps:j.takeoff_mps)/j.gravity_mps2;
-  s.jumpProgress=s.jumpPhase==='grounded'?0:Math.min(1,s.jumpTime/phaseDuration);
+    2*s.landingSpeed*j.rebound/j.gravity_mps2;
+  // In the air, progress follows the arc itself (0.5 at the apex), so a jump cut
+  // short reaches its apex pose early instead of lagging behind it.
+  const v0=s.jumpVz??j.takeoff_mps;
+  s.jumpProgress=s.jumpPhase==='grounded'?0:s.jumpPhase==='airborne'?Math.min(1,Math.max(0,(v0-s.vz)/(2*v0))):Math.min(1,s.jumpTime/phaseDuration);
   return s;
 }
 

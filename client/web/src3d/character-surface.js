@@ -1,6 +1,8 @@
 /** Character-only fibre/cloth shading. Shared vertex colours remain the coat's authority. */
 import * as T from '../vendor/three.module.min.js';
 import {sunShadowShader,style} from './style.js';
+// How strongly backlit sun glows through his ears.
+const EAR_GLOW=.3;
 
 const FIBRES = `
   float hairHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -21,14 +23,16 @@ export function installCharacterSurfaces(model) {
   const inverse=new T.Matrix4().copy(model.matrixWorld).invert(),materials=new Set(),shells=[];
   const eye=new T.Vector3(.12,1.34,.224); // the open eye's centre (core EYE, z flipped)
   // A little bloom without a post pass: an inflated additive shell round each
-  // whisker that lights only where the sun glints along it.
+  // whisker that lights only where the sun glints along it, in direct sun.
   const halo=new T.ShaderMaterial({uniforms:{uSun:style.sun},transparent:true,depthWrite:false,blending:T.AdditiveBlending,
-    vertexShader:`varying vec3 vNormalWorld;varying vec3 vToCamera;
-      void main(){vec4 world=modelMatrix*vec4(position+normal*.006,1.);vNormalWorld=normalize(mat3(modelMatrix)*normal);
+    vertexShader:`varying vec3 vNormalWorld;varying vec3 vToCamera;varying vec3 vWorld;
+      void main(){vec4 world=modelMatrix*vec4(position+normal*.006,1.);vWorld=world.xyz;vNormalWorld=normalize(mat3(modelMatrix)*normal);
         vToCamera=normalize(cameraPosition-world.xyz);gl_Position=projectionMatrix*viewMatrix*world;}`,
-    fragmentShader:`uniform vec3 uSun;varying vec3 vNormalWorld;varying vec3 vToCamera;
+    fragmentShader:`uniform vec3 uSun;varying vec3 vNormalWorld;varying vec3 vToCamera;varying vec3 vWorld;
       void main(){vec3 n=normalize(vNormalWorld);float glint=pow(max(dot(n,normalize(uSun+vToCamera)),0.),14.);
-        float core=pow(max(dot(n,vToCamera),0.),2.);gl_FragColor=vec4(vec3(1.,.97,.9)*glint*core*.55,1.);}`});
+        float sun=actorSunLight(vWorld)*cloudObjectLight(vWorld,uSun)*scenerySunLight(vWorld,n);
+        float core=pow(max(dot(n,vToCamera),0.),2.);gl_FragColor=vec4(vec3(1.,.97,.9)*glint*core*.55*sun,1.);}`});
+  halo.onBeforeCompile=sunShadowShader;
   materials.add(halo);
   // Fur fog: nested haze shells round the ear's root read as a soft volume --
   // dense where the shell faces the eye, fading to nothing at its silhouette,
@@ -65,8 +69,12 @@ export function installCharacterSurfaces(model) {
         shader.vertexShader='varying vec3 vSunPlace;\n'+shader.vertexShader;
         shader.fragmentShader='uniform vec3 uSun;varying vec3 vSunPlace;\n'+shader.fragmentShader;
         shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`vSunPlace=(modelMatrix*vec4(transformed,1.)).xyz;\n#include <project_vertex>`);
+        // The renderer's own sun shadow already darkens directDiffuse/Specular for
+        // scenery. Light added after it (ear glow, rim, glints) must apply that
+        // same scene sun map itself, so it shows only in direct sun, not in shade.
         shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
-          float sunlight=actorSunLight(vSunPlace)*cloudObjectLight(vSunPlace,uSun);reflectedLight.directDiffuse*=sunlight;reflectedLight.directSpecular*=sunlight;`);
+          float sunlight=actorSunLight(vSunPlace)*cloudObjectLight(vSunPlace,uSun);reflectedLight.directDiffuse*=sunlight;reflectedLight.directSpecular*=sunlight;
+          float directSun=sunlight*scenerySunLight(vSunPlace,normalize((vec4(normal,0.)*viewMatrix).xyz));`);
         shader.uniforms.uCoatRest={value:rest};shader.uniforms.uCoatScale={value:scale};shader.uniforms.uCoatEye={value:eye};
         shader.vertexShader='varying vec2 vCoatUv; varying vec3 vCoatRest; uniform mat4 uCoatRest; uniform vec3 uCoatScale;\n'+shader.vertexShader;
         shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
@@ -83,18 +91,19 @@ export function installCharacterSurfaces(model) {
             diffuseColor.rgb*=${(.92+.16*layer).toFixed(3)};`:''}
         `);
         // Whiskers are glassy keratin: a hard glint along each one in the sun.
-        if(name==='whisker')shader.fragmentShader=shader.fragmentShader.replace('reflectedLight.directSpecular*=sunlight;',`reflectedLight.directSpecular*=sunlight;
+        if(name==='whisker')shader.fragmentShader=shader.fragmentShader.replace(/(float directSun=[^\n]*)/,`$1
           vec3 sunView=normalize((viewMatrix*vec4(uSun,0.)).xyz);
           float glint=pow(max(dot(normal,normalize(sunView+normalize(vViewPosition))),0.),40.);
-          reflectedLight.directSpecular+=vec3(glint*3.5*sunlight);`);
+          reflectedLight.directSpecular+=vec3(glint*3.5*directSun);`);
         // Ears are thin: low sun behind one glows warm through it, strongest
         // where the pinna is thinnest, toward the tip.
-        if(/^ear/.test(part))shader.fragmentShader=shader.fragmentShader.replace('reflectedLight.directSpecular*=sunlight;',`reflectedLight.directSpecular*=sunlight;
+        if(/^ear/.test(part))shader.fragmentShader=shader.fragmentShader.replace(/(float directSun=[^\n]*)/,`$1
           float backlit=pow(clamp(dot(normalize(vSunPlace-cameraPosition),uSun),0.,1.),3.);
-          reflectedLight.directDiffuse+=vec3(1.,.42,.30)*backlit*sunlight*${name==='ear_skin'?'1.1':'.55'};`);
-        if(fur)shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
+          reflectedLight.directDiffuse+=vec3(1.,.42,.30)*backlit*directSun*${(EAR_GLOW*(name==='ear_skin'?1.1:.55)).toFixed(3)};`);
+        // Fur catches the sun at grazing angles, as a rim along his silhouette.
+        if(fur)shader.fragmentShader=shader.fragmentShader.replace(/(float directSun=[^\n]*)/,`$1
           float furRim=pow(1.-clamp(dot(normal,normalize(vViewPosition)),0.,1.),3.);
-          reflectedLight.indirectDiffuse+=diffuseColor.rgb*furRim*.06;`);
+          reflectedLight.indirectDiffuse+=diffuseColor.rgb*furRim*.06*directSun;`);
         if(knit||cloth)shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
           float weave=sin(vCoatUv.x*900.)*sin(vCoatUv.y*760.);
           float detail=1.-smoothstep(.12,.5,length(fwidth(vCoatUv*vec2(900.,760.))));

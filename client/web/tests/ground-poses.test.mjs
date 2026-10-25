@@ -79,16 +79,16 @@ test('planted paws hold still in the world at game speed, and the body leans int
 });
 
 test('big drops land heavy for longer, sharp turns pivot, long idles look around then sit, starts pitch forward',()=>{
- // A 4 m fall: the shared rules record touchdown speed and stretch the landing.
- let s={x:0,y:0,z:4,heading:0,speed:0,grounded:false,jumpPhase:'airborne',jumpStyle:'hop',jumpCount:1,vz:0};
+ // An 8 m fall: the shared rules record touchdown speed and stretch the landing.
+ let s={x:0,y:0,z:8,heading:0,speed:0,grounded:false,jumpPhase:'airborne',jumpStyle:'hop',jumpCount:1,vz:0};
  while(s.jumpPhase!=='landing')s=stepWalk(s,{x:0,y:0},1/120,config.walk,()=>0);
  assert.ok(s.landingSpeed>config.landing.heavy_mps,`touchdown at ${s.landingSpeed.toFixed(1)} m/s`);
  let recovery=0;while(s.jumpPhase==='landing'){s=stepWalk(s,{x:0,y:0},1/120,config.walk,()=>0);recovery+=1/120;}
  assert.ok(recovery>config.walk.jump.landing_s*2,'a big drop recovers for longer than a hop');
  const cat=createCharacter(asset(),config);
- cat.update(1/60,'jump',0,{jump:{jumpPhase:'landing',jumpProgress:.3,landingSpeed:9,jumpStyle:'hop',jumpCount:1},groundZ:0});
+ cat.update(1/60,'jump',0,{jump:{jumpPhase:'landing',jumpProgress:.3,landingSpeed:config.landing.heavy_mps+3,jumpStyle:'hop',jumpCount:1},groundZ:0});
  assert.equal(cat.clip,config.landing.heavy);
- cat.update(1/60,'jump',0,{jump:{jumpPhase:'landing',jumpProgress:.3,landingSpeed:4,jumpStyle:'hop',jumpCount:2},groundZ:0});
+ cat.update(1/60,'jump',0,{jump:{jumpPhase:'landing',jumpProgress:.3,landingSpeed:config.walk.jump.takeoff_mps,jumpStyle:'hop',jumpCount:2},groundZ:0});
  assert.equal(cat.clip,config.jump_clips.hop,'an ordinary hop keeps its own landing');
  cat.update(.3,'idle',0);cat.update(1/60,'stroll',.4,{facing:2.5});assert.equal(cat.clip,config.pivot.left);
  cat.update(.5,'idle',0);cat.update(1/60,'stroll',.4,{facing:-2.5});assert.equal(cat.clip,config.pivot.right);
@@ -130,5 +130,44 @@ test('climbing clips keep the front paws on the bark across trunk sizes, and the
  const cat=createCharacter(asset(),config);
  cat.update(1/60,'jump',0,{jump:{jumpPhase:'bounce',jumpProgress:.4,jumpStyle:'hop',jumpCount:1}});assert.equal(cat.clip,config.fall_clips.bounce);
  cat.update(1/60,'jump',0,{jump:{jumpPhase:'tumble',jumpProgress:.4,jumpStyle:'hop',jumpCount:1}});assert.equal(cat.clip,config.fall_clips.tumble);
+ cat.dispose();
+});
+test('the triple jump somersaults forward about his middle and is upright again by the apex',()=>{
+ const cat=createCharacter(asset(),config),jump=(jumpTier,jumpProgress)=>({jumpPhase:'airborne',jumpStyle:'hop',jumpCount:3,jumpTier,jumpProgress});
+ const middle=()=>{cat.object.updateMatrixWorld(true);return new T.Vector3(0,.85,0).applyMatrix4(cat.model.matrix);};
+ cat.update(1/60,'jump',0,{jump:jump(2,.25)});const upright=middle();
+ cat.update(1/60,'jump',0,{jump:jump(3,.25)});
+ assert.ok(Math.abs(cat.model.rotation.x-Math.PI)<.05,`half-way up he is upside down: ${cat.model.rotation.x.toFixed(2)} rad`);
+ assert.ok(middle().distanceTo(upright)<.02,'the somersault turns about his middle, not his soles');
+ cat.update(1/60,'jump',0,{jump:jump(3,.5)});assert.ok(Math.abs(cat.model.rotation.x-2*Math.PI)<.05);
+ cat.update(1/60,'jump',0,{jump:jump(2,.25)});assert.ok(Math.abs(cat.model.rotation.x)<.05,'a double jump does not flip');
+ cat.dispose();
+});
+test('he stretches at launch, rounds out at the peak, squats on touchdown and keeps his volume',()=>{
+ const cat=createCharacter(asset(),config),k=config.scale,shape=jump=>{cat.update(1/60,jump?'jump':'idle',0,{jump});const s=cat.model.scale;return {y:s.y/k,volume:s.x*s.y*s.z/k**3};};
+ const air=vz=>({jumpPhase:'airborne',jumpStyle:'hop',jumpCount:1,jumpTier:1,jumpVz:13.4,vz,jumpProgress:.5-vz/26.8});
+ const launch=shape(air(13.4)),peak=shape(air(0)),land=shape({jumpPhase:'landing',jumpStyle:'hop',jumpCount:1,jumpProgress:0}),stand=shape(null);
+ assert.ok(launch.y>1.05&&Math.abs(peak.y-1)<1e-9&&land.y<.9&&stand.y===1,`launch ${launch.y.toFixed(2)}, peak ${peak.y.toFixed(2)}, touchdown ${land.y.toFixed(2)}`);
+ for(const s of [launch,peak,land,stand])assert.ok(Math.abs(s.volume-1)<1e-9,'squash and stretch keep his volume');
+ cat.dispose();
+});
+test('his ear glow, fur rim and whisker glints all apply the scene sun shadow, so none shows in shade',()=>{
+ const cat=createCharacter(asset(),config),seen=new Set();
+ cat.model.traverse(node=>{
+  if(!node.isMesh||!node.material.onBeforeCompile)return;
+  const m=node.material,shader={uniforms:{},vertexShader:m.isShaderMaterial?m.vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:m.isShaderMaterial?m.fragmentShader:T.ShaderLib.standard.fragmentShader};
+  m.onBeforeCompile(shader);const f=shader.fragmentShader;
+  if(m.isShaderMaterial){if(/glint/.test(f)){seen.add('halo');assert.match(f,/\*sun,1\.\)/);assert.match(f,/scenerySunLight\(vWorld/);}return;}
+  assert.doesNotMatch(f,/\+=[^;]*\bsunlight\b/,`${m.name}: added light skips the scenery shadow`);
+  // GLSL directives must start a line: injected code that eats the newline before
+  // the next #include compiles in Node's eyes and fails on the GPU.
+  assert.doesNotMatch(f,/;[ \t]*#/,`${m.name}: a directive follows code on one line`);
+  const declared=f.indexOf('float directSun=');
+  for(const [term,label] of [[/backlit\*directSun\*([0-9.]+)/,'ear'],[/furRim\*\.06\*directSun/,'rim'],[/glint\*3\.5\*directSun/,'whisker']]){
+   const hit=term.exec(f);if(!hit)continue;seen.add(label);assert.ok(declared>=0&&hit.index>declared,`${m.name}: ${label} used before directSun`);
+   if(label==='ear')assert.ok(Number(hit[1])<=.35,`ear glow ${hit[1]} is not reduced`);
+  }
+ });
+ assert.deepEqual([...seen].sort(),['ear','halo','rim','whisker']);
  cat.dispose();
 });

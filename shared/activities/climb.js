@@ -33,7 +33,7 @@ export function findTrunk(state,input,world,config){
 export function attachClimb(state,box,config){
   const t=box.trunk,c=config.climb,angle=Math.atan2(state.y-t.y,state.x-t.x),z=Math.min(state.z,t.top_z-c.top_clearance_m);
   const s={...state,mode:'climb',trunk:t,trunkBox:box,angle,z,climbPhase:'mount',climbTime:0,climbPush:0,
-    grounded:false,jumpPhase:'grounded',jumpTime:0,vx:0,vy:0,vz:0,speed:0,mountFrom:[state.x,state.y]};
+    grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vx:0,vy:0,vz:0,speed:0,mountFrom:[state.x,state.y]};
   return mount(s,c);
 }
 
@@ -73,8 +73,8 @@ export function stepClimb(state,input,dt,config,world){
   if(s.climbPhase==='mount'){if(s.climbTime>=c.mount_s)s.climbPhase='grip';return mount(s,c);}
   if(edge){
     const out=[Math.cos(s.angle),Math.sin(s.angle)];
-    return {...s,...clearOf(s,config),mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'hop',jumpTime:0,jumpCount:(s.jumpCount??0)+1,
-      vx:out[0]*c.jump_out_mps,vy:out[1]*c.jump_out_mps,vz:c.jump_up_mps,speed:c.jump_out_mps,heading:s.angle,climbCooldown:.5,climbPhase:undefined};
+    return {...s,...clearOf(s,config),mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'hop',jumpTime:0,jumpCount:(s.jumpCount??0)+1,jumpTier:1,
+      vx:out[0]*c.jump_out_mps,vy:out[1]*c.jump_out_mps,vz:c.jump_up_mps,jumpVz:c.jump_up_mps,speed:c.jump_out_mps,heading:s.angle,climbCooldown:.5,climbPhase:undefined};
   }
   const [sx,sy]=input.stick??[0,0],fast=input.run?c.fast_factor:1,top=s.trunk.top_z-c.top_clearance_m;
   const vz=(sy>0?c.up_mps:c.down_mps)*sy*fast,around=c.around_mps*sx*fast;

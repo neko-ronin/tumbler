@@ -5,9 +5,10 @@ import {rideStart,startRide,stepRide} from '../../../shared/activities/ride.js';
 import {flightInput} from './flight-input.js';
 import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround} from '../../../shared/activities/walk.js';
 import {stepMoves} from '../../../shared/activities/moves.js';
+const JUMP_FRAME_M=2,AIM_S=.5;
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true;
-  let weather='soaring',siteIndex=0,feedbackTime=0,effects=1;
+  let weather='soaring',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0;
   let actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const flightPressed=new Set(),flightModes=Object.keys(config.modes);
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
@@ -65,6 +66,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     else{yaw=0;pitch=-.34;updateFlightPresentation(0);}
     options.onFlightChange?.(mode,siteIndex,weather);return true;
   }
+  /** Called on display refreshes between render frames: a controller A tap
+   * shorter than one 30 FPS frame is latched like a keyboard tap. */
+  function poll(){if([...(navigator.getGamepads?.()??[])].find(p=>p?.connected)?.buttons[0]?.pressed)queuedPrimary=true;}
   function update(dt){
     const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
     if(!riding()){
@@ -114,6 +118,15 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   }
   function follow(dt,distance,heading,lift=0){
     target.copy(character.object.position).add(new T.Vector3(0,(config.modes[mode]?2.7:1.1)+lift,0));
+    // On foot the aim follows his height on a critically damped spring (Unity's
+    // SmoothDamp) instead of riding it: in a jump he rises in the frame while the
+    // world holds still, and touchdown eases in rather than jolting, since the
+    // aim's speed and acceleration stay continuous. The bound is soft: the
+    // further he gets from the aim (JUMP_FRAME_M is far), the quicker it follows.
+    const gap=target.y-(aimY??target.y),w=2*(1+(gap/JUMP_FRAME_M)**2)/AIM_S,x=w*dt,decay=1/(1+x+.48*x*x+.235*x*x*x);
+    if(snap||aimY===null||mode!=='walk'){aimY=target.y;aimV=0;}
+    else{const pull=(aimV-w*gap)*dt;aimV=(aimV-w*pull)*decay;aimY=target.y+(pull-gap)*decay;}
+    target.y=aimY;
     const angle=heading-Math.PI/2+yaw;
     chase.set(target.x+Math.sin(angle)*Math.cos(pitch)*distance,target.y-Math.sin(pitch)*distance,target.z+Math.cos(angle)*Math.cos(pitch)*distance);
     chase.y=Math.max(chase.y,height(chase.x,-chase.z)+.45);
@@ -203,5 +216,5 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     snap=false;orbit.target.copy(p);
   }
   function setWeather(name){if(!config.weather[name])return;weather=name;if(state&&config.modes[mode])state={...state,weather};else if(mode==='walk'&&state?.harnessMode)state={...state,harnessWeather:weather};options.onFlightChange?.(mode,siteIndex,weather);}
-  return {select,update,clear,changeHarness,setWeather,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {select,update,poll,clear,changeHarness,setWeather,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

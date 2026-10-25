@@ -48,20 +48,28 @@
       "hold_m": 0.22,
       "mount_s": 0.3,
       "top_clearance_m": 0.9,
-      "jump_out_mps": 3.5,
-      "jump_up_mps": 2.5
+      "jump_out_mps": 6.6,
+      "jump_up_mps": 4.7
     },
     "jump": {
-      "gravity_mps2": 10.8,
-      "takeoff_mps": 4.8,
-      "hop_mps": 3.8,
-      "takeoff_s": 0.12,
+      "gravity_mps2": 38,
+      "takeoff_mps": 13.4,
+      "hop_mps": 13.4,
+      "takeoff_s": 0,
       "landing_s": 0.18,
-      "air_control_mps2": 2.4,
+      "air_control_mps2": 14,
       "max_ground_grade": 1.0,
-      "tumble_mps": 11,
+      "tumble_mps": 28,
       "rebound": 0.35,
-      "tumble_s": 0.8
+      "tumble_s": 0.8,
+      "speed_lift": 0.25,
+      "release_gravity": 3,
+      "apex_mps": 3,
+      "apex_gravity": 0.45,
+      "buffer_s": 0.2,
+      "chain_s": 0.25,
+      "chain_mps": [16.6, 20],
+      "chain_speed_mps": 3
     }
   },
   "tail_clips": {
@@ -144,7 +152,7 @@
   },
   "landing": {
     "heavy": "land_heavy",
-    "heavy_mps": 6.5
+    "heavy_mps": 20
   },
   "pivot": {
     "left": "pivot_left",

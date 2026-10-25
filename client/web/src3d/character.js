@@ -3,7 +3,7 @@ import * as T from '../vendor/three.module.min.js';
 import { buildAssetMeshes } from './glb.js';
 import { installCharacterSurfaces } from './character-surface.js';
 import { trunkRadiusAt } from '../../../shared/activities/climb.js';
-const PAW_RADIUS=.05;
+const PAW_RADIUS=.05,FLIP_PIVOT_M=.85,STRETCH=.1,SQUASH=.16;
 
 export function createCharacter(asset, config) {
   const object = new T.Group();
@@ -105,8 +105,9 @@ export function createCharacter(asset, config) {
     const action = actions[name];
     if (!action) throw new Error(`Unknown Ronin pose ${pose}`);
     if (action !== current) {
-      // Sitting down and getting up take longer than a change of step.
-      const fade=current&&[name,clipName].some(clip=>config.idle_sequence?.some(step=>step.hold&&step.clip===clip))?.5:pivoting?.08:.18;
+      // Sitting down and getting up take longer than a change of step; a jump
+      // must read on the frame he leaves the ground.
+      const fade=current&&[name,clipName].some(clip=>config.idle_sequence?.some(step=>step.hold&&step.clip===clip))?.5:pivoting||authoredJump?.08:.18;
       action.reset().fadeIn(fade).play();
       if(pivoting||shot)action.setLoop(T.LoopOnce,1).clampWhenFinished=true;
       // Gait clips share a phase convention (left paw down at the same point),
@@ -133,7 +134,15 @@ export function createCharacter(asset, config) {
     const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))
       // A dive points his (prone) body along its path: nose down going down.
       :pose==='swim'&&context.swim?.swimPhase==='dive'?Math.max(-1.2,Math.min(1.2,Math.atan2(-(context.swim.vz??0),Math.max(.1,context.swim.speed??0)))):0;
-    pitch+=(pitchGoal-pitch)*(1-Math.exp(-dt*10));model.rotation.x=pitch;
+    // The chain's third jump somersaults forward, finishing by the apex.
+    const t=Math.min(1,(jump?.jumpProgress??0)/.5),flip=jump?.jumpTier===3&&jump.jumpPhase==='airborne'?2*Math.PI*t*t*(3-2*t):0;
+    pitch+=(pitchGoal-pitch)*(1-Math.exp(-dt*10));model.rotation.x=pitch+flip;
+    // Squash and stretch, volume kept: long while he moves fast vertically (the
+    // launch, the drop), round through the hang at the peak, squat at touchdown
+    // and springing back up over the landing.
+    const stretch=jump?.jumpPhase==='airborne'?STRETCH*Math.min(1,((jump.vz??0)/(jump.jumpVz||1))**2)
+      :jump?.jumpPhase==='landing'?-SQUASH*(1-(jump.jumpProgress??1))**2:0;
+    model.scale.set(config.scale/Math.sqrt(1+stretch),config.scale*(1+stretch),config.scale/Math.sqrt(1+stretch));
     if(lastPose==='flight'&&pose==='idle')landedTime=3;
     lastPose=pose;landedTime=Math.max(0,landedTime-dt);
     let category=pose==='flight'?(context.mode??'paraglider'):pose;
@@ -179,6 +188,8 @@ export function createCharacter(asset, config) {
       if(gaps.length)barkFit=Math.max(-.6,Math.min(.6,barkFit+gaps.reduce((a,b)=>a+b)/gaps.length*(1-Math.exp(-dt*15))));
       model.position.z=barkFit;
     }else barkFit=0;
+    // Turn the somersault about his middle rather than his soles.
+    if(flip){model.position.y+=FLIP_PIVOT_M*(1-Math.cos(flip));model.position.z-=FLIP_PIVOT_M*Math.sin(flip);}
     if(pose!=='flight'&&context.groundZ!==undefined){
       model.updateWorldMatrix(true,true);let lift=0;
       for(const foot of feet){
