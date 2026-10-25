@@ -252,7 +252,7 @@ flight motion. The shared GLB carries shape, markings, cloth texture and rig;
 the browser adds short fibre shells. Bicycle behavior is unchanged.
 
 Inspect details and movement in the local
-[character studio](http://127.0.0.1:8002/client/web/tools/character-lab.html),
+[character studio](character-lab/README.md) (`python3.11 client/web/tools/character_lab_server.py --port 8032`),
 or use the ordinary game scene. See the
 [asset brief](../../shared/geometry/cat-ronin/FIDELITY.md) for opened evidence,
 regeneration and limits. Further pose, surface and performance improvements are
@@ -263,6 +263,12 @@ recorded as a followup task in `docs/HANDOVER.md`.
 Walk the meadow is now third person, playing the rigged Cat Ronin imported from
 the human's `catronin` project. WASD/left stick moves relative to the camera;
 drag/right stick orbits it; Shift/L3 runs. Idle, walk and run clips crossfade.
+Since 2026-10-24 he also climbs and swims (shared rules in `shared/activities/`):
+push into any tree at least 0.6 m across, or jump onto it, to climb; W/S climb,
+A/D circle, Shift climbs faster, Space jumps off. The climb ends in a perch below
+the crown (no launching from trees yet). High falls bounce and tumble. Walk into
+a lake or river to wade and swim; the stick paddles, Shift dives along the
+camera's pitch, letting go bobs him up, and below the surface the view tints.
 The same character sits in the harness for paragliding, parakiting and
 paramotoring, with a chase camera. Bicycle and ski models, rules, controls and
 V/Y view switching retain their previous behavior.

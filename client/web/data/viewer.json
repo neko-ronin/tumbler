@@ -27,7 +27,7 @@
     },
     {
       "path": "client/web/src3d/audio.js",
-      "sha256": "01220021101c9be80133da924ee2255162dc1549891f9d106099a78f330e8a68"
+      "sha256": "f0ed58aecee5d3258b1d4b70b5736b773a02b8f8efec2e646ba70c1c15999e5b"
     },
     {
       "path": "client/web/src3d/canopy-light.js",
@@ -39,7 +39,7 @@
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "d5bdf73d594da4de55711d656c65e01b0b5386703e72abf553a2a2b2f8bcf643"
+      "sha256": "8c9da2cbdf3350022596b29a9c3b8afd98f033cdcd5edec6907d41b40822ea8f"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -63,7 +63,7 @@
     },
     {
       "path": "client/web/src3d/collision.js",
-      "sha256": "09fd82e29131f4f2163cf7981365d0c60fd3a9661fbb97078fd0a5eece75252c"
+      "sha256": "a0e4f7092577b5268a43b1fe0c5f3c71b1d471793d09e1fe95f1e5c9a9cb18ed"
     },
     {
       "path": "client/web/src3d/controls.js",
@@ -107,7 +107,7 @@
     },
     {
       "path": "client/web/src3d/glb.js",
-      "sha256": "316ab4ca8b854175347c734a929034a24f469727d22c988d93fd7dc014a4e63a"
+      "sha256": "51fa28f6ff93d1073ae12076e1bc3bd9a55793282f35467dff4612632ed6a2f4"
     },
     {
       "path": "client/web/src3d/grass-canopy.js",
@@ -127,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "7856617f1e9e53365be2850222c8ae1ef08f5e4a8dab52ed9630a256fbe1a195"
+      "sha256": "7e0e2f5ca7c91cc0263cc2a9c84e61f1826015879b84bbbff6fddeec926fa09d"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -135,7 +135,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "5f7e3bea6aea539cb09efe1094f4bcf38c68c1e9c39aed36c7720aef4260b85d"
+      "sha256": "1ebb188099ee22211fd513e1c1af705f19566b3c6e01516c835751a4fd3417da"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -214,8 +214,12 @@
       "sha256": "e2b5ee6bccd38fd6d8a2428546b83c5f2426d84b152ef82be8055556e3b40eb6"
     },
     {
+      "path": "shared/activities/climb.js",
+      "sha256": "25d4c7d99cea84ac8002e40ea2d5ba42961f5d7acc0bf0f67b81b57806e36ee3"
+    },
+    {
       "path": "shared/activities/collision.js",
-      "sha256": "d722c889d00b7d946c10b88595c0aeb3160ffa3ca51c047a9c934ae4b575d8b6"
+      "sha256": "a35369c4d657b42276d5412a429294e2f88de582e6c90add84f4a46e01d9d6e3"
     },
     {
       "path": "shared/activities/flight.js",
@@ -226,6 +230,10 @@
       "sha256": "e23355b8bc7b4d486f9888249d1f957de641bc2d858229053541cbed39ab3dfc"
     },
     {
+      "path": "shared/activities/moves.js",
+      "sha256": "5965f54741a0dc4092daf053d8d9e898e443bf77ec1698fb3536eef28da6d682"
+    },
+    {
       "path": "shared/activities/ride.js",
       "sha256": "023687cc9ffa9a24b6ce0bc448e69995b7d49c9b6399e147c60688a6a7b811d1"
     },
@@ -234,12 +242,16 @@
       "sha256": "8ce44a7ca65a678a1ae9d86919cf7753d714947b9fa41dbf077d3326b80c75ab"
     },
     {
+      "path": "shared/activities/swim.js",
+      "sha256": "1784cf9b1a4f93c286d730a550dd8ce636317fa19564ae45803407020a459b80"
+    },
+    {
       "path": "shared/activities/walk.js",
-      "sha256": "f3758df39ec0486987f4734d2f730a7d1676407ea698ec252e0736adaadcc4d3"
+      "sha256": "53b6faf059b5b68b3f2948afd61b418a978d45cc914a368ae157a7e476f24af5"
     },
     {
       "path": "shared/characters/player.json",
-      "sha256": "f0589ae984fdd710c165aac12267383454554bff51bd2332396b1253d0bac770"
+      "sha256": "e087f50c11dd8822e9dd3a4458d6452fac61c61c6c4fc518e0677b710245b6dc"
     },
     {
       "path": "shared/ecology/aquatic.js",
@@ -283,7 +295,7 @@
     },
     {
       "path": "shared/geometry/cat-ronin/ronin.glb",
-      "sha256": "76aae08561c71eb6168502b754f997441db96c160ef326345e2a6e4670288aab"
+      "sha256": "b664b2fcde0e16b7013409942dddfcd5717b19144dabc387b3fab96655aa9d5c"
     },
     {
       "path": "shared/geometry/city/tower.glb",
@@ -479,7 +491,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "23f5ebf",
+  "commit": "96899bd",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

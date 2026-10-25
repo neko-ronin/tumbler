@@ -16,7 +16,7 @@
  * | attributes | `POSITION`, `NORMAL` float32; `TEXCOORD_0` float32 or normalized uint16; tightly packed |
  * | indices | uint16 or uint32, `TRIANGLES` only |
  * | materials | `pbrMetallicRoughness`, base colour/roughness, double-sided, OPAQUE/MASK/BLEND; embedded PNGs on the blimp, generated redwood sprays and the Cat Ronin coat/hair |
- * | animation | node translation/rotation/scale, LINEAR or STEP; `extras.events` timed cues; inverse-bind skeletons and four-influence skin attributes |
+ * | animation | node translation/rotation/scale, LINEAR or STEP; `extras.events` timed cues and other animation extras (e.g. `ground_speed_mps`) on `clip.userData`; inverse-bind skeletons and four-influence skin attributes |
  * | colours | RGB/RGBA vertex colours, including normalized integer storage |
  * | not used | morph targets, sparse accessors, interleaved buffer views, extensions, TEXCOORD_1, KHR_* |
  *
@@ -431,7 +431,7 @@ export function parseGLB(input) {
     });
     const clip = new AnimationClip(animation.name, -1, tracks);
     // Timed cues (e.g. a blade locking) travel with the clip as glTF extras.
-    clip.userData = { events: animation.extras?.events ?? [] };
+    clip.userData = { ...animation.extras, events: animation.extras?.events ?? [] };
     return clip;
   });
   stats.images = images.length;

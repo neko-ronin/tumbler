@@ -6,6 +6,9 @@ import {launchFlight} from './flight.js';
 import {createTrailSampler} from './ride.js';
 const jumpDefaults={gravity_mps2:10.8,takeoff_mps:4.8,hop_mps:3.8,takeoff_s:.12,landing_s:.18,air_control_mps2:2.4,max_ground_grade:1};
 const rules=config=>({...jumpDefaults,...config.jump});
+// Recovery grows with touchdown speed beyond a standing jump's, up to 2.8x: a
+// big drop needs a deeper, longer crouch than a hop.
+const landingTime=(s,j)=>j.landing_s*Math.min(2.8,Math.max(1,1+((s.landingSpeed??0)-j.takeoff_mps)/4));
 
 /** Exclude submerged ground using the core's named water footprints and bank
  * envelope. Height decides the shoreline inside that envelope, as for carving.
@@ -16,61 +19,96 @@ export function createWalkHeight(worldmap,height){
   // The published 8 m grid cannot hold every narrow tread. The declared
   // profile remains a physical surface for any activity, including landing.
   const floorHeight=(x,y)=>{const z=height(x,y);if(!Number.isFinite(z))return null;const t=trailAt(x,y);return t?.beyond===0?Math.max(z,t.z):z;};
-  const walkHeight=(x,y)=>{
+  /** The water at a point, or null: its surface, the depth over the floor, and
+   * the river's flow direction (unit, along its polyline; lakes are still). */
+  const waterAt=(x,y)=>{
     const z=floorHeight(x,y);if(!Number.isFinite(z))return null;
     for(const b of bodies){
       if(z>=b.surface_z_m+.05)continue;
-      if(b.kind==='lake'&&Math.hypot((x-b.centre_xy_m[0])/(b.size_m[0]/2+b.bank_m),(y-b.centre_xy_m[1])/(b.size_m[1]/2+b.bank_m))<=1)return null;
+      const water=flow=>({surface_z:b.surface_z_m,depth:Math.max(0,b.surface_z_m-z),flow});
+      if(b.kind==='lake'&&Math.hypot((x-b.centre_xy_m[0])/(b.size_m[0]/2+b.bank_m),(y-b.centre_xy_m[1])/(b.size_m[1]/2+b.bank_m))<=1)return water([0,0]);
       if(b.kind==='river')for(let i=1;i<b.polyline.length;i++){
         const a=b.polyline[i-1],c=b.polyline[i],dx=c[0]-a[0],dy=c[1]-a[1];
         const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy||1)));
-        if(Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t)<=Math.max(b.width_start_m,b.width_end_m)/2+b.bank_m)return null;
+        if(Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t)<=Math.max(b.width_start_m,b.width_end_m)/2+b.bank_m)return water([dx/Math.hypot(dx,dy),dy/Math.hypot(dx,dy)]);
       }
     }
-    return z;
+    return null;
   };
-  return Object.assign(walkHeight,{floorHeight,trailAt});
+  const walkHeight=(x,y)=>{const z=floorHeight(x,y);return !Number.isFinite(z)||waterAt(x,y)?null:z;};
+  return Object.assign(walkHeight,{floorHeight,trailAt,waterAt});
 }
 
 /** A finite dry height, walkable local slope and room for the standing body.
  * Clients may supply null for water/unsupported terrain. No nearby-point search:
  * a rejected transition must never silently relocate the player.
  */
-export function safeWalkGround(x,y,config,height,hitTest){
+export function safeWalkGround(x,y,config,height,hitTest,{dropOffs=false}={}){
   const z=height(x,y),r=config.radius_m;
   if(!Number.isFinite(z))return null;
-  const samples=[height(x+r,y),height(x-r,y),height(x,y+r),height(x,y-r)];
+  let samples=[height(x+r,y),height(x-r,y),height(x,y+r),height(x,y-r)];
+  // To jump he needs footing, not level ground all round: a drop-off (or water)
+  // beside a ledge reads as level; a wall face beside him still does not.
+  if(dropOffs)samples=samples.map(h=>Number.isFinite(h)&&h>=z-config.max_step_m?h:z);
   if(!samples.every(Number.isFinite)||Math.hypot((samples[0]-samples[1])/(2*r),(samples[2]-samples[3])/(2*r))>rules(config).max_ground_grade)return null;
   if(hitTest?.([x,y,z+r],[x,y,z+1.7-r],r))return null;
   return z;
 }
 
+/** Which locomotion slot of the character contract plays at this ground
+ * speed: an optional stroll below `stroll_mps`, the walk, then the run a little
+ * above walking speed. Clients map the slot to a clip (`clips[slot]`).
+ */
+export function gaitFor(speed,config,clips={}){
+  if(speed>config.walk_mps*1.15)return 'run';
+  return clips.stroll&&config.stroll_mps&&speed<config.stroll_mps?'stroll':'walk';
+}
+
 export function stepWalk(state,input,dt,config,height,hitTest){
   if(!(dt>0)||!Number.isFinite(dt))return {...state};
   const j=rules(config),s={...state},duration=Math.min(dt,.05);
-  s.grounded??=true;s.jumpPhase??='grounded';s.jumpTime??=0;s.jumpCount??=0;s.vz??=0;
+  s.grounded??=true;s.jumpPhase??='grounded';s.jumpTime??=0;s.jumpCount??=0;s.vz??=0;s.vx??=0;s.vy??=0;
   const magnitude=Math.hypot(input.x??0,input.y??0),speed=(input.run?config.run_mps:config.walk_mps)*Math.min(1,magnitude);
   const vx=magnitude?(input.x/magnitude)*speed:0,vy=magnitude?(input.y/magnitude)*speed:0;
   const edge=!!input.jump&&!s.jumpHeld;s.jumpHeld=!!input.jump;
-  if(edge&&s.jumpPhase==='grounded'&&safeWalkGround(s.x,s.y,config,height,hitTest)!==null){
+  // A jump keeps the velocity the feet actually have; older contracts snap to
+  // input, so for them that is still the held direction.
+  if(edge&&s.jumpPhase==='grounded'&&safeWalkGround(s.x,s.y,config,height,hitTest,{dropOffs:true})!==null){
     s.jumpStyle=speed>.5?'hop':['celebrate','heel_click','star'][s.jumpCount%3];
-    s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;s.vx=vx;s.vy=vy;
+    s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;
+    if(!(config.accel_mps2<Infinity)){s.vx=vx;s.vy=vy;}
   }
+  const heading=s.heading??0;
+  const blocked=(x,y)=>{
+    const z=height(x,y),distance=Math.hypot(x-s.x,y-s.y);
+    return !Number.isFinite(z)||(s.grounded?Math.abs(z-s.z)>Math.max(config.max_step_m,distance*config.max_grade):z>s.z+config.max_step_m)
+      ||[config.radius_m,.9,1.5].some(h=>hitTest?.([s.x,s.y,s.z+h],[x,y,(s.grounded?z:s.z)+h],config.radius_m));
+  };
   for(let remaining=duration;remaining>1e-10;){
     const step=Math.min(remaining,1/120);remaining-=step;
-    if(s.grounded&&s.jumpPhase!=='takeoff'){s.vx=vx;s.vy=vy;}
+    if(s.grounded&&s.jumpPhase!=='takeoff'){
+      // Traction: speed up at accel_mps2, brake (release, reverse) at decel_mps2.
+      // Contracts without them keep the original instant response. A tumble
+      // ignores input and only brakes.
+      const [tx,ty,tspeed]=s.jumpPhase==='tumble'?[0,0,0]:[vx,vy,speed];
+      const dx=tx-s.vx,dy=ty-s.vy,length=Math.hypot(dx,dy);
+      const rate=tx*s.vx+ty*s.vy>=0&&tspeed>=Math.hypot(s.vx,s.vy)?config.accel_mps2??Infinity:config.decel_mps2??Infinity;
+      const amount=Math.min(1,rate*step/(length||1));
+      s.vx+=dx*amount;s.vy+=dy*amount;
+    }
     else if(!s.grounded&&magnitude){
       const dx=vx-s.vx,dy=vy-s.vy,length=Math.hypot(dx,dy),amount=Math.min(1,j.air_control_mps2*step/(length||1));
       s.vx+=dx*amount;s.vy+=dy*amount;
     }
-    const x=s.x+s.vx*step,y=s.y+s.vy*step,z=height(x,y),oldFloor=height(s.x,s.y);
-    const distance=Math.hypot(s.vx,s.vy)*step;
-    const obstructed=!Number.isFinite(z)||(s.grounded?Math.abs(z-s.z)>Math.max(config.max_step_m,distance*config.max_grade):z>s.z+config.max_step_m)
-      ||hitTest?.([s.x,s.y,s.z+config.radius_m],[x,y,(s.grounded?z:s.z)+config.radius_m],config.radius_m)
-      ||hitTest?.([s.x,s.y,s.z+.9],[x,y,(s.grounded?z:s.z)+.9],config.radius_m)
-      ||hitTest?.([s.x,s.y,s.z+1.5],[x,y,(s.grounded?z:s.z)+1.5],config.radius_m);
-    if(!obstructed){s.x=x;s.y=y;if(s.grounded)s.z=z;}
-    else{s.vx=0;s.vy=0;}
+    const oldFloor=height(s.x,s.y);
+    if(blocked(s.x+s.vx*step,s.y+s.vy*step)){
+      // Slide along what stopped us. Colliders are world-axis boxes, so the
+      // free axis of the move is the tangent; head-on contact still stops.
+      const axes=Math.abs(s.vx)>=Math.abs(s.vy)?[[1,0],[0,1]]:[[0,1],[1,0]];
+      const free=axes.find(([a,b])=>Math.abs(a*s.vx+b*s.vy)>1e-6&&!blocked(s.x+a*s.vx*step,s.y+b*s.vy*step));
+      s.vx*=free?.[0]??0;s.vy*=free?.[1]??0;
+    }
+    if(s.vx||s.vy){s.x+=s.vx*step;s.y+=s.vy*step;if(s.grounded)s.z=height(s.x,s.y);}
     s.speed=Math.hypot(s.vx,s.vy);
     if(s.speed>.01)s.heading=Math.atan2(s.vy,s.vx);
     if(s.jumpPhase==='takeoff'){
@@ -82,15 +120,24 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       s.vz-=j.gravity_mps2*step;
       if(ceiling&&next>s.z)s.vz=Math.min(0,s.vz);else s.z=next;
       const floor=height(s.x,s.y)??oldFloor;
-      if(Number.isFinite(floor)&&s.z<=floor){s.z=floor;s.grounded=true;s.vz=0;s.jumpPhase='landing';s.jumpTime=0;}
+      if(Number.isFinite(floor)&&s.z<=floor){
+        // A high fall bounces once (tumble_mps, rebound), then tumbles for tumble_s.
+        const impact=-s.vz;s.z=floor;s.vz=0;s.jumpTime=0;
+        if(s.jumpPhase==='bounce'){s.grounded=true;s.jumpPhase='tumble';}
+        else if(j.tumble_mps&&impact>j.tumble_mps){s.landingSpeed=impact;s.vz=impact*j.rebound;s.jumpPhase='bounce';}
+        else{s.landingSpeed=impact;s.grounded=true;s.jumpPhase='landing';}
+      }
       else s.jumpTime+=step;
-    }else if(s.jumpPhase==='landing'){
+    }else if(s.jumpPhase==='landing'||s.jumpPhase==='tumble'){
       s.jumpTime+=step;
-      if(s.jumpTime>=j.landing_s){s.jumpPhase='grounded';s.jumpTime=0;}
+      if(s.jumpTime>=(s.jumpPhase==='tumble'?j.tumble_s:landingTime(s,j))){s.jumpPhase='grounded';s.jumpTime=0;}
     }
   }
   s.groundZ=height(s.x,s.y)??state.groundZ??state.z;
-  const phaseDuration=s.jumpPhase==='takeoff'?j.takeoff_s:s.jumpPhase==='landing'?j.landing_s:
+  // Signed yaw rate (rad/s, positive turning left) for leaning and turn clips.
+  const turn=s.heading-heading;s.turnRate=Math.atan2(Math.sin(turn),Math.cos(turn))/duration;
+  const phaseDuration=s.jumpPhase==='takeoff'?j.takeoff_s:s.jumpPhase==='landing'?landingTime(s,j):s.jumpPhase==='tumble'?j.tumble_s:
+    s.jumpPhase==='bounce'?2*s.landingSpeed*j.rebound/j.gravity_mps2:
     2*(s.jumpStyle==='hop'?j.hop_mps:j.takeoff_mps)/j.gravity_mps2;
   s.jumpProgress=s.jumpPhase==='grounded'?0:Math.min(1,s.jumpTime/phaseDuration);
   return s;
@@ -105,6 +152,8 @@ export function unharnessFlight(state,walkConfig,flightConfig,height,hitTest){
 }
 
 export function reharnessWalk(state,walkConfig,flightConfig,height,hitTest){
+  // Only from the ground: never from a trunk or the water.
+  if(state?.mode&&state.mode!=='ground')return null;
   if(!state?.harnessMode||state.grounded===false||!['grounded',undefined].includes(state.jumpPhase))return null;
   const z=safeWalkGround(state.x,state.y,walkConfig,height,hitTest);
   if(z===null||Math.abs(state.z-z)>.15||!flightConfig.modes[state.harnessMode])return null;

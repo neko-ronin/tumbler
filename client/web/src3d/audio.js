@@ -59,7 +59,16 @@ export function createCuePlayer(context){
       tone.connect(level).connect(out);tone.start(t);tone.stop(t+dur+.02);
     };
     if(name==='latch'){burst(.03,'highpass',4200,.7,.45);ring(.05,2400,.06);}
-    else if(name==='eject'){burst(.16,'bandpass',900,2,.3,3200);ring(.12,1300,.025);}
+    else if(name==='eject'){
+      // The spring letting go: a short airy push and a wobbling twang that rises as it unloads.
+      burst(.12,'bandpass',900,2,.22,3200);
+      const tone=context.createOscillator(),wobble=context.createOscillator(),depth=context.createGain(),level=context.createGain();
+      tone.type='triangle';tone.frequency.setValueAtTime(170,t);tone.frequency.exponentialRampToValueAtTime(460,t+.1);
+      wobble.frequency.value=31;depth.gain.setValueAtTime(70,t);depth.gain.exponentialRampToValueAtTime(4,t+.32);
+      level.gain.setValueAtTime(.13,t);level.gain.exponentialRampToValueAtTime(.0001,t+.34);
+      wobble.connect(depth).connect(tone.frequency);tone.connect(level).connect(out);
+      tone.start(t);wobble.start(t);tone.stop(t+.36);wobble.stop(t+.36);
+    }
     else if(name==='catch'){burst(.06,'lowpass',600,.7,.5);ring(.09,160,.22);}
     else if(name==='slide')burst(.11,'bandpass',2600,6,.32,5200);
     else if(name==='lock'||name==='seat'){

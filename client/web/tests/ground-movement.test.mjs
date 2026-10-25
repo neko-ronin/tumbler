@@ -48,13 +48,70 @@ test('shared jump has takeoff, ballistic air and landing phases; idle variants s
  for(const phase of ['takeoff','airborne','landing','grounded'])assert.ok(seen.has(phase),phase);
 });
 test('moving hop preserves launch momentum, blocks swept contact, cliffs and unsupported landing surfaces',()=>{
- let s=walk.stepWalk(origin(),{x:1,y:0,run:true},.05,character.walk,flat);
+ let s=origin();for(let i=0;i<14;i++)s=walk.stepWalk(s,{x:1,y:0,run:true},.05,character.walk,flat);
+ const runUp=s.x;assert.equal(s.speed,character.walk.run_mps);
  s=walk.stepWalk(s,{x:1,y:0,run:true,jump:true},.05,character.walk,flat);assert.equal(s.jumpStyle,'hop');
  for(let i=0;i<15;i++)s=walk.stepWalk(s,{x:0,y:0,jump:false},1/60,character.walk,flat);
- assert.ok(s.x>1.8,'released direction retains forward air momentum');assert.ok(s.z>.3);
+ assert.ok(s.x-runUp>1.8,'released direction retains forward air momentum');assert.ok(s.z>.3);
  const blocked=walk.stepWalk(s,{x:1,y:0},.05,character.walk,flat,()=>({kind:'tree'}));assert.equal(blocked.x,s.x);
  const boundary=walk.stepWalk(s,{x:1,y:0},.05,character.walk,()=>null);assert.equal(boundary.x,s.x);
  const cliff=walk.stepWalk(origin(),{x:1,y:0,jump:true},.05,character.walk,x=>x>0?8:0);assert.equal(cliff.x,0);
+});
+test('traction ramps starts and stops, contact slides along box faces, and turns publish a signed rate',()=>{
+ const w=character.walk,walkFor=(s,input,seconds)=>{for(let t=0;t<seconds-1e-9;t+=1/60)s=walk.stepWalk(s,input,1/60,w,flat);return s;};
+ let s=walkFor(origin(),{x:1,y:0},.1);
+ assert.ok(Math.abs(s.speed-w.accel_mps2*.1)<.05,'a tenth of a second in, the cat is still speeding up');
+ s=walkFor(s,{x:1,y:0},.3);assert.equal(s.speed,w.walk_mps);
+ s=walkFor(s,{x:0,y:0},w.walk_mps/w.decel_mps2+1/60);assert.equal(s.speed,0,'releasing brakes to a stop within walk/decel');
+ const {accel_mps2,decel_mps2,...older}=w;
+ assert.equal(walk.stepWalk(origin(),{x:1,y:0},1/60,older,flat).speed,w.walk_mps,'contracts without traction keep instant response');
+ // A wall face at x = 1 (box), approached diagonally: x stops at the face, y keeps going.
+ const wall=(from,to,r)=>Math.max(from[0],to[0])+r>1?{kind:'structure'}:null;
+ let d=origin();for(let i=0;i<120;i++)d=walk.stepWalk(d,{x:1,y:1},1/60,w,flat,wall);
+ assert.ok(d.x+w.radius_m<=1+1e-9&&d.y>3,'slides along the face instead of sticking');
+ let h=origin();for(let i=0;i<60;i++)h=walk.stepWalk(h,{x:1,y:0},1/60,w,flat,wall);
+ assert.ok(h.speed===0&&h.x+w.radius_m<=1+1e-9,'head-on contact still stops');
+ let turn=walkFor(origin(),{x:1,y:0},.5);turn=walk.stepWalk(turn,{x:0,y:1},1/60,w,flat);
+ assert.ok(turn.turnRate>0,'turning toward +y (anticlockwise) is a positive rate');
+});
+test('the gait follows ground speed: stroll, then walk, then run; contracts without a stroll walk',()=>{
+ const w=character.walk,slots=character.clips;
+ assert.deepEqual([.5,w.stroll_mps-.01,w.stroll_mps,w.walk_mps,w.walk_mps*1.2,w.run_mps].map(v=>walk.gaitFor(v,w,slots)),['stroll','stroll','walk','walk','run','run']);
+ assert.equal(walk.gaitFor(.5,w,{...slots,stroll:undefined}),'walk');
+});
+const fall=(z,config)=>{
+ let s={x:0,y:0,z,heading:0,speed:0,grounded:false,jumpPhase:'airborne',jumpCount:1,jumpStyle:'hop',vz:0};
+ const phases=[],trace=[];
+ for(let i=0;i<120*8;i++){
+  const before=s;s=walk.stepWalk(s,{x:1,y:0},1/120,config,flat);trace.push({before,after:s});
+  if(phases.at(-1)!==s.jumpPhase)phases.push(s.jumpPhase);
+  if(s.jumpPhase==='grounded')break;
+ }
+ return {s,phases,trace};
+};
+test('a high fall bounces once, tumbles without control, then stands',()=>{
+ const {s,phases,trace}=fall(12,character.walk),j=character.walk.jump;
+ assert.deepEqual(phases,['airborne','bounce','tumble','grounded']);
+ const apex=Math.max(...trace.filter(t=>t.after.jumpPhase==='bounce').map(t=>t.after.z));
+ assert.ok(apex>.2&&apex<1.5,`bounce apex ${apex.toFixed(2)} m`);
+ const tumbling=trace.filter(t=>t.after.jumpPhase==='tumble');
+ for(const t of tumbling)assert.ok(t.after.speed<=t.before.speed+1e-9,'input cannot speed him up mid-tumble');
+ assert.ok(Math.abs(tumbling.length/120-j.tumble_s)<.02,`tumble lasted ${(tumbling.length/120).toFixed(3)} s`);
+ assert.equal(s.z,0);assert.ok(s.landingSpeed>j.tumble_mps);
+});
+test('he can jump off a ledge edge, where the drop beside him is not a slope, and still not up against a wall',()=>{
+ const ledge=(x,y)=>Math.abs(x)<2&&Math.abs(y)<2?12:0;
+ let s={x:0,y:1.9,z:12,heading:Math.PI/2,speed:0};
+ s=walk.stepWalk(s,{x:0,y:0,jump:true},1/60,character.walk,ledge);
+ assert.equal(s.jumpPhase,'takeoff','a jump at the edge of a 12 m platform is allowed');
+ const wall=(x,y)=>y>2?12:0;let w={x:0,y:1.9,z:0,heading:Math.PI/2,speed:0};
+ w=walk.stepWalk(w,{x:0,y:0,jump:true},1/60,character.walk,wall);
+ assert.equal(w.jumpPhase,'grounded','a wall face beside him still counts as steep ground');
+});
+test('ordinary drops and older contracts never bounce',()=>{
+ assert.deepEqual(fall(4,character.walk).phases,['airborne','landing','grounded']);
+ const {tumble_mps,rebound,tumble_s,...jump}=character.walk.jump;
+ assert.deepEqual(fall(12,{...character.walk,jump}).phases,['airborne','landing','grounded']);
 });
 test('safe unharness preserves location, rejects midair/impact/slope/obstacle, and local re-entry clears motor and stale poses',()=>{
  for(const mode of Object.keys(flight.modes)){

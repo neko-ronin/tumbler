@@ -37,10 +37,11 @@ test('Ronin retains bone-parented meshes and playable clips animate actual geome
 
 test('walking normalizes diagonals, respects analogue input, blocks contact and preserves prior state', () => {
   const origin = { x:0, y:0, z:0, heading:0, speed:0 }, flat=()=>0;
-  const step = input => stepWalk(origin, input, .05, config.walk, flat);
+  // Traction ramps speed, so compare settled velocities rather than one step.
+  const step = input => {let s=origin;for(let i=0;i<20;i++)s=stepWalk(s, input, .05, config.walk, flat);return s;};
   const straight=step({x:1,y:0}),diagonal=step({x:1,y:1});
-  assert.ok(Math.abs(Math.hypot(diagonal.x,diagonal.y)-straight.x)<1e-9);
-  assert.equal(step({x:.5,y:0}).x,straight.x*.5);
+  assert.ok(Math.abs(Math.hypot(diagonal.vx,diagonal.vy)-straight.vx)<1e-9);
+  assert.ok(Math.abs(step({x:.5,y:0}).vx-straight.vx*.5)<1e-9);
   assert.ok(step({x:1,y:0,run:true}).speed > straight.speed);
   for (const height of [()=>null,()=>10]) assert.equal(stepWalk(origin,{x:1,y:0},.05,config.walk,height).speed,0);
   assert.equal(stepWalk(origin,{x:1,y:0},.05,config.walk,flat,()=>({kind:'tree'})).x,0);
@@ -86,7 +87,8 @@ test('third-person navigation moves the cat, keeps the camera separate and hides
     key('keydown','KeyW');
     for(let i=0;i<60;i++) nav.update(1/60);
     key('keyup','KeyW');
-    assert.ok(Math.abs(Math.hypot(nav.state.x-before.x,nav.state.y-before.y)-3.5)<1e-8);
+    const ramp=config.walk.walk_mps**2/(2*config.walk.accel_mps2);
+    assert.ok(Math.abs(Math.hypot(nav.state.x-before.x,nav.state.y-before.y)-(3.5-ramp))<.03,'one second of walking, less the start-up ramp');
     assert.equal(cat.object.visible,true);assert.equal(cat.clip,'walk');
     assert.ok(camera.position.distanceTo(cat.object.position)>4);
     for(const mode of ['paraglider','parakite','paramotor']) {
@@ -123,5 +125,14 @@ test('katana layer hands the chest handle to the paw, extends the blade with a c
   assert.equal(cues.at(-1),'seat');assert.ok(shown('katana')<.01&&shown('katana.sheathed')>.99);
   cat.toggleKatana();cat.update(.2,'idle');cat.update(.1,'flight',0,{mode:'paraglider'});
   assert.equal(cat.katana,'holstered','the blade is put away for the harness');
+  cat.dispose();
+});
+
+test('studio audition hooks put a named clip on one layer without stopping the others', () => {
+  const cat=character();
+  cat.update(.2,'walk',3.5);assert.equal(cat.clip,'walk');
+  cat.update(.2,'walk',3.5,{bodyClip:'lookaround'});
+  assert.equal(cat.clip,'lookaround');assert.equal(cat.bodyAction.getClip().name,'lookaround');assert.ok(cat.tailClip.startsWith('tail_walk'),'tail keeps the game choice');
+  cat.update(.2,'idle',0,{tailClip:'tail_alert'});assert.equal(cat.tailClip,'tail_alert');assert.equal(cat.clip,'idle');
   cat.dispose();
 });

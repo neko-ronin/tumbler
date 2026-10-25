@@ -16,7 +16,8 @@
     "idle": "idle",
     "walk": "walk",
     "run": "run",
-    "flight": "harness"
+    "flight": "harness",
+    "stroll": "stroll"
   },
   "walk": {
     "walk_mps": 3.5,
@@ -24,6 +25,32 @@
     "max_step_m": 0.7,
     "max_grade": 1.8,
     "radius_m": 0.35,
+    "stroll_mps": 1.6,
+    "accel_mps2": 16,
+    "decel_mps2": 28,
+    "swim": {
+      "swim_depth_m": 0.55,
+      "exit_depth_m": 0.4,
+      "paddle_mps": 1.2,
+      "dive_mps": 4,
+      "float_draft_m": 0.8,
+      "rise_mps": 1.5,
+      "flow_mps": 0.5,
+      "floor_clear_m": 0.3
+    },
+    "climb": {
+      "min_radius_m": 0.3,
+      "attach_s": 0.2,
+      "up_mps": 4,
+      "down_mps": 6,
+      "around_mps": 2.5,
+      "fast_factor": 1.5,
+      "hold_m": 0.22,
+      "mount_s": 0.3,
+      "top_clearance_m": 0.9,
+      "jump_out_mps": 3.5,
+      "jump_up_mps": 2.5
+    },
     "jump": {
       "gravity_mps2": 10.8,
       "takeoff_mps": 4.8,
@@ -31,7 +58,10 @@
       "takeoff_s": 0.12,
       "landing_s": 0.18,
       "air_control_mps2": 2.4,
-      "max_ground_grade": 1.0
+      "max_ground_grade": 1.0,
+      "tumble_mps": 11,
+      "rebound": 0.35,
+      "tumble_s": 0.8
     }
   },
   "tail_clips": {
@@ -44,6 +74,10 @@
     "walk": [
       "tail_walk_balance",
       "tail_walk_sweep"
+    ],
+    "stroll": [
+      "tail_walk_sweep",
+      "tail_walk_balance"
     ],
     "run": [
       "tail_run_stream",
@@ -73,6 +107,12 @@
     ],
     "jump": [
       "tail_run_balance"
+    ],
+    "climb": [
+      "tail_climb"
+    ],
+    "swim": [
+      "tail_swim"
     ]
   },
   "blink_clip": "blink",
@@ -82,6 +122,55 @@
     "star": "jump_star",
     "hop": "jump_hop"
   },
+  "climb_clips": {
+    "mount": "climb_mount",
+    "up": "climb_up",
+    "down": "climb_down",
+    "around_left": "climb_around_left",
+    "around_right": "climb_around_right",
+    "grip": "climb_grip",
+    "perch": "climb_perch"
+  },
+  "fall_clips": {
+    "bounce": "fall_bounce",
+    "tumble": "fall_tumble"
+  },
+  "swim_clips": {
+    "tread": "swim_tread",
+    "paddle": "swim_paddle",
+    "dive": "swim_dive",
+    "enter": "swim_enter",
+    "exit": "swim_exit"
+  },
+  "landing": {
+    "heavy": "land_heavy",
+    "heavy_mps": 6.5
+  },
+  "pivot": {
+    "left": "pivot_left",
+    "right": "pivot_right",
+    "min_rad": 1.2
+  },
+  "idle_sequence": [
+    {
+      "after_s": 7,
+      "clip": "lookaround"
+    },
+    {
+      "after_s": 16,
+      "clip": "present"
+    },
+    {
+      "after_s": 30,
+      "clip": "sit",
+      "hold": true
+    },
+    {
+      "after_s": 55,
+      "clip": "sit_doze",
+      "hold": true
+    }
+  ],
   "katana": {
     "holstered": "katana_holstered",
     "draw": "katana_draw",

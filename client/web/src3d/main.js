@@ -294,6 +294,17 @@ export async function main() {
     sun.target.updateMatrixWorld();
     renderer.shadowMap.needsUpdate = true;
   }
+  // Under the water's surface: a short teal fog and a tint over the view.
+  // Surfacing restores the fog the light preset set. Presentation only.
+  const underwaterTint=document.createElement('div');
+  Object.assign(underwaterTint.style,{position:'fixed',inset:'0',background:'rgba(30,92,100,.3)',pointerEvents:'none',display:'none'});
+  renderer.domElement.insertAdjacentElement('afterend',underwaterTint);
+  let underwaterView=false,airFog=null;
+  function applyUnderwater(under){
+    if(under===underwaterView)return;underwaterView=under;underwaterTint.style.display=under?'block':'none';
+    if(under){airFog={color:scene.fog.color.clone(),near:scene.fog.near,far:scene.fog.far};scene.fog.color.set('#2c6f73');scene.fog.near=1;scene.fog.far=28;scene.background.copy(scene.fog.color);}
+    else if(airFog){scene.fog.color.copy(airFog.color);scene.fog.near=airFog.near;scene.fog.far=airFog.far;scene.background.copy(airFog.color);}
+  }
   function setLight(name) {
     const p = lightPresets[name];
     setTreeLighting({...p,sun:p.color,ground:'#7a8452'});
@@ -413,7 +424,7 @@ export async function main() {
     if (delta > 0 && delta < 500) { samples.push(delta); if (samples.length > 240) samples.shift(); }
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
-    navigation.update(Math.min(delta,50)/1000);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
+    navigation.update(Math.min(delta,50)/1000);applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
     forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.

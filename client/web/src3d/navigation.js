@@ -3,11 +3,12 @@ import * as T from '../vendor/three.module.min.js';
 import {launchFlight,stepFlight,sampleAir} from '../../../shared/activities/flight.js';
 import {rideStart,startRide,stepRide} from '../../../shared/activities/ride.js';
 import {flightInput} from './flight-input.js';
-import {stepWalk,unharnessFlight,reharnessWalk,relaunchGround} from '../../../shared/activities/walk.js';
+import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround} from '../../../shared/activities/walk.js';
+import {stepMoves} from '../../../shared/activities/moves.js';
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true;
   let weather='soaring',siteIndex=0,feedbackTime=0,effects=1;
-  let actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null;
+  let actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const flightPressed=new Set(),flightModes=Object.keys(config.modes);
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
   const keys=new Set(),blockedActions=new Set(),look=new T.Euler(0,0,0,'YXZ');
@@ -111,35 +112,48 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     orbit.target.copy(camera.position);orbit.target.y=height(camera.position.x,-camera.position.z);
   }
-  function follow(dt,distance,heading){
-    target.copy(character.object.position).add(new T.Vector3(0,config.modes[mode]?2.7:1.1,0));
+  function follow(dt,distance,heading,lift=0){
+    target.copy(character.object.position).add(new T.Vector3(0,(config.modes[mode]?2.7:1.1)+lift,0));
     const angle=heading-Math.PI/2+yaw;
     chase.set(target.x+Math.sin(angle)*Math.cos(pitch)*distance,target.y-Math.sin(pitch)*distance,target.z+Math.cos(angle)*Math.cos(pitch)*distance);
     chase.y=Math.max(chase.y,height(chase.x,-chase.z)+.45);
     // Pull the camera in along the same view ray when a tree or home blocks it.
     const start=[target.x,-target.z,target.y];
-    for(let i=0;i<12&&hitTest?.(start,[chase.x,-chase.z,chase.y],.2);i++)chase.lerp(target,.2);
+    // While he climbs a tree, that tree's own trunk and crown boxes do not count.
+    const own=box=>mode==='walk'&&state?.mode==='climb'&&box.min[0]<=state.trunk.x&&box.max[0]>=state.trunk.x&&box.min[1]<=state.trunk.y&&box.max[1]>=state.trunk.y;
+    for(let i=0;i<12;i++){const box=hitTest?.(start,[chase.x,-chase.z,chase.y],.2);if(!box||own(box))break;chase.lerp(target,.2);}
     if(snap)camera.position.copy(chase);else camera.position.lerp(chase,1-Math.exp(-dt*10));
     camera.lookAt(target);snap=false;
   }
   function updateWalk(dt,x,y,run){
     forward.set(-Math.sin(yaw),0,-Math.cos(yaw));side.set(Math.cos(yaw),0,-Math.sin(yaw));
     const movement=forward.clone().multiplyScalar(y).addScaledVector(side,x);
-    state=stepWalk(state,{x:movement.x,y:-movement.z,run,jump:actionHeld},dt,characterConfig.walk,walkHeight,hitTest);
+    const before=state.speed??0;
+    const water=options.walkHeight?.waterAt;
+    state=stepMoves(state,{x:movement.x,y:-movement.z,run,jump:actionHeld,stick:[x,y],pitch},dt,characterConfig.walk,
+      {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height});
+    const climbing=state.mode==='climb',swimming=state.mode==='swim';
     character.object.position.set(state.x,state.z,-state.y);
-    if(state.speed>0){
+    // Where the model faces now versus where it travels: a big gap asks for a pivot.
+    const facing=new T.Vector3(0,0,1).applyQuaternion(character.object.quaternion),goalYaw=state.heading+Math.PI/2,turn=goalYaw-Math.atan2(facing.x,facing.z);
+    if(climbing)character.object.quaternion.setFromAxisAngle(new T.Vector3(0,1,0),state.heading+Math.PI/2);
+    else if(state.speed>0){
       const goal=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),state.heading+Math.PI/2);
       character.object.quaternion.slerp(goal,1-Math.exp(-dt*14));
     }
     const jumping=state.jumpPhase&&state.jumpPhase!=='grounded';
-    character.update(dt,jumping?'jump':state.speed>.05?(run?'run':'walk'):'idle',state.speed,{jump:jumping?state:null,groundZ:characterHeight(state.x,state.y),groundHeight:characterHeight});
+    // The gait follows the speed the feet actually have, not the Shift key.
+    const gait=gaitFor(state.speed,characterConfig.walk,characterConfig.clips);
+    character.update(dt,climbing?'climb':swimming?'swim':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{climb:climbing?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:characterHeight(state.x,state.y),groundHeight:characterHeight});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);
     // Walk heading follows movement; the camera's yaw stays independently controllable.
     character.object.visible=view==='chase';
     if(view==='first'){
       camera.position.set(state.x,state.z+1.65,-state.y);
       look.set(pitch,yaw,0);camera.quaternion.setFromEuler(look);snap=false;
-    }else follow(dt,5.4,Math.PI/2);
+    }else follow(dt,climbing?6.9:5.4,Math.PI/2,climbing?.6:0);
+    // Below the water's surface, the client tints and fogs the view (main.js).
+    const overhead=water?.(camera.position.x,-camera.position.z);underwater=!!overhead&&camera.position.y<overhead.surface_z;
   }
   function flightPose(){
     if(!previousFlight||state.grounded)return state;
@@ -189,5 +203,5 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     snap=false;orbit.target.copy(p);
   }
   function setWeather(name){if(!config.weather[name])return;weather=name;if(state&&config.modes[mode])state={...state,weather};else if(mode==='walk'&&state?.harnessMode)state={...state,harnessWeather:weather};options.onFlightChange?.(mode,siteIndex,weather);}
-  return {select,update,clear,changeHarness,setWeather,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {select,update,clear,changeHarness,setWeather,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

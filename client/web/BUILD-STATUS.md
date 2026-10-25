@@ -1,3 +1,15 @@
+# Cat Ronin climbs and swims — merged, 2026-10-25
+
+Merged to main from `claude/cat-ronin-animation-14af41`, with the earlier animation pass: trunk climbing on any
+tree at least 0.6 m across (perch below the crown, no tree launches), comic
+high-fall bounce and tumble, wading/treading/paddling/diving in lakes and
+rivers with an underwater view, and their clips. Studio trunk/pool/drop rigs
+and a Blender clip round trip. Shared rules and tests in `shared/activities/`
+and `client/web/tests/{climb,swim}.test.mjs`. Record:
+[`GROUND-MOVEMENT.md`](../../shared/geometry/cat-ronin/GROUND-MOVEMENT.md).
+
+---
+
 # Redwood and village repairs — accepted release, 2026-10-24
 
 Canopy and Giant Redwood share redder bark with the refined village bole. All
@@ -48,7 +60,7 @@ embedded textures), a katana clip layer with glTF `extras.events` cues read by
 `glb.js`, katana input in `navigation.js`, cue synthesis in `audio.js`, and
 character-only shading in `character-surface.js` (whisker glint/halo, ear
 translucency, hair cards, fur fog, eye/eyepatch fur cut-outs whose centres
-mirror the core's `EYE` and patch). The [character studio](tools/character-lab.html)
+mirror the core's `EYE` and patch). The [character studio](character-lab/README.md)
 adds draw/sheathe, sound and an eye view. Web **265/265**.
 
 ---
@@ -333,7 +345,7 @@ pyright retains the same 74 errors/1 warning in unchanged files. Opened exported
 Blender renders and live WebGL studio/game captures are documented in
 [`FIDELITY.md`](../../shared/geometry/cat-ronin/FIDELITY.md).
 
-[Character studio](http://127.0.0.1:8002/client/web/tools/character-lab.html)
+[Character studio](character-lab/README.md)
 offers close-up views and movement selection. It is a local authoring tool and
 is not packaged with the game. [Game preview](http://127.0.0.1:8002/client/web/scene.html).
 Functional integration and deployment are authorized. The ordered polish
