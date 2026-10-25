@@ -355,6 +355,7 @@ export async function main() {
   document.querySelectorAll('button[data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
   window.addEventListener('keydown', e => {
     if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+    if ((e.code==='KeyH'||e.key==='Escape')&&!e.repeat&&!e.metaKey&&!e.ctrlKey) document.body.dataset.ui = document.body.dataset.ui==='hidden' ? '' : 'hidden';
     if (['1','2','3'].includes(e.key)) setView(['home','river','valley'][Number(e.key)-1]);
   });
   setView(new URLSearchParams(location.search).get('view') in views ? new URLSearchParams(location.search).get('view') : 'home');

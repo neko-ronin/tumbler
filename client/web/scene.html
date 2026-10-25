@@ -13,6 +13,7 @@
     body { margin: 0; overflow: hidden; background: #dcd7b8; }
     #stage, canvas { width: 100vw; height: 100dvh; display: block; }
     canvas { touch-action: none; outline: none; }
+    body[data-ui="hidden"] :is(.panel, .help) { display: none; }
     .panel { background: #fffbedde; border: 1px solid #fffdf2bb; box-shadow: 0 4px 24px #33452b12; border-radius: 18px; }
     header { position: absolute; top: 24px; left: 28px; padding: 16px 22px; display: flex; align-items: center; gap: 13px; pointer-events: none; }
     .sunmark { font-size: 31px; color: #bd8e49; font-weight: 300; }
