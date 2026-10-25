@@ -10,6 +10,8 @@ import {cloudCellBounds} from './cloud-shadow-field.js';
 import {createSunRays} from './sun-rays.js';
 import {buildCloudNoise,CLOUD_DENSITY_GLSL} from './cloud-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
+// Denser view rays retain eroded cloud detail during close flight.
+export const CLOUD_VIEW_STEPS=96;
 export function createCloudPass(renderer,scene,camera,atmosphere,ground){
   const opaque=new T.WebGLRenderTarget(1,1,{samples:Math.min(4,renderer.capabilities.maxSamples),depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)});
   opaque.texture.colorSpace=T.LinearSRGBColorSpace;
@@ -42,11 +44,11 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
           float viewDepth=uNear*uFar/(uFar-depth*(uFar-uNear));
           exit=min(exit,viewDepth/max(.001,dot(ray,uForward)));
           if(exit<=entry)discard;
-          float stepM=(exit-entry)/48.;float trans=1.;vec3 light=vec3(0.);
+          float stepM=(exit-entry)/${CLOUD_VIEW_STEPS}.;float trans=1.;vec3 light=vec3(0.);
           float jitter=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);
           float forward=pow(max(0.,dot(ray,uSun)),12.);
           vec3 sunTint=mix(vec3(1.,.98,.90),vec3(1.12,.75,.43),uWarmth);
-          for(int i=0;i<48;i++){
+          for(int i=0;i<${CLOUD_VIEW_STEPS};i++){
             vec3 p=cameraPosition+ray*(entry+(float(i)+jitter)*stepM);float d=cloudDensity(p,true);
             if(d>.001){
               vec2 sunTransmission=cachedCloudLight(p);

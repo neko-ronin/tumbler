@@ -1,3 +1,10 @@
+# Cloud motion — approved for main, 2026-10-24
+
+Cloud view rays use 96 samples to reduce crawling density bands during flight.
+The rejected shadow-accumulation change is excluded; environment shading keeps
+the released behavior. The [investigation and review](../../docs/reviews/cloud-regression-2026-10-24.md)
+record the visual checks, GPU cost and remaining shadow/performance work.
+
 # Tree studio and feral forest integrated — 2026-10-23
 
 All studio, tree-update and game-integration work is combined for main at the
