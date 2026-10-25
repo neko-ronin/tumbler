@@ -7,6 +7,7 @@ import { buildPlacements, buildForest } from './placements.js';
 import { buildTreeGroundShadows } from './forest.js';
 import {instanceMatrix} from './world.js';
 import {setTreeLighting} from './tree-surface.js';
+import {bindTreeSunShadow} from './tree-shadows.js';
 import {buildForestField,forestField} from './forest-field.js';
 import {buildForestFloor} from './forest-floor.js';
 import {buildAdoptedRedwoods,releaseCrownSources} from './redwood-rendering.js';
@@ -271,7 +272,7 @@ export async function main() {
   Object.assign(sun.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 1, far: 1800 });
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -.00015; sun.shadow.normalBias = .7;
-  scene.add(sun, sun.target);
+  scene.add(sun, sun.target);bindTreeSunShadow(sun);
   const hemisphere = new T.HemisphereLight('#afd7e3', '#7a8452', 2.0); scene.add(hemisphere);
   const actorShadows=createActorShadows(renderer,scene,[rig,character.object,rideRig],style);
   const actorFocus=new T.Vector3();
@@ -339,7 +340,8 @@ export async function main() {
     home: { position: homeCamera, target: [hx, hz + 3, -hy] },
     valley: { position: [-1850,1150,1450], target: [0,450,-1100] },
     summit: { position: [-650,ground.height(-380,1620)+110,-1360], target: [200,500,-700] },
-    village: { position: [-780,ground.height(-710,450)+55,-340], target: [-710,ground.height(-710,450)+42,-450] },
+    // Matched to the approved game-village.png capture (62 degree field of view).
+    village: { position: [-672,73.8391,-442], target: [-696,89.8391,-472] },
     river: { position: [shore[0],shore[2]+2,-shore[1]], target: [school[0],school[2]-.7,-school[1]] },
   };
   function setView(name) {

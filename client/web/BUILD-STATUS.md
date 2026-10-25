@@ -1,3 +1,21 @@
+# Redwood and village repairs — accepted release, 2026-10-24
+
+Canopy and Giant Redwood share redder bark with the refined village bole. All
+four forest LODs receive the scenery sun map; tile-isolated mip sampling removes
+brown crown-edge squares. The village look-around preset matches the selected
+close view and supports looking upward. Occupied structures, sockets, placements
+and world bounds remain intact. The human confirms the local fix and authorizes
+merge/deployment. Web **274/274**, package/publisher **13/13**, byte verification
+**119 fetched + 17 map files**. Current release identities and cleanup are in the
+[release receipt](../../docs/reviews/redwood-release-2026-10-24.md).
+
+Remaining work: LOD silhouette continuity, richer close forest floor, researched
+stand structure, sustained/cross-device profiling and Unreal validation. The
+latest 240-frame local sample is **33.3 / 34.3 ms p50 / p95**; it is not sustained
+performance acceptance. Older entries below describe their original checkpoints.
+
+---
+
 # Forest afternoon — approved for main, 2026-10-24
 
 The human approved the forest pass for merge and deployment. It unifies bark/LOD

@@ -67,7 +67,7 @@
     },
     {
       "path": "client/web/src3d/controls.js",
-      "sha256": "dc2f43c19fee2ec98641534a56b049728498735f4a9e2925f8b9fe0045e5d71f"
+      "sha256": "d0cc5c2db348445ff292ea48a808179b295891263dcc4859817de0535e80ecf4"
     },
     {
       "path": "client/web/src3d/details.js",
@@ -127,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "24f3ce698541832f6c3ce7cf5bad6870c48501f69fab3b3ad8d8d081e9c8f31e"
+      "sha256": "45e12a142b0060849826ad0cbc117ad386314e9b81759ab833a766513e58c609"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -139,7 +139,7 @@
     },
     {
       "path": "client/web/src3d/placements.js",
-      "sha256": "a3a57450ec32498762c227570aa5d6f116325795d3ba54692d587ae99622409f"
+      "sha256": "59d264e58a78c2f7faa368cecacf63bfa3283dfc6f17daf6ec638d478a59e162"
     },
     {
       "path": "client/web/src3d/provenance.js",
@@ -151,7 +151,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "c9d8beba0ca191cf8a48976e4c128a154cfa40f7235b43dc37324deaeeb82e9e"
+      "sha256": "b27cc270e319d47c3a703e93067159a780aa5630d82f7e75d51251a178f0a6f2"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
@@ -162,28 +162,36 @@
       "sha256": "3bea57ef605dadbc90eb008087ae71bf05a04c8f47968d540a56894e477c2b06"
     },
     {
+      "path": "client/web/src3d/tree-atlas.js",
+      "sha256": "42b573d868baede5e880cc35e2f150b1ef927b708670b213c737def9d43db514"
+    },
+    {
       "path": "client/web/src3d/tree-budget.js",
       "sha256": "fb1f8614df7daefc0068f482ce303b2493600171bdf06251577b4b2aeba6929b"
     },
     {
       "path": "client/web/src3d/tree-cards.js",
-      "sha256": "9c58600622e2a8acb589f7f533719ebefc3ee2d6e5d003d9e0fba869569107cd"
+      "sha256": "910a7f3eb55bff33d0237d8220d3ae1ef8ca9e8a2966ce7b8d7ee8293d84f3d1"
     },
     {
       "path": "client/web/src3d/tree-impostors.js",
-      "sha256": "e2e9b69996cc1a9ebac497f42e379af2b5e6981aa7731307da6d9ecb070ebef3"
+      "sha256": "b92db53b71b4fe415e135e0b9c2faf976842d349d6b773497e6a4e302b7c3ae2"
     },
     {
       "path": "client/web/src3d/tree-lighting.js",
-      "sha256": "e37c3b0021d1cf403ba6f5d4dd977479a8fcd177506eb178a553309011dc15ea"
+      "sha256": "8ff3869e2d22df2813e3d2c077ca819655aa3c4615a8fc3cc0eef31b57849474"
     },
     {
       "path": "client/web/src3d/tree-material.js",
-      "sha256": "96d80e2958c17bbda50dabf9c987e269f8b315151d46699ea22e887e09e26c55"
+      "sha256": "2b9220d133fa697f607edcada8fab80dd407a59122f33f12dd0adc9641035caa"
+    },
+    {
+      "path": "client/web/src3d/tree-shadows.js",
+      "sha256": "00d92c0ba4ad2ad0912e8b6556491145acc9c59eeecef2e850509a0115b04218"
     },
     {
       "path": "client/web/src3d/tree-surface.js",
-      "sha256": "36d095d950959f240aeaccb4db3262aadeeea116666c7878e3abc811ad8b4264"
+      "sha256": "fc6814b034210daeff6c0c1e7f04c477e144a8599169a69700d9b62ffd6b15fa"
     },
     {
       "path": "client/web/src3d/version.js",
@@ -255,19 +263,19 @@
     },
     {
       "path": "shared/geometry/arboreal/village_tree.glb",
-      "sha256": "353a3040a88c758b055dfb40095b96e13a5095ab3928e66d8f3a8bd7ffff7096"
+      "sha256": "a3c7c457412685be37ed523e7d1f47a1aae21e0f84960527fc530d480037b6b1"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_high.glb",
-      "sha256": "a7592727a3c70a098ce969f733382206b98379c7caceb9be3562915ee52192ea"
+      "sha256": "86bab61ab05e2e9b59219396f1990d7f3f8cc7be6c6f0e8451248d09e0234351"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_low.glb",
-      "sha256": "eb20dba981382234711aae43d8a9be9866f93a0a4abf7971ca59946fe6dfc0d7"
+      "sha256": "27793c31e30e848a8ff14c2bb83c2f36b72f63ccd2ca5293970d6a5d72099e57"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_mid.glb",
-      "sha256": "033eeae155cfdcccb61b2ae0c74a1dc0cba509a573c0728c853482137c96155d"
+      "sha256": "1f7902fd27de62e0b7876688c15055073a976365797be42a4f66f9e57d0c94ac"
     },
     {
       "path": "shared/geometry/blimp/blimp.glb",
@@ -347,7 +355,7 @@
     },
     {
       "path": "shared/geometry/tree-design/adopted-redwoods.json",
-      "sha256": "b6cf5615a94b7ebe2826087c0b669bfb836748168f0ccc1f667139c366906a38"
+      "sha256": "cce39becd96f77e2e2b61dedd596749da4396c32a33ef6878c19cdabbc6614b0"
     },
     {
       "path": "shared/geometry/tree-design/card-clusters.js",
@@ -471,7 +479,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "0c1441e",
+  "commit": "9459d6c",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

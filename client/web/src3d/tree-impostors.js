@@ -3,6 +3,8 @@
  * when its preset changes. No runtime procedural tree generation. */
 import * as T from '../vendor/three.module.min.js';
 import {style,sunShadowShader} from './style.js';
+import {TREE_ATLAS_GLSL,treeAtlasMaxMip} from './tree-atlas.js';
+import {updateTreeSunShadow} from './tree-shadows.js';
 
 export function bakeCards(renderer, geometry, material, representation, settings) {
   const views = representation === 'multiview' ? settings.views : representation === 'crossed' ? 2 : 1;
@@ -39,6 +41,7 @@ export function bakeCards(renderer, geometry, material, representation, settings
   }
   const plane = representation === 'crossed' ? crossedGeometry(width, height, centre) : new T.PlaneGeometry(width, height).translate(centre.x, centre.y, centre.z);
   const shaderMaterial = new T.MeshBasicMaterial({map: target.texture, alphaTest: settings.alphaCutoff, side: T.DoubleSide, toneMapped: false, fog: true});
+  shaderMaterial.onBeforeRender=updateTreeSunShadow;
   shaderMaterial.onBeforeCompile = shader => {
     sunShadowShader(shader);shader.uniforms.uCardSun=style.sun;shader.vertexShader='varying vec3 vCardWorld;\n'+shader.vertexShader;shader.fragmentShader='varying vec3 vCardWorld;uniform vec3 uCardSun;\n'+shader.fragmentShader;
     Object.assign(shader.uniforms, {uAtlas: {value: new T.Vector2(columns, rows)}, uViews: {value: views}, uYawOffset: {value: settings.bakeYaw * Math.PI / 180},
@@ -46,7 +49,7 @@ export function bakeCards(renderer, geometry, material, representation, settings
       uCentre: {value: centre}, uDims: {value: new T.Vector2(width, box.min.y + size.y * .72)}});
     shader.vertexShader = `attribute vec2 forestInterval; uniform float uViews,uYawOffset; uniform vec2 uTopRange,uDims; uniform vec3 uCentre;
       varying vec2 vStudyInterval; varying vec4 vCardViews;\n` + shader.vertexShader;
-    shader.fragmentShader = 'uniform vec2 uAtlas; varying vec2 vStudyInterval; varying vec4 vCardViews;\n' + shader.fragmentShader;
+    shader.fragmentShader = TREE_ATLAS_GLSL+'uniform vec2 uAtlas; varying vec2 vStudyInterval; varying vec4 vCardViews;\n' + shader.fragmentShader;
     shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', representation === 'crossed' ? `
       vStudyInterval=forestInterval; vCardViews=vec4(uv.x>1.?1.:0.,0.,0.,0.);
       vCardWorld=(modelMatrix*instanceMatrix*vec4(position,1.)).xyz;vec4 mvPosition=modelViewMatrix*instanceMatrix*vec4(position,1.); gl_Position=projectionMatrix*mvPosition;
@@ -70,20 +73,20 @@ export function bakeCards(renderer, geometry, material, representation, settings
       vec2 tileA=vec2(mod(vCardViews.x,uAtlas.x),floor(vCardViews.x/uAtlas.x));
       vec2 tileB=vec2(mod(vCardViews.y,uAtlas.x),floor(vCardViews.y/uAtlas.x));
       vec2 tileTop=vec2(mod(${views.toFixed(1)},uAtlas.x),floor(${views.toFixed(1)}/uAtlas.x));
-      vec2 safeUv=clamp(cardUv,vec2(.5/${resolution.toFixed(1)}),vec2(1.-.5/${resolution.toFixed(1)}));
-      vec4 sideA=texture2D(map,(tileA+safeUv)/uAtlas),sideB=texture2D(map,(tileB+safeUv)/uAtlas);
-      vec4 sampleColor=mix(mix(sideA,sideB,vCardViews.z),texture2D(map,(tileTop+safeUv)/uAtlas),vCardViews.w);
+      float atlasLod=treeAtlasLod(cardUv,${resolution.toFixed(1)},${treeAtlasMaxMip(resolution).toFixed(1)});
+      vec4 sideA=treeAtlasSample(map,tileA,cardUv,uAtlas,${resolution.toFixed(1)},atlasLod),sideB=treeAtlasSample(map,tileB,cardUv,uAtlas,${resolution.toFixed(1)},atlasLod);
+      vec4 sampleColor=mix(mix(sideA,sideB,vCardViews.z),treeAtlasSample(map,tileTop,cardUv,uAtlas,${resolution.toFixed(1)},atlasLod),vCardViews.w);
       // Filtering transparent captures produces coverage-weighted color.
       // Recover it after blending views, exactly once, in linear light.
       sampleColor.rgb/=max(sampleColor.a,.001);
       diffuseColor*=sampleColor;
     `);
-    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`outgoingLight*=mix(.60,1.,cloudObjectLight(vCardWorld,uCardSun)*actorSunLight(vCardWorld));\n#include <opaque_fragment>`);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`outgoingLight*=mix(.60,1.,cloudObjectLight(vCardWorld,uCardSun)*actorSunLight(vCardWorld)*scenerySunLight(vCardWorld,normalize(uCardSun)));\n#include <opaque_fragment>`);
     shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', `#include <alphatest_fragment>
       float threshold=fract(dot(floor(gl_FragCoord.xy),vec2(.754877666,.569840296)));
       if(threshold<vStudyInterval.x||threshold>=vStudyInterval.y)discard;`);
   };
-  shaderMaterial.customProgramCacheKey = () => `studio-cards-v2-${representation}-${views}-${resolution}`;
+  shaderMaterial.customProgramCacheKey = () => `studio-cards-v4-${representation}-${views}-${resolution}`;
   plane.computeBoundingBox(); plane.computeBoundingSphere();
   return {geometry: plane, material: shaderMaterial, target, views, columns, rows, resolution,
     textureBytes: columns * rows * resolution * resolution * 4 * 4 / 3,

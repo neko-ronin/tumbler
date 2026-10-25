@@ -3,6 +3,8 @@
  * All islands and wood share one instanced draw and one bounded atlas. */
 import * as T from '../vendor/three.module.min.js';
 import {style,sunShadowShader} from './style.js';
+import {TREE_ATLAS_GLSL,treeAtlasMaxMip} from './tree-atlas.js';
+import {updateTreeSunShadow} from './tree-shadows.js';
 import {treeLighting} from './tree-surface.js';
 import {TREE_WOOD_GLSL} from './tree-lighting.js';
 import {FOREST_FIELD_GLSL,forestUniforms} from './forest-field.js';
@@ -71,12 +73,13 @@ export function bakeBoughCards(renderer, source, sourceMaterial, representation,
   // Dynamic card orientations can extend beyond their rest plane bounds.
   source.computeBoundingBox();geometry.boundingBox=source.boundingBox.clone();for(const cluster of clusters){const b=new T.Box3().setFromCenterAndSize(new T.Vector3(...cluster.centre),new T.Vector3().setScalar(cluster.diameter*Math.SQRT2));geometry.boundingBox.union(b);}geometry.boundingSphere=geometry.boundingBox.getBoundingSphere(new T.Sphere());
   const material=new T.MeshBasicMaterial({map:target.texture,vertexColors:true,side:T.DoubleSide,alphaTest:settings.alphaCutoff,alphaToCoverage:true,toneMapped:false,fog:true});
+  material.onBeforeRender=updateTreeSunShadow;
   material.onBeforeCompile=shader=>{
     sunShadowShader(shader);Object.assign(shader.uniforms,forestUniforms());
-    shader.vertexShader='varying vec3 vCardWorld;\n'+shader.vertexShader;shader.fragmentShader='varying vec3 vCardWorld;uniform vec3 uCardSun;\n'+shader.fragmentShader;shader.uniforms.uCardSun=style.sun;Object.assign(shader.uniforms,{uWoodSun:treeLighting.sun,uWoodSky:treeLighting.fill,uWoodGround:treeLighting.ground});
+    shader.vertexShader='varying vec3 vCardWorld;\n'+shader.vertexShader;shader.fragmentShader='varying vec3 vCardWorld;uniform vec3 uCardSun;\n'+shader.fragmentShader;shader.uniforms.uCardSun=style.sun;Object.assign(shader.uniforms,{uTreeRedBark:{value:+Boolean(sourceMaterial.userData.treeRedBark)},uWoodSun:treeLighting.sun,uWoodSky:treeLighting.fill,uWoodGround:treeLighting.ground});
     Object.assign(shader.uniforms,{uAtlas:{value:new T.Vector2(columns,rows)},uSideViews:{value:sideViews},uYaw:{value:yawOffset},uPolar:{value:new T.Vector2(settings.topStart*Math.PI/180,settings.topEnd*Math.PI/180)},uBoughSun:style.sun});
     shader.vertexShader='attribute vec3 cardCentre;attribute vec4 cardInfo;attribute vec2 forestInterval;uniform float uSideViews,uYaw;uniform vec2 uPolar;uniform vec3 uBoughSun;varying vec4 vBough;varying vec2 vInterval;varying vec3 vWoodNormal,vWoodLocal;\n'+shader.vertexShader;
-    shader.fragmentShader='uniform vec3 uWoodSun,uWoodSky,uWoodGround;uniform vec2 uAtlas;varying vec4 vBough;varying vec2 vInterval;varying vec3 vWoodNormal,vWoodLocal;\n'+FOREST_FIELD_GLSL+TREE_WOOD_GLSL+shader.fragmentShader;
+    shader.fragmentShader='uniform vec3 uWoodSun,uWoodSky,uWoodGround;uniform vec2 uAtlas;varying vec4 vBough;varying vec2 vInterval;varying vec3 vWoodNormal,vWoodLocal;\n'+TREE_ATLAS_GLSL+FOREST_FIELD_GLSL+TREE_WOOD_GLSL+shader.fragmentShader;
     shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`
       vInterval=forestInterval;vBough=vec4(-1.,0.,1.,0.);vWoodLocal=position;vWoodNormal=normal;
       vec3 placed=position;
@@ -106,8 +109,8 @@ export function bakeBoughCards(renderer, source, sourceMaterial, representation,
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`
       if(vBough.w>.5){
         vec2 tile=vec2(mod(vBough.x,uAtlas.x),floor(vBough.x/uAtlas.x));
-        vec2 safeUv=clamp(vMapUv,vec2(1.5/${resolution.toFixed(1)}),vec2(1.-1.5/${resolution.toFixed(1)}));
-        vec4 leafSample=texture2D(map,(tile+safeUv)/uAtlas);
+        float atlasLod=treeAtlasLod(vMapUv,${resolution.toFixed(1)},${treeAtlasMaxMip(resolution).toFixed(1)});
+        vec4 leafSample=treeAtlasSample(map,tile,vMapUv,uAtlas,${resolution.toFixed(1)},atlasLod);
         // Transparent atlas texels are black. Filtering/mipmaps produce
         // coverage-weighted RGB; recover straight colour before alpha test.
         leafSample.rgb/=max(leafSample.a,.001);diffuseColor*=leafSample;
@@ -115,7 +118,7 @@ export function bakeBoughCards(renderer, source, sourceMaterial, representation,
         if(choice<vBough.y||choice>=vBough.z)discard;
       }
     `);
-    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`float sunlight=cloudObjectLight(vCardWorld,uCardSun)*actorSunLight(vCardWorld);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`float sunlight=cloudObjectLight(vCardWorld,uCardSun)*actorSunLight(vCardWorld)*scenerySunLight(vCardWorld,normalize(uCardSun));
       if(vBough.w>.5)outgoingLight*=mix(.60,1.,sunlight);
       else outgoingLight=treeWoodLight(diffuseColor.rgb,vWoodLocal,vCardWorld,normalize(vWoodNormal)*(gl_FrontFacing?1.:-1.),normalize(uCardSun),uWoodSun,uWoodSky,uWoodGround,sunlight*forestCanopyLight(vCardWorld),1.);\n#include <opaque_fragment>`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>',`if(diffuseColor.a<alphaTest)discard;
@@ -123,7 +126,7 @@ export function bakeBoughCards(renderer, source, sourceMaterial, representation,
       if(threshold<vInterval.x||threshold>=vInterval.y)discard;
     `);
   };
-  material.customProgramCacheKey=()=>`studio-bough-v2-${fixed}-${sideViews}-${resolution}`;
+  material.customProgramCacheKey=()=>`studio-bough-v4-${fixed}-${sideViews}-${resolution}`;
   const atlasBytes=columns*rows*resolution*resolution;
   return {geometry,material,target,views:sideViews,columns,rows,resolution,textureBytes:atlasBytes*4*4/3,
     detail:{profile:representation,clusters:clusters.length,cards:clusters.length*3,woodTriangles,woodComponents:retained.components,keptWoodComponents:retained.keptComponents,sourceLeafTriangles:clusters.reduce((n,c)=>n+c.indices.length/3,0),captureViews:views,bakeMs:performance.now()-started,depthBytes:atlasBytes*4},

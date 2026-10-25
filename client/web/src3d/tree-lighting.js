@@ -3,6 +3,7 @@
  * Derivative filtering removes subpixel bark stripes before they can shimmer.
  */
 export const TREE_WOOD_GLSL=`
+uniform float uTreeRedBark;
 float barkNoise(vec2 p){
  vec2 cell=floor(p),f=fract(p);f=f*f*(3.-2.*f);
  vec3 q=fract(vec3(cell.xyx)*.1031);q+=dot(q,q.yzx+33.33);
@@ -22,8 +23,9 @@ vec3 treeWoodAlbedo(vec3 albedo,vec3 p,out float relief){
  float resolved=1.-smoothstep(.03,.18,footprint);
  float groove=mix(.55,smoothstep(.16,.8,furrow),1.-smoothstep(.2,.65,footprint));
  float luminance=dot(albedo,vec3(.2126,.7152,.0722));
- // Weathered redwood is warm grey-brown; keep the source's species value.
- vec3 wood=mix(albedo,luminance*vec3(1.16,1.04,.93),.48)*.9;
+ // Redwood keeps its iron-red source hue, as the occupied village did.
+ // Conifers retain the subtler weathered treatment.
+ vec3 wood=mix(albedo,luminance*vec3(1.16,1.04,.93),mix(.48,.06,uTreeRedBark))*mix(.9,1.08,uTreeRedBark);
  wood*=mix(.46,1.13,groove)*mix(.88,1.06,mix(.5,fibre,resolved));
  float lichen=smoothstep(.67,.83,barkNoise(uv*vec2(2.7,1.3)))*.25;
  wood=mix(wood,luminance*vec3(.9,1.02,.77),lichen);

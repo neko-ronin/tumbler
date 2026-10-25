@@ -12,11 +12,12 @@ export const treeLightingKey=()=>Object.values(treeLighting).flatMap(u=>u.value.
 export function createTreeSurface(recipe,{sun,shadowShader=null,interval='studyInterval',sprayMap=null,palette=['#294b37','#3f6a47','#648658'].map(c=>new T.Color(c).toArray()),inspection=false,mask=false}={}) {
   const material=new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,fog:!inspection&&!mask,alphaToCoverage:Boolean(sprayMap)});
   if(inspection||mask)material.toneMapped=false;
+  material.userData.treeRedBark=recipe.leafProfile==='redwood';
   material.defaultAttributeValues={[interval]:[0,1],leafKind:[0],canopyAO:[1]};
   material.onBeforeCompile=shader=>{
     shadowShader?.(shader);Object.assign(shader.uniforms,forestUniforms());
     if(sprayMap){shader.uniforms.uTreeSprayMap={value:sprayMap};shader.uniforms.uTreePalette={value:palette.map(rgb=>new T.Vector3(...rgb))};shader.uniforms.uTreeCutoff={value:recipe.sprayCutoff??.3};}
-    Object.assign(shader.uniforms,{uTreeSun:sun,uTreeSunTint:treeLighting.sun,uTreeSkyTint:treeLighting.fill,uTreeGroundTint:treeLighting.ground,uTreeBands:{value:recipe.toonBands},uTreeRim:{value:recipe.rimStrength},
+    Object.assign(shader.uniforms,{uTreeRedBark:{value:+material.userData.treeRedBark},uTreeSun:sun,uTreeSunTint:treeLighting.sun,uTreeSkyTint:treeLighting.fill,uTreeGroundTint:treeLighting.ground,uTreeBands:{value:recipe.toonBands},uTreeRim:{value:recipe.rimStrength},
       uTreeOcclusion:{value:recipe.canopyShade},uTreeTransmission:{value:recipe.transmission*Math.exp((.4-recipe.leafThickness)*1.4)}});
     shader.vertexShader=`attribute float leafKind,canopyAO;attribute vec2 ${interval};varying float vTreeLeaf,vTreeAO;varying vec2 vTreeInterval,vTreeUV;varying vec3 vTreeNormal,vTreeWorld,vTreeLocal;\n`+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
@@ -54,7 +55,7 @@ export function createTreeSurface(recipe,{sun,shadowShader=null,interval='studyI
       vec3 fill=mix(uTreeGroundTint,uTreeSkyTint,N.y*.5+.5);
       // Broad, continuous leaf response keeps fine sprays from banding.
       float diffuseLight=mix(diffuse,bands,.18);
-      float sunlight=${shadowShader?'cloudObjectLight(vTreeWorld,L)*actorSunLight(vTreeWorld)':'1.'};
+      float sunlight=${shadowShader?'cloudObjectLight(vTreeWorld,L)*actorSunLight(vTreeWorld)*scenerySunLight(vTreeWorld,N*sign(dot(N,L)))':'1.'};
       vec3 leafLight=fill*vec3(.25,.32,.34)*ao+uTreeSunTint*(.10+.95*diffuseLight)*ao;
       float transmission=through*(.3+.7*abs(dot(N,L)))*mix(.35,1.,ao);
       outgoingLight=diffuseColor.rgb*(leafLight+uTreeSunTint*vec3(1.08,1.18,.65)*uTreeTransmission*transmission*.85+
@@ -64,7 +65,7 @@ export function createTreeSurface(recipe,{sun,shadowShader=null,interval='studyI
       #include <opaque_fragment>
     `);
   };
-  material.customProgramCacheKey=()=> `tree-surface-v5-${interval}-${Boolean(shadowShader)}-${Boolean(sprayMap)}-${inspection}-${mask}`;
+  material.customProgramCacheKey=()=> `tree-surface-v6-${interval}-${Boolean(shadowShader)}-${Boolean(sprayMap)}-${inspection}-${mask}`;
   if(!mask)material.studioMaskMaterial=createTreeSurface(recipe,{sun,shadowShader,interval,sprayMap,palette,mask:true});
   return material;
 }

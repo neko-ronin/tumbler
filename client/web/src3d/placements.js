@@ -18,9 +18,10 @@
  * applying their own `position_m` would float them at twice the surface height.
  */
 
-import { Group, InstancedMesh } from "../vendor/three.module.min.js";
+import { Group, InstancedMesh, Float32BufferAttribute } from "../vendor/three.module.min.js";
 import { mergePrimitives } from "./glb.js";
 import { instanceMatrix } from "./world.js";
+import {villageBarkMaterial} from "./tree-material.js";
 
 /** The instances of `placement.json`, grouped by the asset they name. */
 export function groupByAsset(placement) {
@@ -95,7 +96,25 @@ export function buildPlacements(placement, assets, options = {}) {
     if (assetPath.startsWith("redwood/")) continue;
     let asset = assets[assetPath];
     if (!asset) throw new Error(`placement.json names ${assetPath} and no GLB was loaded for it`);
-    if(options.crownAssets?.has(assetPath)&&assetPath.startsWith('arboreal/'))asset={...asset,primitives:asset.primitives.filter(p=>!/foliage|branch_bark/.test(p.materialName))};
+    if(options.crownAssets?.has(assetPath)&&assetPath.startsWith('arboreal/')){
+      // Keep buildings in their original toon/glass path. The tree body now
+      // shares the current redwood surface and actual scenery-map reception.
+      const boles=asset.primitives.filter(p=>p.materialName==='redwood_bark');
+      for(const [partName,primitives]of partsOf({primitives:boles})){
+        const placed=instances.filter(i=>!isWorldSpace(i)&&(i.parts??[]).some(p=>p.mesh===partName));
+        if(!placed.length)continue;
+        const merged=mergePrimitives(primitives,'opaque'),geometry=merged.geometry;merged.material.dispose();
+        const count=geometry.attributes.position.count;
+        if(!geometry.attributes.uv)geometry.setAttribute('uv',new Float32BufferAttribute(new Float32Array(count*2),2));
+        geometry.setAttribute('leafKind',new Float32BufferAttribute(new Float32Array(count),1));
+        geometry.setAttribute('canopyAO',new Float32BufferAttribute(new Float32Array(count).fill(1),1));
+        const mesh=new InstancedMesh(geometry,villageBarkMaterial(),placed.length);mesh.name=`${assetPath}#${partName}:bark`;
+        placed.forEach((i,k)=>mesh.setMatrixAt(k,instanceMatrix(i.position_m,i.yaw_deg,i.scale,primitives[0].local)));
+        mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=mesh.receiveShadow=true;mesh.matrixAutoUpdate=false;group.add(mesh);
+        stats.drawCalls++;stats.sourceTriangles+=merged.triangles*placed.length;
+      }
+      asset={...asset,primitives:asset.primitives.filter(p=>!/foliage|branch_bark/.test(p.materialName)&&p.materialName!=='redwood_bark')};
+    }
     for (const [partName, primitives] of partsOf(asset)) {
       const askedFor = instances.filter((instance) => (instance.parts ?? []).some((part) => part.mesh === partName));
       const placed = askedFor.filter((instance) => !isWorldSpace(instance));

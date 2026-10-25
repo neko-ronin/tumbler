@@ -42,7 +42,7 @@ export function createOrbitControls(camera, canvas) {
   const minDistance = 5;
   const maxDistance = 12000;
   const minPolarAngle = 0;
-  const maxPolarAngle = Math.PI / 2 - 0.01; // never look straight up
+  const maxPolarAngle = Math.PI - 0.01; // allow looking up into the village; avoid the pole
   const enableDamping = true;
   const dampingFactor = 0.05;
   const enablePan = true;

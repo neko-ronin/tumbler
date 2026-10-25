@@ -158,16 +158,16 @@
     }
   ],
   "silhouette": {
-    "rule": "Retain original core bole, attachments, crown base, height and horizontal bounds. Seeded crown irregularity inside that envelope supersedes the ideal cone taper.",
+    "rule": "Retain core envelopes, attachment positions, crown base, height and horizontal bounds. The 2026-10-24 village-bole refinement changes only the tree surface; residences, stairs, collars and bridges retain their original geometry. Seeded crown irregularity remains inside its original envelope.",
     "taper": 0.78,
     "lean": 0,
     "sourceSHA256": {
       "redwood/giant_redwood.glb": "40d4473e4b52709ca21114939752da2df05187e11805a520eedb20f34c425282",
       "redwood/redwood_canopy.glb": "1eede985faf236a720975636432189f33e2f02c1595352f16f1c66a83905d76e",
-      "arboreal/village_tree.glb": "353a3040a88c758b055dfb40095b96e13a5095ab3928e66d8f3a8bd7ffff7096",
-      "arboreal/village_tree_low.glb": "eb20dba981382234711aae43d8a9be9866f93a0a4abf7971ca59946fe6dfc0d7",
-      "arboreal/village_tree_mid.glb": "033eeae155cfdcccb61b2ae0c74a1dc0cba509a573c0728c853482137c96155d",
-      "arboreal/village_tree_high.glb": "a7592727a3c70a098ce969f733382206b98379c7caceb9be3562915ee52192ea",
+      "arboreal/village_tree.glb": "a3c7c457412685be37ed523e7d1f47a1aae21e0f84960527fc530d480037b6b1",
+      "arboreal/village_tree_low.glb": "27793c31e30e848a8ff14c2bb83c2f36b72f63ccd2ca5293970d6a5d72099e57",
+      "arboreal/village_tree_mid.glb": "1f7902fd27de62e0b7876688c15055073a976365797be42a4f66f9e57d0c94ac",
+      "arboreal/village_tree_high.glb": "86bab61ab05e2e9b59219396f1990d7f3f8cc7be6c6f0e8451248d09e0234351",
       "redwood/mountain_pine.glb": "36945148e3f0224e4e6904c350a2be83513cdbac6d610f71d1d8ec9492226e5b",
       "redwood/silver_fir.glb": "f3165972dc778a6d067b4be8366694071cf12a9d747302d9eec3626959b0c68d"
     },

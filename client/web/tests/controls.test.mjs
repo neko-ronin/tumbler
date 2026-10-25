@@ -36,6 +36,11 @@ test("orbit controls leave the camera stationary until input arrives", () => {
     controls.setTarget(0, 0, 0); const reset = camera.position.clone();
     for(let i=0;i<60;i++) controls.update();
     assert.ok(camera.position.distanceTo(reset)<1e-8, 'bookmark reset clears residual input');
+    camera.position.set(-672,73.8391,-442);
+    const upwardBookmark=camera.position.clone();
+    controls.setTarget(-696,89.8391,-472);
+    for(let i=0;i<60;i++)controls.update();
+    assert.ok(camera.position.distanceTo(upwardBookmark)<1e-8,'the village bookmark must retain its upward viewing angle');
     controls.dispose();
   } finally {
     if (previousDocument === undefined) delete globalThis.document;

@@ -2,6 +2,7 @@
 import * as T from '../vendor/three.module.min.js';
 import {FOREST_FIELD_GLSL,forestUniforms} from './forest-field.js';
 import {ACTOR_SHADOW_GLSL} from './actor-shadow.js';
+import {TREE_SHADOW_GLSL,treeShadowUniforms} from './tree-shadows.js';
 import {CLOUD_GROUND_LIGHT_GLSL} from './cloud-shadow-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
 import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
@@ -55,11 +56,11 @@ softRamp.minFilter = softRamp.magFilter = T.LinearFilter;
 softRamp.needsUpdate = true;
 
 export function sunShadowUniforms(){
- return {uActorShadow:style.actorShadow,uActorShadowMatrix:style.actorShadowMatrix,uActorShadowTexel:style.actorShadowTexel,uActorShadowReady:style.actorShadowReady,
+ return {...treeShadowUniforms(),uActorShadow:style.actorShadow,uActorShadowMatrix:style.actorShadowMatrix,uActorShadowTexel:style.actorShadowTexel,uActorShadowReady:style.actorShadowReady,
   uCloudGround:style.cloudGround,uCloudGroundHeight:style.cloudGroundHeight,uCloudGroundGrid:style.cloudGroundGrid,uCloudGroundReady:style.cloudGroundReady,uCloudBase:style.cloudBase,uCloudTop:style.cloudTop};
 }
 export function sunShadowShader(shader){
- Object.assign(shader.uniforms,sunShadowUniforms());shader.fragmentShader=ACTOR_SHADOW_GLSL+CLOUD_GROUND_LIGHT_GLSL+shader.fragmentShader;
+ Object.assign(shader.uniforms,sunShadowUniforms());shader.fragmentShader=TREE_SHADOW_GLSL+ACTOR_SHADOW_GLSL+CLOUD_GROUND_LIGHT_GLSL+shader.fragmentShader;
 }
 
 /** Real toon lighting, with the renderer's shadows, fog and colour management. */

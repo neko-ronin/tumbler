@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import * as T from '../vendor/three.module.min.js';
-import {parseGLB,makeMaterialFor} from '../src3d/glb.js';
+import {parseGLB,makeMaterialFor,mergePrimitives} from '../src3d/glb.js';
 import {buildRedwoodSprays,rasterSprayAtlas} from '../../../shared/geometry/tree-design/redwood-sprays.js';
 import {fittedTreeGeometry,buildAdoptedRedwoods,retainedVillagePrimitive,releaseCrownSources} from '../src3d/redwood-rendering.js';
 import {TREE_BUDGETS,preferredTreeLod,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality} from '../src3d/tree-budget.js';
@@ -15,7 +15,7 @@ const read=path=>parseGLB(readFileSync(new URL('shared/geometry/'+path,root)));
 const crowns=Object.fromEntries(plan.stages.map(s=>[s.asset,read(s.asset)]));
 const bounds=primitives=>{const box=new T.Box3();for(const p of primitives)box.union(p.geometry.boundingBox.clone().applyMatrix4(p.local));return box;};
 
-test('adoption binds the approved studio revision without changing any original silhouette source',()=>{
+test('adoption binds the approved studio revision and recorded neutral silhouette sources',()=>{
   assert.equal(plan.source.studioRevision,2349);
   assert.deepEqual(plan.stages.map(s=>s.representation),['mesh','mesh','lattice','multiview']);
   for(const [path,hash]of Object.entries(plan.silhouette.sourceSHA256)){
@@ -102,15 +102,23 @@ test('dense flights preserve every visible tree while bounding actual geometry, 
   assert.equal(preferredTreeLod(155,1),1,'hysteresis keeps a middle mesh at the edge');
 });
 
-test('village crown adoption leaves every occupied part, glass pane and placement transform in the ordinary renderer',()=>{
+test('village adoption shares redwood bark while retaining every occupied part, pane and placement',()=>{
   const placement=JSON.parse(readFileSync(new URL('shared/world/out/placement.json',root))),instances=placement.instances.filter(i=>plan.targets[i.asset]==='village');
   const assets=Object.fromEntries([...new Set(instances.map(i=>i.asset))].map(path=>[path,read(path)]));
   const before=buildPlacements({instances},assets),after=buildPlacements({instances},assets,{crownAssets:new Set(Object.keys(plan.targets))});
   assert.equal(after.stats.instances,before.stats.instances);assert.equal(after.stats.parts,before.stats.parts);
   for(const mesh of after.group.children){
-    const original=before.group.children.find(m=>m.name===mesh.name);assert.ok(original);assert.equal(mesh.count,original.count);
+    const bark=mesh.name.endsWith(':bark'),original=before.group.children.find(m=>m.name===mesh.name.replace(/:bark$/,':opaque'));
+    assert.ok(original);assert.equal(mesh.count,original.count);
     assert.deepEqual(mesh.instanceMatrix.array,original.instanceMatrix.array,'occupied transforms remain byte-identical');
-    if(mesh.name.endsWith(':glass'))assert.deepEqual(mesh.geometry.attributes.position.array,original.geometry.attributes.position.array,'all dwelling windows stay intact');
+    const [path,partKind]=mesh.name.split('#'),[part,kind]=partKind.split(':');
+    const primitives=assets[path].primitives.filter(p=>p.part===part&&(bark?p.materialName==='redwood_bark':!/foliage|branch_bark/.test(p.materialName)&&p.materialName!=='redwood_bark'));
+    const expected=mergePrimitives(primitives,bark?'opaque':kind);
+    for(const name of ['position','normal','color'])assert.deepEqual(mesh.geometry.attributes[name].array,expected.geometry.attributes[name].array,'all source surfaces retain their exact geometry and palette');
+    assert.equal(mesh.receiveShadow,true);assert.equal(mesh.castShadow,kind!=='glass');
+    if(bark)assert.equal(mesh.material.userData.treeRedBark,true,'the occupied bole uses the same redwood light response');
+    else assert.equal(mesh.material.type,original.material.type,'dwelling and glass material paths remain intact');
+    expected.geometry.dispose();expected.material.dispose();
   }
   assert.ok(after.stats.sourceTriangles<before.stats.sourceTriangles,'generic placements do not draw a second crown');
 });
