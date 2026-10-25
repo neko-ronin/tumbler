@@ -6,7 +6,9 @@ export function createLoadingScreen() {
   const blockInput=e=>{if(document.body.dataset.loading==='loading'&&!e.metaKey&&!e.ctrlKey&&e.key!=='Tab')e.stopImmediatePropagation();};
   window.addEventListener('keydown',blockInput,true);
   return {
-    phase(text,step){message.textContent=text;progress.value=step;},
+    // The line sketch stays up while the world's asset files arrive (step 1→2);
+    // the coloured journal fades over it once the last one lands.
+    phase(text,step){message.textContent=text;progress.value=step;if(step>=2)screen.dataset.art='journal';},
     show(text='Letting the light settle…'){
       document.body.classList.remove('ready');document.body.dataset.loading='loading';
       screen.hidden=false;world.inert=true;world.setAttribute('aria-busy','true');

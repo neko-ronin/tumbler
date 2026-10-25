@@ -1,3 +1,17 @@
+# Loading journal: sketch, then colour — v0.2.0, 2026-10-25
+
+The loading screen keeps the original line sketch up while the world's 44 asset
+files download, then fades the approved coloured journal over it as the last one
+lands (1.6 s; instant with reduced motion). The swap is one threshold in
+`loading.js` `phase` (progress step 2), so it follows the real file count rather
+than a fixed number. The client version is **0.2.0**; viewer provenance is
+refreshed for `scene.html`, `loading.js` and `version.js`. Private web
+**336/336** and packaging **8/8** pass. Locally the sketch holds through 43/44,
+the journal fades in at "Checking every page of the world…", and the scene
+reaches Ready as v0.2.0. [Artwork notes](art/loading/README.md).
+
+---
+
 # Natural landscape — accepted for release, 2026-10-25
 
 The human approves the grass, granite/rock LOD and continuous landscape boundary

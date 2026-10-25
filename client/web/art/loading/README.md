@@ -10,8 +10,10 @@ The original approved screen, including its baked text, stays intact for reuse.
 `history/original-journal.svg` is the original code-drawn landscape, preserved
 as a standalone reusable asset. `history/original-loading-screen.html` preserves
 the complete earlier journal layout and opens as a static page. Neither history
-file is fetched or required by the game. The inline original sketch is also the
-immediate fallback while the approved image downloads.
+file is fetched or required by the game. The inline original sketch is shown
+while the world's asset files download; the approved image fades over it once
+the last one lands (`loading.js` `phase`, step 2). It also stays as the fallback
+if the image fails to load.
 
 The exact generation prompt and provenance are saved privately in
 `docs/reviews/loading-history/approved-journal-prompt.md`. This is browser UI art;

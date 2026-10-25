@@ -7,7 +7,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "bbb9fa8857a041b370d9a5eb20db24a29618cd12176745dfc16babe8af33468c"
+      "sha256": "63c0a9f445c7296d53ecf01da01499a52b8c756294004377023774f47994d2d0"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -127,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/loading.js",
-      "sha256": "1068b8078ae08335bb6d926b9c6b81d1af32d37e9509295aaa23d9221bae8c46"
+      "sha256": "6d5e6f07cc61d36492c3b8c8e8673e3d143b30a286f43c4b3fba31fb21f6a4d9"
     },
     {
       "path": "client/web/src3d/main.js",
@@ -207,7 +207,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "6998d51fce6af95291954fc019b3bd1a5ef5a537786e53790b6431a85c22f61f"
+      "sha256": "78c7a3cb90d29da264f896800c985219126af7cef8fc015c3dcf4337f5a8071e"
     },
     {
       "path": "client/web/src3d/world.js",
@@ -507,7 +507,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "503e11e",
+  "commit": "b33221e",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
