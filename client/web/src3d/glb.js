@@ -606,7 +606,7 @@ export function mergePrimitives(primitives, kind = "opaque") {
     side: chosen.some(p => p.doubleSided) ? DoubleSide : FrontSide,
     transparent: kind === "glass",
     depthWrite: kind !== "glass",
-  }, { foliage: chosen.some(p => /foliage/.test(p.materialName ?? "")) });
+  }, { foliage: chosen.some(p => /foliage/.test(p.materialName ?? "")), granite: chosen.some(p=>/^(river_stone|stone_)/.test(p.materialName??'')) });
   material.userData.mergedFrom = chosen.map((p) => p.materialName ?? p.name);
   material.userData.baseColorFactors = factors;
   const triangles = positions.length / 9;

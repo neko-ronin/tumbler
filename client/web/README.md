@@ -1,3 +1,53 @@
+# Natural landscape — accepted for release, 2026-10-25
+
+The human approves the grass, granite/rock LOD and continuous landscape boundary
+for main and deployment. Integration retains main's climbing, swimming,
+Mario-style jump and sun-only character glints. Private web **328/328**, core
+continuation **3/3**, package/publisher **13/13** and integrity **126 runtime +
+17 map files** pass. The merged browser verifies all bytes, shows all 12,619
+trees and passes a live-input walking jump without application/shader errors.
+
+[Release receipt, deployment confirmation and follow-up scope](../../docs/reviews/natural-landscape-release-2026-10-25.md).
+Earlier local-only entries below describe their original checkpoints. Mountain
+geological structure and the Yuba-like river reach continue in separate sessions;
+the future social hub's site remains undecided.
+
+---
+
+# Continuous landscape boundary — local worktree, 2026-10-25
+
+Grass habitat and existing edge forest stands now continue into the surrounding
+terrain, removing the rectangular meadow cutoff. A shared core extension adds
+2,802 outer trees while retaining every original placement. The browser uses
+one terrain lattice with 1,024 LOD tiles in 64 batches; snow keeps its original
+coordinates. Empty forest LOD allocations skip render processing.
+[Implementation, paired views and limits](../../docs/reviews/world-boundary-2026-10-25.md).
+
+Web **282/282**, new core continuation **3/3**, package/publisher **13/13**;
+integrity **123 fetched + 17 map files**. Final local overview: **33.3 / 34.2 ms
+p50 / p95**, last CPU submit **13.3 ms**. The shader seam fixture reproduces the
+baseline's 24.6% channel step and reduces it to 1.0%. This remains on
+`codex/natural-landscape`, unmerged/unpublished, awaiting human visual review.
+Granite structure/silhouettes, Unreal and sustained performance remain open.
+
+---
+
+# Grass habitats and granite LOD — local worktree, 2026-10-25
+
+The other green zones now share the meadow's animated grass/flora. The shared
+stamp adds 43,015 suitable forest-soil cells; snow, trails, rock and crown shade
+retain their distinct surfaces. Browser terrain has four source-preserving
+levels; river stones/gravel have three spatial levels and granite materials.
+The shared river-rock source replaces checker moss with irregular patches and
+joint-cut volumes. [Implementation, evidence and limits](../../docs/reviews/natural-landscape-2026-10-25.md).
+
+Web **278/278**, shared habitat **31/31**, package/publisher **13/13**, integrity
+**122 fetched + 17 map files**. Changed Python checks pass. This remains on
+`codex/natural-landscape`, unmerged/unpublished. The existing 8 m terrain still
+limits cliff silhouette fidelity; Unreal and sustained performance remain open.
+
+---
+
 # Mario-style jump and sun-only ear glow — released, 2026-10-25
 
 He leaves the ground on the frame that sees Space / A; the 0.12 s crouch is gone.

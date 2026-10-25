@@ -150,7 +150,9 @@ test('the real four-stage path uses stable original shadow topology and updates 
   camera.lookAt(0,80,400);camera.updateMatrixWorld();forest.update(camera,new T.Vector3(0,0,0));
   assert.ok(forest.stats.culled>0,'rotation culls trees without requiring translation');
   assert.equal(forest.stats.shadowRevision,revision,'beauty culling does not remove ground-shadow casters');
-  assert.ok(forest.group.children.filter(m=>m.name.includes('lod')).every(m=>!m.castShadow));forest.dispose();
+  assert.ok(forest.group.children.filter(m=>m.name.includes('lod')).every(m=>!m.castShadow));
+  assert.ok(forest.group.children.every(m=>m.visible===(m.count>0)),'empty beauty and shadow allocations stay out of render processing');
+  forest.dispose();
 });
 
 

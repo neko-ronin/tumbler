@@ -200,3 +200,36 @@ export function decodeGroundCover(stamp) {
     },
   };
 }
+
+/** One presentation mask from two core-owned habitat grids. The primary grid
+ * wins throughout its domain, including its bare cells (paths, water, homes).
+ * The coarser continuation is sampled, never extended past its published mask.
+ */
+export function mergeGroundCover(primary,outer){
+  if(!outer)return primary;
+  const quad=primary.quad,offsetX=Math.min(primary.offsetX,outer.offsetX),offsetY=Math.min(primary.offsetY,outer.offsetY);
+  if(Math.abs((primary.offsetX-offsetX)/quad-Math.round((primary.offsetX-offsetX)/quad))>1e-6||Math.abs((primary.offsetY-offsetY)/quad-Math.round((primary.offsetY-offsetY)/quad))>1e-6)throw Error('habitat grids must share the primary lattice');
+  const highX=Math.max(primary.offsetX+primary.resolution*primary.quad,outer.offsetX+outer.resolution*outer.quad),highY=Math.max(primary.offsetY+primary.resolution*primary.quad,outer.offsetY+outer.resolution*outer.quad);
+  const resolution=Math.ceil(Math.max(highX-offsetX,highY-offsetY)/quad),covered=new Uint8Array(resolution*resolution);
+  const at=(cover,x,y)=>{const col=Math.floor((x-cover.offsetX)/cover.quad),row=Math.floor((y-cover.offsetY)/cover.quad);return col>=0&&row>=0&&col<cover.resolution&&row<cover.resolution?cover.covered[row*cover.resolution+col]:0;};
+  for(let row=0;row<resolution;row++)for(let col=0;col<resolution;col++){
+    const x=offsetX+(col+.5)*quad,y=offsetY+(row+.5)*quad;
+    const inside=x>=primary.offsetX&&y>=primary.offsetY&&x<primary.offsetX+primary.resolution*primary.quad&&y<primary.offsetY+primary.resolution*primary.quad;
+    covered[row*resolution+col]=at(inside?primary:outer,x,y);
+  }
+  return {covered,resolution,quad,offsetX,offsetY,stampedCells:covered.reduce((sum,n)=>sum+n,0)};
+}
+
+/** The existing ground sampler represented on one aligned lattice. Outer
+ * values are bilinear readings of farfield.f32, not new terrain relief. One
+ * mesh topology shares all edge vertices and normals across the old join.
+ */
+export function landscapeHeightGrid(block,far){
+  const quad=block.quad,steps=(far.maxX-far.minX)/quad;
+  if(Math.abs(steps-Math.round(steps))>1e-6)throw Error('outer terrain must align to the block lattice');
+  const resolution=Math.round(steps)+1,values=new Float32Array(resolution*resolution);
+  for(let row=0;row<resolution;row++)for(let col=0;col<resolution;col++){
+    const x=far.minX+col*quad,y=far.minY+row*quad;values[row*resolution+col]=block.sample(x,y)??far.sample(x,y);
+  }
+  return new HeightGrid({values,resolution,quad_size_m:quad,offset_xy_m:[far.minX,far.minY],min_m:Math.min(block.minimum,far.minimum),max_m:Math.max(block.maximum,far.maximum),kind:'block samples and interpolated outer terrain'});
+}

@@ -147,10 +147,10 @@ function bakeImpostor(asset,renderer){
 /** Vertex clustering keeps the source's branches, gaps and material colours in
  * the middle distance. The cell size grows only until the per-species budget is
  * met; a broad crown hull is reserved for invisible shadow proxies. */
-export function clusteredTreeGeometry(source, maxTriangles=8000) {
+export function clusteredTreeGeometry(source, maxTriangles=8000, {minCell=.25}={}) {
   const position=source.attributes.position,normal=source.attributes.normal,color=source.attributes.color;
   const height=source.boundingBox.max.y-source.boundingBox.min.y;
-  let cell=Math.max(.25,height*.008),result;
+  let cell=Math.max(minCell,height*.008),result;
   for(let attempt=0;attempt<9;attempt++,cell*=1.3){
     const clusters=new Map(),vertices=[],remap=new Uint32Array(position.count);
     for(let i=0;i<position.count;i++){
@@ -193,7 +193,7 @@ export function treeLodWeights(distance, distances) {
   const far = smooth(distances.mid,distances.mid+distances.midFade,distance);
   return [near,1-near-far,far];
 }
-function intervalMaterial(material) {
+export function intervalMaterial(material) {
   const original = material.onBeforeCompile;
   material.onBeforeCompile = shader => {
     original.call(material,shader);

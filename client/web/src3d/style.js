@@ -5,6 +5,7 @@ import {ACTOR_SHADOW_GLSL} from './actor-shadow.js';
 import {TREE_SHADOW_GLSL,treeShadowUniforms} from './tree-shadows.js';
 import {CLOUD_GROUND_LIGHT_GLSL} from './cloud-shadow-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
+import {GRANITE_GLSL,graniteMinerals} from './granite-shading.js';
 import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
 
 export const style = {
@@ -19,6 +20,7 @@ export const style = {
   cover: { value: null },
   coverGrid: { value: new T.Vector4() },
   snow: { value: null },
+  snowGrid:{value:new T.Vector4()},
   meadowAirFrom: {value:null},meadowAirTo: {value:null},
   meadowAirGrid: {value:new T.Vector4(-2048,-2048,4096,1)},meadowAirMix: {value:1},
   meadowFocus:{value:new T.Vector3()},
@@ -64,8 +66,8 @@ export function sunShadowShader(shader){
 }
 
 /** Real toon lighting, with the renderer's shadows, fog and colour management. */
-export function toonMaterial(parameters = {}, { meadow = false, terrain = false, foliage = false, horizonM = 0, meadowRange = [150,225], meadowFocused=false, canopy=false,grassBlades=false,canopyStart=[25,44] } = {}) {
-  const material = terrain ? new T.MeshStandardMaterial({roughness: .96, ...parameters}) : new T.MeshToonMaterial({ gradientMap: foliage||meadow ? softRamp : ramp, ...parameters });
+export function toonMaterial(parameters = {}, { meadow = false, terrain = false, foliage = false, horizonM = 0, meadowRange = [150,225], meadowFocused=false, canopy=false,grassBlades=false,granite=false,canopyStart=[25,44] } = {}) {
+  const material = terrain||granite ? new T.MeshStandardMaterial({roughness: .96, ...parameters}) : new T.MeshToonMaterial({ gradientMap: foliage||meadow ? softRamp : ramp, ...parameters });
   material.onBeforeCompile = (shader) => {
     sunShadowShader(shader);
     shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
@@ -83,7 +85,8 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     if(meadow){shader.uniforms.uMeadowRange={value:new T.Vector2(...meadowRange)};shader.uniforms.uMeadowFocus=style.meadowFocus;}
     if(canopy)shader.uniforms.uCanopyStart={value:new T.Vector2(...canopyStart)};
     if(terrain)Object.assign(shader.uniforms,forestUniforms());
-    if(terrain||meadow){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;}
+    if(terrain||granite)shader.uniforms.uGraniteMinerals={value:graniteMinerals()};
+    if(terrain||meadow){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;shader.uniforms.uSnowGrid=style.snowGrid;}
     shader.vertexShader = (canopy?'uniform vec2 uCanopyStart;varying vec2 vGrassUv;varying float vGrassSeed;\n':'')+((terrain||meadow)?MEADOW_AIR_GLSL:'')+AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? MEADOW_BEND_GLSL+'uniform vec2 uMeadowRange;uniform vec3 uMeadowFocus; varying float vMeadowFade; attribute float petal; attribute vec3 flowerTint; attribute vec3 bladeRoot; attribute float flex; attribute float plant; attribute vec3 meadowTraits; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.vertexShader;
     if(meadow)shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
       vec3 root=(instanceMatrix*vec4(bladeRoot,1.)).xyz;
@@ -143,12 +146,14 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       ${terrain ? 'vUp = normalize(mat3(modelMatrix) * objectNormal);' : ''}
       #include <project_vertex>
     `);
-    shader.fragmentShader = (canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;\n':'')+(terrain?'varying vec3 vUp;\n'+FOREST_FIELD_GLSL+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
+    shader.fragmentShader = ((terrain||granite)?GRANITE_GLSL:'')+(canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;uniform vec4 uSnowGrid;\n':'')+(terrain?'varying vec3 vUp;\n'+FOREST_FIELD_GLSL+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
     shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
       #include <color_fragment>
       ${meadow ? `if(vMeadowFade<=.001||vPlant<.5)discard;
       vec2 grassUv=(vec2(vPlace.x,-vPlace.z)-uCoverGrid.xy)/(uCoverGrid.z*uCoverGrid.w);
-      if(min(grassUv.x,grassUv.y)<0.||max(grassUv.x,grassUv.y)>1.||texture2D(uCover,grassUv).r<.5||texture2D(uSnow,grassUv).r>.03||vPlace.y<22.)discard;
+      vec2 snowUv=(vec2(vPlace.x,-vPlace.z)-uSnowGrid.xy)/(uSnowGrid.z*uSnowGrid.w);
+      float meadowSnow=texture2D(uSnow,clamp(snowUv,0.,1.)).r*step(0.,snowUv.x)*step(0.,snowUv.y)*step(snowUv.x,1.)*step(snowUv.y,1.);
+      if(min(grassUv.x,grassUv.y)<0.||max(grassUv.x,grassUv.y)>1.||texture2D(uCover,grassUv).r<.5||meadowSnow>.03||vPlace.y<22.)discard;
       diffuseColor.rgb = mix(diffuseColor.rgb*vLeafTone,vFlower,vPetal);` : ""}
       ${grassBlades?'diffuseColor.a*=vMeadowFade;':''}
       ${canopy?`// Individually cut out tapered leaves in crossed, bent cards.
@@ -172,8 +177,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       diffuseColor.rgb *= mix(vec3(1.), mix(vec3(.9, 1., .95), vec3(1.08, 1.03, .86), vTreeHue), leafy);` : ""}
       ${terrain ? `vec2 stampUv=(vec2(vPlace.x,-vPlace.z)-uCoverGrid.xy)/(uCoverGrid.z*uCoverGrid.w);
       float stamped=texture2D(uCover,stampUv).r*step(0.,stampUv.x)*step(0.,stampUv.y)*step(stampUv.x,1.)*step(stampUv.y,1.);
+      vec2 snowUv=(vec2(vPlace.x,-vPlace.z)-uSnowGrid.xy)/(uSnowGrid.z*uSnowGrid.w);
+      float snowInside=step(0.,snowUv.x)*step(0.,snowUv.y)*step(snowUv.x,1.)*step(snowUv.y,1.);
       float lowBiome=1.-smoothstep(180.,360.,vPlace.y);
-      float knownGround=1.-smoothstep(.42,.5,max(abs(stampUv.x-.5),abs(stampUv.y-.5)));
+      float knownGround=1.-smoothstep(.42,.5,max(abs(snowUv.x-.5),abs(snowUv.y-.5)));
       diffuseColor.rgb*=mix(vec3(1.),mix(vec3(.68,.65,.53),vec3(1.),stamped),lowBiome*knownGround);
       // Ground detail is noise at three scales, never a repeating wave:
       // meadow-sized lush/dry drifts, clumps, and grain that fades before it
@@ -190,28 +197,23 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       // Low steep ground is a cut bank of earth under turf, not granite.
       float lowland=1.-smoothstep(38.,70.,vPlace.y+(drift-.5)*20.);
       diffuseColor.rgb=mix(diffuseColor.rgb,EARTH*mix(.8,1.1,clump),slopeMask*lowland*smoothstep(.35,.7,grain*.4+clump*.6+.15));
-      float rockMask=max(slopeMask*(1.-lowland),smoothstep(640.,790.,vPlace.y+(drift-.5)*160.));
-      // Granite: pale and dark masses split by joints. The joints are a
-      // ridge of noise, faded with distance so they never alias into lines.
-      vec2 face=ground+vec2(vPlace.y*.7,-vPlace.y*.4);
-      float mass=fbm(face*.035);
-      float joint=pow(1.-abs(vnoise(face*.11)*2.-1.),10.)*smoothstep(.45,.7,vnoise(face*.043+5.3))*(1.-smoothstep(1.,4.,footprint));
-      float strata=mass*.8+grain*.2-joint*.55;
-      diffuseColor.rgb=mix(diffuseColor.rgb,ROCK*mix(.7,1.15,strata)*mix(vec3(1.04,.99,.92),vec3(.93,.97,1.04),drift),rockMask);
+      float rockMask=max(slopeMask*(1.-lowland),smoothstep(850.,1160.,vPlace.y+(drift-.5)*160.));
+      GraniteSurface granite=GraniteSurface(vec3(0.),0.,.96,0.);
+      if(rockMask>.001)granite=graniteSurface(vPlace,normalize(vUp),footprint);
+      diffuseColor.rgb=mix(diffuseColor.rgb,granite.color,rockMask);
       float snowMask=smoothstep(1010.,1110.,vPlace.y+(clump-.5)*70.+(drift-.5)*90.)*(1.-smoothstep(.62,1.,steep+(clump-.5)*.35))*(1.-knownGround);
       diffuseColor.rgb=mix(diffuseColor.rgb,SNOW,snowMask);
       // Inside the block every water body stands at 20 m and no dry ground
       // away from them is below 25 m, so height alone finds the banks: a silty
       // bed, a wet line and a fringe of darker sedge, each edge broken by
       // noise. The far field's lowland lies below 20 m, so it is left out.
-      ${horizonM ? '' : `float shoreline=vPlace.y-20.+(clump-.5)*.9+(grain-.5)*.25;
+      float shoreline=vPlace.y-20.+(clump-.5)*.9+(grain-.5)*.25;
       vec3 bank=mix(SILT*mix(.75,1.1,grain),WETSOIL*mix(.85,1.1,clump),smoothstep(-.6,.1,shoreline));
       bank=mix(bank,SEDGE*mix(.8,1.1,clump),smoothstep(.5,1.4,shoreline));
-      diffuseColor.rgb=mix(bank,diffuseColor.rgb,smoothstep(1.4,3.4,shoreline));
-`}
-      // Core snow stamp (the grass stamp's grid; depth/max in red) is the snow
+      diffuseColor.rgb=mix(diffuseColor.rgb,bank,(1.-smoothstep(1.4,3.4,shoreline))*knownGround);
+      // Core snow stamp (the original block grid; depth/max in red) is the snow
       // riders feel, so on the block it replaces the height rule above.
-      float coreSnow=smoothstep(.03,.14,texture2D(uSnow,stampUv).r+(drift-.5)*.04)*knownGround;
+      float coreSnow=smoothstep(.03,.14,texture2D(uSnow,clamp(snowUv,0.,1.)).r*snowInside+(drift-.5)*.04)*knownGround;
       diffuseColor.rgb=mix(diffuseColor.rgb,SNOW*mix(.97,1.03,grain),coreSnow);
       // Only the core grass stamp receives sward detail and wind. Banks,
       // snow, rocky faces and the world beyond the stamp keep their material.
@@ -227,38 +229,49 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       // A needle bed belongs beneath existing forest crowns. Its footprint
       // comes from the core individuals, so meadow and clearings keep turf.
       vec4 forestSoil=forestAt(vPlace);
-      float forestMask=forestCoverAt(vPlace)*knownGround*(1.-coreSnow)*(1.-rockMask);
+      float forestMask=forestCoverAt(vPlace)*knownGround*(1.-coreSnow)*(1.-rockMask)*smoothstep(.08,.48,forestSoil.r);
       float moss=smoothstep(.43,.68,fbm(ground*.45)+.12*(clump-.5));
       vec3 litterTexture=forestLitter(ground);
       vec3 litter=litterTexture*mix(.85,1.14,clump);
       litter=mix(litter,litter*vec3(.77,.96,.65),moss*.25);
       litter*=mix(1.,.87,forestSoil.b);
       diffuseColor.rgb=mix(diffuseColor.rgb,litter,forestMask);
-      float relief=forestMask*(grain*.007+dot(litterTexture,vec3(.2126,.7152,.0722))*.018)+sward*grass.y*(1.-forestMask)+(rockMask*(mass*2.2-joint*.4)+(1.-rockMask)*clump*.12)*(1.-smoothstep(1.5,5.,footprint));` : ''}
+      float relief=forestMask*(grain*.007+dot(litterTexture,vec3(.2126,.7152,.0722))*.018)+sward*grass.y*(1.-forestMask)+(rockMask*granite.relief+(1.-rockMask)*clump*.12)*(1.-smoothstep(1.5,5.,footprint));` : ''}
     `);
-    if(terrain){
+    if(granite){
+      shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+        vec3 graniteUp=normalize(cross(dFdx(vPlace),dFdy(vPlace)));
+        GraniteSurface granite=graniteSurface(vPlace,graniteUp,max(length(dFdx(vPlace)),length(dFdy(vPlace))));
+        float stone=step(diffuseColor.g,diffuseColor.r*1.18);
+        diffuseColor.rgb=mix(diffuseColor.rgb,granite.color,stone);
+        float relief=granite.relief*stone;
+      `);
+    }
+    if(terrain||granite){
+      shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
+        roughnessFactor=mix(roughnessFactor,granite.roughness,${terrain?'rockMask*(1.-coreSnow)':'stone'});
+      `);
       // Bump the lighting normal by the same relief, so rock catches the sun.
       shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
         vec3 sigmaX=dFdx(-vViewPosition),sigmaY=dFdy(-vViewPosition),r1=cross(sigmaY,normal),r2=cross(normal,sigmaX);
         float det=dot(sigmaX,r1)*faceDirection;
         normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*r1+dFdy(relief)*r2));
-        vec3 grassLean=vec3(grassAir.x,0.,grassAir.y);
+        ${terrain?`vec3 grassLean=vec3(grassAir.x,0.,grassAir.y);
         grassLean-=normalize(vUp)*dot(grassLean,normalize(vUp));
         // Transform a tangent-plane wind bend into view space for lighting.
-        normal=normalize(normal-mat3(viewMatrix)*grassLean*(.055*grass.z*sward));
+        normal=normalize(normal-mat3(viewMatrix)*grassLean*(.055*grass.z*sward));`:''}
       `);
     }
     if(horizonM){
       shader.uniforms.uHorizonM={value:horizonM};shader.uniforms.uWarmth=style.warmth;
       shader.fragmentShader='uniform float uHorizonM;uniform float uWarmth;\n'+ATMOSPHERE_SKY_GLSL+shader.fragmentShader;
       shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>',`#include <fog_fragment>
-        vec3 horizonRay=normalize(vPlace-cameraPosition);
-        vec3 horizonColour=clearSky(normalize(vec3(horizonRay.x,.001,horizonRay.z)),uSun,uWarmth,cameraPosition.y);
-        // Only the ring's last stretch fades, so its cut edge vanishes into
-        // the painted ranges; the scene fog already hazes it with distance,
-        // and a wider fade turned the enclosing ridges into pale curtains.
         float horizonFade=smoothstep(uHorizonM*.88,uHorizonM*.99,max(abs(vPlace.x),abs(vPlace.z)));
-        gl_FragColor.rgb=mix(gl_FragColor.rgb,horizonColour,horizonFade);
+        if(horizonFade>0.){
+          vec3 horizonRay=normalize(vPlace-cameraPosition);
+          vec3 horizonColour=clearSky(normalize(vec3(horizonRay.x,.001,horizonRay.z)),uSun,uWarmth,cameraPosition.y);
+          gl_FragColor.rgb=mix(gl_FragColor.rgb,horizonColour,horizonFade);
+        }
       `);
     }
     if (foliage) {
@@ -286,7 +299,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-meadow-v17:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
+  material.customProgramCacheKey = () => `cozy-granite-v19:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
   return material;
 }
 

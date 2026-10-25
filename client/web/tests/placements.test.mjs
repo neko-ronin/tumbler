@@ -115,10 +115,9 @@ test("the merged meadow patch is one geometry and one material per tile", () => 
   assert.ok(stats.patches > 0, "patches must be drawn");
   assert.equal(stats.skippedNoGround, 0, "every stamped cell inside the block stands on published ground");
   assert.equal(stats.patches, stamp.mask.stamped_cells, "every stamped cell is drawn exactly once");
-  // Only 52 of the 64 tiles carry the stamp: the forest slope, water and the
-  // village footprint are excluded by the stamp's own mask, which is the
-  // core's own exclusion.
-  assert.equal(stats.tiles, 52, "the stamp covers 52 of the 8x8 tiles");
+  const occupied=new Set();
+  for(const [, ,[x,y]]of cover.stamped())occupied.add(`${Math.min(7,Math.floor((x+2048)/TILE_M))},${Math.min(7,Math.floor((y+2048)/TILE_M))}`);
+  assert.equal(stats.tiles,occupied.size,'one draw per occupied stamp tile, including forest clearings');
 });
 
 test("a tile's patches stand on the ground, and the turn is deterministic", () => {

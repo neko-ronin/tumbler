@@ -2,6 +2,7 @@
 import * as T from '../vendor/three.module.min.js';
 import {mergePrimitives} from './glb.js';
 import {buildStylizedForest} from './forest.js';
+import {buildRockLod,isRock} from './rock-lod.js';
 import {style} from './style.js';
 import {createSchool,stepSchool} from '../../../shared/ecology/aquatic.js';
 export function buildEcology(habitats,meadowData,assets,ground,cover,renderer,sampleAir){
@@ -15,7 +16,8 @@ export function buildEcology(habitats,meadowData,assets,ground,cover,renderer,sa
   const dragon=make('waterside/dragonfly.glb',habitats.habitats.length*3);
   const wings=make('waterside/dragonfly_wings.glb',habitats.habitats.length*3);
   const plantRecords=habitats.plantings.map(p=>({...p,scale:[p.scale,p.scale,p.scale]}));
-  const bankForest=buildStylizedForest({instances:plantRecords},assets,renderer,{filter:()=>true,name:'bank_plantings',tileM:128,enterM:85,leaveM:110});group.add(bankForest.group);
+  const bankForest=buildStylizedForest({instances:plantRecords},assets,renderer,{filter:r=>!isRock(r),name:'bank_plantings',tileM:128,enterM:85,leaveM:110});group.add(bankForest.group);
+  const rocks=buildRockLod(plantRecords.filter(isRock),assets);group.add(rocks.group);
   const meadowMeshes=meadowData.species.map(species=>({species,mesh:make(species.asset,Math.ceil(species.per_hectare*3.24))}));
   for(const {species,mesh} of meadowMeshes){
     const original=mesh.material.onBeforeCompile;
@@ -28,7 +30,7 @@ transformed.y+=sin(uTime*${species.kind==='butterfly'?'18.':'90.'})*abs(position
   const motes=Array.from({length:100},()=>({x:NaN,y:0,z:0}));
   function place(mesh,n,x,z,y,yaw=0,s=1){position.set(x,y,-z);quat.setFromAxisAngle(up,yaw);scale.setScalar(s);matrix.compose(position,quat,scale);mesh.setMatrixAt(n,matrix);}
   function update(camera,time){
-    bankForest.update(camera);
+    bankForest.update(camera);rocks.update(camera);
     const dt=Math.min(.05,time-lastTime);lastTime=time;let nf=0,nd=0,nr=0;
     for(const h of habitats.habitats){
       const [cx,cy,surface]=h.centre_m;
@@ -86,5 +88,5 @@ transformed.y+=sin(uTime*${species.kind==='butterfly'?'18.':'90.'})*abs(position
     }
     debris.count=count;debris.instanceMatrix.needsUpdate=true;
   }
-  return {group,update,rebuildImpostors(){bankForest.rebuildImpostors();},stats:{habitats:habitats.habitats.length,plantings:habitats.plantings.length}};
+  return {group,update,rocks,dispose(){rocks.dispose();},rebuildImpostors(){bankForest.rebuildImpostors();},stats:{habitats:habitats.habitats.length,plantings:habitats.plantings.length}};
 }

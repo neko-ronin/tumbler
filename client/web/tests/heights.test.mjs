@@ -131,8 +131,7 @@ test("the ground cover mask decodes, and its own count agrees", () => {
   const cover = decodeGroundCover(stamp);
   assert.equal(cover.resolution, 512, "the stamp rides the block's own grid");
   assert.equal(cover.stampedCells, stamp.mask.stamped_cells);
-  // The README's figure: grass over 54.6% of the block.
-  assert.ok(Math.abs(cover.stampedCells / (512 * 512) - 0.535) < 0.01, `${(cover.stampedCells / (512 * 512)).toFixed(3)}`);
+  assert.ok(Math.abs(cover.stampedCells / (512 * 512) - stamp.area_m2.stamped_fraction_of_block) < 1e-6, 'decoded coverage agrees with the shared habitat accounting');
   const first = [...cover.stamped()][0];
   assert.equal(first.length, 3, "row, column, centre");
   const [[row, column, [cx, cy]]] = [[...first]];
