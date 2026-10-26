@@ -33,6 +33,18 @@ const sampler = new GroundSampler(block, far);
 const world = JSON.parse(read("shared", "world", "out", "world.json"));
 const stamp = JSON.parse(read("shared", "world", "out", "ground_cover.json"));
 
+test("river replacement floors and mountain solid roofs compose without refilling the river bed", () => {
+  const raster = { sample: () => 100 }, outside = { sample: () => null };
+  const river = x => x < 2 ? 20 : null;
+  const roof = x => x === 1 ? 30 : x === 2 ? 120 : null;
+  const combined = new GroundSampler(raster, outside, river, roof);
+  assert.equal(combined.height(0, 0), 20, "the detailed bed replaces the higher original raster");
+  assert.equal(combined.height(1, 0), 30, "a rock stands above that detailed bed, below the old raster");
+  assert.equal(combined.height(2, 0), 120, "a mountain roof raises the ordinary terrain floor");
+  assert.equal(combined.height(3, 0), 100, "unoccupied ground keeps its original height");
+  assert.equal(new GroundSampler(outside, outside).height(0, 0), null);
+});
+
 test("the block grid is the block, in metres, south-up", () => {
   assert.equal(block.resolution, 512);
   assert.equal(block.quad, 8);

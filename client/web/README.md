@@ -1,3 +1,21 @@
+# Mountain geological structure — approved for integration, 2026-10-26
+
+Shared sparse crest refinements, closed jointed granite slabs, exfoliated roofs
+and cliff-foot talus now add mountain structure to the accepted landscape.
+The same published surfaces feed movement; the protected cirque, trails,
+launches, vegetation, water and settlements retain their places. Original
+rasters remain the base. The browser retains the existing terrain LOD/error
+contract and adds spatially batched source rock meshes with filtered granite
+and quiet runoff weathering.
+
+The human approves integration after the river deployment. Development continues
+on the retained `codex/mountain-geology` worktree and branch. [Review, reproduction and limitations](../../docs/reviews/mountain-geology-2026-10-25.md).
+Local comparison: <http://127.0.0.1:8061/output/playwright/mountain-geology/review.html>.
+This session's visual **Before is v0.1.0 (`3ff9552`)**; After is the current
+mountain candidate. The implementation base remains the later accepted landscape.
+
+---
+
 # Downstream granite river — approved for integration, 2026-10-26
 
 The east exit now reads shared granite bed/bank/slab geometry, including wet/dry

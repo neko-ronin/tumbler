@@ -7965,6 +7965,7 @@
     }
   },
   "mountains": {
+    "geology": "shared/geometry/granite/geology.json",
     "start_y_m": 650.0,
     "blend_m": 650.0,
     "rolling_relief_m": 3.2,

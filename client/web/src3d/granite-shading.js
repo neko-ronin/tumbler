@@ -60,6 +60,14 @@ GraniteSurface graniteSurface(vec3 p,vec3 up,float footprint){
  // Mips integrate the salt/pepper grain into the same average at flight scale.
  stone*=mix(vec3(1.),mineral.rgb/vec3(.405,.400,.369),.57);
  stone*=1.-joints*.22-sheets*.12;
+ #ifdef MOUNTAIN_GRANITE
+ // Sparse downward weathering on cliff faces, quiet on exfoliated roofs.
+ // Coarse world-space variation survives distance filtering without turning
+ // the continuous face into a regular brick/grid pattern.
+ float runoff=graniteNoise(vec3(p.x*.052,p.y*.003,p.z*.052));
+ float stain=smoothstep(.52,.77,runoff)*(1.-smoothstep(.45,.9,abs(up.y)));
+ stone*=1.-stain*.24;
+ #endif
  GraniteSurface g;g.color=stone;
  g.relief=(slab-.5)*.72+(weather-.5)*.085-joints*.018-sheets*.014+(mineral.a-.5)*.009;
  g.roughness=clamp(.87+weather*.11-mineral.a*.07,.78,.98);g.joints=max(joints,sheets);return g;

@@ -112,19 +112,23 @@ function extentOf(values) {
  * than something this module arranges.
  */
 export class GroundSampler {
-  constructor(block, farField, surface = null) {
-    this.surface = surface;
+  // surface is a complete local replacement (river bed); geology adds roofs.
+  constructor(block, farField, surface = null, geology = null) {
     this.block = block;
     this.farField = farField;
+    this.surface = surface;
+    this.geology = geology;
   }
 
   /** Metres at a world coordinate, or null where no published ground reaches. */
   height(x, y) {
     const detailed = this.surface?.(x, y);
-    if (detailed !== null && detailed !== undefined) return detailed;
-    const inside = this.block.sample(x, y);
-    if (inside !== null) return inside;
-    return this.farField.sample(x, y);
+    // A published detailed bed replaces the raster, including below it.
+    // Solid roofs then stand on that floor instead of refilling the old bed.
+    const base = detailed ?? this.block.sample(x, y) ?? this.farField.sample(x, y);
+    if (base === null) return null;
+    const rock = this.geology?.(x, y);
+    return rock == null ? base : Math.max(base, rock);
   }
 
   /** Is this ground published at all? */

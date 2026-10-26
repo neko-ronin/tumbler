@@ -106,12 +106,16 @@
       "sha256": "be37417fc3481d7ef45e0cb60e33c2eaaeea290406afa886e77d236dfeeab8dd"
     },
     {
+      "path": "client/web/src3d/geology.js",
+      "sha256": "6ad3838975d43daefb3fe90b1cc3529ef35d27d42fb29869bf0b4aeba14159f6"
+    },
+    {
       "path": "client/web/src3d/glb.js",
       "sha256": "96df4247620323788caaad027ee998ff86b70f5d60c63551127c3054e6059084"
     },
     {
       "path": "client/web/src3d/granite-shading.js",
-      "sha256": "5f1ae1bee4106c2626564afd6b5540c114ece3533fcba51b10aa81b3a7da1a02"
+      "sha256": "41b3462eef240fbebdde264f1d53ac3fa3180f183b4c028b3fab03939815dc5a"
     },
     {
       "path": "client/web/src3d/grass-canopy.js",
@@ -123,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/heights.js",
-      "sha256": "c159bbba0f9b341c2fb9fd851a5302ef61480eb2b91eb5017ea999cafcf7e877"
+      "sha256": "82676906a3c4b36afa23a451a3f86ceaecda29344d5d46112a918a51b105bc8d"
     },
     {
       "path": "client/web/src3d/loading.js",
@@ -131,7 +135,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "0196653e8d515227e1c0bd1c4528682acf04f05b2a87ca452e322938a99a0a66"
+      "sha256": "43a25f962f0e8254ec9ffb6c99d5fc630f2cea2c50fcaf7832f1a16ccdab6b89"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -346,6 +350,106 @@
       "sha256": "5e302b4d7bcfa0586b185e12ffe7a8670125808471c310011ce1ba0cde4d5491"
     },
     {
+      "path": "shared/geometry/granite/bedrock_-1_4.glb",
+      "sha256": "4fa1df8602d23a944617edc353784b245ebbd640d5277d2f6572468feda376fa"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-2_3.glb",
+      "sha256": "9e90a18a5420be19214667682c7266b899a13c6c60ac87b95e0ef9ae2d73ce4f"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-2_4.glb",
+      "sha256": "e07922d72e24d94e8283da4dc4349f3ad426abe71691c1651eef9d1f22b72336"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-4_5.glb",
+      "sha256": "913bc1135b5dccb62baccfc1d8b2153cc3dd7779bb69a79a061ac2c19d640705"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-5_4.glb",
+      "sha256": "7069513fcfd0ef109c6ee1b42603db138010e1539cefbabcbe3e9488ff812cd6"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-5_5.glb",
+      "sha256": "d2e785ad70864fc563cdda3a08b507393d2396647bff89ca0e0f46649cad70d7"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-5_6.glb",
+      "sha256": "62231638c1019157183d97217ec93f1553d3d630235f50fdaa7438519860afce"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-6_5.glb",
+      "sha256": "abdfe81dddab36a7f9b6e6d1e6de545049f759041558c093b53b238b42c02747"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-6_6.glb",
+      "sha256": "4826486ae8af3aa4f11dd951873b795642428282e2982e0de577ed3852675ca3"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-7_5.glb",
+      "sha256": "ae0472f4c4918ebbbc42d071e6c332fe5ddf24c6817b721c9a8eb7073c01d709"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_1_2.glb",
+      "sha256": "b506ac010bd98d2b122628ee5dce31a7e1121107866d2d6486a66a465b7b6295"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_1_3.glb",
+      "sha256": "ffb08b6d8c389b14590a7876d6dec94d0e674005feb1be510ae61b25509116da"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_2_3.glb",
+      "sha256": "b95edcb852a52dc1c397c2b7d1f87fdd17d8f30cfc75807cb85a25f465f2f02b"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_3_4.glb",
+      "sha256": "b7134c2ac7045311cdd55a85b4c7ec884c0700d480aa86a51abc9954c3455e02"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_3_5.glb",
+      "sha256": "786fca63af516be2280ea8151561fadceb9513a44e5db81248fac9c63f80be68"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_3_6.glb",
+      "sha256": "3fd7d985b543336c9f5c3b0381b6dbf619c9f3559c972909b671da839efe34a3"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_4_4.glb",
+      "sha256": "16cb9eaa7ccb46e3ac18cae7b2357dcc927c398ae5f4313ad1231d4d2e97e0e1"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_4_5.glb",
+      "sha256": "5d3dd48e979900a0168f3d697eba957aabdc6677cec367cc101d1c05462cc100"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_4_6.glb",
+      "sha256": "c759b44e3ee9015e4d366d3e81efd46741ba06df4f607cf1ee956511426bf536"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_5_4.glb",
+      "sha256": "273908aa430e734b284ed8e0d6ce7d3f042592026068eed05c26bbe73481ec8d"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_5_5.glb",
+      "sha256": "9e098bd2ff87a61debb5074f19ba4ebf5abf5d96e7ca9a0fa199d0ad5579925a"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_5_6.glb",
+      "sha256": "eb2b9403b63a85182749b4c6272ccc12fe00dd6c21b53d9828f71416695ccd8b"
+    },
+    {
+      "path": "shared/geometry/granite/geology.json",
+      "sha256": "364c04b74db61754d8463bbd5ee76ab7b1819cd67a212880fc0a488d718898b3"
+    },
+    {
+      "path": "shared/geometry/granite/surface.js",
+      "sha256": "37ca3aaa124a2d1eb5cd67cc1e49a306bdcd81642d20fd62ad017547f59b6c77"
+    },
+    {
+      "path": "shared/geometry/granite/terrain_patch.glb",
+      "sha256": "37d66f64aa00343df9dd223a4c48da8ffd1c0297aaee7a3c63d9726c0fbac61c"
+    },
+    {
       "path": "shared/geometry/homestead/homestead.glb",
       "sha256": "8967560b3ddc0e3690a6ef1c194185212675e8fe7955379f5bd76160bdc50169"
     },
@@ -491,11 +595,11 @@
     },
     {
       "path": "shared/world/out/ground_cover.json",
-      "sha256": "3ea8f0961ca44af6cfe59e1312c256473044d44abd71bb835ee7387938ff2740"
+      "sha256": "fdd2cadeda8ebad961b04da7d2e9bdf52aafb86ca1ce1fbfa0e6d2a6c4a5ad33"
     },
     {
       "path": "shared/world/out/landscape_transition.json",
-      "sha256": "c8a51c3d367a77c020ce1e19969945d274b2313fe86c60572a39af049a339c06"
+      "sha256": "e9449d6339efca23b35ab7194df605c26f0a8c4a990846abf24f1667392e42a3"
     },
     {
       "path": "shared/world/out/placement.json",
@@ -503,7 +607,7 @@
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "6f54c3b881e8dca442bb54ac6f66353bffafbfaa6577c0ce14975399b0300403"
+      "sha256": "776c3dd44c1c15238e7eef1f10fde548aa4485437745d875aaf407f9caa41095"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -511,7 +615,7 @@
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "89ecdf95772cab4b37386c6eb15048a5c5ce0cdb07787780f11ccc7c987ea7fd"
+      "sha256": "8add5a3bcc92eb69b1b821cbb751f99c9e9a4471b26eb6415558d6971cf940bf"
     },
     {
       "path": "client/web/data/heightmap.f32",
@@ -523,12 +627,12 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "1c18fbe",
+  "commit": "c7f4165",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "89ecdf95772c"
+      "sha256_12": "8add5a3bcc92"
     },
     {
       "path": "shared/world/out/placement.json",

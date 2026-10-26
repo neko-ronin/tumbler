@@ -5,6 +5,8 @@ import {createAirCues,createMeadowAir} from './air-cues.js';
 import * as T from '../vendor/three.module.min.js';
 import { createOrbitControls } from './controls.js';
 import {buildTerrainLod} from './terrain-lod.js';
+import {buildGeology} from './geology.js';
+import {createGeologySampler,applyGeologyTerrain} from '../../../shared/geometry/granite/surface.js';
 import { buildWater, buildRiverReaches } from './terrain.js';
 import { buildPlacements, buildForest } from './placements.js';
 import { buildTreeGroundShadows } from './forest.js';
@@ -96,6 +98,8 @@ export async function main() {
     fetchData('shared/ecology/habitats.json'),
   ]);
   const transition=await fetchData('shared/world/out/landscape_transition.json');checkVersion(transition,1,'landscape transition');
+  const geologyData=worldmap.mountains.geology?await fetchData(worldmap.mountains.geology):null;
+  if(geologyData)checkVersion(geologyData,1,'mountain geology');
   placement={...placement,instances:[...placement.instances,...transition.instances]};
   checkVersion(manifest,1,'viewer manifest');checkVersion(worldmap,2,'world map');
   const [meadowData,flightConfig,rideConfig]=await Promise.all([fetchData(worldmap.activities.meadow_life),fetchData(worldmap.activities.flight),fetchData(worldmap.activities.ride)]);
@@ -109,11 +113,15 @@ export async function main() {
   forestLitterTexture.wrapS=forestLitterTexture.wrapT=T.RepeatWrapping;forestLitterTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());forestLitterTexture.needsUpdate=true;forestField.litter.value=forestLitterTexture;
   const snowStamp=await fetchData(rideConfig.snow_cover);
   for(const [value,known,label] of [[worldmap,2,'world map'],[placement,3,'placements'],[stampData,1,'grass stamp'],[habitats,1,'water habitats'],[meadowData,1,'meadow life'],[flightConfig,3,'flight'],[rideConfig,1,'ski and bike rules'],[snowStamp,1,'snow cover']])checkVersion(value,known,label);
-  const blockGrid = new HeightGrid({ values: new Float32Array(blockBytes), ...manifest.height_grids.block, kind: 'block' });
-  const farGrid = new HeightGrid({ values: new Float32Array(farBytes), ...manifest.height_grids.far_field, kind: 'far field' });
+  const sourceBlockGrid = new HeightGrid({ values: new Float32Array(blockBytes), ...manifest.height_grids.block, kind: 'block source' });
+  const sourceFarGrid = new HeightGrid({ values: new Float32Array(farBytes), ...manifest.height_grids.far_field, kind: 'far field source' });
+  const blockGrid = new HeightGrid({ values: applyGeologyTerrain(sourceBlockGrid.values,manifest.height_grids.block,geologyData?.terrain?.block), ...manifest.height_grids.block, kind: 'block' });
+  const farGrid = new HeightGrid({ values: applyGeologyTerrain(sourceFarGrid.values,manifest.height_grids.far_field,geologyData?.terrain?.far_field), ...manifest.height_grids.far_field, kind: 'far field' });
+  const sourceGround=new GroundSampler(sourceBlockGrid,sourceFarGrid);
+  const geologyHeight=geologyData?createGeologySampler(geologyData):null;
   const riverData=await fetchData('shared/world/out/river_granite.json');
   const riverSurface=createRiverGranite(riverData);
-  const ground = new GroundSampler(blockGrid, farGrid, riverSurface.height);
+  const ground = new GroundSampler(blockGrid, farGrid, riverSurface.height, geologyHeight);
   status.textContent = 'Opening the meadow…';
   loading.phase('Unpacking the meadow, homes and trees…',1);
   // Bounded parallel loading avoids a serial network waterfall and limits peak
@@ -122,6 +130,7 @@ export async function main() {
   for(const path of [characterConfig.asset,...treePlan.stages.map(stage=>stage.asset),...Object.values(treePlan.profiles??{}).flatMap(p=>p.stages.map(s=>s.asset))])if(!paths.includes(path))paths.push(path);
   paths.push(riverData.geometry);
   const assets = {};
+  for(const path of geologyData?.meshes??[])if(!paths.includes(path))paths.push(path);
   const decodedImages=new Map();
   let next = 0,loaded=0;
   async function loadAsset() {
@@ -152,6 +161,8 @@ export async function main() {
   const landscapeGrid=landscapeHeightGrid(blockGrid,farGrid);
   const terrain=buildTerrainLod(landscapeGrid,{horizonM:farGrid.maxX,batchTiles:4});
   scene.add(terrain.group);
+  const geology=geologyData?buildGeology(geologyData,assets):null;
+  if(geology)scene.add(geology.group);
   const riverGranite=buildRiverGranite(riverSurface,assets[riverData.geometry],terrain,assets,landscapeGrid);scene.add(riverGranite.group);
   const water = buildWater(placement.instances.filter(i => i.kind === 'river' || i.kind === 'lake'), assets, blockGrid,worldmap);
   scene.add(water, buildRiverReaches(worldmap, farGrid, riverSurface));
@@ -194,8 +205,10 @@ export async function main() {
   for(let row=0;row<cover.resolution;row++)for(let col=0;col<cover.resolution;col++){
     const i=row*cover.resolution+col;if(!grassCover.covered[i])continue;
     const x=cover.offsetX+col*cover.quad,y=cover.offsetY+row*cover.quad,h=ground.height(x,y);
-    const slope=Math.hypot((ground.height(x+4,y)??h)-(ground.height(x-4,y)??h),(ground.height(x,y+4)??h)-(ground.height(x,y-4)??h))/8;
-    if((riverSurface.granite(x,y)??0)>.22||h===null||h<23||h>1100||slope>.72||snowAt(x,y)>.03||surfaceAt(x,y)==='trail'||forestSoil.sample(x,y)>.48)grassCover.covered[i]=0;
+    const sourceHeight=sourceGround.height(x,y);
+    const slope=Math.hypot((sourceGround.height(x+4,y)??h)-(sourceGround.height(x-4,y)??h),(sourceGround.height(x,y+4)??h)-(sourceGround.height(x,y-4)??h))/8;
+    const baseHeight=blockGrid.sample(x,y)??farGrid.sample(x,y),rockHeight=geologyHeight?.(x,y);
+    if((riverSurface.granite(x,y)??0)>.22||h===null||h<23||sourceHeight>1100||slope>.72||(rockHeight!=null&&rockHeight>baseHeight)||snowAt(x,y)>.03||surfaceAt(x,y)==='trail'||forestSoil.sample(x,y)>.48)grassCover.covered[i]=0;
   }
   const grassGl=renderer.getContext();
   const meadow = buildGrassCanopy(grassCover,ground,{samples:grassGl.getParameter(grassGl.SAMPLES)});
@@ -393,7 +406,7 @@ export async function main() {
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
   const startup={ready:false,frames:0};
   // Read-only inspection hook used for repeatable visual/performance checks.
-  window.tumbler = { riverGranite,walkHeight, startup,flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { riverGranite,walkHeight,startup,flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;
     loading.show();status.textContent='Letting the light settle…';
@@ -505,6 +518,6 @@ export async function main() {
     try { contextLost=false;treeShadows.setSun(style.sun.value);cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
     catch(error){stopped=true;loading.fail(error);console.error(error);}
   });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
 }
