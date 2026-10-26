@@ -112,13 +112,16 @@ function extentOf(values) {
  * than something this module arranges.
  */
 export class GroundSampler {
-  constructor(block, farField) {
+  constructor(block, farField, surface = null) {
+    this.surface = surface;
     this.block = block;
     this.farField = farField;
   }
 
   /** Metres at a world coordinate, or null where no published ground reaches. */
   height(x, y) {
+    const detailed = this.surface?.(x, y);
+    if (detailed !== null && detailed !== undefined) return detailed;
     const inside = this.block.sample(x, y);
     if (inside !== null) return inside;
     return this.farField.sample(x, y);

@@ -204,7 +204,7 @@ export function buildWater(waterInstances, parsedAssets, grid = null, worldmap=n
  * lowered for it. The surface climbs or falls between points exactly as the
  * map says, linearly, every 20 m; nothing here is invented.
  */
-export function buildRiverReaches(worldmap, farGrid) {
+export function buildRiverReaches(worldmap, farGrid, riverSurface = null) {
   const group = new Group();
   group.name = "river_reaches";
   for (const reach of worldmap.mountains?.enclosure?.river_reaches ?? []) {
@@ -233,7 +233,7 @@ export function buildRiverReaches(worldmap, farGrid) {
     geometry.setAttribute("across", new Float32BufferAttribute(across, 1));
     geometry.setIndex(indices);
     geometry.computeBoundingSphere();
-    const mesh = new Mesh(geometry, waterMaterial(farGrid, true, line, { ribbon: true }));
+    const mesh = new Mesh(geometry, waterMaterial(farGrid, true, line, { ribbon: true, riverSurface:reach.id===riverSurface?.data.reach_id?riverSurface:null }));
     mesh.name = `river_reach_${reach.id}`;
     group.add(mesh);
   }

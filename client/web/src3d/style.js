@@ -373,7 +373,7 @@ export function makeSky(reaches = []) {
 }
 
 /** One opaque water pass; depth is sampled from the same core height grid. */
-export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {}) {
+export function waterMaterial(grid, river, polyline=null, { ribbon = false, riverSurface = null } = {}) {
   const heights = new T.DataTexture(grid.values, grid.resolution, grid.resolution, T.RedFormat, T.FloatType);
   heights.minFilter = heights.magFilter = T.LinearFilter;
   heights.needsUpdate = true;
@@ -390,10 +390,13 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
     const at=(row*flowSize+col)*4;flowBytes[at]=(dx*.5+.5)*255;flowBytes[at+1]=(dy*.5+.5)*255;flowBytes[at+3]=255;
   }
   const flow=new T.DataTexture(flowBytes,flowSize,flowSize);flow.minFilter=flow.magFilter=T.LinearFilter;flow.needsUpdate=true;
+  let riverBed=null;
+  if(riverSurface){const g=riverSurface.data.grid;riverBed=new T.DataTexture(Float32Array.from(g.heights_m),g.columns,g.rows,T.RedFormat,T.FloatType);riverBed.minFilter=riverBed.magFilter=T.NearestFilter;riverBed.needsUpdate=true;}
   return new T.ShaderMaterial({
     name: ribbon ? 'river_reach_optical' : river ? 'river_optical' : 'reservoir_optical', transparent: true, depthWrite: false,
-    defines: ribbon ? { RIBBON: '' } : {},
+    defines: {...(ribbon?{RIBBON:''}:{}),...(riverSurface?{RIVER_BED:''}:{})},
     uniforms: { ...sunShadowUniforms(),uTime: style.time, uSun: style.sun, uHeights: { value: heights },
+      uRiverBed:{value:riverBed},uRiverOrigin:{value:new T.Vector3(...(riverSurface?.data.grid.offset_xy_m??[0,0]),riverSurface?.data.grid.sample_m??4)},uRiverSize:{value:new T.Vector2(riverSurface?.data.grid.columns??1,riverSurface?.data.grid.rows??1)},
       uGrid: { value: new T.Vector4(grid.offsetX, grid.offsetY, grid.quad, grid.resolution) },
       uAir:style.air,uAirGrid:style.airGrid,uWind:style.wind,uFlow:{value:flow},uRiver: { value: river ? 1 : 0 }, ...T.UniformsUtils.merge([T.UniformsLib.fog]) },
     fog: true,
@@ -409,7 +412,8 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
       vec4 mvPosition=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mvPosition;
       #include <fog_vertex>
       }`,
-    fragmentShader: ACTOR_SHADOW_GLSL+CLOUD_GROUND_LIGHT_GLSL+AIR_GLSL+`
+    fragmentShader: TREE_SHADOW_GLSL+ACTOR_SHADOW_GLSL+CLOUD_GROUND_LIGHT_GLSL+AIR_GLSL+`
+      uniform sampler2D uRiverBed;uniform vec3 uRiverOrigin;uniform vec2 uRiverSize;
       uniform float uTime; uniform float uRiver; uniform vec3 uSun; uniform sampler2D uHeights; uniform sampler2D uFlow; uniform vec4 uGrid;
       varying vec3 vPlace; varying vec3 vView;
       #ifdef RIBBON
@@ -424,7 +428,17 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
       // The ground under this pixel, interpolated over the same two triangles
       // per cell the terrain mesh draws, so depth reaches zero where the
       // visible bank actually meets the surface.
-      float bed(vec2 world){vec2 g=(world-uGrid.xy)/uGrid.z,c=floor(g),f=g-c;
+      float bed(vec2 world){
+        #ifdef RIVER_BED
+        vec2 rg=(world-uRiverOrigin.xy)/uRiverOrigin.z;
+        if(min(rg.x,rg.y)>=0.&&rg.x<=uRiverSize.x-1.&&rg.y<=uRiverSize.y-1.){
+          vec2 c=min(floor(rg),uRiverSize-2.),f=rg-c;
+          float a=texture2D(uRiverBed,(c+.5)/uRiverSize).r,b=texture2D(uRiverBed,(c+vec2(1.5,.5))/uRiverSize).r,
+            e=texture2D(uRiverBed,(c+vec2(.5,1.5))/uRiverSize).r,d=texture2D(uRiverBed,(c+1.5)/uRiverSize).r;
+          return f.x>=f.y?a+(b-a)*f.x+(d-b)*f.y:a+(e-a)*f.y+(d-e)*f.x;
+        }
+        #endif
+        vec2 g=(world-uGrid.xy)/uGrid.z,c=floor(g),f=g-c;
         float r=uGrid.w,a=texture2D(uHeights,(c+.5)/r).r,b=texture2D(uHeights,(c+vec2(1.5,.5))/r).r,
           e=texture2D(uHeights,(c+vec2(.5,1.5))/r).r,d=texture2D(uHeights,(c+1.5)/r).r;
         return f.x>=f.y?a+(b-a)*f.x+(d-b)*f.y:a+(e-a)*f.y+(d-e)*f.x;}
@@ -465,6 +479,9 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
         float fresnel=.02+.98*pow(1.-max(0.,dot(n,eye)),5.);
         float sediment=clamp(depth/8.,0.,1.);
         vec3 water=mix(vec3(.15,.31,.18),vec3(.025,.115,.095),sediment);
+        #ifdef RIVER_BED
+          water=mix(vec3(.095,.34,.275),vec3(.018,.13,.12),sediment);
+        #endif
         vec3 reflected=reflect(-eye,n);
         vec3 sky=mix(vec3(.51,.64,.64),vec3(.16,.39,.59),clamp(reflected.y,0.,1.));
         float facing=max(0.,dot(reflect(-uSun,n),eye));
@@ -474,6 +491,9 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
         float sheen=pow(facing,mix(28.,90.,calm))*mix(.06,.16,calm);
         float glint=smoothstep(.8,.97,noised(p*6.3+flow*uTime*.6+vec2(0.,uTime*.35)).x)*pow(facing,900.)*(1.-smoothstep(.03,.2,footprint));
         float sunlight=cloudObjectLight(vPlace,uSun)*actorSunLight(vPlace);
+        #ifdef RIVER_BED
+          sunlight*=scenerySunLight(vPlace,vec3(0.,1.,0.));
+        #endif
         vec3 col=mix(water*mix(.65,1.,sunlight),sky,fresnel*.86)+vec3(1.,.94,.78)*(sheen+glint*4.)*sunlight;
         float caustic=pow(1.-abs(noised(p*.55+vec2(uTime*.11,-uTime*.07)).x*2.-1.),7.)*.05*exp(-depth*.65);
         col+=vec3(.31,.43,.19)*caustic*sunlight;
@@ -490,7 +510,9 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false } = {
         #ifdef RIBBON
           // A reach on the coarse far-field grid has no bank fine enough to
           // end it, so the ribbon's own edges fade instead.
+          #ifndef RIVER_BED
           opacity*=1.-smoothstep(.55,1.,abs(vAcross));
+          #endif
         #endif
         gl_FragColor=vec4(col,opacity);
         #include <tonemapping_fragment>

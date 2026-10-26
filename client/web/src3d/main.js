@@ -1,3 +1,5 @@
+import {createRiverGranite} from '../../../shared/activities/river-surface.js';
+import {buildRiverGranite} from './river-granite.js';
 import {createAirCues,createMeadowAir} from './air-cues.js';
 /** Browser composition only: the core remains the source of the world. */
 import * as T from '../vendor/three.module.min.js';
@@ -109,13 +111,16 @@ export async function main() {
   for(const [value,known,label] of [[worldmap,2,'world map'],[placement,3,'placements'],[stampData,1,'grass stamp'],[habitats,1,'water habitats'],[meadowData,1,'meadow life'],[flightConfig,3,'flight'],[rideConfig,1,'ski and bike rules'],[snowStamp,1,'snow cover']])checkVersion(value,known,label);
   const blockGrid = new HeightGrid({ values: new Float32Array(blockBytes), ...manifest.height_grids.block, kind: 'block' });
   const farGrid = new HeightGrid({ values: new Float32Array(farBytes), ...manifest.height_grids.far_field, kind: 'far field' });
-  const ground = new GroundSampler(blockGrid, farGrid);
+  const riverData=await fetchData('shared/world/out/river_granite.json');
+  const riverSurface=createRiverGranite(riverData);
+  const ground = new GroundSampler(blockGrid, farGrid, riverSurface.height);
   status.textContent = 'Opening the meadow…';
   loading.phase('Unpacking the meadow, homes and trees…',1);
   // Bounded parallel loading avoids a serial network waterfall and limits peak
   // parsing memory. Source bytes fall out of scope as each asset is decoded.
   const paths = [...new Set([...placement.instances.map(i => i.asset),...habitats.plantings.map(i=>i.asset),...meadowData.species.map(i=>i.asset),'waterside/river_fish.glb','waterside/fish_tail.glb','waterside/frog.glb','waterside/dragonfly_wings.glb',flightConfig.wing_asset,flightConfig.motor_asset,...Object.values(flightConfig.modes).map(m=>m.wing_asset).filter(Boolean),...Object.values(rideConfig.modes).map(m=>m.asset)])];
   for(const path of [characterConfig.asset,...treePlan.stages.map(stage=>stage.asset),...Object.values(treePlan.profiles??{}).flatMap(p=>p.stages.map(s=>s.asset))])if(!paths.includes(path))paths.push(path);
+  paths.push(riverData.geometry);
   const assets = {};
   const decodedImages=new Map();
   let next = 0,loaded=0;
@@ -147,8 +152,9 @@ export async function main() {
   const landscapeGrid=landscapeHeightGrid(blockGrid,farGrid);
   const terrain=buildTerrainLod(landscapeGrid,{horizonM:farGrid.maxX,batchTiles:4});
   scene.add(terrain.group);
+  const riverGranite=buildRiverGranite(riverSurface,assets[riverData.geometry],terrain,assets,landscapeGrid);scene.add(riverGranite.group);
   const water = buildWater(placement.instances.filter(i => i.kind === 'river' || i.kind === 'lake'), assets, blockGrid,worldmap);
-  scene.add(water, buildRiverReaches(worldmap, farGrid));
+  scene.add(water, buildRiverReaches(worldmap, farGrid, riverSurface));
   const placements = buildPlacements(placement, assets, { ground,crownAssets:new Set(Object.keys(treePlan.targets)) }); scene.add(placements.group);
   // Set the initial sun before expensive atlas bakes; the first preset then
   // reuses them instead of immediately paying for a second bake.
@@ -189,7 +195,7 @@ export async function main() {
     const i=row*cover.resolution+col;if(!grassCover.covered[i])continue;
     const x=cover.offsetX+col*cover.quad,y=cover.offsetY+row*cover.quad,h=ground.height(x,y);
     const slope=Math.hypot((ground.height(x+4,y)??h)-(ground.height(x-4,y)??h),(ground.height(x,y+4)??h)-(ground.height(x,y-4)??h))/8;
-    if(h===null||h<23||h>1100||slope>.72||snowAt(x,y)>.03||surfaceAt(x,y)==='trail'||forestSoil.sample(x,y)>.48)grassCover.covered[i]=0;
+    if((riverSurface.granite(x,y)??0)>.22||h===null||h<23||h>1100||slope>.72||snowAt(x,y)>.03||surfaceAt(x,y)==='trail'||forestSoil.sample(x,y)>.48)grassCover.covered[i]=0;
   }
   const grassGl=renderer.getContext();
   const meadow = buildGrassCanopy(grassCover,ground,{samples:grassGl.getParameter(grassGl.SAMPLES)});
@@ -351,6 +357,8 @@ export async function main() {
   // Look-around camera bookmarks use the existing terrain and launch location.
   const launch=ground.height(-380,1620);
   const views = {
+    graniteRiver:{position:[3180,540,1190],target:[3100,12,580]},
+    graniteBank:{position:[2940,37,654],target:[3035,14,599]},
     canopy:{position:heroCentre.clone().add(new T.Vector3(heroRadius*2.1,8,heroRadius*2.3)).toArray(),target:heroCentre.toArray()},
     home: { position: homeCamera, target: [hx, hz + 3, -hy] },
     valley: { position: [-700,ground.height(-700,-700)+140,700], target: [-380,150,-1900] },
@@ -385,13 +393,13 @@ export async function main() {
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
   const startup={ready:false,frames:0};
   // Read-only inspection hook used for repeatable visual/performance checks.
-  window.tumbler = { startup,flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { riverGranite,walkHeight, startup,flightRig, scene, camera, renderer, controls, navigation, character, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;
     loading.show();status.textContent='Letting the light settle…';
     const result=await warmScene({
       prepare(){
-        terrain.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();
+        terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();
         meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
         airCues.update(camera,0);ecology.update(camera,elapsed);sky.position.copy(camera.position);
         const wind=navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);
@@ -440,7 +448,7 @@ export async function main() {
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
     navigation.update(Math.min(delta,50)/1000);applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
-    terrain.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
+    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;
@@ -497,6 +505,6 @@ export async function main() {
     try { contextLost=false;treeShadows.setSun(style.sun.value);cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
     catch(error){stopped=true;loading.fail(error);console.error(error);}
   });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
 }

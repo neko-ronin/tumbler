@@ -123,7 +123,7 @@
     },
     {
       "path": "client/web/src3d/heights.js",
-      "sha256": "2093b71fa597740caa80f0311359a4989090767a15212a7ec883b7df0d439ad9"
+      "sha256": "c159bbba0f9b341c2fb9fd851a5302ef61480eb2b91eb5017ea999cafcf7e877"
     },
     {
       "path": "client/web/src3d/loading.js",
@@ -131,7 +131,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "2554a082b9eae5f24cb0138a2a6880973af30814e41d665247676ce61928b612"
+      "sha256": "0196653e8d515227e1c0bd1c4528682acf04f05b2a87ca452e322938a99a0a66"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -154,12 +154,16 @@
       "sha256": "b26f5ccfb396d8897bd6d10344165a37834bdb849a49f842e078eca3b129d78f"
     },
     {
+      "path": "client/web/src3d/river-granite.js",
+      "sha256": "1781b70ccaea8bcb247a1e64bc86323416cc4367d0ec9418a2da443625d52dd8"
+    },
+    {
       "path": "client/web/src3d/rock-lod.js",
       "sha256": "7110e518b4bbb25836af6d636cd4addababc5e23c00c6d1e6faf3ccb77aee91a"
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "21401e6d1fef9f066c00b145ea3f619758052a44f0dc4a6033b688754cce97f9"
+      "sha256": "99ad2773de6f65fbae1720ff5060c0a72481674edc467a7a274a8b313daa90c9"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
@@ -171,7 +175,7 @@
     },
     {
       "path": "client/web/src3d/terrain.js",
-      "sha256": "3bea57ef605dadbc90eb008087ae71bf05a04c8f47968d540a56894e477c2b06"
+      "sha256": "e11a2ab68238119590e108be8782c4d9bbc92f47339e3b9be28b64ce318075f6"
     },
     {
       "path": "client/web/src3d/tree-atlas.js",
@@ -254,12 +258,16 @@
       "sha256": "8ce44a7ca65a678a1ae9d86919cf7753d714947b9fa41dbf077d3326b80c75ab"
     },
     {
+      "path": "shared/activities/river-surface.js",
+      "sha256": "617510b46bc7b6cd1fa9f5fb5007de94ad08914a1adbd5e6bd25c447e0a28bbd"
+    },
+    {
       "path": "shared/activities/swim.js",
-      "sha256": "1784cf9b1a4f93c286d730a550dd8ce636317fa19564ae45803407020a459b80"
+      "sha256": "68293fd6f968cb8dc78d91ec081d5b21eff3199f907daf57c04b4690847a7b5a"
     },
     {
       "path": "shared/activities/walk.js",
-      "sha256": "e6619634c25c80f393134fc7bd17f4a79991bdad96b972091cc8b78e55a0c536"
+      "sha256": "a8ff1f5d999ff0205142fb02f04c51c12bc7ecd7d3dae4c23d2419abc12a9ec9"
     },
     {
       "path": "shared/characters/player.json",
@@ -364,6 +372,10 @@
     {
       "path": "shared/geometry/redwood/silver_fir.glb",
       "sha256": "f3165972dc778a6d067b4be8366694071cf12a9d747302d9eec3626959b0c68d"
+    },
+    {
+      "path": "shared/geometry/river-granite/river_granite.glb",
+      "sha256": "e79b305e04f908873c8574ff41298c0695e6d1a4d36e967ee0f26ea5c4ac30d7"
     },
     {
       "path": "shared/geometry/sports/bicycle.glb",
@@ -490,6 +502,10 @@
       "sha256": "8ab51d753d8d73b538faf312d91bc71cc419c13bc63237fecd3599618a9c9d36"
     },
     {
+      "path": "shared/world/out/river_granite.json",
+      "sha256": "6f54c3b881e8dca442bb54ac6f66353bffafbfaa6577c0ce14975399b0300403"
+    },
+    {
       "path": "shared/world/out/snow_cover.json",
       "sha256": "aa0f9421684b253b60fce3ebe8c909817a08bb0f83d50900850257f59d858745"
     },
@@ -507,7 +523,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "b33221e",
+  "commit": "1c18fbe",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

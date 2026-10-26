@@ -43,8 +43,9 @@ export function stepSwim(state,input,dt,config,world){
       ||(!world.waterAt(x,y)&&(world.height(x,y)??Infinity)>s.z+config.max_step_m);
     if(!blocked){s.x=x;s.y=y;}else{s.vx=0;s.vy=0;}
     // A dive stops floor_clear_m above the bed; otherwise buoyancy eases him and the bed is the floor.
-    s.z=Math.max(diving?floor+c.floor_clear_m:floor,s.z+s.vz*step);
-    if(diving)s.z=Math.min(s.z,float);  // a rising dive surfaces at his float, not above it
+    const contactFloor=world.floorHeight(s.x,s.y);
+    s.z=Math.max(diving?contactFloor+c.floor_clear_m:contactFloor,s.z+s.vz*step);
+    if(diving)s.z=Math.min(s.z,Math.max(contactFloor+c.floor_clear_m,float));  // a rising dive surfaces at his float, not above it
     s.swimPhase=wading?'wade':diving?'dive':Math.hypot(s.vx,s.vy)>.05&&magnitude?'paddle':'tread';
   }
   s.speed=Math.hypot(s.vx,s.vy);

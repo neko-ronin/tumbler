@@ -1,3 +1,15 @@
+# Downstream granite river — approved for integration, 2026-10-26
+
+The east exit now reads shared granite bed/bank/slab geometry, including wet/dry
+surfaces, source-preserving LOD and matching physical water edges. The original
+river course, levels and outer tree placements remain. No future hub site is
+chosen. Preview query bookmarks: `?view=graniteRiver` and `?view=graniteBank`.
+[Research, checks, matched evidence and limits](../../docs/reviews/river-granite-2026-10-25.md).
+The human approves main integration. Unreal parity is excluded from this release;
+browser performance examination and next steps follow in the release receipt.
+
+---
+
 # Loading journal: sketch, then colour — v0.2.0, 2026-10-25
 
 The loading screen keeps the original line sketch up while the world's 44 asset

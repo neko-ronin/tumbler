@@ -26,6 +26,25 @@ export function createWalkHeight(worldmap,height){
    * the river's flow direction (unit, along its polyline; lakes are still). */
   const waterAt=(x,y)=>{
     const z=floorHeight(x,y);if(!Number.isFinite(z))return null;
+    // Outer reaches already have published course, width and falling levels.
+    // The same footprint now participates in walking/swimming and diving.
+    for(const reach of worldmap.mountains?.enclosure?.river_reaches??[]){
+      const line=reach.polyline_xyz_m;
+      // The block's own body wins inside its boundary; beyond the junction
+      // the reach wins over the old body's round endpoint envelope.
+      if((x-line[0][0])*(line.at(-1)[0]-line[0][0])<0)continue;
+      let nearest=null;
+      for(let i=1;i<line.length;i++){
+        const a=line[i-1],b=line[i],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);
+        const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(length*length)));
+        const surface=a[2]+(b[2]-a[2])*t;
+        const distance=Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t);
+        if(distance>reach.half_width_m||distance>=(nearest?.distance??Infinity))continue;
+        const sign=b[2]>a[2]?-1:1;
+        nearest={distance,surface,flow:[dx/length*sign,dy/length*sign]};
+      }
+      if(nearest)return z<nearest.surface+.05?{surface_z:nearest.surface,depth:Math.max(0,nearest.surface-z),flow:nearest.flow}:null;
+    }
     for(const b of bodies){
       if(z>=b.surface_z_m+.05)continue;
       const water=flow=>({surface_z:b.surface_z_m,depth:Math.max(0,b.surface_z_m-z),flow});
