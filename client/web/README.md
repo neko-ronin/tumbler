@@ -1,3 +1,13 @@
+# Fixed-field wind CPU continuation — local candidate, 2026-10-26
+
+The retained mountain branch now reuses immutable terrain/trail heights for the
+fixed meadow field while sampling live shared wind. Exact numerical parity,
+bounded storage and 352 web checks pass; controlled overview CPU p95 falls from
+45.3 ms uncached to 17.1–18.3 ms cached. Frame pacing remains open. This follow-up
+is unpublished; [measurements and next gate](../../docs/reviews/mountain-wind-continuation-2026-10-26.md).
+
+---
+
 # Mountain geological structure — approved for integration, 2026-10-26
 
 Shared sparse crest refinements, closed jointed granite slabs, exfoliated roofs
