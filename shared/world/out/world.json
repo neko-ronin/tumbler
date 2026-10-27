@@ -158,9 +158,9 @@
     }
   ],
   "worldmap": {
-    "sha256": "af29135e8e191dc49fea24e53865d2a72a6a4c48df6d35a0b7ae0eb3d44ed1a4",
+    "sha256": "31e4922e4ba3fe04e16a04a7f00ce915266225e93e3bb61706abf294ba851d95",
     "source": "shared/world/worldmap.json",
     "status": "signed-off",
-    "version": 2
+    "version": 3
   }
 }

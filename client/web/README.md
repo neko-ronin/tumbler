@@ -1,3 +1,18 @@
+# City towers removed — integrated for review, 2026-10-27
+
+The twelve northern city towers are retired. World map version 3 retains their
+northern basin as terrain, and the released mountain, river, grass and tree
+geometry stays intact. The enlarged homes, full-size character, size toggle
+and collision recovery remain. There are 9,907 placements and 12,611 trees,
+including the outer landscape. Both browser views read the migrated map.
+
+The retained granite source recipe preserves the approved ground after removing
+the structures. The source branch and worktree remain available. Unreal tooling
+is updated; its saved maps have not been rebuilt. [Integration receipt and
+review evidence](../../docs/reviews/city-tower-integration-2026-10-27.md).
+
+---
+
 # Cat size, homes and collision — integrated for review, 2026-10-26
 
 The approved character sizing, home proportions and collision changes are

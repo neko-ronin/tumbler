@@ -91,8 +91,7 @@ test("the two places the core states the same thing agree", () => {
   assert.equal(sceneSummary(scene).turbines, worldmap.turbines.count);
 });
 
-test("city towers and water bodies are the declared ones, not derived ones", () => {
-  assert.equal(scene.towers.length, worldmap.city.towers.length);
+test("water bodies are the declared ones, not derived ones", () => {
   assert.equal(scene.water.length, worldmap.water.bodies.length);
   const river = scene.water.find((b) => b.id === "river");
   assert.ok(river, "no river");

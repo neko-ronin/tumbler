@@ -161,7 +161,7 @@ export function stampLines(report) {
     ...report.sources.map((source) => `  ${source.sha256_12}  ${source.path.split("/").slice(-2).join("/")}`),
     `terrain ${report.heights.min_m.toFixed(1)}-${report.heights.max_m.toFixed(1)} m over ${report.extent.width} m`,
     `drew ${report.summary.instances} instances in ${report.summary.kinds} kinds, `
-      + `${report.summary.cameraKeyframes} keyframes, ${report.summary.cityTowers} towers, `
+      + `${report.summary.cameraKeyframes} keyframes, `
       + `${report.summary.waterBodies} water bodies`,
     report.albedoFlipped
       ? `fields_albedo.png read SOUTH-UP and flipped (${report.flipEvidence})`

@@ -69,12 +69,6 @@ export function waterBodies(worldmap) {
   }));
 }
 
-/** City towers, as declared: [x, y, height_m] each. */
-export function cityTowers(worldmap) {
-  const towers = worldmap.city?.towers ?? [];
-  return towers.map((t) => [Number(t[0]), Number(t[1]), Number(t[2])]);
-}
-
 /** Turbine placements, as declared. */
 export function turbinePlacements(worldmap) {
   const turbines = worldmap.turbines ?? {};
@@ -88,7 +82,6 @@ export function sceneSummary(scene) {
     kinds: scene.placements.length,
     cameraKeyframes: scene.camera.points.length,
     waterBodies: scene.water.length,
-    cityTowers: scene.towers.length,
     turbines: scene.turbines.length,
   };
 }
@@ -101,7 +94,6 @@ export function buildScene({ worldmap, placement, world }) {
     placements: groupPlacements(placement),
     camera: cameraPath(worldmap),
     water: waterBodies(worldmap),
-    towers: cityTowers(worldmap),
     turbines: turbinePlacements(worldmap),
     cells,
     edges,

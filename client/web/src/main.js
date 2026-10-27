@@ -12,6 +12,7 @@ import { drawLegend, drawStamp } from "./stamp.js";
 import { digestPartition } from "./digest.js";
 import { partitionId } from "./partition_id.js";
 import { decodeGroundCover, paintWave, windToward } from "./wave.js";
+import { checkVersion, WORLDMAP_VERSION } from "../src3d/provenance.js";
 
 const SIZE = 2048;
 
@@ -107,6 +108,8 @@ async function main() {
       fetchImage("../../../shared/world/out/fields_albedo.png"),
       fetchImage("../../../shared/world/out/water_mask.png"),
     ]);
+
+    checkVersion(worldmap, WORLDMAP_VERSION, "world map");
 
     // What the stamp says about provenance is checked here, in the browser,
     // against the bytes that actually arrived.

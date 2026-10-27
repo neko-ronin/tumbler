@@ -108,8 +108,8 @@ test("between vertices the two grids are the same ground, not the same number", 
 });
 
 test("ground outside the block comes from the far field, and no further", () => {
-  // The city stands past the north edge, at y ≈ 2600, and the far field is
-  // what it stands on.
+  // The ridge ring and the northern skyline stand past the block edge, and
+  // the far field is what they stand on.
   assert.ok(sampler.hasGround(0, -3000));
   assert.ok(sampler.hasGround(0, 3800));
   assert.ok(!sampler.hasGround(0, 4200), "past the published ground is past the published ground");

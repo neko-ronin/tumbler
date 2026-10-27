@@ -15,11 +15,22 @@ import test from "node:test";
 import { Matrix4, Vector3 } from "../vendor/three.module.min.js";
 
 import { cameraPose, instanceMatrix, toScene, toSceneYaw } from "../src3d/world.js";
+import { checkVersion, WORLDMAP_VERSION } from "../src3d/provenance.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..", "..", "..");
 const worldmap = JSON.parse(readFileSync(join(REPO, "shared", "world", "worldmap.json"), "utf8"));
 const placement = JSON.parse(readFileSync(join(REPO, "shared", "world", "out", "placement.json"), "utf8"));
+
+test("version 3 retires city towers, retains the terrain basin and refuses future maps", () => {
+  assert.equal(worldmap.version, 3);
+  assert.doesNotThrow(() => checkVersion(worldmap, WORLDMAP_VERSION, "world map"));
+  assert.throws(() => checkVersion({ ...worldmap, version: WORLDMAP_VERSION + 1 }, WORLDMAP_VERSION, "world map"), /unsupported version/);
+  assert.equal(Object.hasOwn(worldmap, "city"), false);
+  assert.equal(Object.hasOwn(worldmap.mountains.enclosure, "city_clearance"), false);
+  assert.deepEqual(worldmap.mountains.enclosure.north_basin, { centre_xy_m: [1500, 2600], inner_m: 700, outer_m: 1300 });
+  assert.equal(placement.instances.some(p => p.kind === "city_tower"), false);
+});
 
 // A direction, not a point: the translation must not ride along. This is a
 // real distinction here and not a nicety -- applyMatrix4 on a direction
@@ -116,8 +127,8 @@ test("an instance's position lands in scene metres, up on y", () => {
 });
 
 test("a non-uniform scale is applied on the world's own axes", () => {
-  const tower = placement.instances.find((i) => i.kind === "city_tower" && i.scale[2] !== i.scale[0]);
-  assert.ok(tower, "the core places at least one tower stretched vertically");
+  const tower = placement.instances.find((i) => i.kind === "mooring_mast" && i.scale[2] !== i.scale[0]);
+  assert.ok(tower, "the core places at least one mast scaled unevenly on z");
   const matrix = instanceMatrix(tower.position_m, tower.yaw_deg, tower.scale);
   const origin = new Vector3().setFromMatrixPosition(matrix);
   const vertical = new Vector3(0, 1, 0).applyMatrix4(matrix).sub(origin);

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "name": "tumbler-flyover-block",
   "status": "signed-off",
   "units": "metres",
@@ -7655,81 +7655,6 @@
       ]
     ]
   },
-  "city": {
-    "centre_xy_m": [
-      1500.0,
-      2600.0
-    ],
-    "past_north_edge_m": 700.0,
-    "height_range_m": [
-      120.0,
-      260.0
-    ],
-    "tower_hex": "#C9CFD4",
-    "terrace_hex": "#6E8F4A",
-    "towers": [
-      [
-        1500.0,
-        2600.0,
-        260.0
-      ],
-      [
-        1240.0,
-        2720.0,
-        180.0
-      ],
-      [
-        1780.0,
-        2680.0,
-        205.0
-      ],
-      [
-        1090.0,
-        2450.0,
-        150.0
-      ],
-      [
-        1900.0,
-        2500.0,
-        140.0
-      ],
-      [
-        1400.0,
-        2380.0,
-        120.0
-      ],
-      [
-        1620.0,
-        2880.0,
-        230.0
-      ],
-      [
-        1150.0,
-        2820.0,
-        165.0
-      ],
-      [
-        1855.0,
-        2820.0,
-        175.0
-      ],
-      [
-        1310.0,
-        2250.0,
-        130.0
-      ],
-      [
-        1700.0,
-        2230.0,
-        145.0
-      ],
-      [
-        2000.0,
-        2700.0,
-        125.0
-      ]
-    ]
-  },
   "blimps": [
     {
       "id": "B1",
@@ -7891,7 +7816,7 @@
         "pitch_deg": -12.0
       }
     ],
-    "note": "The climb at the end is deliberate: the city enters frame as the camera rises, and the last beat is the widest.",
+    "note": "The climb at the end is deliberate: the northern peaks enter frame as the camera rises, and the last beat is the widest.",
     "yaw_convention": "degrees counter-clockwise from +X (east) toward +Y (north), seen from above with +Z up; 0 is east, 90 is north, positive turns north. Pitch is degrees below horizontal, negative is looking down.",
     "field_of_view_deg": 65.5,
     "frame_aspect": [
@@ -7959,7 +7884,7 @@
         4060.0,
         4060.0
       ],
-      "covers": "The ground the block does not reach. The block ends at y = 2044 and the city runs to y = 2880, so without this the towers stand on nothing and there is nothing behind them but sky.",
+      "covers": "The ground the block does not reach: the ring of ridges that closes the valley, the river's two valley reaches and the northern skyline past the block's own edge at y = 2044.",
       "seam": "Vertex for vertex with the block. 56 m divides the 4088 m grid, so a far-field vertex sits exactly on each block edge, and every far-field vertex inside the block carries the block's own height: inside it is the block, beyond it is the same generator run coarse.",
       "note": "Same orientation, encoding range and row order as the heightmap: row r is y = 4060 - 56r. The encoding range is not repeated here: it is block.height_range_m, and both rasters are written against it, so one decode serves either and there is no second number to keep in step."
     }
@@ -8058,7 +7983,7 @@
       }
     ],
     "enclosure": {
-      "note": "The valley is a temporary flat-ish land hidden between mountains. Past the block's sample grid the far field rises into a ring of crags over width_m; the block itself is unchanged. The river arrives down a gorge from higher ground in the west and leaves through a broad low gap in the east. Each reach's polyline is [x, y, water surface z] in metres, starting where the block's own river polyline ends, and is read by the core to shape the ground and by clients to draw the water. The city keeps its ground inside city_clearance.",
+      "note": "The valley is a temporary flat-ish land hidden between mountains. Past the block's sample grid the far field rises into a ring of crags over width_m; the block itself is unchanged. The river arrives down a gorge from higher ground in the west and leaves through a broad low gap in the east. Each reach's polyline is [x, y, water surface z] in metres, starting where the block's own river polyline ends, and is read by the core to shape the ground and by clients to draw the water. North of the block the ring stays at the generator's own ground inside north_basin, the hollow the old city towers stood in; it is kept so the northern skyline did not move when they went.",
       "rise_m": 950.0,
       "rise_variation_m": 320.0,
       "crag_m": 260.0,
@@ -8071,7 +7996,11 @@
         1250.0,
         1485.0
       ],
-      "city_clearance": {
+      "north_basin": {
+        "centre_xy_m": [
+          1500.0,
+          2600.0
+        ],
         "inner_m": 700.0,
         "outer_m": 1300.0
       },

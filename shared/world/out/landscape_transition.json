@@ -55831,11 +55831,11 @@
   "rule": "Grass on dry, soil-bearing published outer terrain; existing edge stands continue toward the enclosure ridges. No original placement or terrain changes.",
   "sources": {
     "shared/world/out/farfield_height.png": "33d83648c52a3afbb102e766ec4b23f9b52ce43f2843494c12a46862cf6144f2",
-    "shared/world/out/ground_cover.json": "fdd2cadeda8ebad961b04da7d2e9bdf52aafb86ca1ce1fbfa0e6d2a6c4a5ad33",
+    "shared/world/out/ground_cover.json": "7ffe819db8caeb683968a337a196cb4d6d09573a69ae352164157cbae68fefd6",
     "shared/world/out/heightmap.png": "949611db689c2d8cc4f438225066687633ba8c46eb0ac7a31438b5f76326f1e9",
-    "shared/world/out/placement.json": "27e2a4f4cc2d756d64f9ed020a5c8796863e6cb8e050a5f2db21252f370030d7",
-    "shared/world/out/world.json": "40b1fda00bf7c62787c8cdda15928fb8daee9a29b758828fcdfb1bd9291eb4c3",
-    "shared/world/worldmap.json": "8add5a3bcc92eb69b1b821cbb751f99c9e9a4471b26eb6415558d6971cf940bf"
+    "shared/world/out/placement.json": "b7c329e912647584a44642e88408d7ea396e6de8c0043d7acc46241295335edb",
+    "shared/world/out/world.json": "5e074c0ce36a791eeae7228458e65d1850c9e95331174ddecb6bbf4d8f303f9c",
+    "shared/world/worldmap.json": "31e4922e4ba3fe04e16a04a7f00ce915266225e93e3bb61706abf294ba851d95"
   },
   "version": 1
 }

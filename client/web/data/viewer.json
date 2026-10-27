@@ -139,7 +139,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "dcbcb8506912be238b9889e1122d2949346a9e1f9b381806b79c098ad390ef1a"
+      "sha256": "54f693bf1cd5051b79f784e1dba795be5dc0983777250994f5a36e27c0b35e87"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -155,7 +155,7 @@
     },
     {
       "path": "client/web/src3d/provenance.js",
-      "sha256": "b7796c19d3b63b19d17104be892800a1d2c3aa5d486ccf11e1c638941bc418b3"
+      "sha256": "e16ed5734bdc32b3f5fdfb4ba74dcd241d823d60a19c5e67a26ae7a771b2ef1d"
     },
     {
       "path": "client/web/src3d/redwood-rendering.js",
@@ -183,7 +183,7 @@
     },
     {
       "path": "client/web/src3d/terrain.js",
-      "sha256": "e11a2ab68238119590e108be8782c4d9bbc92f47339e3b9be28b64ce318075f6"
+      "sha256": "a3b94ad0e98a2eaa81cb7a5d05622c70b26109276a13cc03297ea37a68e2492b"
     },
     {
       "path": "client/web/src3d/tree-atlas.js",
@@ -223,7 +223,7 @@
     },
     {
       "path": "client/web/src3d/world.js",
-      "sha256": "378440cf0a2c3faacc0d0f5123f994c583d20c4515f1cfd33b5e3eb7a8410934"
+      "sha256": "60dcec12303ec6a79c9c63d50a19cd70a24db54c5cecf8d5553280afe6e36e30"
     },
     {
       "path": "client/web/textures/forest-litter-v1.png",
@@ -328,10 +328,6 @@
     {
       "path": "shared/geometry/cat-ronin/ronin.glb",
       "sha256": "2239ca52ecc541b5032f052a456b224334bef37aa89456cc8df717f4ca65de71"
-    },
-    {
-      "path": "shared/geometry/city/tower.glb",
-      "sha256": "c284df1f4ef054b5ce12a6d692d344aef1c0495351d3ccd9a111bbf33eeeb55c"
     },
     {
       "path": "shared/geometry/dome/dome.glb",
@@ -447,7 +443,7 @@
     },
     {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "b157b4eaa5e74f72cdef17c8730af5d3c80152214c5265e5aaccdf1ba01c2b44"
+      "sha256": "3f7b0670276250cc9c0c400263b0aae6cba7b2f931235a741c26a58706d556b3"
     },
     {
       "path": "shared/geometry/granite/surface.js",
@@ -603,19 +599,19 @@
     },
     {
       "path": "shared/world/out/ground_cover.json",
-      "sha256": "fdd2cadeda8ebad961b04da7d2e9bdf52aafb86ca1ce1fbfa0e6d2a6c4a5ad33"
+      "sha256": "7ffe819db8caeb683968a337a196cb4d6d09573a69ae352164157cbae68fefd6"
     },
     {
       "path": "shared/world/out/landscape_transition.json",
-      "sha256": "48a4095bb6e16ee53da794e02fd7625aea1d4999f7d51275312785e4610f5985"
+      "sha256": "975f37d71ab5565da0390b4306357c1300046ab2a81ed445b91f06cee7435a28"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "27e2a4f4cc2d756d64f9ed020a5c8796863e6cb8e050a5f2db21252f370030d7"
+      "sha256": "b7c329e912647584a44642e88408d7ea396e6de8c0043d7acc46241295335edb"
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "8bb814754b5ea959bfe376aff434161546c946e6d5c2db421feed6db1f2213a7"
+      "sha256": "ea4de75b34e9491b496cc0b135defdbcfb467ae7cc335e91ee043f2b4ace8fe0"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -623,7 +619,7 @@
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "8add5a3bcc92eb69b1b821cbb751f99c9e9a4471b26eb6415558d6971cf940bf"
+      "sha256": "31e4922e4ba3fe04e16a04a7f00ce915266225e93e3bb61706abf294ba851d95"
     },
     {
       "path": "client/web/data/heightmap.f32",
@@ -635,16 +631,16 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "a45e087",
+  "commit": "089aa96",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "8add5a3bcc92"
+      "sha256_12": "31e4922e4ba3"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "27e2a4f4cc2d"
+      "sha256_12": "b7c329e91264"
     },
     {
       "path": "shared/world/out/fields_albedo.png",
@@ -661,6 +657,10 @@
     {
       "path": "shared/world/out/farfield_height.png",
       "sha256_12": "33d83648c52a"
+    },
+    {
+      "path": "shared/geometry/granite/clearances.json",
+      "sha256_12": "705a338e8bd3"
     }
   ],
   "extent": {
@@ -722,6 +722,6 @@
       "source": "shared/world/out/farfield_height.png, decoded by shared.terrain.heightmap.load_far_field"
     }
   },
-  "far_field_note": "The far field is vertex-for-vertex with the block at its edge and carries the block's own heights inside it, so a 3D scene can draw it past the edge as a ring and leave the block's own terrain to cover the middle. It exists because the city stands on it.",
+  "far_field_note": "The far field is vertex-for-vertex with the block at its edge and carries the block's own heights inside it, so a 3D scene can draw it past the edge as a ring and leave the block's own terrain to cover the middle. The ridge ring, the river's valley reaches and the northern skyline stand on it.",
   "heightmap_note": "heightmap.png is 16-bit grayscale; a browser cannot read its sample values back, which is the only reason hillshade.png and the two .f32 grids exist at all. The 2D viewer never decodes it; the 3D scene reads heightmap.f32 instead."
 }

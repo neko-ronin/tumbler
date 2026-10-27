@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "provenance": "Preserve the approved granite generated at main 089aa96a37e43d6010ddafb6d0e94ac90a302368: these twelve 35 m source exclusions were formerly supplied by city-tower placements. Retiring structures does not reauthor the released terrain or rock layout. No runtime objects or colliders are created.",
+  "circles": [
+    {
+      "centre_xy_m": [
+        1500.0,
+        2600.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1240.0,
+        2720.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1780.0,
+        2680.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1090.0,
+        2450.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1900.0,
+        2500.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1400.0,
+        2380.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1620.0,
+        2880.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1150.0,
+        2820.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1855.0,
+        2820.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1310.0,
+        2250.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        1700.0,
+        2230.0
+      ],
+      "radius_m": 35
+    },
+    {
+      "centre_xy_m": [
+        2000.0,
+        2700.0
+      ],
+      "radius_m": 35
+    }
+  ]
+}

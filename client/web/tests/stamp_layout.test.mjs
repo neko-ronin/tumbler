@@ -42,7 +42,7 @@ const report = {
   sources: manifest.sources,
   heights: manifest.heights,
   extent: { ...manifest.extent, width: 4096 },
-  summary: { instances: 1422, kinds: 13, cameraKeyframes: 9, cityTowers: 12, waterBodies: 2 },
+  summary: { instances: 1422, kinds: 13, cameraKeyframes: 9, waterBodies: 2 },
   albedoFlipped: false,
   flipEvidence: "105 cells agree as stored, 2 agree flipped",
   partitionCore: manifest.partition.id_agreed,

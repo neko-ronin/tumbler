@@ -64,8 +64,8 @@ export function toSceneYaw(yawDeg) {
  * The matrix that places one instance.
  *
  * `positionM` and `scale` are read straight from `placement.json` and are
- * **non-uniform for some kinds** — the city tower and the hardstanding both
- * carry one — so the scale is applied as a matrix and never assumed equal on
+ * **non-uniform for some kinds** — the hardstanding and the shared-hull
+ * mooring mast both carry one — so the scale is applied as a matrix and never assumed equal on
  * all three axes. The scale is also in the *world's* axes, where up is `z`, so
  * world (x, y, z) becomes scene (x, z, y) before it is applied; getting that
  * wrong would stretch a tower sideways by 1.44 and nothing would look wrong

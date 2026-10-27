@@ -1,3 +1,20 @@
+# City towers removed — integrated for review, 2026-10-27
+
+The twelve northern city towers are removed from the core, 3D scene and 2D map.
+World map version 3 and its Python/browser readers migrate together. All 9,907
+remaining placements match the earlier release; 12,611 trees remain. The four
+base rasters and all 24 released river/mountain meshes are byte-identical.
+Web **401/401**, package/publisher/transition **16/16**, placement **37/37**
+and integrity **157 fetched + 17 map files** pass. Local Chromium verifies the
+matched basin views, identical floor samples, 2D future-version refusal and
+retained character sizing, jump, collapse and local recovery behavior.
+The source branch and worktree are retained. Saved Unreal maps still require
+a rebuild; source-tool checks do not establish engine acceptance.
+
+[Checks, matched browser evidence and publication receipt](../../docs/reviews/city-tower-integration-2026-10-27.md).
+
+---
+
 # Cat size, homes and collision — integrated for review, 2026-10-26
 
 The approved character sizing, home proportions and collision changes are

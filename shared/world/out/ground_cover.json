@@ -9680,7 +9680,7 @@
   "version": 1,
   "worldmap": {
     "land_use_digest": "27d51c47050b9627",
-    "sha256": "8add5a3bcc92eb69b1b821cbb751f99c9e9a4471b26eb6415558d6971cf940bf",
+    "sha256": "31e4922e4ba3fe04e16a04a7f00ce915266225e93e3bb61706abf294ba851d95",
     "source": "shared/world/worldmap.json"
   },
   "zones": [

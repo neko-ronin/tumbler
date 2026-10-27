@@ -10,7 +10,7 @@
  *   5. the declared water descriptors, as annotations
  *   6. the core's partition edges, drawn from `world.json` — a hedge line the
  *      core found, not one found here
- *   7. the camera path, the 1,422 placements, the city towers
+ *   7. the camera path and the 1,422 placements
  *
  * Nothing here computes world geometry. If a number is not in a fetched file it
  * does not appear.
@@ -30,7 +30,6 @@ const KIND_COLOURS = {
   blob: "#a78bfa",
   orchard_tree: "#15803d",
   hedgerow_tree: "#166534",
-  city_tower: "#cbd5e1",
   mooring_mast: "#0f766e",
   hardstanding: "#78716c",
   river: "#0891b2",
@@ -83,7 +82,6 @@ export function drawScene(ctx, scene, images, options = {}) {
   drawPartitionEdges(ctx, scene, extent, size);
   drawCameraPath(ctx, scene, extent, size);
   drawPlacements(ctx, scene, extent, size);
-  drawTowers(ctx, scene, extent, size);
   ctx.restore();
 }
 
@@ -169,32 +167,16 @@ function drawPlacements(ctx, scene, extent, size) {
     ctx.fillStyle = colourForKind(group.kind);
     for (const mark of group.marks) {
       const p = project(mark, extent, size);
-      // Blimps and towers are landmarks; the 1,369 vegetation instances are a
+      // Blimps and turbines are landmarks; the 1,369 vegetation instances are a
       // texture. Both are drawn, and the legend gives the counts, so the
       // picture does not have to flatter itself.
-      const big = ["blimp", "city_tower", "turbine", "water_tower", "greenhouse", "mooring_mast", "hardstanding"].includes(group.kind);
+      const big = ["blimp", "turbine", "water_tower", "greenhouse", "mooring_mast", "hardstanding"].includes(group.kind);
       ctx.beginPath();
       ctx.arc(p.x, p.y, big ? radius * 3 : radius, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
   }
-}
-
-function drawTowers(ctx, scene, extent, size) {
-  ctx.save();
-  ctx.strokeStyle = INK;
-  ctx.fillStyle = "#334155";
-  ctx.lineWidth = size / 900;
-  for (const [x, y, height] of scene.towers) {
-    const p = project([x, y], extent, size);
-    const r = (Math.max(1, height) / extent.width) * size;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, Math.max(r, size / 500), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.restore();
 }
 
 /** North arrow and a scale bar, so the picture is readable as a map. */

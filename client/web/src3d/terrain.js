@@ -156,7 +156,7 @@ export function buildFarFieldRing(grid, blockExtent) {
   const { geometry, triangles } = buildTerrainGeometry(grid, { skipCell });
   const mesh = new Mesh(geometry, toonMaterial({ name: "far_field", vertexColors: true }, { terrain: true, horizonM:grid.maxX }));
   mesh.name = "far_field";
-  mesh.userData = { triangles, source: "farfield.f32", covers: "past the block edge, where the city stands" };
+  mesh.userData = { triangles, source: "farfield.f32", covers: "past the block edge, where the ridge ring stands" };
   return mesh;
 }
 

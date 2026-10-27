@@ -32,7 +32,7 @@ import { buildEcology } from './ecology.js';
 import { buildTethers, buildTrails, TRAIL_SURFACE_LIFT } from './details.js';
 import { createSoundscape } from './audio.js';
 import { buildWorldCollision } from './collision.js';
-import { sha256, verifyFetched, checkVersion } from './provenance.js';
+import { sha256, verifyFetched, checkVersion, WORLDMAP_VERSION } from './provenance.js';
 import {fetchAssetBytes} from './asset-bytes.js';
 import {VERSION} from './version.js';
 import { createSnowSampler, createTrailSampler, createSurfaceSampler, createRideHeight } from '../../../shared/activities/ride.js';
@@ -101,7 +101,7 @@ export async function main() {
   const geologyData=worldmap.mountains.geology?await fetchData(worldmap.mountains.geology):null;
   if(geologyData)checkVersion(geologyData,1,'mountain geology');
   placement={...placement,instances:[...placement.instances,...transition.instances]};
-  checkVersion(manifest,1,'viewer manifest');checkVersion(worldmap,2,'world map');
+  checkVersion(manifest,1,'viewer manifest');checkVersion(worldmap,WORLDMAP_VERSION,'world map');
   const [meadowData,flightConfig,rideConfig]=await Promise.all([fetchData(worldmap.activities.meadow_life),fetchData(worldmap.activities.flight),fetchData(worldmap.activities.ride)]);
   const characterConfig=await fetchData(worldmap.activities.character);
   const treePlan=await fetchData('shared/geometry/tree-design/adopted-redwoods.json');checkVersion(treePlan,2,'forest rendering plan');
@@ -112,7 +112,7 @@ export async function main() {
   const forestLitterTexture=new T.Texture(litterBitmap);forestLitterTexture.colorSpace=T.SRGBColorSpace;
   forestLitterTexture.wrapS=forestLitterTexture.wrapT=T.RepeatWrapping;forestLitterTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());forestLitterTexture.needsUpdate=true;forestField.litter.value=forestLitterTexture;
   const snowStamp=await fetchData(rideConfig.snow_cover);
-  for(const [value,known,label] of [[worldmap,2,'world map'],[placement,3,'placements'],[stampData,1,'grass stamp'],[habitats,1,'water habitats'],[meadowData,1,'meadow life'],[flightConfig,3,'flight'],[rideConfig,1,'ski and bike rules'],[snowStamp,1,'snow cover']])checkVersion(value,known,label);
+  for(const [value,known,label] of [[worldmap,WORLDMAP_VERSION,'world map'],[placement,3,'placements'],[stampData,1,'grass stamp'],[habitats,1,'water habitats'],[meadowData,1,'meadow life'],[flightConfig,3,'flight'],[rideConfig,1,'ski and bike rules'],[snowStamp,1,'snow cover']])checkVersion(value,known,label);
   const sourceBlockGrid = new HeightGrid({ values: new Float32Array(blockBytes), ...manifest.height_grids.block, kind: 'block source' });
   const sourceFarGrid = new HeightGrid({ values: new Float32Array(farBytes), ...manifest.height_grids.far_field, kind: 'far field source' });
   const blockGrid = new HeightGrid({ values: applyGeologyTerrain(sourceBlockGrid.values,manifest.height_grids.block,geologyData?.terrain?.block), ...manifest.height_grids.block, kind: 'block' });

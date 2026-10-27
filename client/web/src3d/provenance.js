@@ -1,4 +1,5 @@
 /** Byte identity, independent of JSON spelling or a Git label. */
+export const WORLDMAP_VERSION=3;
 export async function sha256(bytes){const digest=await crypto.subtle.digest('SHA-256',bytes);return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');}
 export function checkVersion(value,known,label){if(!Number.isInteger(value?.version)||value.version>known||value.version<1)throw new Error(`${label}: unsupported version ${value?.version}`);}
 export async function verifyFetched(entries,observed,fetchBytes){
