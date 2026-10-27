@@ -50,6 +50,49 @@ test('a collapsed wing falls and lands',()=>{
  assert.equal(s.collapsed,true);
 });
 
+for(const mode of ['paraglider','parakite','paramotor'])test(`${mode}: collapsed flight accelerates under gravity, with increasing actual drops`,()=>{
+ const start={...launchFlight(config,mode,site,flat),z:1000,collapsed:true,vx:0,vy:0,vertical:0};
+ let s=start;const speeds=[],drops=[];
+ for(let i=0;i<360;i++){
+  const before=s;s=stepFlight(s,{},1/120,i/120,config,245,flat,null);
+  assert.ok(s.vertical<before.vertical,'downward speed increases each step before terminal speed');
+  assert.ok(s.z<before.z,'the position falls as well as the reported speed');
+  if(i===0)assert.ok(Math.abs(-s.vertical*120-9.81)<.05,'gravity starts at approximately 9.81 m/s²');
+  if((i+1)%60===0){speeds.push(-s.vertical);drops.push(before.z-s.z);}
+ }
+ for(let i=1;i<speeds.length;i++){
+  assert.ok(speeds[i]>speeds[i-1]);
+  assert.ok(drops[i]>drops[i-1],'later frames cover more vertical distance');
+ }
+ assert.ok(speeds[0]>4&&speeds[0]<4.4,'0.5 s of acceleration, not an immediate fixed sink speed');
+ assert.ok(speeds[1]>7&&speeds[1]<7.5,'one second of acceleration');
+ assert.ok(speeds.at(-1)>12&&speeds.at(-1)<config.collapse.terminal_mps,'drag approaches terminal speed');
+ assert.equal(start.vertical,0,'the input state is not mutated');
+});
+
+test('collapsed gravity gives the same fall at 30, 60 and 120 Hz and ignores flight controls',()=>{
+ const start={...launchFlight(config,'paramotor',site,flat),z:1000,collapsed:true,vx:8,vy:-3,vertical:0};
+ const results=[30,60,120].map(hz=>{
+  let s=start;
+  for(let i=0;i<hz*4;i++)s=stepFlight(s,{turn:1,brake:1,throttle:1,maneuver:1},1/hz,i/hz,config,245,flat,null);
+  return s;
+ });
+ let neutral=start;for(let i=0;i<480;i++)neutral=stepFlight(neutral,{},1/120,i/120,config,245,flat,null);
+ for(const s of results)for(const key of ['x','y','z','vertical'])assert.ok(Math.abs(s[key]-neutral[key])<1e-9,`${key} depends on frame rate or controls`);
+});
+
+test('a canopy collision enters accelerating gravity on the next physics step',()=>{
+ const start=launchFlight(config,'paraglider',site,flat),hit=createCollisionIndex([crownAhead(start.z-2)]);
+ let collapsed=start,t=0;
+ for(;t<5&&!collapsed.collapsed;t+=1/120)collapsed=stepFlight(collapsed,{},1/120,t,config,245,flat,hit);
+ assert.equal(collapsed.collapsed,true,'exercise a real canopy collision');
+ assert.equal(collapsed.grounded,false,'there is still room to fall');
+ assert.equal(hit.soft([collapsed.x,collapsed.y,collapsed.z],.45).length,0,'the body is outside foliage drag');
+ const after=stepFlight(collapsed,{},1/120,t,config,245,flat,hit);
+ assert.ok(after.vertical<collapsed.vertical,'the collision switches directly to accelerating gravity');
+ assert.ok(after.z<collapsed.z,'he actually drops farther');
+});
+
 // A collapsed fall must move every step until it lands: published speeds alone can hide a
 // pilot held in place (the vertical stays at its fall speed while he sits still).
 const fallsThrough=(shapes,s0,seconds=10)=>{
