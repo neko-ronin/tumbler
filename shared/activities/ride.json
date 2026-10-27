@@ -8,6 +8,10 @@
   "snow_min_depth_m": 0.1,
   "liftoff_lookahead_s": 0.15,
   "absorb_m": 0.1,
+  "foliage": {
+    "drag_per_s": 0.45,
+    "knock": 0.15
+  },
   "world_limit_m": 2040.0,
   "modes": {
     "ski": {

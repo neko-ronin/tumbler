@@ -3,13 +3,13 @@ import * as T from '../vendor/three.module.min.js';
 import {launchFlight,stepFlight,sampleAir} from '../../../shared/activities/flight.js';
 import {rideStart,startRide,stepRide} from '../../../shared/activities/ride.js';
 import {flightInput} from './flight-input.js';
-import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround} from '../../../shared/activities/walk.js';
+import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal} from '../../../shared/activities/walk.js';
 import {stepMoves} from '../../../shared/activities/moves.js';
 import {createFixedAirSampler} from './fixed-air.js';
 const JUMP_FRAME_M=2,AIM_S=.5;
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true;
-  let weather='soaring',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0;
+  let weather='soaring',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0,restTime=0;
   let actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const flightPressed=new Set(),flightModes=Object.keys(config.modes);
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
@@ -87,7 +87,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       if(up||down){siteIndex=(siteIndex+(up?-1:1)+config.launches.length)%config.launches.length;if(config.modes[mode])select(mode,siteIndex);}
       if(primaryEdge&&config.modes[mode]&&state.grounded){
         const launched=relaunchGround(state,characterConfig.walk,config,walkHeight,hitTest);
-        if(launched){state=launched;previousFlight=null;accumulator=0;message='';}else message='Need clear, stable ground and room ahead to launch';
+        if(launched){state=launched;previousFlight=null;accumulator=0;message='';}
+        else message=relaunchRefusal(state,characterConfig.walk,config,walkHeight,hitTest)==='canopy'?'No room for the wing here':'Need clear, stable ground and room ahead to launch';
       }else if(primaryEdge&&mode==='orbit')select('paraglider',siteIndex);
       else if(primaryEdge&&pad?.buttons[0]?.pressed&&config.modes[mode]&&!state.grounded)select(mode,siteIndex);
       if(changeView&&config.modes[mode])toggleView();
@@ -118,7 +119,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     orbit.target.copy(camera.position);orbit.target.y=height(camera.position.x,-camera.position.z);
   }
   function follow(dt,distance,heading,lift=0){
-    target.copy(character.object.position).add(new T.Vector3(0,(config.modes[mode]?2.7:1.1)+lift,0));
+    target.copy(character.object.position).add(new T.Vector3(0,(config.modes[mode]?2.7:1.1*characterConfig.scale)+lift,0));
     // On foot the aim follows his height on a critically damped spring (Unity's
     // SmoothDamp) instead of riding it: in a jump he rises in the frame while the
     // world holds still, and touchdown eases in rather than jolting, since the
@@ -158,14 +159,14 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const jumping=state.jumpPhase&&state.jumpPhase!=='grounded';
     // The gait follows the speed the feet actually have, not the Shift key.
     const gait=gaitFor(state.speed,characterConfig.walk,characterConfig.clips);
-    character.update(dt,climbing?'climb':swimming?'swim':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{climb:climbing?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:characterHeight(state.x,state.y),groundHeight:characterHeight});
+    character.update(dt,climbing?'climb':swimming?'swim':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{climb:climbing?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:characterHeight(state.x,state.y),groundHeight:characterHeight,knock:state.knock,knockSide:state.knockSide});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);
     // Walk heading follows movement; the camera's yaw stays independently controllable.
     character.object.visible=view==='chase';
     if(view==='first'){
-      camera.position.set(state.x,state.z+1.65,-state.y);
+      camera.position.set(state.x,state.z+1.65*characterConfig.scale,-state.y);
       look.set(pitch,yaw,0);camera.quaternion.setFromEuler(look);snap=false;
-    }else follow(dt,climbing?6.9:5.4,Math.PI/2,climbing?.6:0);
+    }else follow(dt,(climbing?6.9:5.4)*characterConfig.scale,Math.PI/2,(climbing?.6:0)*characterConfig.scale);
     // Below the water's surface, the client tints and fogs the view (main.js).
     const overhead=water?.(camera.position.x,-camera.position.z);underwater=!!overhead&&camera.position.y<overhead.surface_z;
   }
@@ -183,7 +184,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     character.object.position.copy(rig.position);
     character.object.quaternion.copy(rig.quaternion);
     character.object.rotateZ(pose.grounded?0:pose.bank*.25);character.object.visible=view==='chase';
-    character.update(dt,pose.grounded?'idle':'flight',0,{mode:pose.mode,bank:pose.bank,grounded:pose.grounded,
+    // A collapsed wing: he tumbles as he falls and on touchdown, then sits beside the
+    // wing until unhooked or relaunched (the human's ruling, docs/design/COLLISION.md).
+    restTime=pose.collapsed&&pose.grounded?restTime+dt:0;
+    const tumble=characterConfig.fall_clips?.tumble;
+    const bodyClip=!pose.collapsed?undefined:!pose.grounded||restTime<(characterConfig.walk.jump?.tumble_s??.8)?tumble
+      :(characterConfig.idle_sequence??[]).find(step=>step.hold)?.clip;
+    character.update(dt,pose.grounded?'idle':'flight',0,{mode:pose.mode,bank:pose.bank,grounded:pose.grounded,bodyClip,
       groundZ:pose.grounded?characterHeight(pose.x,pose.y):undefined,groundHeight:pose.grounded?characterHeight:undefined});
     if(view==='chase'){
       follow(dt,(12+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);

@@ -161,10 +161,13 @@ export function createCharacter(asset, config) {
     }else action.paused=false;
     // A gait clip names the speed at which its planted paws stay put.
     const ground=action.getClip().userData.ground_speed_mps;
-    action.timeScale = ground ? Math.max(.25, speed / ground) : pose === 'walk' ? Math.max(.25, speed / config.walk.walk_mps)
+    action.timeScale = ground ? Math.max(.25, speed / (ground * config.scale)) : pose === 'walk' ? Math.max(.25, speed / config.walk.walk_mps)
       : pose === 'run' ? Math.max(.25, speed / config.walk.run_mps) : 1;
     // Lean into turns like a runner: atan(lateral acceleration / g), eased.
-    const leanGoal=['stroll','walk','run'].includes(pose)?Math.max(-.3,Math.min(.3,Math.atan(speed*(context.turnRate??0)/9.81))):0;
+    // A branch's knock shoves him the way it pushed (knockSide +1 is his left), up
+    // to 0.25 rad, and he rights himself as the knock fades.
+    const knocked=Math.min(.25,(context.knock??0)*.15)*(context.knockSide??0);
+    const leanGoal=['stroll','walk','run'].includes(pose)?Math.max(-.3,Math.min(.3,Math.atan(speed*(context.turnRate??0)/9.81)+knocked)):0;
     lean+=(leanGoal-lean)*(1-Math.exp(-dt*8));model.rotation.z=-lean;
     // Starts and stops: pitch into acceleration (forward), back against braking.
     const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))
@@ -231,8 +234,8 @@ export function createCharacter(asset, config) {
       model.position.z=barkFit;
     }else barkFit=0;
     // Turn the somersault about his middle rather than his soles.
-    if(flip){model.position.y+=FLIP_PIVOT_M*(1-Math.cos(flip));model.position.z-=FLIP_PIVOT_M*Math.sin(flip);}
-    if(rollTurn){model.position.y+=ROLL_PIVOT_M*(1-Math.cos(rollTurn));model.position.z-=ROLL_PIVOT_M*Math.sin(rollTurn);}
+    if(flip){model.position.y+=FLIP_PIVOT_M*config.scale*(1-Math.cos(flip));model.position.z-=FLIP_PIVOT_M*config.scale*Math.sin(flip);}
+    if(rollTurn){model.position.y+=ROLL_PIVOT_M*config.scale*(1-Math.cos(rollTurn));model.position.z-=ROLL_PIVOT_M*config.scale*Math.sin(rollTurn);}
     if(pose!=='flight'&&context.groundZ!==undefined){
       model.updateWorldMatrix(true,true);
       // Each foot: how far it must rise. A planted paw stands on its own floor;

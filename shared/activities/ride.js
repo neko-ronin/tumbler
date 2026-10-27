@@ -5,6 +5,7 @@
  * sampler built here from core data, input and an optional swept hit test.
  * Integrate at a fixed 1/120 s step. Speeds in metres/second, headings radians CCW from east.
  */
+import {knockDirection} from './collision.js';
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 
 /** Where a mode starts: on a graded track where it melts out (the vertex after its last snow, sampled
@@ -140,6 +141,17 @@ export function stepRide(state,input,dt,config,height,surfaceAt,hitTest=null){
   }
   const hit=hitTest?.([before[0],before[1],before[2]+mode.body_height_m],[s.x,s.y,s.z+mode.body_height_m],mode.body_radius_m);
   if(hit){s.x=before[0];s.y=before[1];s.z=before[2];s.crashed=hit.kind;s.vx=s.vy=s.vz=0;return s;}
+  // Foliage (optional `foliage` in the rules) never crashes a rider: it drags at
+  // drag_per_s, and each crown entered knocks him sideways by knock times his speed.
+  if(config.foliage&&hitTest?.soft){
+    const f=config.foliage,inside=hitTest.soft([s.x,s.y,s.z+mode.body_height_m],mode.body_radius_m),was=s.foliage??[];
+    if(inside.length){const d=Math.exp(-f.drag_per_s*dt);s.vx*=d;s.vy*=d;}
+    for(const {shape} of inside)if(!was.includes(shape.id)){
+      const v=Math.hypot(s.vx,s.vy),[ux,uy]=knockDirection(shape,[s.x,s.y,s.z]);
+      s.vx+=ux*f.knock*v;s.vy+=uy*f.knock*v;s.knock=Math.max(s.knock??0,f.knock*v);
+    }
+    s.foliage=inside.map(({shape})=>shape.id);s.knock=(s.knock??0)*Math.exp(-4*dt);
+  }
   const speed=Math.hypot(s.vx,s.vy,s.vz);s.distance+=Math.hypot(s.x-before[0],s.y-before[1]);s.topSpeed=Math.max(s.topSpeed,speed);
   return s;
 }

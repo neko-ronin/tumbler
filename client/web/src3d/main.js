@@ -229,6 +229,13 @@ export async function main() {
   // profile remains the shared physical floor; this offset only clears pixels.
   const characterHeight=(x,y)=>{const z=walkHeight.floorHeight(x,y),t=walkHeight.trailAt(x,y);return z===null?null:t?.beyond===0?Math.max(z,t.z+TRAIL_SURFACE_LIFT):z;};
   const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,onFlightChange:syncFlightUI,haptics:()=>document.getElementById('haptics').checked});
+  // Full/half Cat Ronin (button, C, or ?cat=half): presentation and camera only;
+  // speeds, jumps and collision stay full size. A start for a shrink/grow mechanic.
+  const catSize=document.getElementById('cat-size'),HALF_CAT=.52;
+  const toggleCatSize=()=>{characterConfig.scale=characterConfig.scale===1?HALF_CAT:1;const half=characterConfig.scale!==1;catSize.textContent=half?'Cat: half size':'Cat: full size';catSize.setAttribute('aria-pressed',String(half));};
+  catSize.addEventListener('click',toggleCatSize);
+  window.addEventListener('keydown',e=>{if(e.code==='KeyC'&&!e.repeat&&!e.metaKey&&!e.ctrlKey&&!/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))toggleCatSize();});
+  if(new URLSearchParams(location.search).get('cat')==='half')toggleCatSize();
   const clothAir=new T.Vector3(),clothFloor=new T.Vector3(),clothUp=new T.Vector3(),clothInverse=new T.Quaternion();
   rig.userData.flightUpdate=(dt,state,presentation={})=>{
     if(!(presentation.grounded??state.grounded)){flightRig.update(dt,state,presentation);return;}

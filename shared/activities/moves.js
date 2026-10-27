@@ -6,6 +6,7 @@
 import {stepWalk} from './walk.js';
 import {findTrunk,attachClimb,stepClimb} from './climb.js';
 import {stepSwim} from './swim.js';
+import {surfaceGap} from './collision.js';
 
 export function stepMoves(state,input,dt,config,world){
   if(state.mode==='climb')return stepClimb(state,input,dt,config,world);
@@ -29,7 +30,9 @@ export function stepMoves(state,input,dt,config,world){
   // attach_s: touching its collider (which slides him along it) with the stick
   // pointing at all toward it. Brushing past without touching never grabs.
   if(box&&!s.grounded)return attachClimb(s,box,config);
-  const touching=box&&Math.hypot(...[0,1].map(i=>Math.max(box.min[i]-s[i?'y':'x'],0,s[i?'y':'x']-box.max[i])))<=config.radius_m+.02;
+  // Touching is measured where walking stops him: the nearest of his body's
+  // collision heights, so a trunk's flare at his feet still counts.
+  const touching=box&&(box.type?Math.min(...[config.radius_m,.9,1.5].map(h=>surfaceGap(box,[s.x,s.y,s.z+h]))):Math.hypot(...[0,1].map(i=>Math.max(box.min[i]-s[i?'y':'x'],0,s[i?'y':'x']-box.max[i]))))<=config.radius_m+.02;
   const toward=touching&&Math.hypot(input.x??0,input.y??0)>.5
     &&((box.trunk.x-s.x)*input.x+(box.trunk.y-s.y)*input.y)/Math.hypot(box.trunk.x-s.x,box.trunk.y-s.y)/Math.hypot(input.x,input.y)>.3;
   s.climbPush=toward&&s.jumpPhase==='grounded'?(state.climbPush??0)+dt:0;

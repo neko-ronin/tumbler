@@ -2,8 +2,9 @@
  * Call at <= 50 ms; jumps integrate at <= 120 Hz. Inputs are held values, not
  * client events. Jump edges, phase, style and velocity belong to every client.
  */
-import {launchFlight} from './flight.js';
+import {launchFlight,canopySegment,canopyTouches} from './flight.js';
 import {createTrailSampler} from './ride.js';
+import {knockDirection} from './collision.js';
 // The optional chain, release, apex, buffer and lift fields default to the
 // original single fixed-height jump under constant gravity.
 const jumpDefaults={gravity_mps2:10.8,takeoff_mps:4.8,hop_mps:3.8,takeoff_s:.12,landing_s:.18,air_control_mps2:2.4,max_ground_grade:1,
@@ -115,16 +116,36 @@ export function stepWalk(state,input,dt,config,height,hitTest){
     return !Number.isFinite(z)||(s.grounded?Math.abs(z-s.z)>Math.max(config.max_step_m,distance*config.max_grade):z>s.z+config.max_step_m)
       ||[config.radius_m,.9,1.5].some(h=>hitTest?.([s.x,s.y,s.z+h],[x,y,(s.grounded?z:s.z)+h],config.radius_m))
       // The floor is terrain only, so passing over a structure in the air would
-      // land him inside its box, where nothing can move him again.
-      ||(!s.grounded&&!!hitTest?.([x,y,s.z+config.radius_m],[x,y,z+config.radius_m],config.radius_m));
+      // land him inside its box, where nothing can move him again. A trunk or mesh
+      // he is already above (a flared trunk below a push-off) never stops him
+      // moving: only a move that newly puts him over one does.
+      ||(!s.grounded&&overSolid(x,y,z)&&!(overSolid.last.type&&overSolid(s.x,s.y,height(s.x,s.y))));
   };
+  function overSolid(x,y,z){overSolid.last=hitTest?.([x,y,s.z+config.radius_m],[x,y,z+config.radius_m],config.radius_m);return !!overSolid.last;}
+  // Trunks and meshes slide on their true surface: the move is made, then pushed
+  // back out across the ground along the contact normal (collision.js pushOut), so
+  // he hugs what stopped him. Null leaves the move to the world-axis slide (untyped
+  // boxes, terrain, older clients); {stuck} means no push clears him.
+  const flush=(x,y)=>{
+    const z=s.grounded?height(x,y):s.z,out=hitTest?.pushOut?.([config.radius_m,.9,1.5].map(h=>[x,y,z+h]),config.radius_m,{horizontal:true});
+    return out?.offset?{x:x+out.offset[0],y:y+out.offset[1],normals:out.normals}:out??null;
+  };
+  // Foliage (optional `foliage` contract): it slows the stride to `slow` of its
+  // target, drags any motion at drag_per_s, and each crown he enters knocks him
+  // sideways by knock times his speed, the same way for the same path.
+  const leaves=config.foliage&&hitTest?.soft?config.foliage:null;
   for(let remaining=duration;remaining>1e-10;){
     const step=Math.min(remaining,1/120);remaining-=step;
+    // A fall or a hop can end a hair inside a trunk or mesh, and every move would
+    // then start blocked: step out of it first.
+    const inside=flush(s.x,s.y);
+    if(inside?.normals){s.x=inside.x;s.y=inside.y;if(s.grounded)s.z=height(s.x,s.y);}
     if(s.grounded&&s.jumpPhase!=='takeoff'){
       // Traction: speed up at accel_mps2, brake (release, reverse) at decel_mps2.
       // Contracts without them keep the original instant response. A tumble
       // ignores input and only brakes.
-      const [tx,ty,tspeed]=s.jumpPhase==='tumble'?[0,0,0]:[vx,vy,speed];
+      const slow=leaves&&s.foliage?.length?leaves.slow:1;
+      const [tx,ty,tspeed]=s.jumpPhase==='tumble'?[0,0,0]:[vx*slow,vy*slow,speed*slow];
       const dx=tx-s.vx,dy=ty-s.vy,length=Math.hypot(dx,dy);
       const rate=tx*s.vx+ty*s.vy>=0&&tspeed>=Math.hypot(s.vx,s.vy)?config.accel_mps2??Infinity:config.decel_mps2??Infinity;
       const amount=Math.min(1,rate*step/(length||1));
@@ -135,14 +156,33 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       s.vx+=dx*amount;s.vy+=dy*amount;
     }
     const oldFloor=height(s.x,s.y);
+    let moved=false;
     if(blocked(s.x+s.vx*step,s.y+s.vy*step)){
-      // Slide along what stopped us. Colliders are world-axis boxes, so the
-      // free axis of the move is the tangent; head-on contact still stops.
-      const axes=Math.abs(s.vx)>=Math.abs(s.vy)?[[1,0],[0,1]]:[[0,1],[1,0]];
-      const free=axes.find(([a,b])=>Math.abs(a*s.vx+b*s.vy)>1e-6&&!blocked(s.x+a*s.vx*step,s.y+b*s.vy*step));
-      s.vx*=free?.[0]??0;s.vy*=free?.[1]??0;
+      const out=flush(s.x+s.vx*step,s.y+s.vy*step);
+      if(out?.normals&&!blocked(out.x,out.y)){
+        s.x=out.x;s.y=out.y;if(s.grounded)s.z=height(s.x,s.y);moved=true;
+        for(const [nx,ny] of out.normals){const into=s.vx*nx+s.vy*ny;if(into<0){s.vx-=into*nx;s.vy-=into*ny;}}
+      }else if(out){s.vx=s.vy=0;}
+      else{
+        // Slide along what stopped us on a world axis: for an untyped box the
+        // free axis of the move is the tangent; head-on contact still stops.
+        const axes=Math.abs(s.vx)>=Math.abs(s.vy)?[[1,0],[0,1]]:[[0,1],[1,0]];
+        const free=axes.find(([a,b])=>Math.abs(a*s.vx+b*s.vy)>1e-6&&!blocked(s.x+a*s.vx*step,s.y+b*s.vy*step));
+        s.vx*=free?.[0]??0;s.vy*=free?.[1]??0;
+      }
     }
-    if(s.vx||s.vy){s.x+=s.vx*step;s.y+=s.vy*step;if(s.grounded)s.z=height(s.x,s.y);}
+    if(!moved&&(s.vx||s.vy)){s.x+=s.vx*step;s.y+=s.vy*step;if(s.grounded)s.z=height(s.x,s.y);}
+    if(leaves){
+      const inside=hitTest.soft([s.x,s.y,s.z+.9],config.radius_m),before=s.foliage??[];
+      if(inside.length){const decay=Math.exp(-leaves.drag_per_s*step);s.vx*=decay;s.vy*=decay;}
+      for(const {shape} of inside)if(!before.includes(shape.id)){
+        const v=Math.hypot(s.vx,s.vy),[ux,uy]=knockDirection(shape,[s.x,s.y,s.z]);
+        s.vx+=ux*leaves.knock*v;s.vy+=uy*leaves.knock*v;s.knock=Math.max(s.knock??0,leaves.knock*v);
+        // Which way it pushed him, for presentation: +1 to his left, -1 to his right.
+        const h=s.heading??0;s.knockSide=Math.sign(-ux*Math.sin(h)+uy*Math.cos(h))||1;
+      }
+      s.foliage=inside.map(({shape})=>shape.id);
+    }
     s.speed=Math.hypot(s.vx,s.vy);
     if(s.speed>.01)s.heading=Math.atan2(s.vy,s.vx);
     if(s.jumpPhase==='takeoff'){
@@ -180,6 +220,8 @@ export function stepWalk(state,input,dt,config,height,hitTest){
   // Signed yaw rate (rad/s, positive turning left) for leaning and turn clips.
   const turn=s.heading-heading;s.turnRate=Math.atan2(Math.sin(turn),Math.cos(turn))/duration;
   s.jumpBuffer=Math.max(0,(s.jumpBuffer??0)-duration);s.chainLeft=Math.max(0,(s.chainLeft??0)-duration);
+  // The last knock, for presentation, fading at 4 per second.
+  if(leaves)s.knock=(s.knock??0)*Math.exp(-4*duration);
   const phaseDuration=s.jumpPhase==='takeoff'?j.takeoff_s:s.jumpPhase==='landing'?landingTime(s,j):s.jumpPhase==='tumble'?j.tumble_s:
     2*s.landingSpeed*j.rebound/j.gravity_mps2;
   // In the air, progress follows the arc itself (0.5 at the apex), so a jump cut
@@ -212,14 +254,32 @@ export function reharnessWalk(state,walkConfig,flightConfig,height,hitTest){
  * from idle. The client must require a fresh launch input.
  */
 export function relaunchGround(state,walkConfig,flightConfig,height,hitTest){
-  if(!unharnessFlight(state,walkConfig,flightConfig,height,hitTest))return null;
+  if(relaunchRefusal(state,walkConfig,flightConfig,height,hitTest))return null;
+  const vertical=3.2,speed=flightConfig.modes[state.mode].trim_mps;
+  return {...state,grounded:false,speed,vertical,vario:vertical,
+    pressure:.45,throttle:state.mode==='paramotor'?.65:0,engine:0,figure:'Ground launch',
+    // A collapsed wing is laid out again for the launch.
+    ...(state.collapsed!==undefined?{collapsed:false,knock:0,foliage:[]}:{})};
+}
+
+/** Why a relaunch here would be refused, or null: 'ground' for footing, slope or
+ * an obstacle in the run, 'canopy' when the wing would rise into foliage or a solid.
+ */
+export function relaunchRefusal(state,walkConfig,flightConfig,height,hitTest){
+  if(!unharnessFlight(state,walkConfig,flightConfig,height,hitTest))return 'ground';
   const vertical=3.2,speed=flightConfig.modes[state.mode].trim_mps,base=state.z-flightConfig.landing_clearance_m;
   const ahead=[state.x+Math.cos(state.heading)*3,state.y+Math.sin(state.heading)*3],z=height(...ahead);
-  if(!Number.isFinite(z)||z>state.z||hitTest?.([state.x,state.y,state.z],[...ahead,z+flightConfig.landing_clearance_m],.45))return null;
+  if(!Number.isFinite(z)||z>state.z||hitTest?.([state.x,state.y,state.z],[...ahead,z+flightConfig.landing_clearance_m],.45))return 'ground';
   for(let distance=.2;distance<=3.001;distance+=.2){
     const floor=height(state.x+Math.cos(state.heading)*distance,state.y+Math.sin(state.heading)*distance),t=distance/speed;
-    if(!Number.isFinite(floor)||floor>base+vertical*t-6*t*t-.01)return null;
+    if(!Number.isFinite(floor)||floor>base+vertical*t-6*t*t-.01)return 'ground';
   }
-  return {...state,grounded:false,speed,vertical,vario:vertical,
-    pressure:.45,throttle:state.mode==='paramotor'?.65:0,engine:0,figure:'Ground launch'};
+  if(flightConfig.collapse&&hitTest){
+    // The wing rises over the first 0.7 s of the run: none of it may meet foliage or a
+    // solid there, or the launch would only collapse a moment later.
+    const reach=speed*.7;
+    for(let d=0;d<=reach+1e-9;d+=.5)
+      if(canopyTouches(canopySegment({...state,bank:0,x:state.x+Math.cos(state.heading)*d,y:state.y+Math.sin(state.heading)*d},flightConfig),hitTest))return 'canopy';
+  }
+  return null;
 }

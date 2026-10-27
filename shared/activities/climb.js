@@ -20,11 +20,15 @@ const holdRadius=(trunk,z,c)=>trunkRadiusAt(trunk,z)+c.hold_m;
  */
 export function findTrunk(state,input,world,config){
   const c=config.climb,reach=config.radius_m+.15;let best=null,bestGap=Infinity;
-  for(const box of world.hitTest.near?.([state.x,state.y,state.z+chest],reach)??[]){
+  // A round trunk is asked for a metre wider: its reach is judged below, at his feet.
+  for(const box of world.hitTest.near?.([state.x,state.y,state.z+chest],reach+1)??[]){
     const t=box.trunk;
     // On a slope he touches the downhill side of the collider below the trunk's base: allow a step's worth.
     if(!t||state.z<t.base_z-config.max_step_m||state.z>t.top_z-c.top_clearance_m)continue;
-    const r=trunkRadiusAt(t,state.z+chest),gap=Math.hypot(state.x-t.x,state.y-t.y)-r;
+    // Reach is measured at the nearest of his body's collision heights, where a flare stops him;
+    // an untyped box keeps the old measure, to its grown extent at his chest.
+    const r=trunkRadiusAt(t,state.z+chest),gap=Math.min(...[config.radius_m,chest,1.5].map(h=>Math.hypot(state.x-t.x,state.y-t.y)-trunkRadiusAt(t,state.z+h)));
+    if(box.type?gap>reach:!box.min.every((lo,a)=>[state.x,state.y,state.z+chest][a]>=lo-reach&&[state.x,state.y,state.z+chest][a]<=box.max[a]+reach))continue;
     if(r>=c.min_radius_m&&gap<bestGap){best=box;bestGap=gap;}
   }
   return best;
@@ -52,11 +56,13 @@ function place(s,c){
 }
 
 /** Leaving the trunk: on the bark he hugs closer than his collision radius, so step
- * him just clear of its (square) collider along his outward direction, or walking
- * rules would see every move start inside it.
+ * him just clear of its collider along his outward direction, or walking rules
+ * would see every move start inside it. A round trunk is cleared at its radius;
+ * an untyped square box at its corner.
  */
 function clearOf(s,config){
   const box=s.trunkBox,ux=Math.cos(s.angle),uy=Math.sin(s.angle);
+  if(box.type==='trunk'){const d=trunkRadiusAt(s.trunk,s.z)+config.radius_m+.02;return {x:s.trunk.x+ux*d,y:s.trunk.y+uy*d};}
   const half=Math.max(box.max[0]-box.min[0],box.max[1]-box.min[1])/2+config.radius_m+.02;
   const d=Math.max(Math.hypot(s.x-s.trunk.x,s.y-s.trunk.y),half/Math.max(Math.abs(ux),Math.abs(uy)));
   return {x:s.trunk.x+ux*d,y:s.trunk.y+uy*d};

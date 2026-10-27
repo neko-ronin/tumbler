@@ -24,6 +24,8 @@ test('school motion stays finite, submerged and responds to the observer',()=>{c
 test('swept collision catches thin obstacles and ignores clear travel',()=>{
  const hit=createCollisionIndex([{min:[5,-1,0],max:[5.1,1,10],kind:'tree'}]);
  assert.equal(hit([0,0,5],[10,0,5],.4)?.kind,'tree');assert.equal(hit([0,4,5],[10,4,5],.4),null);
- const s=launchFlight(config,'paraglider',site,flat);s.z=5;s.x=4.6;
- const stopped=stepFlight(s,{},.1,0,config,245,flat,hit);assert.equal(stopped.impact,'tree');assert.equal(stopped.grounded,true);
+ // Rules without `collapse` keep the original stop on impact (collision-flight.test.mjs has the collapse).
+ const {collapse,...older}=config,s=launchFlight(older,'paraglider',site,flat);s.z=5;s.x=4.6;
+ const stopped=stepFlight(s,{},.1,0,older,245,flat,hit);assert.equal(stopped.impact,'tree');assert.equal(stopped.grounded,true);
+ const bounced=stepFlight(s,{},.1,0,config,245,flat,hit);assert.equal(bounced.impact,undefined);assert.equal(bounced.collapsed,true);
 });

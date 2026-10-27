@@ -144,6 +144,12 @@
   "world_limit_m": 3950,
   "launch_radius_m": 20.0,
   "launch_clearance_m": 90.0,
+  "collapse": {
+    "terminal_mps": 15,
+    "restitution": 0.2,
+    "knock": 0.15,
+    "foliage_drag_per_s": 1.5
+  },
   "weather": {
     "calm": {
       "label": "Calm air",

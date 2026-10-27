@@ -14,7 +14,7 @@ test('collision index finds boxes near a point',()=>{
  assert.deepEqual(index.near([1.6,.5,.5],.3),[]);
 });
 
-test('trunk records describe the real taper and agree with their unchanged boxes',()=>{
+test('trunk records describe the real taper as round trunk shapes',()=>{
  const placement=read('../../../shared/world/out/placement.json');
  const species=['giant_redwood','mountain_pine','silver_fir','redwood_canopy'].map(n=>`redwood/${n}.glb`);
  const instances=species.map(asset=>placement.instances.find(i=>i.asset===asset)).filter(Boolean);
@@ -31,7 +31,8 @@ test('trunk records describe the real taper and agree with their unchanged boxes
   assert.equal(b.trunk.top_z,b.max[2]);
   assert.ok(b.trunk.profile.length>=2&&b.trunk.profile.every(([z],i,a)=>i===0||z>a[i-1][0]),'profile rows ascend');
   assert.ok(b.trunk.x>=b.min[0]&&b.trunk.x<=b.max[0]&&b.trunk.y>=b.min[1]&&b.trunk.y<=b.max[1],'centre inside its box');
-  assert.ok(Math.abs(trunkRadiusAt(b.trunk,b.trunk.base_z)-(b.max[0]-b.min[0])/2)<.02,'base radius matches the box');
+  assert.equal(b.type,'trunk','a round trunk, not a square box');
+  assert.ok(Math.abs((b.max[0]-b.min[0])/2-Math.max(...b.trunk.profile.map(([,r])=>r)))<1e-9,'bounds hold the widest bark');
  }
 });
 

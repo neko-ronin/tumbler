@@ -119,7 +119,9 @@ export function createFlightRig(assets,config){
     const grounded=presentation.grounded??state.grounded??false;
     const air=presentation.localAir;
     const feed=air?Math.max(0,-air.z):0;
-    const target=grounded?(!harnessed?0:T.MathUtils.smoothstep(feed,1.5,5.5)*(1-Math.max(state.brakeLeft??0,state.brakeRight??0)*.75)):1;
+    // A collapsed wing (docs/design/COLLISION.md) trails crumpled above him in the
+    // air and lies flat once he is down, like the parked wing.
+    const target=state.collapsed?(grounded?0:.15):grounded?(!harnessed?0:T.MathUtils.smoothstep(feed,1.5,5.5)*(1-Math.max(state.brakeLeft??0,state.brakeRight??0)*.75)):1;
     w.inflation+=(target-w.inflation)*(1-Math.exp(-elapsed*(target>w.inflation?1.5:1.05)));
     elapsed=0;
     // Sample a small floor lattice, then interpolate it for all skin/line

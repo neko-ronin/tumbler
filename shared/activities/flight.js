@@ -2,6 +2,7 @@
  * Fixed 1/120 s integration. Manuals and intentional approximations:
  * docs/design/FLIGHT-MANUALS.md. This is not a flight-training model.
  */
+import {knockDirection} from './collision.js';
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const approach=(a,b,rate,dt)=>a+(b-a)*(1-Math.exp(-rate*dt));
 const wave=(x,y,z,t)=>Math.sin(x*.013+y*.009+t*.73+z*.005)*.55+Math.sin(x*.043-y*.031-t*1.87)*.3+Math.sin(y*.11+z*.07+t*3.1)*.15;
@@ -54,10 +55,100 @@ export function sampleAir(config,windBearing,state,time,height) {
     agl,gust,turbulence,intensity,lee,ridge,thermal:thermalLift,windSpeed:speed};
 }
 
+/** The canopy as a capsule from wingtip to wingtip (docs/design/COLLISION.md):
+ * canopy_height_m above the feet along the pilot's banked up, span_m long,
+ * chord_m / 2 thick. The lines below it are not tested.
+ */
+export function canopySegment(state,config){
+  const mode=config.modes[state.mode],h=state.heading??0,b=state.bank??0,right=[Math.sin(h),-Math.cos(h)];
+  const up=[-right[0]*Math.sin(b),-right[1]*Math.sin(b),Math.cos(b)],axis=[right[0]*Math.cos(b),right[1]*Math.cos(b),Math.sin(b)];
+  const centre=[state.x+up[0]*mode.canopy_height_m,state.y+up[1]*mode.canopy_height_m,state.z-config.landing_clearance_m+up[2]*mode.canopy_height_m];
+  const half=mode.span_m/2;
+  return {a:centre.map((v,i)=>v-axis[i]*half),b:centre.map((v,i)=>v+axis[i]*half),radius:mode.chord_m/2};
+}
+
+/** Whether any of a canopy, sampled every metre along it, is in foliage or touches a solid. */
+export function canopyTouches(segment,hitTest){
+  const d=segment.b.map((v,i)=>v-segment.a[i]),n=Math.max(1,Math.ceil(Math.hypot(...d)));
+  for(let k=0;k<=n;k++){
+    const p=segment.a.map((v,i)=>v+d[i]*k/n);
+    if(hitTest.soft?.(p,segment.radius)?.length||hitTest(p,p,segment.radius))return true;
+  }
+  return false;
+}
+
+const BODY=.45,G=9.81;
+
+/** The pilot's body against a solid between `prev` and `s`: keep the speed along the
+ * surface and send back `restitution` of the speed into it. A trunk or mesh pushes
+ * him out of itself where he ended, so he slides on (falling past a trunk's top or
+ * flare included); an untyped box puts him back where he was free; a body three
+ * pushes cannot clear goes on through, since clipping is better than hanging in the
+ * air. A surface facing up (a roof) also pushes him off sideways, so he falls to the ground.
+ */
+function bounce(prev,s,v,c,hitTest){
+  const hit=hitTest([prev.x,prev.y,prev.z],[s.x,s.y,s.z],BODY);
+  if(!hit)return false;
+  const speed=Math.hypot(...v),contact=hitTest.contact?.([s.x,s.y,s.z],BODY);
+  const n=contact?.normal??(speed>1e-9?v.map(x=>-x/speed):[0,0,1]),into=v[0]*n[0]+v[1]*n[1]+v[2]*n[2];
+  if(into<0)for(let i=0;i<3;i++)v[i]-=(1+c.restitution)*into*n[i];
+  if(n[2]>.7){
+    const l=Math.hypot(n[0],n[1]),mid=[(hit.min[0]+hit.max[0])/2,(hit.min[1]+hit.max[1])/2];
+    let [ux,uy]=l>.05?[n[0]/l,n[1]/l]:[prev.x-mid[0],prev.y-mid[1]];const m=Math.hypot(ux,uy)||1;
+    const out=Math.max(2,Math.hypot(v[0],v[1]));v[0]=ux/m*out;v[1]=uy/m*out;
+  }
+  const out=hitTest.pushOut?.([[s.x,s.y,s.z]],BODY);
+  if(out?.offset){s.x+=out.offset[0];s.y+=out.offset[1];s.z+=out.offset[2];}
+  else if(!out){s.x=prev.x;s.y=prev.y;s.z=prev.z;}
+  return true;
+}
+
+/** Foliage at the body: drag on every component, and a knock on each crown newly entered. */
+function brush(s,v,dt,c,hitTest){
+  const inside=hitTest?.soft?.([s.x,s.y,s.z],BODY)??[],before=s.foliage??[];
+  if(inside.length){const d=Math.exp(-c.foliage_drag_per_s*dt);for(let i=0;i<3;i++)v[i]*=d;}
+  for(const {shape} of inside)if(!before.includes(shape.id)){
+    const speed=Math.hypot(...v),[ux,uy]=knockDirection(shape,[s.x,s.y,s.z]);
+    v[0]+=ux*c.knock*speed;v[1]+=uy*c.knock*speed;s.knock=Math.max(s.knock??0,c.knock*speed);
+  }
+  s.foliage=inside.map(({shape})=>shape.id);
+  s.knock=(s.knock??0)*Math.exp(-4*dt);
+  return inside.length>0;
+}
+
+/** The touchdown of a collapsed fall: he lies where he lands, wing and all. */
+function settle(s,v,config,height){
+  const floor=height(s.x,s.y)+config.landing_clearance_m;
+  if(s.z>floor)return;
+  s.z=floor;s.grounded=true;s.landingSpeed=Math.max(0,-v[2]);v[0]=v[1]=v[2]=0;
+}
+
+const publish=(s,v)=>{
+  s.vx=v[0];s.vy=v[1];s.vertical=s.vario=v[2];s.speed=Math.hypot(v[0],v[1]);
+  if(s.speed>.5)s.heading=Math.atan2(v[1],v[0]);
+  s.figure=s.grounded?'Wing collapsed · unhook or relaunch':'Wing collapsed';
+  return s;
+};
+
+/** A collapsed wing gives no lift: he falls toward terminal_mps under linear drag,
+ * integrated exactly so the outcome does not depend on the step size.
+ */
+function stepCollapsed(state,dt,config,height,hitTest){
+  const s={...state},c=config.collapse,k=G/c.terminal_mps,e=Math.exp(-k*dt),vt=-c.terminal_mps;
+  const v=[s.vx??0,s.vy??0,s.vertical??0],prev={x:s.x,y:s.y,z:s.z};
+  s.x+=v[0]*(1-e)/k;s.y+=v[1]*(1-e)/k;s.z+=vt*dt+(v[2]-vt)*(1-e)/k;
+  v[0]*=e;v[1]*=e;v[2]=vt+(v[2]-vt)*e;
+  if(hitTest)bounce(prev,s,v,c,hitTest);
+  brush(s,v,dt,c,hitTest);
+  settle(s,v,config,height);
+  return publish(s,v);
+}
+
 export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest=null) {
   if(!(dt>0)||!Number.isFinite(dt))return {...state};
   const s={...state},mode=config.modes[s.mode];
   if(s.grounded)return s;
+  if(config.collapse&&s.collapsed)return stepCollapsed(s,dt,config,height,hitTest);
   const air=sampleAir(config,windBearing,s,time,height);
   const control=clamp(input.brake||0,-1,1);
   let left=clamp((input.brakeLeft||0)+Math.max(0,control));
@@ -132,6 +223,15 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   s.x+=dx;s.y+=dy;s.z+=s.vertical*dt+exchange;s.groundSpeed=Math.hypot(dx,dy)/dt;s.distance+=Math.hypot(dx,dy);
   s.x=clamp(s.x,-config.world_limit_m,config.world_limit_m);s.y=clamp(s.y,-config.world_limit_m,config.world_limit_m);
   s.z=Math.min(config.ceiling_m,s.z);
+  if(config.collapse&&hitTest){
+    // A canopy touching foliage or a solid collapses, and so does any contact of
+    // his body: the canopy is above him. A solid bounces him instead of stopping him.
+    const c=config.collapse,v=[(s.x-state.x)/dt,(s.y-state.y)/dt,(s.z-state.z)/dt];
+    const solid=bounce(state,s,v,c,hitTest),leaves=brush(s,v,dt,c,hitTest);
+    if(solid||leaves||canopyTouches(canopySegment(s,config),hitTest)){
+      s.collapsed=true;settle(s,v,config,height);return publish(s,v);
+    }
+  }
   const hit=hitTest?.([state.x,state.y,state.z],[s.x,s.y,s.z],.45);
   if(hit){s.x=state.x;s.y=state.y;s.z=state.z;s.impact=hit.kind;s.grounded=true;s.vertical=s.vario=s.speed=0;return s;}
   const floor=height(s.x,s.y)+config.landing_clearance_m;

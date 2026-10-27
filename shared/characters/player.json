@@ -28,6 +28,11 @@
     "stroll_mps": 1.6,
     "accel_mps2": 16,
     "decel_mps2": 28,
+    "foliage": {
+      "drag_per_s": 1.5,
+      "knock": 0.15,
+      "slow": 0.7
+    },
     "swim": {
       "swim_depth_m": 0.55,
       "exit_depth_m": 0.4,

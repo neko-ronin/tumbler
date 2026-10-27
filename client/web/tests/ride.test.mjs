@@ -77,6 +77,16 @@ test('a hop leaves the ground and comes back down',()=>{
   assert.equal(s.grounded,true);assert.equal(s.crashed,null);
 });
 
+test('a rider brushes through low foliage at speed',async()=>{
+  const {crownShape}=await import('../../../shared/activities/colliders.js');
+  const hit=createCollisionIndex([crownShape({id:'c',x:20,y:0,base_z:0,scale:1,profile:[[0,4],[10,4]]})]);
+  const through=ride('bike',()=>0,on('trail'),{},3,{speed:12,hit}),clear=ride('bike',()=>0,on('trail'),{},3,{speed:12});
+  assert.equal(through.crashed,null,'foliage never crashes him');
+  assert.ok(through.x>24,'he comes out the far side');
+  assert.ok(speed(through)<speed(clear)-.1,`slower than the same ride in the open (${speed(through).toFixed(2)} vs ${speed(clear).toFixed(2)} m/s)`);
+  assert.ok(Math.abs(through.y)>1e-3,'and knocked sideways');
+});
+
 test('a tree on the line stops the ride without mutating the prior state',()=>{
   const hit=createCollisionIndex([{min:[5,-1,0],max:[6,1,30],kind:'tree'}]);
   const s=ride('bike',()=>0,on('trail'),{push:1},5,{speed:6,hit});

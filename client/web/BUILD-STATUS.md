@@ -1,3 +1,22 @@
+# Cat size, homes and collision — integrated for review, 2026-10-26
+
+The approved character sizing, home proportions and collision changes are
+integrated with the released river, mountain and fixed-wind work. Full-size Ronin is the default; C / the size button
+retains the half-size visual experiment. Homes are rescaled, trunks are round,
+crowns are soft, structures use their triangles, and wing contacts collapse into
+a fall with local unhook/rehook/relaunch. Village dwellings are unchanged.
+
+Web **400/400**, package/publisher/transition **16/16**, placement **44/44** and
+**158 fetched + 17 map files** verify. Local Chromium exercises startup, toggling,
+keyboard jumping and the collapse/harness sequence without application/shader
+errors. Source branches and worktrees are retained. The separate city-tower
+removal is excluded. Collision feel and the airborne collapsed wing remain for
+human review; this is not sustained performance or Unreal acceptance.
+
+[Integration and publication receipt](../../docs/reviews/cat-home-collision-integration-2026-10-26.md).
+
+---
+
 # Loading journal: sketch, then colour — v0.2.0, 2026-10-25
 
 The loading screen keeps the original line sketch up while the world's 44 asset
