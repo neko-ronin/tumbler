@@ -28,7 +28,8 @@ test("version 3 retires city towers, retains the terrain basin and refuses futur
   assert.throws(() => checkVersion({ ...worldmap, version: WORLDMAP_VERSION + 1 }, WORLDMAP_VERSION, "world map"), /unsupported version/);
   assert.equal(Object.hasOwn(worldmap, "city"), false);
   assert.equal(Object.hasOwn(worldmap.mountains.enclosure, "city_clearance"), false);
-  assert.deepEqual(worldmap.mountains.enclosure.north_basin, { centre_xy_m: [1500, 2600], inner_m: 700, outer_m: 1300 });
+  const {centre_xy_m,inner_m,outer_m}=worldmap.mountains.enclosure.north_basin;
+  assert.deepEqual({centre_xy_m,inner_m,outer_m}, { centre_xy_m: [1500, 2600], inner_m: 700, outer_m: 1300 });
   assert.equal(placement.instances.some(p => p.kind === "city_tower"), false);
 });
 

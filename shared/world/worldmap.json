@@ -8002,7 +8002,15 @@
           2600.0
         ],
         "inner_m": 700.0,
-        "outer_m": 1300.0
+        "outer_m": 1300.0,
+        "landform": {
+          "radii_m": [760.0, 700.0],
+          "edge_blend": 0.28,
+          "smoothing_m": 112.0,
+          "floor_slope": 0.48,
+          "relief_m": 18.0,
+          "max_delta_m": 65.0
+        }
       },
       "river_reaches": [
         {

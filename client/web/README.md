@@ -1,3 +1,18 @@
+# Northern basin redesign — approved, 2026-10-27
+
+The former city area now has a continuous meadow floor, curved granite
+shoulders and localized rock debris. The obsolete city-wide habitat exclusion
+is retired for grass; existing trees keep their transforms. Core terrain and
+physical floor are regenerated together. The browser smooths the coarse
+slope-grid appearance within the basin and follows the finished floor for grass.
+
+The surrounding world, original placements and all 12,611 trees are retained.
+The human approves the basin redesign for main and publication. Original
+Claude worktrees and other chats' work remain intact. Matched aerial, walking-height and moving-camera views are in the
+[basin brief](../../shared/geometry/granite/NORTH-BASIN.md).
+
+---
+
 # Distant forest batching — approved for main integration, 2026-10-27
 
 The human approves merging the forest batching with current main **e61a9db**.

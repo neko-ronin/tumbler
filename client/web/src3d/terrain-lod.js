@@ -48,9 +48,9 @@ export function terrainTileLevels(grid,row0,col0,rows,cols,strides=[1,4,8,16]){
  return levels;
 }
 
-export function buildTerrainLod(grid,{tileCells=32,pixelError=2,nearM=320,horizonM=0,batchTiles=1}={}){
- if(batchTiles>1)return buildBatchedTerrainLod(grid,{tileCells,pixelError,nearM,horizonM,batchTiles});
- const source=buildTerrainGeometry(grid).geometry,group=new Group(),tiles=[];
+export function buildTerrainLod(grid,{tileCells=32,pixelError=2,nearM=320,horizonM=0,batchTiles=1,normalRegion=null}={}){
+ if(batchTiles>1)return buildBatchedTerrainLod(grid,{tileCells,pixelError,nearM,horizonM,batchTiles,normalRegion});
+ const source=buildTerrainGeometry(grid,{normalRegion}).geometry,group=new Group(),tiles=[];
  group.name='terrain';
  const material=toonMaterial({name:'block_granite_terrain',vertexColors:true},{terrain:true,horizonM});
  for(let row=0;row<grid.resolution-1;row+=tileCells)for(let col=0;col<grid.resolution-1;col+=tileCells){
@@ -90,8 +90,8 @@ export function buildTerrainLod(grid,{tileCells=32,pixelError=2,nearM=320,horizo
 /** Shared vertex attributes and a retained index buffer per spatial batch.
  * Tile-level error/stitched rims stay independent; only submission is grouped.
  */
-function buildBatchedTerrainLod(grid,{tileCells,pixelError,nearM,horizonM,batchTiles}){
- const source=buildTerrainGeometry(grid).geometry,group=new Group(),tiles=[],batches=new Map();group.name='terrain';
+function buildBatchedTerrainLod(grid,{tileCells,pixelError,nearM,horizonM,batchTiles,normalRegion}){
+ const source=buildTerrainGeometry(grid,{normalRegion}).geometry,group=new Group(),tiles=[],batches=new Map();group.name='terrain';
  const material=toonMaterial({name:'continuous_granite_terrain',vertexColors:true},{terrain:true,horizonM});
  for(let row=0;row<grid.resolution-1;row+=tileCells)for(let col=0;col<grid.resolution-1;col+=tileCells){
   const rows=Math.min(tileCells,grid.resolution-1-row),cols=Math.min(tileCells,grid.resolution-1-col),levels=terrainTileLevels(grid,row,col,rows,cols),bounds=new Box3();

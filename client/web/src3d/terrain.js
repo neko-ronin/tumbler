@@ -44,6 +44,15 @@ const HEATHER = new Color("#819b71");
 const PINEFLOOR = new Color("#718568");
 const RIVEREDGE = new Color("#6c9450");
 
+export function terrainRegionBlend(region,x,y){
+  if(!region)return 0;
+  const u=(x-region.centre[0])/region.radii[0],v=(y-region.centre[1])/region.radii[1];
+  const radius=Math.hypot(u+.08*Math.sin(v*2.4),v),t=Math.max(0,Math.min(1,(1-radius)/region.edgeBlend));
+  let blend=t*t*t*(t*(t*6-15)+10);
+  if(Number.isFinite(region.southM)){const s=Math.max(0,Math.min(1,(y-region.southM)/112));blend*=s*s*s*(s*(s*6-15)+10);}
+  return blend;
+}
+
 /**
  * A triangle mesh over a height grid's own samples, in the client's colours.
  *
@@ -52,7 +61,7 @@ const RIVEREDGE = new Color("#6c9450");
  * block, 21,316 for the far field — and the client has not decided the meadow
  * is finer or coarser than its own record.
  */
-export function buildTerrainGeometry(grid, { skipCell = null } = {}) {
+export function buildTerrainGeometry(grid, { skipCell = null, normalRegion = null } = {}) {
   const { resolution, quad, offsetX, offsetY, values } = grid;
   const count = resolution * resolution;
   const positions = new Float32Array(count * 3);
@@ -83,8 +92,19 @@ export function buildTerrainGeometry(grid, { skipCell = null } = {}) {
       const west = heightAt(row, column - 1);
       const north = heightAt(row + 1, column);
       const south = heightAt(row - 1, column);
-      const dzdx = east !== null && west !== null ? (east - west) / (2 * quad) : (east !== null ? east - here : here - west) / quad;
-      const dzdy = north !== null && south !== null ? (north - south) / (2 * quad) : (north !== null ? north - here : here - south) / quad;
+      let dzdx = east !== null && west !== null ? (east - west) / (2 * quad) : (east !== null ? east - here : here - west) / quad;
+      let dzdy = north !== null && south !== null ? (north - south) / (2 * quad) : (north !== null ? north - here : here - south) / quad;
+      if (normalRegion) {
+        const blend=terrainRegionBlend(normalRegion,worldX,worldY);
+        if (blend>0) {
+          // Browser shading integrates one native far-field cell rather than
+          // exposing each bilinear cell's slope as a square rock/grass island.
+          // Positions, topology and the shared physical floor are unchanged.
+          const r=normalRegion.radiusM;
+          const a=grid.sample(worldX+r,worldY),b=grid.sample(worldX-r,worldY),c=grid.sample(worldX,worldY+r),d=grid.sample(worldX,worldY-r);
+          if(a!==null&&b!==null&&c!==null&&d!==null){dzdx+=((a-b)/(2*r)-dzdx)*blend;dzdy+=((c-d)/(2*r)-dzdy)*blend;}
+        }
+      }
       // The normal of y = f(x, z): (−f_x, 1, f_z). The world's north y becomes
       // scene −z, so the north gradient enters with the opposite sign here.
       const length = Math.hypot(dzdx, dzdy, 1);

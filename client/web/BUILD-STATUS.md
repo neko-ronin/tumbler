@@ -1,3 +1,19 @@
+# Northern basin redesign — approved for release, 2026-10-27
+
+The human approves the natural/cohesive basin redesign for main and release. It restores the open grass habitat, reshapes the
+floor/shoulders and replaces interior rock groups while keeping existing trees
+and the surrounding world. Shading integrates the native far-field slope within
+the basin so rock/grass boundaries no longer expose the old square grid.
+
+Matched walking-height, aerial and moving-camera replays pass startup, real
+keyboard jumping and the existing terrain LOD bound without application/shader
+errors. Native rasters and all individual transforms remain. Automated results
+and limits are in the [basin brief](../../shared/geometry/granite/NORTH-BASIN.md).
+The visual direction is approved. Web 407/407, focused Python 38/38 and
+placement 37/37 pass. Unreal adoption and sustained performance remain open.
+
+---
+
 # Distant forest batching — approved for main integration, 2026-10-27
 
 The human approves merging the forest batching with current main **e61a9db**.

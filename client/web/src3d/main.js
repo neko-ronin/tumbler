@@ -7,7 +7,7 @@ import { createOrbitControls } from './controls.js';
 import {buildTerrainLod} from './terrain-lod.js';
 import {buildGeology} from './geology.js';
 import {createGeologySampler,applyGeologyTerrain} from '../../../shared/geometry/granite/surface.js';
-import { buildWater, buildRiverReaches } from './terrain.js';
+import { buildWater, buildRiverReaches, terrainRegionBlend } from './terrain.js';
 import { buildPlacements, buildForest } from './placements.js';
 import { buildTreeGroundShadows } from './forest.js';
 import {instanceMatrix} from './world.js';
@@ -159,7 +159,9 @@ export async function main() {
   loading.phase('Sketches into sunlight. Growing the world…',3);
   await nextPaint();await nextPaint();
   const landscapeGrid=landscapeHeightGrid(blockGrid,farGrid);
-  const terrain=buildTerrainLod(landscapeGrid,{horizonM:farGrid.maxX,batchTiles:4});
+  const basin=worldmap.mountains.enclosure.north_basin;
+  const normalRegion=basin.landform?{centre:basin.centre_xy_m,radii:basin.landform.radii_m,edgeBlend:basin.landform.edge_blend,radiusM:farGrid.quad,southM:blockGrid.maxY+112}:null;
+  const terrain=buildTerrainLod(landscapeGrid,{horizonM:farGrid.maxX,batchTiles:4,normalRegion});
   scene.add(terrain.group);
   const geology=geologyData?buildGeology(geologyData,assets):null;
   if(geology)scene.add(geology.group);
@@ -205,8 +207,11 @@ export async function main() {
   for(let row=0;row<cover.resolution;row++)for(let col=0;col<cover.resolution;col++){
     const i=row*cover.resolution+col;if(!grassCover.covered[i])continue;
     const x=cover.offsetX+col*cover.quad,y=cover.offsetY+row*cover.quad,h=ground.height(x,y);
-    const sourceHeight=sourceGround.height(x,y);
-    const slope=Math.hypot((sourceGround.height(x+4,y)??h)-(sourceGround.height(x-4,y)??h),(sourceGround.height(x,y+4)??h)-(sourceGround.height(x,y-4)??h))/8;
+    const regionalSoil=terrainRegionBlend(normalRegion,x,y)>0;
+    const soilGround=regionalSoil?ground:sourceGround;
+    const sourceHeight=soilGround.height(x,y);
+    const slopePitch=regionalSoil?normalRegion.radiusM:4;
+    const slope=Math.hypot((soilGround.height(x+slopePitch,y)??h)-(soilGround.height(x-slopePitch,y)??h),(soilGround.height(x,y+slopePitch)??h)-(soilGround.height(x,y-slopePitch)??h))/(2*slopePitch);
     const baseHeight=blockGrid.sample(x,y)??farGrid.sample(x,y),rockHeight=geologyHeight?.(x,y);
     if((riverSurface.granite(x,y)??0)>.22||h===null||h<23||sourceHeight>1100||slope>.72||(rockHeight!=null&&rockHeight>baseHeight)||snowAt(x,y)>.03||surfaceAt(x,y)==='trail'||forestSoil.sample(x,y)>.48)grassCover.covered[i]=0;
   }
@@ -378,6 +383,10 @@ export async function main() {
   // Look-around camera bookmarks use the existing terrain and launch location.
   const launch=ground.height(-380,1620);
   const views = {
+    ...(basin.landform?{
+      northBasin:{position:[basin.centre_xy_m[0]+900,ground.height(...basin.centre_xy_m)+1225,-basin.centre_xy_m[1]+1000],target:[basin.centre_xy_m[0],ground.height(...basin.centre_xy_m)+75,-basin.centre_xy_m[1]]},
+      northMeadow:{position:[basin.centre_xy_m[0]-295,ground.height(basin.centre_xy_m[0]-295,basin.centre_xy_m[1]+105)+2.2,-basin.centre_xy_m[1]-105],target:[basin.centre_xy_m[0]-150,ground.height(basin.centre_xy_m[0]-150,basin.centre_xy_m[1]+140)+20,-basin.centre_xy_m[1]-140]}
+    }:{}),
     graniteRiver:{position:[3180,540,1190],target:[3100,12,580]},
     graniteBank:{position:[2940,37,654],target:[3035,14,599]},
     canopy:{position:heroCentre.clone().add(new T.Vector3(heroRadius*2.1,8,heroRadius*2.3)).toArray(),target:heroCentre.toArray()},
