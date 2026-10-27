@@ -1,3 +1,18 @@
+# Presentation phase — approved for integration, 2026-10-27
+
+The retained mountain branch preserves the 30 FPS deadline phase across display
+rounding and drops missed slots after stalls. All 404 web and 16 package checks
+pass, including 144/165 Hz traces, jitter, resume and the rolling rate cap.
+The sampled game views retain 30 FPS; an FPS gain is not established.
+The human approves integration with the latest character, collision and tower-removal
+release. The combined game verifies 157 files, 12,611 trees and jumping without
+application/shader errors. Checks, game traces and limits are in the
+[integration receipt](../../docs/reviews/pacing-integration-2026-10-27.md).
+The game server is on [8061](http://127.0.0.1:8061/client/web/scene.html).
+Mountain visual Before remains v0.1.0 in the paired review below.
+
+---
+
 # City towers removed — integrated for review, 2026-10-27
 
 The twelve northern city towers are retired. World map version 3 retains their
@@ -32,13 +47,16 @@ human review; this is not sustained performance or Unreal acceptance.
 
 ---
 
-# Fixed-field wind CPU continuation — local candidate, 2026-10-26
+# Fixed-field wind CPU continuation — released, 2026-10-26
+
+Source `b9de03d` is now live as public `a3e9073`; see the
+[release receipt](../../docs/reviews/wind-cache-release-2026-10-26.md).
 
 The retained mountain branch now reuses immutable terrain/trail heights for the
 fixed meadow field while sampling live shared wind. Exact numerical parity,
 bounded storage and 352 web checks pass; controlled overview CPU p95 falls from
-45.3 ms uncached to 17.1–18.3 ms cached. Frame pacing remains open. This follow-up
-is unpublished; [measurements and next gate](../../docs/reviews/mountain-wind-continuation-2026-10-26.md).
+45.3 ms uncached to 17.1–18.3 ms cached. Frame pacing remains a separate
+continuation; [implementation measurements](../../docs/reviews/mountain-wind-continuation-2026-10-26.md).
 
 ---
 
