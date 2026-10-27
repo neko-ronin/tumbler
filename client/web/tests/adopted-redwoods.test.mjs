@@ -138,6 +138,33 @@ test('adaptive tree quality reduces submitted geometry while retaining a full-de
 const renderer={capabilities:{maxTextureSize:8192},autoClear:true,getRenderTarget:()=>null,getClearColor:c=>c.set(0),getClearAlpha:()=>1,
   getViewport:v=>v.set(0,0,1200,800),getScissor:v=>v.set(0,0,1200,800),getScissorTest:()=>false,getSize:v=>v.set(1200,800),
   setRenderTarget(){},setClearColor(){},setScissor(){},setViewport(){},setScissorTest(){},clear(){},render(){}};
+
+test('distant batching reduces submissions while retaining every selected transform, fade interval and shadow caster',()=>{
+ const path='redwood/giant_redwood.glb',assets={[path]:read(path),...crowns};
+ const records=Array.from({length:144},(_,id)=>({id:String(id),asset:path,position_m:[id%12*140-770,Math.floor(id/12)*140-770,id%3],yaw_deg:id*23,scale:[1,1,1]}));
+ const placement={instances:records},reference=buildAdoptedRedwoods(placement,assets,renderer,plan,{distantTileCells:1}),batched=buildAdoptedRedwoods(placement,assets,renderer,plan);
+ const camera=new T.PerspectiveCamera(62,1.5,.1,10000),descriptor=Object.getOwnPropertyDescriptor(performance,'now');let clock=1000;
+ Object.defineProperty(performance,'now',{configurable:true,value:()=>clock});
+ const draws=forest=>{const result=[],matrix=new T.Matrix4();for(const mesh of forest.group.children){const lod=mesh.name.match(/studio_lod(\d)_/)?.[1];if(lod===undefined)continue;
+  for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,matrix);result.push([lod,Array.from(matrix.elements),[mesh.geometry.attributes.forestInterval.getX(i),mesh.geometry.attributes.forestInterval.getY(i)]]);}}
+  return result.sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));};
+ try{
+  for(const [eye,target]of [[[0,220,5000],[0,80,0]],[[0,150,1700],[0,80,0]],[[0,100,250],[0,70,-300]],[[0,100,250],[0,100,3000]]]){
+   camera.position.set(...eye);camera.lookAt(...target);camera.updateMatrixWorld();clock+=1000;
+   reference.update(camera,new T.Vector3());batched.update(camera,new T.Vector3());
+   assert.deepEqual(draws(batched),draws(reference),'batching must preserve the actual GPU matrices and per-instance coverage');
+   for(const key of ['lodCounts','trianglesByLod','culled','shadowProxies','shadowRevision'])assert.deepEqual(batched.stats[key],reference.stats[key],key);
+   assert.equal(batched.stats.tiles,reference.stats.tiles,'selection keeps the original spatial granularity');
+   if(eye[2]===5000){
+    const count=f=>f.group.children.filter(m=>/studio_lod[23]_/.test(m.name)&&m.visible&&m.count>0).length;
+    assert.ok(count(batched)<count(reference)*.35,'distant trees must share submissions across selection tiles');
+   }
+  }
+  const disposed=new Map();for(const m of batched.group.children)m.geometry.addEventListener('dispose',()=>disposed.set(m.geometry,(disposed.get(m.geometry)??0)+1));
+  batched.dispose();for(const count of disposed.values())assert.equal(count,1,'shared draw pools release their geometry once');
+ }finally{reference.dispose();if(batched.group.children.length)batched.dispose();if(descriptor)Object.defineProperty(performance,'now',descriptor);else delete performance.now;}
+});
+
 test('the real four-stage path uses stable original shadow topology and updates after camera rotation',()=>{
   const path='redwood/giant_redwood.glb',assets={[path]:read(path),...crowns};
   const records=Array.from({length:25},(_,id)=>({id:String(id),asset:path,position_m:[(id%5)*18-36,Math.floor(id/5)*18,0],yaw_deg:id*23,scale:[1,1,1]}));

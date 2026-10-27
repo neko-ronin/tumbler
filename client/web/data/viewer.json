@@ -139,7 +139,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "54f693bf1cd5051b79f784e1dba795be5dc0983777250994f5a36e27c0b35e87"
+      "sha256": "4291ae51560d2b2b2b0033b92ac870962eabe2c067cb49de37b6931e6858e057"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -159,7 +159,7 @@
     },
     {
       "path": "client/web/src3d/redwood-rendering.js",
-      "sha256": "b26f5ccfb396d8897bd6d10344165a37834bdb849a49f842e078eca3b129d78f"
+      "sha256": "e5270d86953369980e7121d2c8e3d9949d24423c5c85ac0abe1be5d86c721b8f"
     },
     {
       "path": "client/web/src3d/river-granite.js",
@@ -631,7 +631,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "107088e",
+  "commit": "686665f",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

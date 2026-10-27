@@ -73,7 +73,9 @@ function batchGeometry(base,count){
 }
 export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) {
   const group=new T.Group();group.name='studio_redwoods';
-  const types=new Map(),batches=[],records=[],kits=[],bases=[],materials=[],shapeCache=new Map();
+  const types=new Map(),batches=[],beautyMeshes=[],records=[],kits=[],bases=[],materials=[],shapeCache=new Map();
+  const distantTileCells=options.distantTileCells??4;
+  if(!Number.isInteger(distantTileCells)||distantTileCells<1)throw Error('Distant tree batches require a positive number of selection tiles');
   const stats={trees:0,near:0,mid:0,far:0,tiles:0,shadowProxies:0,shadowRevision:0,lodCounts:[0,0,0,0],
     trianglesByLod:[0,0,0,0],budgets:[...(options.budgets??TREE_BUDGETS)],costsByAsset:{},culled:0,selectionMs:0,presentation:(plan.design?.name??'studio r'+plan.source.studioRevision)+' / four bounded LODs / unchanged core envelopes'};
   for(const tree of placement.instances)if(plan.targets[tree.asset]){if(!types.has(tree.asset))types.set(tree.asset,[]);types.get(tree.asset).push(tree);stats.trees++;}
@@ -99,6 +101,12 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     const sourceBox=boundsOf(source.primitives),visualBox=sourceBox.clone(),tiles=new Map();
     for(const p of prepared)visualBox.union(p.geometry.boundingBox);
     for(const tree of entries){const [x,y]=tree.position_m,key=`${Math.floor(x/128)},${Math.floor(y/128)}`;if(!tiles.has(key))tiles.set(key,[]);tiles.get(key).push(tree);}
+    const distant=new Map(),distantKey=tile=>tile.split(',').map(v=>Math.floor(Number(v)/distantTileCells)).join(',');
+    for(const [tile,items]of tiles){const key=distantKey(tile);if(!distant.has(key))distant.set(key,{capacity:0,bounds:new T.Sphere(),meshes:[]});distant.get(key).capacity+=items.length;}
+    const make=(base,material,name,count,bounds)=>{const mesh=new T.InstancedMesh(batchGeometry(base,count),material,count);mesh.count=0;mesh.visible=false;mesh.name=`studio_${name}_${path}`;mesh.boundingSphere=bounds.clone();mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);group.add(mesh);return mesh;};
+    for(const [key,pool]of distant)for(const lod of [2,3]){
+      const p=prepared[lod],mesh=make(p.geometry,p.material,`lod${lod}_distant_${key}`,pool.capacity,pool.bounds);pool.meshes[lod]=mesh;beautyMeshes.push(mesh);
+    }
     for(const [tile,entries]of tiles){
       const batch={items:[],meshes:[],proxy:null};const sphere=new T.Sphere();
       for(const tree of entries){
@@ -108,15 +116,16 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
         batch.items.push(item);records.push(item);
       }
       sphere.radius*=1.15;
-      const make=(base,material,name)=>{const mesh=new T.InstancedMesh(batchGeometry(base,entries.length),material,entries.length);mesh.count=0;mesh.name=`studio_${name}_${path}_${tile}`;mesh.boundingSphere=sphere.clone();mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);group.add(mesh);return mesh;};
-      batch.meshes=prepared.map((p,lod)=>make(p.geometry,p.material,`lod${lod}`));
-      batch.proxy=make(shadow.geometry,shadowMaterial,'core_shadow');batch.proxy.castShadow=true;
+      const pool=distant.get(distantKey(tile));pool.bounds.union(sphere);batch.bounds=sphere.clone();
+      batch.meshes=prepared.map((p,lod)=>{if(lod>=2)return pool.meshes[lod];const mesh=make(p.geometry,p.material,`lod${lod}_${tile}`,entries.length,sphere);beautyMeshes.push(mesh);return mesh;});
+      batch.proxy=make(shadow.geometry,shadowMaterial,`core_shadow_${tile}`,entries.length,sphere);batch.proxy.castShadow=true;
       batch.proxy.onBeforeRender=()=>batch.proxy.geometry.setDrawRange(0,0);
       batch.proxy.onAfterRender=batch.proxy.onBeforeShadow=()=>batch.proxy.geometry.setDrawRange(0,Infinity);
       batches.push(batch);
     }
+    for(const pool of distant.values())for(const lod of [2,3])pool.meshes[lod].boundingSphere.copy(pool.bounds);
   }
-  stats.tiles=batches.length;let lastKey='',lastShadowKey='',bakedLight=lightKey(),fading=false;
+  stats.tiles=batches.length;stats.drawBatches=beautyMeshes.length;let lastKey='',lastShadowKey='',bakedLight=lightKey(),fading=false;
   const frustum=new T.Frustum(),matrix=new T.Matrix4(),lastPosition=new T.Vector3(Infinity,Infinity,Infinity),lastDirection=new T.Vector3(),direction=new T.Vector3();
   function update(camera,anchor=camera.position){
     const shadowKey=[anchor.x,anchor.y,anchor.z].map(v=>Math.round(v/4)).join(',');
@@ -132,7 +141,7 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     const start=performance.now();lastKey=key;lastPosition.copy(camera.position);lastDirection.copy(direction);
     camera.updateMatrixWorld();frustum.setFromProjectionMatrix(matrix.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
     const visible=[];
-    for(const b of batches){if(!frustum.intersectsSphere(b.meshes[3].boundingSphere))continue;
+    for(const b of batches){if(!frustum.intersectsSphere(b.bounds))continue;
       for(const item of b.items)if(frustum.intersectsBox(item.visibleBox)){
         item.clearance=item.box.distanceToPoint(camera.position);
         item.pixels=projectedTreePixels(item.height,camera.position.distanceTo(item.bound.center),camera.fov,size.y);item.priority=item.pixels+800/(1+item.clearance);visible.push(item);
@@ -140,12 +149,12 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     const allocation=allocateTreeLods(visible,stats.budgets),transitions=treeTransitionDraws(allocation,stats.budgets,performance.now());
     stats.trianglesByLod=transitions.used;stats.lodCounts=[0,0,0,0];stats.transitioning=transitions.transitioning;fading=stats.transitioning>0;
     for(const {lod}of allocation.result)stats.lodCounts[lod]++;
-    const counts=new Map(batches.map(b=>[b,[0,0,0,0]]));
+    const counts=new Map(beautyMeshes.map(mesh=>[mesh,0]));
     for(const {tree:item,lod,lo,hi}of transitions.draws){
-      const mesh=item.batch.meshes[lod],index=counts.get(item.batch)[lod]++;
+      const mesh=item.batch.meshes[lod],index=counts.get(mesh);counts.set(mesh,index+1);
       mesh.setMatrixAt(index,item.matrix);mesh.geometry.attributes.forestInterval.setXY(index,lo,hi);
     }
-    for(const b of batches)b.meshes.forEach((mesh,lod)=>{mesh.count=counts.get(b)[lod];mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;mesh.geometry.attributes.forestInterval.needsUpdate=true;});
+    for(const mesh of beautyMeshes){mesh.count=counts.get(mesh);mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;mesh.geometry.attributes.forestInterval.needsUpdate=true;}
     stats.near=stats.lodCounts[0];stats.mid=stats.lodCounts[1]+stats.lodCounts[2];stats.far=stats.lodCounts[3];stats.culled=records.length-visible.length;stats.selectionMs=performance.now()-start;
   }
   return {group,stats,update,setQuality(quality){stats.budgets=options.budgets??treeBudgetsForQuality(quality);stats.quality=quality;lastKey='';},invalidateShadows(){stats.shadowRevision++;lastKey='';lastShadowKey='';},
@@ -153,5 +162,5 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
       const key=lightKey();if(direction&&key===bakedLight)return;
       for(const kit of kits){const next=kit.bake();kit.target.dispose();kit.target=next.target;kit.material.map=next.target.texture;kit.material.needsUpdate=true;next.geometry.dispose();next.material.dispose();next.material.studioMaskMaterial?.dispose();}
       bakedLight=key;stats.shadowRevision++;lastKey='';},
-    dispose(){for(const b of batches)for(const m of [...b.meshes,b.proxy])m.geometry.dispose();for(const g of bases)g.dispose();for(const m of materials)m.dispose();for(const kit of kits)kit.dispose();group.clear();}};
+    dispose(){for(const mesh of [...beautyMeshes,...batches.map(b=>b.proxy)])mesh.geometry.dispose();for(const g of bases)g.dispose();for(const m of materials)m.dispose();for(const kit of kits)kit.dispose();group.clear();}};
 }

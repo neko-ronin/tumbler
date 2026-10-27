@@ -1,3 +1,24 @@
+# Distant forest batching — approved for main integration, 2026-10-27
+
+The human approves merging the forest batching with current main **e61a9db**.
+The 512 m distant draw pools retain 128 m individual-selection/shadow tiles,
+all source geometry and current main's 12,611 trees. Frame pacing, full/half
+character controls, home proportions, collision recovery, world-map version 3
+and city-tower removal are retained. Main's released wind cache stays intact.
+The superseded prepared-core wind experiment is excluded from the final tree.
+
+Combined web **405/405**, package/publisher/transition **16/16** and integrity
+**157 fetched + 17 map files** pass. Current-main overview CPU p95 is
+**20.7 → 12.6 ms**, with identical triangles and 2,151 fewer submissions.
+Both controls retain 30 FPS pacing; this is a CPU-headroom measurement.
+
+[Conflict choices, combined checks and release evidence](../../docs/reviews/forest-batching-integration-2026-10-27.md).
+The earlier [performance examination](../../docs/reviews/forest-batching-performance-2026-10-26.md) remains evidence against its own
+baseline; fresh combined measurements are recorded in the integration receipt.
+The existing source worktree and branch remain available.
+
+---
+
 # Presentation phase — approved for integration, 2026-10-27
 
 The retained mountain branch preserves the 30 FPS deadline phase across display
