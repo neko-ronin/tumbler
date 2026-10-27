@@ -190,7 +190,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const tumble=characterConfig.fall_clips?.tumble;
     const bodyClip=!pose.collapsed?undefined:!pose.grounded||restTime<(characterConfig.walk.jump?.tumble_s??.8)?tumble
       :(characterConfig.idle_sequence??[]).find(step=>step.hold)?.clip;
+    const attachment=characterConfig.flight_attachment;
+    const flightAnchor=attachment&&!pose.grounded&&!pose.collapsed?rig.localToWorld(new T.Vector3().fromArray(attachment.position_m)):null;
     character.update(dt,pose.grounded?'idle':'flight',0,{mode:pose.mode,bank:pose.bank,grounded:pose.grounded,bodyClip,
+      flightAnchor,
       groundZ:pose.grounded?characterHeight(pose.x,pose.y):undefined,groundHeight:pose.grounded?characterHeight:undefined});
     if(view==='chase'){
       follow(dt,(12+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
@@ -200,7 +203,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     const desired=62+Math.min(18,Math.max(0,pose.speed-12)*.8)*effects;
     camera.fov+= (desired-camera.fov)*(1-Math.exp(-dt*3));camera.updateProjectionMatrix();
-    rig.userData.flightUpdate?.(dt,{...pose,harnessed:true});
+    rig.userData.flightUpdate?.(dt,{...pose,harnessed:true},{pilotScale:characterConfig.scale,pilotAttachment:attachment?.position_m});
   }
   /** Steer, pedal or pole, brake, tuck and hop; a chase camera, or first person on V / Y. */
   function updateRide(dt,pad,x,y){

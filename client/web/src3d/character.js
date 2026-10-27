@@ -15,6 +15,9 @@ export function createCharacter(asset, config) {
   model.scale.setScalar(config.scale);
   model.position.y = -config.sole_y_m * config.scale;
   object.add(model);
+  const flightBone=config.flight_attachment&&model.getObjectByName(config.flight_attachment.bone);
+  if(config.flight_attachment&&!flightBone)throw new Error(`Ronin is missing attachment bone ${config.flight_attachment.bone}`);
+  const attachmentPoint=new T.Vector3(),attachmentTarget=new T.Vector3();
   object.visible = false;
   // The original site's buffalo-check shirt is a shader. Recreate the check
   // with a tiny local texture using the existing WebGL toon material.
@@ -217,6 +220,7 @@ export function createCharacter(asset, config) {
     // Keep the animated soles above the actual terrain, including slope under
     // either foot. This adjusts the rendered puppet only; physics owns its arc.
     model.position.y=-config.sole_y_m*config.scale;
+    model.position.x=0;
     // On a trunk, move him toward or away from the bark (along his facing) so the
     // planted paws touch it whatever its radius: clips are authored on a 1.5 m trunk.
     const trunk=pose==='climb'?context.climb?.trunk:null;
@@ -236,6 +240,14 @@ export function createCharacter(asset, config) {
     // Turn the somersault about his middle rather than his soles.
     if(flip){model.position.y+=FLIP_PIVOT_M*config.scale*(1-Math.cos(flip));model.position.z-=FLIP_PIVOT_M*config.scale*Math.sin(flip);}
     if(rollTurn){model.position.y+=ROLL_PIVOT_M*config.scale*(1-Math.cos(rollTurn));model.position.z-=ROLL_PIVOT_M*config.scale*Math.sin(rollTurn);}
+    // Flight attaches his animated hips, not his soles. The target is in world
+    // space so banking about the harness and changing size keep the same pickup.
+    if(pose==='flight'&&flightBone&&context.flightAnchor){
+      model.updateWorldMatrix(true,true);
+      object.worldToLocal(flightBone.getWorldPosition(attachmentPoint));
+      object.worldToLocal(attachmentTarget.copy(context.flightAnchor));
+      model.position.add(attachmentTarget.sub(attachmentPoint));
+    }
     if(pose!=='flight'&&context.groundZ!==undefined){
       model.updateWorldMatrix(true,true);
       // Each foot: how far it must rise. A planted paw stands on its own floor;

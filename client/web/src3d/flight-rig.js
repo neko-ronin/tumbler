@@ -64,6 +64,20 @@ function smoothSkinGroups(primitives,rest){
   }
   return [...groups.values()];
 }
+// The optional small-cat presentation fits only equipment around the core's
+// hip attachment. Upper line ends and all sail geometry keep their world size.
+function pilotFitWeights(primitives,cloth){
+  const weights=new Float32Array(cloth.points.length);let offset=0;
+  for(const p of primitives.filter(p=>p.alphaMode==='OPAQUE')){
+    const count=p.geometry.index?.count??p.geometry.attributes.position.count;
+    if(/^(harness|webbing_risers|maillons|brake_fan)$/.test(p.materialName))for(let i=offset;i<offset+count;i++){
+      const point=cloth.indices[i],y=cloth.points[point].y;
+      weights[point]=Math.max(weights[point],p.materialName==='harness'?1:1-T.MathUtils.smoothstep(y,1.3,1.72));
+    }
+    offset+=count;
+  }
+  return weights;
+}
 // A parked canopy keeps its cloth draw but releases the equipment that would
 // otherwise obscure a standing pilot. Reuse the same vertex/deformation data;
 // switching the draw index also keeps depth and sun-shadow passes consistent.
@@ -87,7 +101,7 @@ export function createFlightRig(assets,config){
     const mesh=new T.Mesh(data.geometry,data.material);mesh.name=`${name}_fabric`;
     mesh.castShadow=true;mesh.frustumCulled=false;
     const cloth=clothPoints(mesh.geometry);
-    wings[name]={mesh,...cloth,smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives)};group.add(mesh);
+    wings[name]={mesh,...cloth,pilotFit:pilotFitWeights(primitives,cloth),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives)};group.add(mesh);
   }
   const source=assets[config.motor_asset].primitives;
   const cage=mergePrimitives(source.filter(p=>p.materialName!=='propeller'),'opaque');
@@ -100,10 +114,15 @@ export function createFlightRig(assets,config){
   /** Optional presentation input: localAir is the shared air vector rotated
    * into rig axes (+Z forward); groundAt(x,z) returns local floor Y. Without
    * it, landed air is still, harnessed reads presentation then state and defaults true; floor Y is zero.
+   * pilotScale (default 1) fits the straps/motor around pilotAttachment (rig
+   * coordinates from the character contract), retaining the full-size sail.
    * No lift/locomotion is awarded by this visual inflation approximation.
    */
   function update(dt,state,presentation={}){
     const harnessed=presentation.harnessed??state.harnessed??true;
+    const pilotScale=presentation.pilotScale??1,anchor=presentation.pilotAttachment??[0,0,0];
+    motor.scale.setScalar(pilotScale);
+    motor.position.set(anchor[0]*(1-pilotScale),anchor[1]+(.95-anchor[1])*pilotScale,anchor[2]+(-.7-anchor[2])*pilotScale);
     clock+=dt;motor.visible=state.mode==='paramotor'&&harnessed;
     elapsed+=dt;
     prop.rotation.z+=dt*(12+(state.engine??0)*150);
@@ -140,6 +159,8 @@ export function createFlightRig(assets,config){
     for(let i=0;i<points.length;i++){
       const p=points[i];
       deform(p.x,p.y,p.z,config.modes[name],state,w.inflation,clock,point);
+      const fit=(pilotScale-1)*w.pilotFit[i];
+      point.x+=(p.x-anchor[0])*fit;point.y+=(p.y-anchor[1])*fit;point.z+=(p.z-anchor[2])*fit;
       if(grounded&&p.y>=1.3){
         const drop=1-w.inflation,sag=T.MathUtils.smoothstep(p.y,1.3,3.6)*drop*drop*(3-2*drop);
         // Preserve approximate cloth length on a hillside: compress the

@@ -1,3 +1,14 @@
+# Flight harness repair — 2026-10-27
+
+Cat Ronin attaches by his hips during normal flight, so the seated clip's
+ground-sitting drop and the full/half size toggle no longer put him below the
+harness. Both shared wings now use a minimal waist belt and two leg loops in
+place of the seat pan/backrest; the motor fits the same attachment.
+All three flight modes retain their existing flight and collision rules.
+See the [source, reproduction and visual checks](../../shared/geometry/flight/HARNESS.md).
+
+---
+
 # Northern basin redesign — approved, 2026-10-27
 
 The former city area now has a continuous meadow floor, curved granite

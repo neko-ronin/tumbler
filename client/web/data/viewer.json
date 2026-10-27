@@ -39,7 +39,7 @@
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "011f160ac620a73f86f3ad1471c3862489d95c4e75bb24bea70d9812a0cb0767"
+      "sha256": "6189029d308a2438093d27028f49467a7dee6801366898e48e13b2f9ba8920f6"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -91,7 +91,7 @@
     },
     {
       "path": "client/web/src3d/flight-rig.js",
-      "sha256": "3903c35cfd664efc4acee9d06bbdacfae7b8945687ba92bb1a8d83c4f7c866b5"
+      "sha256": "b2e91df6d7ad5d5c83eb113a11bebdd2db5f48fe9aeec130124ce6b1932a231d"
     },
     {
       "path": "client/web/src3d/forest-field.js",
@@ -147,7 +147,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "0a92ae93b0cab6aa220609cc4f683c2ddfef037bed75a2e53951e4c1806e5fc1"
+      "sha256": "0ee6c1fd4744973e8a7171d158d3ba332ee1dee01e9086e87b96e5dd7f32ac05"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -283,7 +283,7 @@
     },
     {
       "path": "shared/characters/player.json",
-      "sha256": "d1d5c1125e49d89d8e7f4ff6d84bb2c3ce37d081c6b39ce966c0720207fdbd2f"
+      "sha256": "788eb81e42b4ceae5fd236226e11cc5d0ec7a5a2e71cde16bf0a9776155edd1e"
     },
     {
       "path": "shared/ecology/aquatic.js",
@@ -343,11 +343,11 @@
     },
     {
       "path": "shared/geometry/flight/parafoil.glb",
-      "sha256": "5851d1227cdb63bbc1974af05666f706e01237e8095d74d69bdbec39b59037e0"
+      "sha256": "f797b9a471ed94253d22d3fddaf8385fcf8f8bfad889188f7056f2590d8678c6"
     },
     {
       "path": "shared/geometry/flight/parakite.glb",
-      "sha256": "6325c1d8404f8ee742b6266ba99d551335348136783c554bb58665c2cafc7ada"
+      "sha256": "86a645a6b4f9c5678adcfc399fd68cc40ef4108c753699d185cf047a8212e4ee"
     },
     {
       "path": "shared/geometry/flight/paramotor.glb",
@@ -631,7 +631,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "a5f4042",
+  "commit": "f1093c0",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
