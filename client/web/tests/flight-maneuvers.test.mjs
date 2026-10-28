@@ -8,56 +8,62 @@ import {style} from '../src3d/style.js';
 const config=JSON.parse(readFileSync(new URL('../../../shared/activities/flight.json',import.meta.url)));
 const flat=()=>0,site={xy_m:[0,0],heading_deg:0};
 const still={...config,thermals:[],wind:{speed_mps:0,gust_mps:0},weather:{soaring:{wind_scale:0,gust_scale:0,thermal_scale:0,turbulence_mps:0}}};
-const start=mode=>({...launchFlight(still,mode,site,flat),z:1200,engine:0,throttle:0});
+const start=(mode,rules=still)=>({...launchFlight(rules,mode,site,flat),z:1200,engine:0,throttle:0});
 const head=s=>s.z+s.speed*s.speed/(2*9.81);
 function run(s,input,seconds,rules=still,height=flat){for(let i=0;i<Math.round(seconds*120);i++)s=stepFlight(s,typeof input==='function'?input(i/120):input,1/120,i/120,rules,270,height);return s;}
+// These regressions preserve the optional reduced model's paid speed/height
+// exchange, maneuver labels and empirical ground-effect approximation. The
+// default coupled model integrates forces and has full two-mass energy tests.
+const legacy={...still,coupled:undefined};
+const legacyStart=mode=>start(mode,legacy);
+const legacyRun=(s,input,seconds,rules=legacy,height=flat)=>run(s,input,seconds,rules,height);
 
-test('a dive stores speed, neutral retains it, and progressive flare visibly climbs in every wing',()=>{
+test('legacy dive stores speed, neutral retains it, and progressive flare visibly climbs in every wing',()=>{
  for(const name of Object.keys(config.modes)){
-  const initial=start(name),dive=run(initial,{brake:-1},3);
+  const initial=legacyStart(name),dive=legacyRun(initial,{brake:-1},3);
   assert.ok(dive.speed>initial.speed*1.17,name);assert.ok(dive.z<initial.z-5,name);
-  const carry=run(dive,{},.5);assert.ok(carry.speed>initial.speed*1.1,'momentum survives hands neutral');
-  const flare=run(carry,{brake:.65},1.2);
+  const carry=legacyRun(dive,{},.5);assert.ok(carry.speed>initial.speed*1.1,'momentum survives hands neutral');
+  const flare=legacyRun(carry,{brake:.65},1.2);
   assert.ok(flare.z>carry.z+1,name);assert.ok(flare.speed<carry.speed,name);assert.ok(flare.pitch>0,name);
   assert.ok(head(flare)<head(initial),name);
  }
 });
 
-test('linked rolls and spirals respond to analogue authority, pay height and damp on release',()=>{
+test('legacy linked rolls and spirals respond to analogue authority, pay height and damp on release',()=>{
  for(const name of Object.keys(config.modes)){
-  const ordinary=run(start(name),{turn:1},2.5),spiral=run(start(name),{turn:1,maneuver:true},2.5);
+  const ordinary=legacyRun(legacyStart(name),{turn:1},2.5),spiral=legacyRun(legacyStart(name),{turn:1,maneuver:true},2.5);
   assert.ok(spiral.bank>ordinary.bank+.12,name);assert.ok(spiral.load>ordinary.load,name);
   assert.ok(head(spiral)<head(ordinary),name);
-  const reversed=run(spiral,{turn:-1,maneuver:true},3);
+  const reversed=legacyRun(spiral,{turn:-1,maneuver:true},3);
   assert.ok(reversed.bank<-.5);assert.equal(reversed.reversals,1);assert.match(reversed.figure,/Wingover/);
-  const recovered=run(reversed,{},4);
+  const recovered=legacyRun(reversed,{},4);
   assert.ok(Math.abs(recovered.bank)<.035,name);assert.ok(Math.abs(recovered.rollRate)<.04,name);
   assert.ok(Math.abs(spiral.bank)<Math.PI/2);assert.ok(recovered.pressure>.9);
  }
  assert.ok(config.modes.paramotor.maneuver_bank_rad<config.modes.parakite.maneuver_bank_rad);
 });
 
-test('every unpowered step loses energy through mixed maneuvers, pumping and low skims',()=>{
+test('legacy unpowered steps lose reduced energy through mixed maneuvers, pumping and low skims',()=>{
  for(const name of Object.keys(config.modes))for(const z of [1200,4]){
-  let s={...start(name),z};
+  let s={...legacyStart(name),z};
   for(let i=0;i<3600&&!s.grounded;i++){
-   const before=head(s),next=stepFlight(s,{brake:Math.sin(i*.009),turn:Math.sin(i*.007),maneuver:true},1/120,i/120,still,270,flat);
+   const before=head(s),next=stepFlight(s,{brake:Math.sin(i*.009),turn:Math.sin(i*.007),maneuver:true},1/120,i/120,legacy,270,flat);
    if(!next.grounded)assert.ok(head(next)<=before+1e-9,`${name} gains energy at ${i}`);
    s=next;
   }
  }
 });
 
-test('ground proximity reduces loss but never adds lift; canopy clearance, slope and bank gate it',()=>{
+test('legacy ground proximity reduces loss but never adds lift; canopy clearance, slope and bank gate it',()=>{
  for(const name of Object.keys(config.modes)){
-  const s={...start(name),z:2.1},near=run(s,{},.05),high=run({...s,z:100}, {},.05);
+  const s={...legacyStart(name),z:2.1},near=legacyRun(s,{},.05),high=legacyRun({...s,z:100}, {},.05);
   assert.ok(near.groundEffect>0&&near.groundEffect<1,name);assert.equal(high.groundEffect,0);
   assert.ok(near.vertical>high.vertical);assert.ok(near.vertical<0);
-  const off={...still,modes:{...still.modes,[name]:{...still.modes[name],ground_drag_relief:0}}};
-  const control=run(s,{},.05,off);assert.ok(near.z>control.z);
-  const banked=run({...s,bank:.9}, {},.0083);assert.equal(banked.groundEffect,0);
-  const slope=run(s,{},.0083,still,x=>x*.6);assert.equal(slope.groundEffect,0);
-  assert.equal(run({...s,z:2.5},{},20).grounded,true,'no altitude hold');
+  const off={...legacy,modes:{...legacy.modes,[name]:{...legacy.modes[name],ground_drag_relief:0}}};
+  const control=legacyRun(s,{},.05,off);assert.ok(near.z>control.z);
+  const banked=legacyRun({...s,bank:.9}, {},.0083);assert.equal(banked.groundEffect,0);
+  const slope=legacyRun(s,{},.0083,legacy,x=>x*.6);assert.equal(slope.groundEffect,0);
+  assert.equal(legacyRun({...s,z:2.5},{},20).grounded,true,'no altitude hold');
  }
 });
 

@@ -7,7 +7,9 @@ import {launchFlight,stepFlight,canopySegment} from '../../../shared/activities/
 
 const read=path=>JSON.parse(readFileSync(new URL(path,import.meta.url)));
 const flight=read('../../../shared/activities/flight.json');
-const rules={...flight,thermals:[],wind:{speed_mps:0,gust_mps:0},weather:{soaring:{wind_scale:0,gust_scale:0,thermal_scale:0,turbulence_mps:0}}};
+// The original reduced model's perfectly steady glide remains a compatibility
+// regression. Coupled anchor/camera behavior is exercised in its own tests.
+const rules={...flight,coupled:undefined,thermals:[],wind:{speed_mps:0,gust_mps:0},weather:{soaring:{wind_scale:0,gust_scale:0,thermal_scale:0,turbulence_mps:0}}};
 const world=read('../../../shared/world/worldmap.json'),ride=read('../../../shared/activities/ride.json'),characterConfig=read('../../../shared/characters/player.json');
 const flat=()=>0;
 

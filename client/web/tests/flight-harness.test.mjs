@@ -15,25 +15,28 @@ function game(t,scale){
  for(const [k,v]of Object.entries({window:win,document:doc,navigator:{getGamepads:()=>[]}}))Object.defineProperty(globalThis,k,{value:v,configurable:true});
  const canvas=new EventTarget();canvas.tagName='CANVAS';canvas.focus=()=>{};canvas.setPointerCapture=()=>{};
  const config={...player,scale},cat=createCharacter(parseGLB(readFileSync(new URL('../../../shared/geometry/'+player.asset,import.meta.url))),config),rig=new T.Group();
+ let presented;
+ rig.userData.flightUpdate=(dt,state)=>{presented=state;};
  const nav=createNavigation(new T.PerspectiveCamera(),canvas,{target:new T.Vector3(),setTarget(){},update(){}},{height:()=>0},flight,worldmap,rig,()=>null,
   {config:ride,rig:new T.Group(),meshes:{ski:new T.Group(),bike:new T.Group()},height:()=>0,snowAt:()=>1,surfaceAt:()=>'snow'},cat,config);
  t.after(()=>{nav.dispose();cat.dispose();for(const [k,v]of saved)v?Object.defineProperty(globalThis,k,v):delete globalThis[k];});
  const hips=()=>{rig.updateMatrixWorld(true);cat.object.updateMatrixWorld(true);return rig.worldToLocal(cat.model.getObjectByName('hips').getWorldPosition(new T.Vector3()));};
- return {nav,cat,rig,config,hips};
+ const attachment=()=>{rig.updateMatrixWorld(true);return presented?.coupled&&!presented.grounded&&!presented.collapsed?rig.worldToLocal(new T.Vector3(presented.coupled.pilotPosition[0],presented.coupled.pilotPosition[2],-presented.coupled.pilotPosition[1])):new T.Vector3(0,.65,0);};
+ return {nav,cat,rig,config,hips,attachment};
 }
 for(const mode of ['paraglider','parakite','paramotor'])for(const scale of [1,.52])test(`${mode}, scale ${scale}: hips stay in the harness through animation and banking`,t=>{
- const {nav,hips}=game(t,scale);nav.select(mode);
+ const {nav,hips,attachment}=game(t,scale);nav.select(mode);
  Object.assign(nav.state,{x:10,y:20,z:500,heading:.7,bank:.5,grounded:false});
  for(let i=0;i<90;i++){
   nav.update(1/30);
-  const p=hips();assert.ok(p.distanceTo(new T.Vector3(0,.65,0))<.005,`hips at ${p.toArray()}, expected rig attachment [0,0.65,0]`);
+  const p=hips(),expected=attachment();assert.ok(p.distanceTo(expected)<.005,`hips at ${p.toArray()}, expected physical attachment ${expected.toArray()}`);
  }
 });
 test('changing size in flight keeps the attachment while landing and a collapse release the pose',t=>{
- const {nav,config,hips,cat}=game(t,1);nav.select('paraglider');Object.assign(nav.state,{z:500,grounded:false});
+ const {nav,config,hips,cat,attachment}=game(t,1);nav.select('paraglider');Object.assign(nav.state,{z:500,grounded:false});
  for(let i=0;i<10;i++)nav.update(1/30);
  config.scale=.52;nav.update(1/30);
- assert.ok(hips().distanceTo(new T.Vector3(0,.65,0))<.005);
+ assert.ok(hips().distanceTo(attachment())<.005);
  Object.assign(nav.state,{collapsed:true,grounded:false});nav.update(1/30);assert.equal(cat.clip,'fall_tumble');
  Object.assign(nav.state,{grounded:true,z:flight.landing_clearance_m,speed:0,vertical:0,vario:0});
  for(let i=0;i<60;i++)nav.update(1/30);

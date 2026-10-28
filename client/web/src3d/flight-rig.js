@@ -83,6 +83,21 @@ function pilotFitWeights(primitives,cloth){
   }
   return weights;
 }
+// Independent pilot motion carries the complete lower suspension, rather than
+// only the straps that need fitting to the optional small character. Cascades
+// blend back to the upper line ends; the source sail remains in the wing frame.
+function coupledFitWeights(primitives,cloth){
+  const weights=new Float32Array(cloth.points.length);let offset=0;
+  for(const p of primitives.filter(p=>p.alphaMode==='OPAQUE')){
+    const count=p.geometry.index?.count??p.geometry.attributes.position.count;
+    if(/^(harness|webbing_risers|maillons|suspension_cascade|brake_fan)$/.test(p.materialName))for(let i=offset;i<offset+count;i++){
+      const point=cloth.indices[i],y=cloth.points[point].y;
+      weights[point]=Math.max(weights[point],p.materialName==='harness'?1:1-T.MathUtils.smoothstep(y,1.8,3.1));
+    }
+    offset+=count;
+  }
+  return weights;
+}
 // A parked canopy keeps its cloth draw but releases the equipment that would
 // otherwise obscure a standing pilot. Reuse the same vertex/deformation data;
 // switching the draw index also keeps depth and sun-shadow passes consistent.
@@ -106,7 +121,7 @@ export function createFlightRig(assets,config){
     const mesh=new T.Mesh(data.geometry,data.material);mesh.name=`${name}_fabric`;
     mesh.castShadow=true;mesh.frustumCulled=false;
     const cloth=clothPoints(mesh.geometry);
-    wings[name]={mesh,...cloth,pilotFit:pilotFitWeights(primitives,cloth),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives)};group.add(mesh);
+    wings[name]={mesh,...cloth,pilotFit:pilotFitWeights(primitives,cloth),coupledFit:coupledFitWeights(primitives,cloth),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives)};group.add(mesh);
   }
   const source=assets[config.motor_asset].primitives;
   const cage=mergePrimitives(source.filter(p=>p.materialName!=='propeller'),'opaque');
@@ -115,22 +130,26 @@ export function createFlightRig(assets,config){
   const blade=mergePrimitives(source.filter(p=>p.materialName==='propeller'),'opaque');
   const prop=new T.Mesh(blade.geometry,blade.material);motor.add(prop);
   let clock=0,last=-1,elapsed=0;
-  const point=new T.Vector3(),normal=new T.Vector3(),pilotPivot=new T.Vector3(),pilotPoint=new T.Vector3(),pilotRotation=new T.Quaternion(),pilotEuler=new T.Euler();
+  const point=new T.Vector3(),normal=new T.Vector3(),pilotPivot=new T.Vector3(),pilotPoint=new T.Vector3(),sagDirection=new T.Vector3(),pilotRotation=new T.Quaternion(),pilotEuler=new T.Euler();
   /** Optional presentation input: localAir is the shared air vector rotated
    * into rig axes (+Z forward); groundAt(x,z) returns local floor Y. Without
    * it, landed air is still, harnessed reads presentation then state and defaults true; floor Y is zero.
    * pilotScale (default 1) fits the straps/motor around pilotAttachment (rig
    * coordinates from the character contract), retaining the full-size sail.
+   * pilotTransform maps the independent pilot's frame into the wing rig. It
+   * moves the harness/motor and blends the cascades while retaining upper ends.
    * No lift/locomotion is awarded by this visual inflation approximation.
    */
   function update(dt,state,presentation={}){
     const harnessed=presentation.harnessed??state.harnessed??true;
     const pilotScale=presentation.pilotScale??1,anchor=presentation.pilotAttachment??[0,0,0];
+    const pilotTransform=!state.grounded&&!state.collapsed?presentation.pilotTransform:null;
     pilotPivot.fromArray(anchor);
     pilotRotation.setFromEuler(pilotEuler.set(state.grounded||state.collapsed?0:-(state.pilotPitch??0),0,state.grounded||state.collapsed?0:(state.pilotRoll??0),'XYZ'));
     motor.scale.setScalar(pilotScale);
     motor.position.set(anchor[0]*(1-pilotScale),anchor[1]+(.95-anchor[1])*pilotScale,anchor[2]+(-.7-anchor[2])*pilotScale);
-    motor.position.sub(pilotPivot).applyQuaternion(pilotRotation).add(pilotPivot);motor.quaternion.copy(pilotRotation);
+    if(pilotTransform){motor.position.applyMatrix4(pilotTransform);motor.quaternion.setFromRotationMatrix(pilotTransform);}
+    else{motor.position.sub(pilotPivot).applyQuaternion(pilotRotation).add(pilotPivot);motor.quaternion.copy(pilotRotation);}
     const pilotOffset=presentation.pilotOffset??[0,0,0];motor.position.add(pilotPoint.fromArray(pilotOffset));
     clock+=dt;motor.visible=state.mode==='paramotor'&&harnessed;
     elapsed+=dt;
@@ -165,6 +184,8 @@ export function createFlightRig(assets,config){
     const slopeX=grounded?floorAt(.5,-3)-floorAt(-.5,-3):0;
     const slopeZ=grounded?floorAt(0,-2.5)-floorAt(0,-3.5):0;
     const slope2=slopeX*slopeX+slopeZ*slopeZ;
+    const slack=pilotTransform?Math.max(0,state.coupled?.lineSlackM??0):0;
+    sagDirection.fromArray(presentation.lineSagDirection??[0,-1,0]);
     for(let i=0;i<points.length;i++){
       const p=points[i];
       deform(p.x,p.y,p.z,config.modes[name],state,w.inflation,clock,point);
@@ -172,7 +193,13 @@ export function createFlightRig(assets,config){
       point.x+=(p.x-anchor[0])*fit;point.y+=(p.y-anchor[1])*fit;point.z+=(p.z-anchor[2])*fit;
       // The pilot, straps and motor rotate about one hip attachment. Lower
       // risers blend back to the unchanged upper suspension endpoints.
-      if(w.pilotFit[i]){pilotPoint.copy(point).sub(pilotPivot).applyQuaternion(pilotRotation).add(pilotPivot);point.lerp(pilotPoint,w.pilotFit[i]);}
+      if(pilotTransform){
+        const weight=w.coupledFit[i];
+        if(weight){pilotPoint.copy(point).applyMatrix4(pilotTransform);point.lerp(pilotPoint,weight);}
+        // A visual sag in the intermediate cascades makes a slack cable
+        // readable. Taut lines receive no sag; endpoints stay attached.
+        if(slack&&weight>0&&weight<1)point.addScaledVector(sagDirection,slack*2*weight*(1-weight));
+      }else if(w.pilotFit[i]){pilotPoint.copy(point).sub(pilotPivot).applyQuaternion(pilotRotation).add(pilotPivot);point.lerp(pilotPoint,w.pilotFit[i]);}
       point.x+=pilotOffset[0]*w.pilotFit[i];point.y+=pilotOffset[1]*w.pilotFit[i];point.z+=pilotOffset[2]*w.pilotFit[i];
       if(grounded&&p.y>=1.3){
         const drop=1-w.inflation,sag=T.MathUtils.smoothstep(p.y,1.3,3.6)*drop*drop*(3-2*drop);

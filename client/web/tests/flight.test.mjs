@@ -7,8 +7,10 @@ const config=JSON.parse(readFileSync(new URL('../../../shared/activities/flight.
 const flat=()=>0,site={xy_m:[0,0],heading_deg:0};
 function run(mode,changes={},seconds=5){const rules={...config,thermals:[],...changes};let s=launchFlight(rules,mode,site,flat);s.z=100;for(let i=0;i<seconds*120;i++)s=stepFlight(s,{turn:.1},1/120,i/120,rules,245,flat);return s;}
 test('unpowered flight loses height in still air; motor thrust produces climb',()=>{const glide=run('paraglider');assert.ok(glide.z<100);const powered=run('paramotor');assert.ok(powered.z>100);assert.ok(glide.distance>30);});
-test('parakite flies freely and converts dive speed into flare height',()=>{
-  const rules={...config,thermals:[],wind:{speed_mps:0,gust_mps:0}};
+test('legacy parakite converts target dive speed into flare height without adding energy',()=>{
+  // This is the fallback's direct speed/height exchange, not the coupled
+  // model's force-driven flare arc and full mechanical-energy ledger.
+  const rules={...config,coupled:undefined,thermals:[],wind:{speed_mps:0,gust_mps:0}};
   let s=launchFlight(rules,'parakite',site,flat);s.z=500;
   for(let i=0;i<240;i++)s=stepFlight(s,{brake:-1},1/120,i/120,rules,245,flat);
   const dive={...s};assert.ok(dive.speed>config.modes.parakite.trim_mps);

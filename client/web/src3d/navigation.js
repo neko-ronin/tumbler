@@ -1,6 +1,6 @@
 /** Keyboard, pointer and Gamepad input; flight, ski and bike rules live in shared/. */
 import * as T from '../vendor/three.module.min.js';
-import {launchFlight,stepFlight,sampleAir,flightFrame,startFlightChallenge} from '../../../shared/activities/flight.js';
+import {launchFlight,stepFlight,sampleAir,flightFrame,pilotFrame,startFlightChallenge} from '../../../shared/activities/flight.js';
 import {rideStart,startRide,stepRide} from '../../../shared/activities/ride.js';
 import {flightInput} from './flight-input.js';
 import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal,safeWalkGround} from '../../../shared/activities/walk.js';
@@ -17,7 +17,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const height=(x,y)=>options.floorHeight?.(x,y)??ground.height(x,y)??0;
   const forward=new T.Vector3(),side=new T.Vector3();
   const target=new T.Vector3();
-  const flightMatrix=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
+  const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
+  function frameMatrix(frame,out){
+    flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
+    flightUp.set(frame.up[0],frame.up[2],-frame.up[1]);
+    flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
+    return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
+  }
   const clear=()=>{for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   function key(e,down){if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     if(!down)blockedActions.delete(e.code);
@@ -190,19 +196,31 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // Render between physics ticks so both the pilot and camera aim move on
     // every frame. The simulation and instruments keep the current state.
     const pose={...state},alpha=accumulator*120;
-    for(const key of ['x','y','z','heading','pitch','bank','speed','pilotPitch','pilotRoll'])pose[key]=(previousFlight[key]??0)+((state[key]??0)-(previousFlight[key]??0))*alpha;
+    for(const key of ['x','y','z','pitch','bank','speed','pilotPitch','pilotRoll'])pose[key]=(previousFlight[key]??0)+((state[key]??0)-(previousFlight[key]??0))*alpha;
+    const headingChange=state.heading-previousFlight.heading;
+    pose.heading=previousFlight.heading+Math.atan2(Math.sin(headingChange),Math.cos(headingChange))*alpha;
+    if(state.coupled&&previousFlight.coupled){
+      pose.coupled={...state.coupled};
+      for(const key of ['pilotPosition','wingPosition'])pose.coupled[key]=state.coupled[key].map((v,i)=>previousFlight.coupled[key][i]+(v-previousFlight.coupled[key][i])*alpha);
+      pose.coupled.lineSlackM=previousFlight.coupled.lineSlackM+(state.coupled.lineSlackM-previousFlight.coupled.lineSlackM)*alpha;
+    }
     return pose;
   }
   function updateFlightPresentation(dt,pose=state){
     const frame=flightFrame(pose,config);
+    const coupled=pose.coupled&&!pose.grounded&&!pose.collapsed;
     rig.position.set(frame.origin[0],frame.origin[2],-frame.origin[1]);
-    flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
-    flightUp.set(frame.up[0],frame.up[2],-frame.up[1]);
-    flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
-    rig.quaternion.setFromRotationMatrix(flightMatrix.makeBasis(flightLeft,flightUp,flightForward));
-    character.object.position.copy(rig.position);
-    character.object.quaternion.copy(rig.quaternion);
-    if(!pose.grounded&&!pose.collapsed){character.object.rotateX(-(pose.pilotPitch??0));character.object.rotateZ(pose.pilotRoll??-pose.bank*.25);}
+    rig.quaternion.setFromRotationMatrix(frameMatrix(frame,flightMatrix));
+    if(coupled){
+      frameMatrix(pilotFrame(pose,config),pilotMatrix);
+      character.object.position.setFromMatrixPosition(pilotMatrix);
+      character.object.quaternion.setFromRotationMatrix(pilotMatrix);
+      pilotTransform.copy(flightMatrix).invert().multiply(pilotMatrix);
+    }else{
+      character.object.position.copy(rig.position);
+      character.object.quaternion.copy(rig.quaternion);
+      if(!pose.grounded&&!pose.collapsed){character.object.rotateX(-(pose.pilotPitch??0));character.object.rotateZ(pose.pilotRoll??-pose.bank*.25);}
+    }
     character.object.visible=view==='chase';
     // A collapsed wing: he tumbles as he falls and on touchdown, then sits beside the
     // wing until unhooked or relaunched (the human's ruling, docs/design/COLLISION.md).
@@ -211,14 +229,16 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const bodyClip=!pose.collapsed?undefined:!pose.grounded||restTime<(characterConfig.walk.jump?.tumble_s??.8)?tumble
       :(characterConfig.idle_sequence??[]).find(step=>step.hold)?.clip;
     const attachment=characterConfig.flight_attachment;
-    const flightAnchor=attachment&&!pose.grounded&&!pose.collapsed?rig.localToWorld(new T.Vector3().fromArray(attachment.position_m)):null;
+    const flightAnchor=attachment&&!pose.grounded&&!pose.collapsed?(coupled?new T.Vector3(pose.coupled.pilotPosition[0],pose.coupled.pilotPosition[2],-pose.coupled.pilotPosition[1]):rig.localToWorld(new T.Vector3().fromArray(attachment.position_m))):null;
     character.update(dt,pose.launching&&pose.launchStage==='running'?'run':pose.grounded?'idle':'flight',pose.launching?(pose.launchRunSpeed??0):0,{mode:pose.mode,bank:pose.bank,grounded:pose.grounded,bodyClip,
       flightAnchor,
       groundZ:pose.grounded?characterHeight(pose.x,pose.y):undefined,groundHeight:pose.grounded?characterHeight:undefined});
     if(view==='chase'){
       follow(dt,(12+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
     }else{
-      character.object.visible=false;camera.position.set(pose.x,pose.z+.15,-pose.y);
+      character.object.visible=false;
+      if(coupled)camera.position.copy(new T.Vector3(0,config.landing_clearance_m+.15,0).applyMatrix4(pilotMatrix));
+      else camera.position.set(pose.x,pose.z+.15,-pose.y);
       look.set(pitch+pose.pitch*.2,pose.heading-Math.PI/2+yaw,-pose.bank*.08*effects);camera.quaternion.setFromEuler(look);snap=false;
     }
     const desired=62+Math.min(18,Math.max(0,pose.speed-12)*.8)*effects;
@@ -229,7 +249,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       const hips=character.model.getObjectByName(attachment.bone);
       if(hips)pilotOffset=rig.worldToLocal(hips.getWorldPosition(new T.Vector3())).sub(new T.Vector3().fromArray(attachment.position_m)).toArray();
     }
-    rig.userData.flightUpdate?.(dt,{...pose,harnessed:true},{pilotScale:characterConfig.scale,pilotAttachment:attachment?.position_m,pilotOffset});
+    const lineSagDirection=coupled?new T.Vector3(0,-1,0).transformDirection(new T.Matrix4().copy(flightMatrix).invert()).toArray():undefined;
+    rig.userData.flightUpdate?.(dt,{...pose,harnessed:true},{pilotScale:characterConfig.scale,pilotAttachment:attachment?.position_m,pilotOffset,pilotTransform:coupled?pilotTransform:undefined,lineSagDirection});
   }
   /** Steer, pedal or pole, brake, tuck and hop; a chase camera, or first person on V / Y. */
   function updateRide(dt,pad,x,y){

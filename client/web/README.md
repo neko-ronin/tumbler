@@ -1,3 +1,17 @@
+# Coupled pilot and wing — visual review, 2026-10-28
+
+The shared flight model now translates the pilot and wing independently,
+connected by a tension-only suspension. Aerodynamic forces curve the flight
+path; motor thrust acts on the pilot and carries a full mechanical-work ledger.
+The character, equipment, camera and canopy collision follow their respective
+physical frames. Neutral glide and mode-specific handles are retained, with
+bounded roll actuation, paid dive/flare motion and slack/catch behavior.
+[Implementation, checks and limits](../../docs/reviews/para-coupled-flight-2026-10-28.md).
+This checkpoint is intended for live human review; physical-controller tuning,
+full inverted maneuvers and sustained performance acceptance remain open.
+
+---
+
 # Suspended flight and launch loop — visual review, 2026-10-28
 
 The para-mode branch continues with shared canopy/collision attitude, a bounded

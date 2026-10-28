@@ -3,6 +3,7 @@
  * docs/design/FLIGHT-MANUALS.md. This is not a flight-training model.
  */
 import {knockDirection} from './collision.js';
+import {stepCoupled,wingBasis,pilotBasis} from './coupled-flight.js';
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const approach=(a,b,rate,dt)=>a+(b-a)*(1-Math.exp(-rate*dt));
 const wave=(x,y,z,t)=>Math.sin(x*.013+y*.009+t*.73+z*.005)*.55+Math.sin(x*.043-y*.031-t*1.87)*.3+Math.sin(y*.11+z*.07+t*3.1)*.15;
@@ -12,7 +13,8 @@ export function launchFlight(config,mode,site,height,weather='soaring') {
   if(!config.modes[mode])throw new Error(`Unknown flight activity: ${mode}`);
   const [x,y]=site.xy_m;
   return {mode,weather,x,y,z:height(x,y)+(site.clearance_m??config.launch_clearance_m??18),
-    heading:site.heading_deg*Math.PI/180,speed:config.modes[mode].trim_mps,vertical:0,vario:0,
+    heading:site.heading_deg*Math.PI/180,speed:config.modes[mode].trim_mps,
+    vertical:config.coupled?-config.modes[mode].sink_mps:0,vario:config.coupled?-config.modes[mode].sink_mps:0,
     bank:0,rollRate:0,pitch:0,pitchRate:0,brakeLeft:0,brakeRight:0,accelerator:0,
     handleLeft:mode==='parakite'?.45:0,handleRight:mode==='parakite'?.45:0,
     throttle:mode==='paramotor'?.55:0,engine:mode==='paramotor'?.55:0,thrustN:0,engineWorkJ:0,
@@ -38,7 +40,7 @@ function suspensionPose(s,previousSpeed,dt,mode,config){
     if(Math.abs(s[key])===limit&&Math.sign(s[rate])===Math.sign(s[key]))s[rate]=0;
   }
 }
-function releaseSuspension(s){s.pilotPitch=s.pilotRoll=s.pilotPitchRate=s.pilotRollRate=0;}
+function releaseSuspension(s){s.pilotPitch=s.pilotRoll=s.pilotPitchRate=s.pilotRollRate=0;delete s.coupled;}
 
 export function startFlightChallenge(state,id,config){
   if(!id)return {...state,challenge:null};
@@ -142,6 +144,10 @@ export function sampleAir(config,windBearing,state,time,height) {
  * Clients convert these vectors to their own axes rather than scaling bank.
  */
 export function flightFrame(state,config){
+  if(state.coupled&&!state.grounded&&!state.collapsed){
+    const basis=wingBasis(state.heading,state.pitch,state.bank),height=config.modes[state.mode].canopy_height_m;
+    return {...basis,origin:state.coupled.wingPosition.map((v,i)=>v-basis.up[i]*height)};
+  }
   const h=state.heading??0,p=state.grounded?0:(state.pitch??0),b=state.grounded?0:(state.bank??0);
   const forward=[Math.cos(h),Math.sin(h),0],left=[-Math.sin(h),Math.cos(h),0];
   const pitchedUp=[-forward[0]*Math.sin(p),-forward[1]*Math.sin(p),Math.cos(p)];
@@ -149,6 +155,16 @@ export function flightFrame(state,config){
     forward:[forward[0]*Math.cos(p),forward[1]*Math.cos(p),Math.sin(p)],
     left:left.map((v,i)=>v*Math.cos(b)+pitchedUp[i]*Math.sin(b)),
     up:pitchedUp.map((v,i)=>v*Math.cos(b)-left[i]*Math.sin(b))};
+}
+
+/** Independently simulated harness frame. Local origin is at nominal feet;
+ * the real hip anchor is harness_height_m above it along the suspension.
+ * Legacy clients retain their existing relative angular pose path.
+ */
+export function pilotFrame(state,config){
+  if(!state.coupled||state.grounded||state.collapsed)return flightFrame(state,config);
+  const basis=pilotBasis(state);
+  return {...basis,origin:state.coupled.pilotPosition.map((v,i)=>v-basis.up[i]*config.coupled.harness_height_m)};
 }
 
 /** The canopy as a capsule from wingtip to wingtip (docs/design/COLLISION.md):
@@ -294,7 +310,16 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   const bankLimit=mode.max_bank_rad+(mode.maneuver_bank_rad-mode.max_bank_rad)*s.maneuver;
   const targetBank=turn*bankLimit+(s.mode==='paramotor'?s.engine*.045:0)+clamp(air.turbulence*.035,-.12,.12);
   s.rollRate=(s.rollRate+(targetBank-s.bank)*12*dt)*Math.exp(-(5.8+(mode.roll_damping-5.8)*s.maneuver)*dt);
+  if(config.coupled)s.rollRate=clamp(s.rollRate,-config.coupled.max_roll_rate_rps,config.coupled.max_roll_rate_rps);
   s.bank=clamp(s.bank+s.rollRate*dt,-mode.maneuver_bank_rad,mode.maneuver_bank_rad);
+  if(Math.abs(turn)>.45&&Math.sign(turn)!==Math.sign(s.turnMemory||turn))s.reversals=(s.reversals??0)+1;
+  if(Math.abs(turn)>.45)s.turnMemory=turn;
+  if(s.maneuver<.1)s.reversals=0;
+  if(config.coupled){
+    stepCoupled(s,dt,config,position=>sampleAir(config,windBearing,{...s,x:position[0],y:position[1],z:position[2]},time,height));
+    s.turbulence=air.turbulence;
+    if(s.maneuver>.5&&Math.abs(s.bank)>.72&&!s.stall)s.figure=(s.reversals??0)>0?'Wingover':'Spiral · release to recover';
+  }else{
   s.load=1/Math.max(.25,Math.cos(s.bank));
   s.heading-=clamp(9.81*Math.tan(s.bank)/Math.max(5,s.speed),-mode.turn_rps,mode.turn_rps)*dt;
   const trim=mode.trim_mps;
@@ -340,9 +365,6 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   suspensionPose(s,previousSpeed,dt,mode,config);
   s.pressure=approach(s.pressure,clamp(1-s.stall*.45-Math.abs(air.turbulence)*.05,.45,1.15),4,dt);
   s.turbulence=air.turbulence;
-  if(Math.abs(turn)>.45&&Math.sign(turn)!==Math.sign(s.turnMemory||turn))s.reversals=(s.reversals??0)+1;
-  if(Math.abs(turn)>.45)s.turnMemory=turn;
-  if(s.maneuver<.1)s.reversals=0;
   s.figure=s.stall>.15?'Low energy · ease handles':s.vario>1&&exchange/dt>1&&s.speed>trim*.8?'Swoop · climbing':
     s.mode==='paramotor'&&s.engine>.1&&s.vario>.2?'Powered climb':
     s.accelerator>.65?'Dive · storing speed':s.maneuver>.5&&Math.abs(s.bank)>.72?
@@ -350,8 +372,19 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
     Math.abs(s.bank)>.3?'Dynamic S-turn':s.groundEffect>.02?'Ground skim · reduced drag':'Trim glide';
   const dx=(Math.cos(s.heading)*s.speed+air.wx)*dt,dy=(Math.sin(s.heading)*s.speed+air.wy)*dt;
   s.x+=dx;s.y+=dy;s.z+=s.vertical*dt+exchange+engineHeight;s.groundSpeed=Math.hypot(dx,dy)/dt;s.distance+=Math.hypot(dx,dy);
+  }
+  const beforeClamp=[s.x,s.y,s.z];
   s.x=clamp(s.x,-config.world_limit_m,config.world_limit_m);s.y=clamp(s.y,-config.world_limit_m,config.world_limit_m);
   s.z=Math.min(config.ceiling_m,s.z);
+  if(s.coupled){
+    // World/ceiling boundaries are external contacts, not free-flight work.
+    const shift=[s.x,s.y,s.z].map((v,i)=>v-beforeClamp[i]);
+    if(shift.some(v=>v!==0)){
+      const c=s.coupled,mass=config.coupled.pilot_mass_kg+config.coupled.wing_mass_kg;
+      for(const key of ['pilotPosition','wingPosition'])c[key]=c[key].map((v,i)=>v+shift[i]);
+      const work=mass*G*shift[2];c.contactWorkJ=(c.contactWorkJ??0)+work;c.energyJ+=work;
+    }
+  }
   if(config.collapse&&hitTest){
     // A canopy touching foliage or a solid collapses, and so does any contact of
     // his body: the canopy is above him. A solid bounces him instead of stopping him.

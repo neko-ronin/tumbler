@@ -7,7 +7,10 @@ import {createFlightRig} from '../src3d/flight-rig.js';
 import {launchFlight,stepFlight,canopySegment} from '../../../shared/activities/flight.js';
 
 const read=p=>JSON.parse(readFileSync(new URL(p,import.meta.url)));
-const config=read('../../../shared/activities/flight.json'),player=read('../../../shared/characters/player.json');
+const shipped=read('../../../shared/activities/flight.json'),player=read('../../../shared/characters/player.json');
+// Preserve the optional one-way angular-pose fallback. Coupled suspension has
+// independent translational energy/anchors, tested in flight-coupled-*.test.mjs.
+const {coupled:ignoredCoupled,...config}=shipped;
 const still={...config,thermals:[],wind:{speed_mps:0,gust_mps:0},weather:{soaring:{wind_scale:0,gust_scale:0,thermal_scale:0,turbulence_mps:0}}};
 const {suspension:_,...withoutSuspension}=still;
 const flat=()=>0,site={xy_m:[0,0],heading_deg:0},poseKeys=['pilotPitch','pilotRoll','pilotPitchRate','pilotRollRate'];
@@ -24,7 +27,7 @@ function run(s,input,seconds){
  return s;
 }
 
-test('suspension responds progressively to dive, flare and reversal, then settles repeatably',()=>{
+test('legacy angular suspension responds progressively to dive, flare and reversal, then settles repeatably',()=>{
  for(const mode of Object.keys(config.modes)){
   const sequence=()=>{
    const initial=start(mode);poseKeys.forEach(key=>assert.equal(initial[key],0));
@@ -47,7 +50,7 @@ test('suspension responds progressively to dive, flare and reversal, then settle
  }
 });
 
-test('suspension adds no translational energy and does not change the canopy collision frame',()=>{
+test('legacy angular suspension adds no translational energy and does not change the canopy collision frame',()=>{
  for(const mode of Object.keys(config.modes)){
   let enabled=start(mode),disabled=start(mode);
   for(let i=0;i<2400;i++){

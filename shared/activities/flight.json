@@ -180,6 +180,23 @@
     "roll_follow": 0.25,
     "roll_rate_gain_s": 0.12
   },
+  "coupled": {
+    "pilot_mass_kg": 84,
+    "wing_mass_kg": 6,
+    "harness_height_m": 0.65,
+    "area_fraction": 0.65,
+    "pilot_drag_area_m2": 0.12,
+    "induced_share": 0.55,
+    "trim_alpha_rad": 0.12,
+    "lift_slope": 4.5,
+    "stall_alpha_rad": 0.32,
+    "max_cl": 1.8,
+    "max_step_s": 0.004166666666666667,
+    "pitch_gain": 100,
+    "pitch_damping": 16,
+    "max_roll_rate_rps": 0.65,
+    "deep_brake_alpha_rad": 0.22
+  },
   "propulsion": {
     "mass_kg": 90,
     "max_thrust_n": 260,

@@ -10,7 +10,7 @@ const shipped=read('../../../shared/activities/flight.json'),walk=read('../../..
 // Calm, thermal-free air over flat ground at 0, so only the obstacles act.
 const config={...shipped,thermals:[],wind:{...shipped.wind,speed_mps:0,gust_mps:0},weather:{soaring:{wind_scale:0,gust_scale:0,thermal_scale:0,turbulence_mps:0}},
   collapse:{terminal_mps:15,restitution:.2,knock:.15,foliage_drag_per_s:1.5}};
-const {collapse:_,...older}=config,flat=()=>0,lc=config.landing_clearance_m;
+const {collapse:_,coupled:__,...older}=config,flat=()=>0,lc=config.landing_clearance_m;
 const site={xy_m:[0,0],heading_deg:0,clearance_m:60};
 const fly=(cfg,hit,dt,seconds,each=()=>{},s=launchFlight(cfg,'paraglider',site,flat))=>{
  for(let t=0;t<seconds-1e-9&&!s.grounded;t+=dt){const prev=s;s=stepFlight(s,{},dt,t,cfg,245,flat,hit);each(s,prev);}
@@ -43,12 +43,27 @@ test('the wing collapses on touching a crown',()=>{
  const start=launchFlight(config,'paraglider',site,flat),hit=createCollisionIndex([crownAhead(start.z-2)]);
  let collapsedAt=null,overlapAt=null,step=0;
  fly(config,hit,1/120,6,(s,prev)=>{step++;
-  if(overlapAt===null&&touches(canopySegment(s,config),hit))overlapAt=step;
+  // Collision releases the independent suspension and switches the published
+  // state to a collapsed rig. Query the physical canopy before that transition,
+  // rather than treating its different post-collapse frame as a contact oracle.
+  const free=stepFlight(prev,{},1/120,(step-1)/120,config,245,flat);
+  if(overlapAt===null&&touches(canopySegment(free,config),hit))overlapAt=step;
   if(collapsedAt===null&&s.collapsed)collapsedAt=step;
+  if(s.collapsed)assert.equal(s.coupled,undefined,'a collapse releases the physical suspension state');
   if(!prev.collapsed)assert.equal(hit.soft([prev.x,prev.y,prev.z],.45).length,0,'the pilot himself never reached the crown');
  });
  assert.ok(overlapAt!==null,'the canopy reached the crown');
  assert.equal(collapsedAt,overlapAt,'it collapsed on that very step');
+});
+
+test('touchdown releases active coupled particles without changing the prior physical state',()=>{
+ const airborne=stepFlight(launchFlight(config,'paraglider',site,flat),{},1/120,0,config,245,flat);
+ assert.ok(airborne.coupled,'exercise real independent pilot and wing particles');
+ const before=structuredClone(airborne),ground=()=>airborne.z-lc+.1;
+ const landed=stepFlight(airborne,{},1/120,1/120,config,245,ground);
+ assert.equal(landed.grounded,true);assert.equal(landed.coupled,undefined);
+ assert.equal(landed.speed,0);assert.equal(landed.z,ground()+lc);
+ assert.deepEqual(airborne,before,'contact cannot mutate prior arrays through a shallow state copy');
 });
 
 test('a collapsed wing falls and lands',()=>{

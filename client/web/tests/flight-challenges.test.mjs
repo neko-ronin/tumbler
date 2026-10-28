@@ -23,7 +23,7 @@ test('linked turns require real reversals and challenge scoring cannot alter phy
 test('a landing goal judges actual touchdown and rejects hard contact or a collapsed wing',()=>{
  for(const [vertical,speed,status] of [[-1,8,'complete'],[-6,8,'retry'],[-1,11.5,'retry']]){
   const brake=speed<10?.9:0;
-  const s=startFlightChallenge({...start(),z:config.landing_clearance_m+.001,vertical,speed,brakeLeft:brake,brakeRight:brake},'smooth-landing',still);
+  const s=startFlightChallenge({...start(),z:config.landing_clearance_m+.001,vertical,vario:vertical,speed,brakeLeft:brake,brakeRight:brake},'smooth-landing',still);
   const landed=stepFlight(s,{brake},1/120,0,still,270,flat);
   assert.ok(landed.grounded);assert.equal(landed.challenge.status,status);
  }
