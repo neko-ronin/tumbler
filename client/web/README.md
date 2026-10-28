@@ -1,3 +1,16 @@
+# Suspended flight and launch loop — visual review, 2026-10-28
+
+The para-mode branch continues with shared canopy/collision attitude, a bounded
+pilot suspension pose, matching harness/motor motion, deterministic flight
+trials and a motor work budget. Local takeoff inflates the wing and runs before
+launch; touchdown feedback retains descent/ground speed. Flight moves offers
+optional linked-turn and smooth-landing goals. No geography or individual
+placements change. [Source, measurements and limits](../../docs/reviews/para-mode-suspension-2026-10-28.md).
+This is the first visual-review checkpoint. Suspension is a bounded pilot pose;
+coupled wing/pilot forces and advanced inverted maneuvers remain in development.
+
+---
+
 # Para-mode controls and review startup — approved for main, 2026-10-28
 
 Parakite handles now change progressively and drive both flight response and

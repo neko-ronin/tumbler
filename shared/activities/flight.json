@@ -172,5 +172,45 @@
       "thermal_scale": 0.65,
       "turbulence_mps": 1.8
     }
+  },
+  "suspension": {
+    "damping_ratio": 0.85,
+    "pitch_limit_rad": 0.5,
+    "roll_limit_rad": 0.35,
+    "roll_follow": 0.25,
+    "roll_rate_gain_s": 0.12
+  },
+  "propulsion": {
+    "mass_kg": 90,
+    "max_thrust_n": 260,
+    "max_power_w": 6000,
+    "airspeed_share": 0.15
+  },
+  "ground_launch": {
+    "inflate_s": 1.2,
+    "run_accel_mps2": 3.5,
+    "takeoff_speed_fraction": 0.95,
+    "hop_mps": 2.4,
+    "dropoff_m": 0.5,
+    "max_run_m": 60,
+    "max_run_s": 12
+  },
+  "landing": {
+    "smooth_mps": 1.5,
+    "hard_mps": 4
+  },
+  "challenges": {
+    "smooth-landing": {
+      "label": "Smooth landing",
+      "goal": "landing",
+      "max_descent_mps": 1.5,
+      "max_ground_mps": 10
+    },
+    "linked-turns": {
+      "label": "Link three turns",
+      "goal": "linked_turns",
+      "bank_rad": 0.45,
+      "reversals": 2
+    }
   }
 }

@@ -55882,7 +55882,7 @@
   ],
   "rule": "Grass on dry, soil-bearing published outer terrain; existing edge stands continue toward the enclosure ridges. No original placement or terrain changes.",
   "sources": {
-    "shared/geometry/granite/geology.json": "55abb5b5a5c5389b694153bd1a79dc3d9a4397faebadad108cc3a6037f8e41b2",
+    "shared/geometry/granite/geology.json": "2f106e147b6cc88fb4991da952cfe48566d8ca892b61325ca6bf1a5e40496ac0",
     "shared/world/out/farfield_height.png": "33d83648c52a3afbb102e766ec4b23f9b52ce43f2843494c12a46862cf6144f2",
     "shared/world/out/ground_cover.json": "33d6fba9ae34beb73b8f5e38892ffe2ce05f10012a509a1d0d8c5f942d1dfad9",
     "shared/world/out/heightmap.png": "949611db689c2d8cc4f438225066687633ba8c46eb0ac7a31438b5f76326f1e9",

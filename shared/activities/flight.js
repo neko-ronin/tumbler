@@ -15,9 +15,90 @@ export function launchFlight(config,mode,site,height,weather='soaring') {
     heading:site.heading_deg*Math.PI/180,speed:config.modes[mode].trim_mps,vertical:0,vario:0,
     bank:0,rollRate:0,pitch:0,pitchRate:0,brakeLeft:0,brakeRight:0,accelerator:0,
     handleLeft:mode==='parakite'?.45:0,handleRight:mode==='parakite'?.45:0,
-    throttle:mode==='paramotor'?.55:0,engine:mode==='paramotor'?.55:0,
+    throttle:mode==='paramotor'?.55:0,engine:mode==='paramotor'?.55:0,thrustN:0,engineWorkJ:0,
     load:1,pressure:1,stall:0,turbulence:0,groundSpeed:0,grounded:false,distance:0,
+    pilotPitch:0,pilotRoll:0,pilotPitchRate:0,pilotRollRate:0,challenge:null,
     maneuver:0,turnMemory:0,reversals:0,groundEffect:0,figure:'Trim glide'};
+}
+
+/** Reduced angular suspension response about the harness attachment. Forces
+ * drive a damped pendulum pose; angular work is not fed back into translation.
+ * This deliberately does not claim a two-mass or slack-line constraint solver.
+ */
+function suspensionPose(s,previousSpeed,dt,mode,config){
+  const c=config.suspension;if(!c)return;
+  const omega=Math.sqrt(9.81/mode.canopy_height_m);
+  const goals=[clamp(-Math.atan((s.speed-previousSpeed)/dt/9.81)-s.pitch,-c.pitch_limit_rad,c.pitch_limit_rad),
+    clamp(-s.bank*c.roll_follow-s.rollRate*c.roll_rate_gain_s,-c.roll_limit_rad,c.roll_limit_rad)];
+  for(const [i,key] of ['pilotPitch','pilotRoll'].entries()){
+    const rate=key+'Rate',angle=s[key]??0;
+    s[rate]=((s[rate]??0)+(goals[i]-angle)*omega*omega*dt)*Math.exp(-2*c.damping_ratio*omega*dt);
+    const limit=i===0?c.pitch_limit_rad:c.roll_limit_rad;
+    s[key]=clamp(angle+s[rate]*dt,-limit,limit);
+    if(Math.abs(s[key])===limit&&Math.sign(s[rate])===Math.sign(s[key]))s[rate]=0;
+  }
+}
+function releaseSuspension(s){s.pilotPitch=s.pilotRoll=s.pilotPitchRate=s.pilotRollRate=0;}
+
+export function startFlightChallenge(state,id,config){
+  if(!id)return {...state,challenge:null};
+  if(!config.challenges?.[id])throw new Error(`Unknown flight challenge: ${id}`);
+  return {...state,challenge:{id,status:'active',turns:0,lastSide:0}};
+}
+function scoreFlight(s,config){
+  if(!s.challenge||s.challenge.status!=='active')return s;
+  const rule=config.challenges?.[s.challenge.id];if(!rule)return s;
+  const c={...s.challenge};s.challenge=c;
+  if(s.collapsed||s.impact){c.status='retry';return s;}
+  if(rule.goal==='linked_turns'){
+    const side=Math.abs(s.bank)>=rule.bank_rad?Math.sign(s.bank):0;
+    if(side&&side!==c.lastSide){if(c.lastSide)c.turns++;c.lastSide=side;}
+    if(c.turns>=rule.reversals)c.status='complete';
+    else if(s.grounded&&!s.launching)c.status='retry';
+  }else if(rule.goal==='landing'&&s.grounded&&!s.launching){
+    c.status=s.landingSpeed!==undefined&&s.landingSpeed<=rule.max_descent_mps&&s.landingGroundSpeed<=rule.max_ground_mps?'complete':'retry';
+  }
+  return s;
+}
+
+/** Assisted inflation and ground run. Running and the final leg push are
+ * explicit launch assistance, separate from free-flight energy accounting.
+ */
+function stepGroundLaunch(s,input,dt,time,config,bearing,height,hitTest,launchHeight){
+  const c=config.ground_launch,m=config.modes[s.mode];releaseSuspension(s);
+  s.launchTime=(s.launchTime??0)+dt;s.launchProgress=clamp(s.launchTime/c.inflate_s);
+  s.launchStage=s.launchProgress<1?'inflating':'running';s.pressure=s.launchInflation=s.launchProgress;
+  if(s.mode==='paramotor')s.throttle=clamp((s.throttle??0)+(input.throttle??0)*dt*.4);
+  s.engine=approach(s.engine??0,s.throttle??0,1.8,dt);
+  if(s.launchProgress<1){s.speed=0;s.figure='Inflating wing';return s;}
+  if(s.launchTime-c.inflate_s>c.max_run_s){s.launching=false;s.launchAborted=true;s.speed=s.groundSpeed=0;s.figure='Launch stalled · find downhill ground or face the wind';return s;}
+  const air=sampleAir(config,bearing,s,time,height),ch=Math.cos(s.heading),sh=Math.sin(s.heading);
+  const floor=launchHeight(s.x,s.y),ahead=launchHeight(s.x+ch,s.y+sh);
+  if(!Number.isFinite(floor)||!Number.isFinite(ahead)){s.launching=false;s.launchAborted=true;s.speed=s.groundSpeed=0;s.figure='Launch blocked · need dry ground ahead';return s;}
+  const motor=s.mode==='paramotor'?config.propulsion:null;
+  const thrust=motor?Math.min(motor.max_thrust_n*s.engine,motor.max_power_w*s.engine/Math.max(1,s.launchRunSpeed??0)):0;
+  s.thrustN=thrust;
+  const grade=(ahead-floor)/Math.hypot(1,ahead-floor);
+  const accel=c.run_accel_mps2*(1-clamp(input.brake??0))-9.81*grade+(motor?thrust/motor.mass_kg:0);
+  const before=s.launchRunSpeed??0,run=clamp(before+accel*dt,0,m.trim_mps);
+  const x=s.x+ch*run*dt,y=s.y+sh*run*dt,ground=launchHeight(x,y),z=ground+config.landing_clearance_m;
+  const blocked=!Number.isFinite(ground)||hitTest?.([s.x,s.y,s.z],[x,y,z],.45)||
+    config.collapse&&hitTest&&canopyTouches(canopySegment({...s,x,y,z},config),hitTest);
+  if(blocked){s.launching=false;s.launchAborted=true;s.speed=0;s.figure='Launch blocked · reposition and retry';return s;}
+  if(floor-(z-config.landing_clearance_m)>c.dropoff_m){s.x=x;s.y=y;s.grounded=false;s.launching=false;s.speed=Math.max(1,run-air.wx*ch-air.wy*sh);s.vertical=s.vario=0;s.figure='Taking flight';return s;}
+  s.x=x;s.y=y;s.z=z;s.distance+=run*dt;s.groundSpeed=run;s.launchRunSpeed=run;
+  s.launchDistance=(s.launchDistance??0)+run*dt;
+  if(s.launchDistance>c.max_run_m){s.launching=false;s.launchAborted=true;s.speed=0;s.figure='Launch needs more airspeed · turn into wind';return s;}
+  s.speed=Math.max(0,run-air.wx*ch-air.wy*sh);s.vario=s.vertical=0;
+  s.launchProgress=clamp(s.speed/(m.trim_mps*c.takeoff_speed_fraction));
+  if(motor)s.engineWorkJ=(s.engineWorkJ??0)+thrust*(before+run)*.5*dt;
+  s.launchWorkHead=(s.launchWorkHead??0)+Math.max(0,(run*run-before*before)/(2*9.81))+Math.max(0,z-(floor+config.landing_clearance_m));
+  s.figure='Running launch';
+  if(s.speed>=m.trim_mps*c.takeoff_speed_fraction){
+    s.grounded=false;s.launching=false;s.vertical=s.vario=c.hop_mps;
+    s.launchWorkHead+=c.hop_mps*c.hop_mps/(2*9.81);s.figure='Taking flight';
+  }
+  return s;
 }
 
 /** Continuous advected air field: height shear, thermals with return sink,
@@ -56,14 +137,27 @@ export function sampleAir(config,windBearing,state,time,height) {
     agl,gust,turbulence,intensity,lee,ridge,thermal:thermalLift,windSpeed:speed};
 }
 
+/** Shared rigid rig frame in core axes. Local +X is pilot-left, +Y up,
+ * +Z forward. Pitch raises the nose; positive bank lowers the right tip.
+ * Clients convert these vectors to their own axes rather than scaling bank.
+ */
+export function flightFrame(state,config){
+  const h=state.heading??0,p=state.grounded?0:(state.pitch??0),b=state.grounded?0:(state.bank??0);
+  const forward=[Math.cos(h),Math.sin(h),0],left=[-Math.sin(h),Math.cos(h),0];
+  const pitchedUp=[-forward[0]*Math.sin(p),-forward[1]*Math.sin(p),Math.cos(p)];
+  return {origin:[state.x,state.y,state.z-config.landing_clearance_m],
+    forward:[forward[0]*Math.cos(p),forward[1]*Math.cos(p),Math.sin(p)],
+    left:left.map((v,i)=>v*Math.cos(b)+pitchedUp[i]*Math.sin(b)),
+    up:pitchedUp.map((v,i)=>v*Math.cos(b)-left[i]*Math.sin(b))};
+}
+
 /** The canopy as a capsule from wingtip to wingtip (docs/design/COLLISION.md):
  * canopy_height_m above the feet along the pilot's banked up, span_m long,
  * chord_m / 2 thick. The lines below it are not tested.
  */
 export function canopySegment(state,config){
-  const mode=config.modes[state.mode],h=state.heading??0,b=state.bank??0,right=[Math.sin(h),-Math.cos(h)];
-  const up=[right[0]*Math.sin(b),right[1]*Math.sin(b),Math.cos(b)],axis=[right[0]*Math.cos(b),right[1]*Math.cos(b),-Math.sin(b)];
-  const centre=[state.x+up[0]*mode.canopy_height_m,state.y+up[1]*mode.canopy_height_m,state.z-config.landing_clearance_m+up[2]*mode.canopy_height_m];
+  const mode=config.modes[state.mode],frame=flightFrame(state,config);
+  const centre=frame.origin.map((v,i)=>v+frame.up[i]*mode.canopy_height_m),axis=frame.left.map(v=>-v);
   const half=mode.span_m/2;
   return {a:centre.map((v,i)=>v-axis[i]*half),b:centre.map((v,i)=>v+axis[i]*half),radius:mode.chord_m/2};
 }
@@ -121,7 +215,13 @@ function brush(s,v,dt,c,hitTest){
 function settle(s,v,config,height){
   const floor=height(s.x,s.y)+config.landing_clearance_m;
   if(s.z>floor)return;
-  s.z=floor;s.grounded=true;s.landingSpeed=Math.max(0,-v[2]);v[0]=v[1]=v[2]=0;
+  s.z=floor;s.grounded=true;touchdown(s,Math.max(0,-v[2]),Math.hypot(v[0],v[1]),config);v[0]=v[1]=v[2]=0;
+}
+
+function touchdown(s,vertical,groundSpeed,config){
+  s.landingSpeed=vertical;s.landingGroundSpeed=groundSpeed;
+  const limits=config.landing??{smooth_mps:1.5,hard_mps:4};
+  s.landingQuality=vertical<=limits.smooth_mps?'smooth':vertical>=limits.hard_mps?'hard':'firm';
 }
 
 const publish=(s,v)=>{
@@ -136,6 +236,7 @@ const publish=(s,v)=>{
  */
 function stepCollapsed(state,dt,config,height,hitTest){
   const s={...state},c=config.collapse,k=G/c.terminal_mps,e=Math.exp(-k*dt),vt=-c.terminal_mps;
+  releaseSuspension(s);
   const v=[s.vx??0,s.vy??0,s.vertical??0],prev={x:s.x,y:s.y,z:s.z};
   s.x+=v[0]*(1-e)/k;s.y+=v[1]*(1-e)/k;s.z+=vt*dt+(v[2]-vt)*(1-e)/k;
   v[0]*=e;v[1]*=e;v[2]=vt+(v[2]-vt)*e;
@@ -145,11 +246,12 @@ function stepCollapsed(state,dt,config,height,hitTest){
   return publish(s,v);
 }
 
-export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest=null) {
+export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest=null,launchHeight=height) {
   if(!(dt>0)||!Number.isFinite(dt))return {...state};
   const s={...state},mode=config.modes[s.mode];
-  if(s.grounded)return s;
-  if(config.collapse&&s.collapsed)return stepCollapsed(s,dt,config,height,hitTest);
+  if(s.launching&&config.ground_launch)return stepGroundLaunch(s,input,dt,time,config,windBearing,height,hitTest,launchHeight);
+  if(s.grounded){releaseSuspension(s);return s;}
+  if(config.collapse&&s.collapsed)return scoreFlight(stepCollapsed(s,dt,config,height,hitTest),config);
   const air=sampleAir(config,windBearing,s,time,height);
   const control=clamp(input.brake||0,-1,1);
   let left=clamp((input.brakeLeft||0)+Math.max(0,control));
@@ -200,6 +302,18 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   const previousSpeed=s.speed;
   const response=targetSpeed>s.speed?mode.dive_response:brake>.08?mode.recovery_response:mode.speed_response*.32;
   s.speed=approach(s.speed,Math.max(trim*.48,targetSpeed),response,dt);
+  // Propulsive work is bounded by both thrust and available shaft power.
+  // A small part changes airspeed; the remaining work changes flight-path
+  // height through the energy budget below. Mass and split are game tuning.
+  let engineHeight=0;
+  const motor=s.mode==='paramotor'?config.propulsion:null;
+  s.thrustN=0;
+  if(motor){
+    s.thrustN=Math.min(motor.max_thrust_n*s.engine,motor.max_power_w*s.engine/Math.max(1,s.speed));
+    const work=s.thrustN*s.speed*Math.max(0,Math.cos(s.pilotPitch??0))*dt;
+    engineHeight=work/(motor.mass_kg*9.81);s.engineWorkJ=(s.engineWorkJ??0)+work;
+    s.speed=Math.sqrt(s.speed*s.speed+2*9.81*engineHeight*motor.airspeed_share);
+  }
   s.stall=clamp((brake-.82)/.18)*clamp((trim*.8-s.speed)/(trim*.3));
   const ratio=s.speed/trim;
   // Canopy clearance, not pilot clearance. A nearby broad, level surface
@@ -215,26 +329,27 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   // fraction: repeating dive/flare cycles cannot create free energy.
   const kineticHeight=(previousSpeed**2-s.speed**2)/(2*9.81);
   const exchange=kineticHeight*(kineticHeight>0?mode.flare_efficiency:1);
-  const climb=air.lift-sink+mode.powered_climb_mps*s.engine;
+  const climb=air.lift-sink+(motor?0:mode.powered_climb_mps*s.engine);
   s.vertical=approach(s.vertical,climb,2,dt);
-  s.vario=s.vertical+exchange/dt;
+  s.vario=s.vertical+(exchange+engineHeight)/dt;
   // Pitch now follows the paid trajectory, making the dive and climbing arc
   // visible, with an additional small brake/pressure incidence response.
   const targetPitch=clamp(Math.atan2(s.vario,Math.max(5,s.speed))*.8+brake*.12,-.75,.65);
   s.pitchRate=(s.pitchRate+(targetPitch-s.pitch)*12*dt)*Math.exp(-5*dt);
   s.pitch+=s.pitchRate*dt;
+  suspensionPose(s,previousSpeed,dt,mode,config);
   s.pressure=approach(s.pressure,clamp(1-s.stall*.45-Math.abs(air.turbulence)*.05,.45,1.15),4,dt);
   s.turbulence=air.turbulence;
   if(Math.abs(turn)>.45&&Math.sign(turn)!==Math.sign(s.turnMemory||turn))s.reversals=(s.reversals??0)+1;
   if(Math.abs(turn)>.45)s.turnMemory=turn;
   if(s.maneuver<.1)s.reversals=0;
   s.figure=s.stall>.15?'Low energy · ease handles':s.vario>1&&exchange/dt>1&&s.speed>trim*.8?'Swoop · climbing':
-    s.mode==='paramotor'&&s.engine>.1&&s.vertical>.2?'Powered climb':
+    s.mode==='paramotor'&&s.engine>.1&&s.vario>.2?'Powered climb':
     s.accelerator>.65?'Dive · storing speed':s.maneuver>.5&&Math.abs(s.bank)>.72?
     ((s.reversals??0)>0?'Wingover':'Spiral · release to recover'):Math.abs(turn)<.1&&Math.abs(s.bank)>.08&&s.maneuver<.3?'Recovering':
     Math.abs(s.bank)>.3?'Dynamic S-turn':s.groundEffect>.02?'Ground skim · reduced drag':'Trim glide';
   const dx=(Math.cos(s.heading)*s.speed+air.wx)*dt,dy=(Math.sin(s.heading)*s.speed+air.wy)*dt;
-  s.x+=dx;s.y+=dy;s.z+=s.vertical*dt+exchange;s.groundSpeed=Math.hypot(dx,dy)/dt;s.distance+=Math.hypot(dx,dy);
+  s.x+=dx;s.y+=dy;s.z+=s.vertical*dt+exchange+engineHeight;s.groundSpeed=Math.hypot(dx,dy)/dt;s.distance+=Math.hypot(dx,dy);
   s.x=clamp(s.x,-config.world_limit_m,config.world_limit_m);s.y=clamp(s.y,-config.world_limit_m,config.world_limit_m);
   s.z=Math.min(config.ceiling_m,s.z);
   if(config.collapse&&hitTest){
@@ -243,12 +358,15 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
     const c=config.collapse,v=[(s.x-state.x)/dt,(s.y-state.y)/dt,(s.z-state.z)/dt];
     const solid=bounce(state,s,v,c,hitTest),leaves=brush(s,v,dt,c,hitTest);
     if(solid||leaves||canopyTouches(canopySegment(s,config),hitTest)){
-      s.collapsed=true;settle(s,v,config,height);return publish(s,v);
+      s.collapsed=true;releaseSuspension(s);settle(s,v,config,height);return scoreFlight(publish(s,v),config);
     }
   }
   const hit=hitTest?.([state.x,state.y,state.z],[s.x,s.y,s.z],.45);
-  if(hit){s.x=state.x;s.y=state.y;s.z=state.z;s.impact=hit.kind;s.grounded=true;s.vertical=s.vario=s.speed=0;return s;}
+  if(hit){s.x=state.x;s.y=state.y;s.z=state.z;s.impact=hit.kind;s.grounded=true;s.vertical=s.vario=s.speed=0;releaseSuspension(s);return scoreFlight(s,config);}
   const floor=height(s.x,s.y)+config.landing_clearance_m;
-  if(s.z<=floor){s.z=floor;s.grounded=true;s.vertical=s.vario=s.speed=0;}
-  return s;
+  if(s.z<=floor){
+    touchdown(s,Math.max(0,-s.vario),s.groundSpeed,config);
+    s.z=floor;s.grounded=true;s.vertical=s.vario=s.speed=0;releaseSuspension(s);
+  }
+  return scoreFlight(s,config);
 }

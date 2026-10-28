@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as T from '../vendor/three.module.min.js';
 import {createNavigation} from '../src3d/navigation.js';
-import {launchFlight,stepFlight} from '../../../shared/activities/flight.js';
+import {launchFlight,stepFlight,canopySegment} from '../../../shared/activities/flight.js';
 
 const read=path=>JSON.parse(readFileSync(new URL(path,import.meta.url)));
 const flight=read('../../../shared/activities/flight.json');
@@ -22,6 +22,22 @@ function fixture(t,config=rules){
  t.after(()=>{nav.dispose();for(const [key,value]of previous)value?Object.defineProperty(globalThis,key,value):delete globalThis[key];});
  return {nav,camera,rig,pad,win};
 }
+
+test('rendered rigid canopy frame agrees with collision across heading, bank and pitch',t=>{
+ const {nav,rig}=fixture(t);
+ for(const mode of Object.keys(rules.modes)){
+  nav.select(mode,0);
+  const m=rules.modes[mode];
+  for(const heading of [0,.7,Math.PI,-2])for(const bank of [-1.1,0,1.1])for(const pitch of [-.65,0,.65]){
+   Object.assign(nav.state,{heading,bank,pitch});nav.update(0);rig.updateMatrixWorld(true);
+   const capsule=canopySegment(nav.state,rules);
+   for(const [x,expected] of [[m.span_m/2,capsule.a],[-m.span_m/2,capsule.b]]){
+    const actual=rig.localToWorld(new T.Vector3(x,m.canopy_height_m,0));
+    assert.ok(actual.distanceTo(new T.Vector3(expected[0],expected[2],-expected[1]))<1e-9,`${mode}: tip at heading ${heading}, bank ${bank}, pitch ${pitch}`);
+   }
+  }
+ }
+});
 
 test('steady flight keeps the chase aim still between physics ticks at different refresh rates',t=>{
  const {nav,camera,rig}=fixture(t);

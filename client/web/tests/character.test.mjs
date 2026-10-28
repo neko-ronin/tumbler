@@ -93,7 +93,9 @@ test('third-person navigation moves the cat, keeps the camera separate and hides
     assert.ok(camera.position.distanceTo(cat.object.position)>4);
     for(const mode of ['paraglider','parakite','paramotor']) {
       nav.select(mode);nav.update(1/60);
-      assert.equal(cat.object.visible,true);assert.equal(rig.visible,true);assert.equal(cat.clip,'harness');
+      assert.equal(cat.object.visible,true);assert.equal(rig.visible,true);
+      if(nav.state.grounded){assert.equal(cat.clip,'idle','equipping on foot stays on the ground');nav.select(mode,0);nav.update(1/60);}
+      assert.equal(cat.clip,'harness');
       assert.ok(camera.position.distanceTo(cat.object.position)>8);
     }
     for(const mode of ['bike','ski']) {

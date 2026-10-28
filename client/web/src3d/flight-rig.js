@@ -115,7 +115,7 @@ export function createFlightRig(assets,config){
   const blade=mergePrimitives(source.filter(p=>p.materialName==='propeller'),'opaque');
   const prop=new T.Mesh(blade.geometry,blade.material);motor.add(prop);
   let clock=0,last=-1,elapsed=0;
-  const point=new T.Vector3(),normal=new T.Vector3();
+  const point=new T.Vector3(),normal=new T.Vector3(),pilotPivot=new T.Vector3(),pilotPoint=new T.Vector3(),pilotRotation=new T.Quaternion(),pilotEuler=new T.Euler();
   /** Optional presentation input: localAir is the shared air vector rotated
    * into rig axes (+Z forward); groundAt(x,z) returns local floor Y. Without
    * it, landed air is still, harnessed reads presentation then state and defaults true; floor Y is zero.
@@ -126,8 +126,12 @@ export function createFlightRig(assets,config){
   function update(dt,state,presentation={}){
     const harnessed=presentation.harnessed??state.harnessed??true;
     const pilotScale=presentation.pilotScale??1,anchor=presentation.pilotAttachment??[0,0,0];
+    pilotPivot.fromArray(anchor);
+    pilotRotation.setFromEuler(pilotEuler.set(state.grounded||state.collapsed?0:-(state.pilotPitch??0),0,state.grounded||state.collapsed?0:(state.pilotRoll??0),'XYZ'));
     motor.scale.setScalar(pilotScale);
     motor.position.set(anchor[0]*(1-pilotScale),anchor[1]+(.95-anchor[1])*pilotScale,anchor[2]+(-.7-anchor[2])*pilotScale);
+    motor.position.sub(pilotPivot).applyQuaternion(pilotRotation).add(pilotPivot);motor.quaternion.copy(pilotRotation);
+    const pilotOffset=presentation.pilotOffset??[0,0,0];motor.position.add(pilotPoint.fromArray(pilotOffset));
     clock+=dt;motor.visible=state.mode==='paramotor'&&harnessed;
     elapsed+=dt;
     prop.rotation.z+=dt*(12+(state.engine??0)*150);
@@ -145,7 +149,7 @@ export function createFlightRig(assets,config){
     const feed=air?Math.max(0,-air.z):0;
     // A collapsed wing (docs/design/COLLISION.md) trails crumpled above him in the
     // air and lies flat once he is down, like the parked wing.
-    const target=state.collapsed?(grounded?0:.15):grounded?(!harnessed?0:T.MathUtils.smoothstep(feed,1.5,5.5)*(1-Math.max(state.brakeLeft??0,state.brakeRight??0)*.75)):1;
+    const target=state.launching?(state.launchInflation??state.launchProgress??0):state.collapsed?(grounded?0:.15):grounded?(!harnessed?0:T.MathUtils.smoothstep(feed,1.5,5.5)*(1-Math.max(state.brakeLeft??0,state.brakeRight??0)*.75)):1;
     w.inflation+=(target-w.inflation)*(1-Math.exp(-elapsed*(target>w.inflation?1.5:1.05)));
     elapsed=0;
     // Sample a small floor lattice, then interpolate it for all skin/line
@@ -166,6 +170,10 @@ export function createFlightRig(assets,config){
       deform(p.x,p.y,p.z,config.modes[name],state,w.inflation,clock,point);
       const fit=(pilotScale-1)*w.pilotFit[i];
       point.x+=(p.x-anchor[0])*fit;point.y+=(p.y-anchor[1])*fit;point.z+=(p.z-anchor[2])*fit;
+      // The pilot, straps and motor rotate about one hip attachment. Lower
+      // risers blend back to the unchanged upper suspension endpoints.
+      if(w.pilotFit[i]){pilotPoint.copy(point).sub(pilotPivot).applyQuaternion(pilotRotation).add(pilotPivot);point.lerp(pilotPoint,w.pilotFit[i]);}
+      point.x+=pilotOffset[0]*w.pilotFit[i];point.y+=pilotOffset[1]*w.pilotFit[i];point.z+=pilotOffset[2]*w.pilotFit[i];
       if(grounded&&p.y>=1.3){
         const drop=1-w.inflation,sag=T.MathUtils.smoothstep(p.y,1.3,3.6)*drop*drop*(3-2*drop);
         // Preserve approximate cloth length on a hillside: compress the

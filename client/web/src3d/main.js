@@ -292,7 +292,7 @@ export async function main() {
   window.addEventListener('gamepaddisconnected',()=>updateHelp(navigation.mode));
   modeSelect.addEventListener('change',e=>setActivity(e.target.value));
   siteSelect.addEventListener('change',()=>{if(rideModes.includes(navigation.mode)||flightConfig.modes[navigation.mode])setActivity(navigation.mode);});
-  document.getElementById('launch').addEventListener('click',()=>setActivity(['orbit','walk'].includes(modeSelect.value)?'paraglider':modeSelect.value));
+  document.getElementById('launch').addEventListener('click',()=>{if(flightConfig.modes[navigation.mode]&&navigation.state.grounded){navigation.launchHere();return;}setActivity(['orbit','walk'].includes(modeSelect.value)?'paraglider':modeSelect.value);if(flightConfig.modes[navigation.mode]&&navigation.state.grounded)navigation.launchHere();});
   // The bearing is where the wind comes from; it blows toward the opposite one, and north is scene -z.
   const airCues=createAirCues((x,y,z)=>navigation.sampleEnvironment(x,y,z),ground,{renderer});
   const meadowWind=navigation.fixedEnvironmentSampler();
@@ -305,6 +305,9 @@ export async function main() {
   const weatherSelect=document.getElementById('weather');
   weatherSelect.replaceChildren(...Object.entries(flightConfig.weather).map(([id,w])=>new Option(w.label,id)));weatherSelect.value=navigation.weather;
   weatherSelect.addEventListener('change',()=>navigation.setWeather(weatherSelect.value));
+  const challengeSelect=document.getElementById('flight-challenge');
+  challengeSelect.replaceChildren(new Option('Free flight',''),...Object.entries(flightConfig.challenges??{}).map(([id,c])=>new Option(c.label,id)));
+  challengeSelect.addEventListener('change',()=>navigation.setChallenge(challengeSelect.value));
   const motionSelect=document.getElementById('motion');
   motionSelect.value=matchMedia('(prefers-reduced-motion: reduce)').matches?'0':'1';navigation.setEffects(Number(motionSelect.value));
   motionSelect.addEventListener('change',()=>navigation.setEffects(Number(motionSelect.value)));
@@ -490,19 +493,27 @@ export async function main() {
     if(time-lastReadout>125){
       lastReadout=time;
       const readout=document.getElementById('flight-readout');
+      const touchdown=flight?.landingQuality?
+        `${flight.landingQuality[0].toUpperCase()+flight.landingQuality.slice(1)} touchdown · ${(flight.landingSpeed??0).toFixed(1)} m/s down · ${((flight.landingGroundSpeed??0)*3.6).toFixed(0)} km/h along ground`+
+        ((flight.landingRunM??0)>.5?` · ${Math.round(flight.landingRunM)} m run`:''):'Landed';
       readout.textContent=rider?(rider.crashed?`Contact: ${rider.crashed} · Launch to go again`:
         `${rideConfig.modes[rider.mode].label} · ${(riderSpeed*3.6).toFixed(0)} km/h · ${Math.round(rider.startZ-rider.z)} m down · ${(rider.distance/1000).toFixed(2)} km · ${rider.grounded?rider.surface:'airborne'}`):
         !airborne?(navigation.mode==='walk'?(navigation.message||`On foot · V / R3: ${navigation.view==='first'?'chase view':'first person'} · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
-        flight.grounded?(navigation.message||(flight.impact?`Contact with ${flight.impact} · Launch to restart`:'Landed · E / X: unhook · Space / A: launch here')):
+        flight.launching?`${flight.launchStage==='running'?'Running for takeoff':'Inflating the wing'} · ${Math.round((flight.launchProgress??0)*100)}%\n${(flight.speed*3.6).toFixed(0)} km/h · E / X: cancel and unhook`:
+        flight.grounded?`${flight.launchAborted?flight.figure:touchdown}${flight.impact?` · Contact with ${flight.impact}`:''}\n${navigation.message||'E / X: unhook · Space / A: launch here'}`:
         `${flightConfig.modes[flight.mode].label}  /  ${flightConfig.weather[navigation.weather].label}\n`+
         `${(flight.speed*3.6).toFixed(0)} km/h AIR   ${(flight.groundSpeed*3.6).toFixed(0)} GROUND   ${Math.round(air.agl)} m AGL\n`+
         `${flight.vario>=0?'+':''}${flight.vario.toFixed(1)} m/s   ${flight.load.toFixed(1)} g   Wind from ${Math.round((Math.atan2(-air.wx,-air.wy)*180/Math.PI+360)%360)}° ${(air.windSpeed*3.6).toFixed(0)} km/h`+
-        (flight.mode==='paramotor'?`   Motor ${Math.round(flight.engine*100)}% / set ${Math.round(flight.throttle*100)}%`:'')+
+        (flight.mode==='paramotor'?`   Motor ${Math.round(flight.engine*100)}% / set ${Math.round(flight.throttle*100)}% · ${Math.round(flight.thrustN??0)} N thrust`:'')+
         (flight.mode==='parakite'?`\nHandle pull L ${Math.round(flight.handleLeft*100)}% / R ${Math.round(flight.handleRight*100)}% · 45% best glide`:
           `\nBrakes L ${Math.round(flight.brakeLeft*100)}% / R ${Math.round(flight.brakeRight*100)}% · Speedbar ${Math.round(flight.accelerator*100)}%`)+
         `\n${flight.figure}`+
         (flight.stall>.15?'\nLOW ENERGY · Ease the handles':air.lee>.15?'\nLEE SIDE · Descending, turbulent air':Math.abs(air.turbulence)>.85?'\nTURBULENT AIR':'');
-      readout.dataset.warning=String(airborne&&!flight.grounded&&(flight.stall>.15||air.agl<12));
+      readout.dataset.warning=String(airborne&&!flight.launching&&(flight.grounded?flight.landingQuality==='hard':flight.stall>.15||air.agl<12));
+      if(airborne&&flight.challenge){
+        const goal=flightConfig.challenges[flight.challenge.id],progress=flight.challenge;
+        readout.textContent+=`\n${goal.label}: ${progress.status==='complete'?'Complete':progress.status==='retry'?'Try again on your next flight':goal.goal==='linked_turns'?`${progress.lastSide?Math.min(progress.turns+1,goal.reversals+1):0} / ${goal.reversals+1} turns`:`Touch down gently below ${Math.round(goal.max_ground_mps*3.6)} km/h`}`;
+      }
       document.body.dataset.flying=String(airborne);document.body.dataset.pilotView=navigation.view;
     }
     const localWind=air??navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);

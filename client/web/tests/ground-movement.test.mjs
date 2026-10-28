@@ -192,8 +192,10 @@ test('safe unharness preserves location, rejects midair/impact/slope/obstacle, a
   assert.equal(harness.x,foot.x);assert.equal(harness.y,foot.y);assert.equal(harness.z,landed.z);
   assert.equal(harness.mode,mode);assert.equal(harness.grounded,true);assert.equal(harness.engine,0);
   const launch=walk.relaunchGround(harness,character.walk,flight,flat);
-  assert.equal(launch.z,harness.z,'relaunch starts at current contact height');assert.equal(launch.grounded,false);
-  assert.ok(stepFlight(launch,{},1/120,0,flight,world.wind.direction_deg,flat).z>launch.z);
+  assert.equal(launch.z,harness.z,'relaunch starts at current contact height');assert.equal(launch.grounded,true);assert.equal(launch.launching,true);
+  let flying=launch;
+  for(let i=0;i<1200&&flying.grounded;i++)flying=stepFlight(flying,{},1/120,i/120,flight,world.wind.direction_deg,flat);
+  assert.equal(flying.grounded,false,'inflation and run lead to takeoff');assert.ok(flying.launchWorkHead>0,'assisted running work is explicit');
  }
 });
 test('normal pad sequence lands, unhooks, walks, rehooks and launches locally; held/blur input cannot leak',t=>{
@@ -213,10 +215,22 @@ test('normal pad sequence lands, unhooks, walks, rehooks and launches locally; h
   assert.equal(nav.state.weather,'calm','weather selected on foot survives re-entry');
   pad.buttons[0].pressed=true;nav.update(1/60);assert.equal(nav.state.grounded,true,'simultaneously held A is blocked across rehook');
   pad.buttons[0].pressed=false;pad.buttons[2].pressed=false;nav.update(1/60);
-  pad.buttons[0].pressed=true;nav.update(1/60);assert.equal(nav.state.grounded,false);assert.ok(Math.hypot(nav.state.x-foot.x,nav.state.y-foot.y)<1);
+  pad.buttons[0].pressed=true;nav.update(1/60);assert.equal(nav.state.launching,true);assert.ok(Math.hypot(nav.state.x-foot.x,nav.state.y-foot.y)<1);
+  for(let i=0;i<600&&nav.state.grounded;i++)nav.update(1/60);
+  assert.equal(nav.state.grounded,false,`${mode}: holding A does not restart preparation: ${JSON.stringify(nav.state)}`);
   pad.buttons[0].pressed=false;nav.update(1/60);
  }
  nav.select('orbit');nav.select('walk');nav.update(1/60);pad.buttons[0].pressed=true;win.dispatchEvent(new Event('blur'));nav.update(1/60);assert.equal(nav.mode,'walk');assert.equal(nav.state.jumpCount??0,0);
+});
+
+test('choosing flight equipment while walking keeps the local position and the launch button starts preparation',t=>{
+ const {nav}=fixture(t);nav.select('walk');nav.update(0);
+ const foot={...nav.state};nav.select('parakite');
+ assert.equal(nav.mode,'parakite');assert.equal(nav.state.x,foot.x);assert.equal(nav.state.y,foot.y);
+ assert.equal(nav.state.grounded,true,'choosing equipment does not teleport into flight');
+ assert.equal(nav.launchHere(),true);assert.equal(nav.state.launching,true);
+ const first={...nav.state};assert.equal(nav.launchHere(),false,'button cannot restart preparation');assert.deepEqual(nav.state,first);
+ nav.changeHarness();assert.equal(nav.mode,'walk');assert.equal(nav.state.x,foot.x);assert.equal(nav.state.y,foot.y);
 });
 
 test('pressing A while airborne never queues a launch on later landing',t=>{

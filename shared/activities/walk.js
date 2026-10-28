@@ -255,6 +255,12 @@ export function reharnessWalk(state,walkConfig,flightConfig,height,hitTest){
  */
 export function relaunchGround(state,walkConfig,flightConfig,height,hitTest){
   if(relaunchRefusal(state,walkConfig,flightConfig,height,hitTest))return null;
+  if(flightConfig.ground_launch)return {...state,grounded:true,launching:true,launchTime:0,launchProgress:0,launchInflation:0,launchRunSpeed:0,launchDistance:0,launchAborted:false,
+    speed:0,vertical:0,vario:0,pressure:0,pilotPitch:0,pilotRoll:0,pilotPitchRate:0,pilotRollRate:0,
+    bank:0,rollRate:0,pitch:0,pitchRate:0,brakeLeft:0,brakeRight:0,accelerator:0,
+    landingSpeed:undefined,landingGroundSpeed:undefined,landingQuality:undefined,
+    handleLeft:state.mode==='parakite'?.45:0,handleRight:state.mode==='parakite'?.45:0,
+    throttle:state.mode==='paramotor'?.65:0,engine:0,figure:'Inflating wing',collapsed:false,knock:0,foliage:[]};
   const vertical=3.2,speed=flightConfig.modes[state.mode].trim_mps;
   return {...state,grounded:false,speed,vertical,vario:vertical,
     pressure:.45,throttle:state.mode==='paramotor'?.65:0,engine:0,figure:'Ground launch',
