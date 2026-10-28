@@ -180,10 +180,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   }
   function updateFlightPresentation(dt,pose=state){
     rig.position.set(pose.x,pose.z-config.landing_clearance_m,-pose.y);
-    rig.rotation.set(pose.grounded?0:-pose.pitch,pose.heading+Math.PI/2,pose.grounded?0:-pose.bank*.65);
+    rig.rotation.set(pose.grounded?0:-pose.pitch,pose.heading+Math.PI/2,pose.grounded?0:pose.bank*.65);
     character.object.position.copy(rig.position);
     character.object.quaternion.copy(rig.quaternion);
-    character.object.rotateZ(pose.grounded?0:pose.bank*.25);character.object.visible=view==='chase';
+    character.object.rotateZ(pose.grounded?0:-pose.bank*.25);character.object.visible=view==='chase';
     // A collapsed wing: he tumbles as he falls and on touchdown, then sits beside the
     // wing until unhooked or relaunched (the human's ruling, docs/design/COLLISION.md).
     restTime=pose.collapsed&&pose.grounded?restTime+dt:0;

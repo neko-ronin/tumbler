@@ -11,8 +11,9 @@ function deform(x,y,z,mode,state,inflation,clock,out){
   if(y<1.3)return out.set(x,y,z);
   const half=mode.span_m*.5,depth=mode.chord_m,span=x/half;
   const across=T.MathUtils.smoothstep(span,-.65,.65);
-  const brake=T.MathUtils.lerp(state.brakeLeft??0,state.brakeRight??0,across);
-  const handle=T.MathUtils.lerp(state.handleLeft??.45,state.handleRight??.45,across);
+  // +Z is forward, so +X is the pilot's LEFT (opposite camera-right).
+  const brake=T.MathUtils.lerp(state.brakeRight??0,state.brakeLeft??0,across);
+  const handle=T.MathUtils.lerp(state.handleRight??.45,state.handleLeft??.45,across);
   const weight=T.MathUtils.smoothstep(y,1.3,3.6);
   const trailing=T.MathUtils.smoothstep(-z/depth,-.05,.45);
   const pull=brake*trailing*.52;
@@ -21,13 +22,17 @@ function deform(x,y,z,mode,state,inflation,clock,out){
   const centre=mode.canopy_height_m-mode.arc_m*span*span+chord*.055*Math.sin(Math.PI*t);
   const skin=T.MathUtils.smoothstep(y,2.8,3.6);
   const pressure=state.pressure??1,bank=state.bank??0;
-  const incidence=state.mode==='parakite'?(handle-.45)*z*.16:0;
-  const sideLoad=span*bank;
-  const outside=state.mode==='parakite'?(Math.hypot(sideLoad,.03)-sideLoad-.03)*.11:0;
+  // Approximate B/C riser travel about the forward A attachment. Pulling
+  // lowers the rear section; release lowers incidence. No bank-only twist.
+  const aRow=(.52-.15)*chord-span*span*depth*.23;
+  const incidence=state.mode==='parakite'?(handle-.45)*(z-aRow)*.16:0;
   const ripple=Math.sin(x*13+z*7+clock*15)*.004*(1+Math.abs(state.turbulence??0))*(1-pressure*.5);
   const flex=span*span*(Math.abs(bank)*.12+(1-pressure)*.35);
-  const py=y+weight*(ripple-pull-flex+outside+incidence+(y-centre)*(pressure-1)*.45*skin+(state.rollRate??0)*span*.08);
-  const pz=z+weight*((state.accelerator??0)*(y-3)*.1+pull*.22);
+  const py=y+weight*(ripple-pull-flex+incidence+(y-centre)*(pressure-1)*.45*skin-(state.rollRate??0)*span*.08);
+  // Parakite speed comes from the same handle/riser movement above; the
+  // shared accelerator readout is its release fraction, not a speedbar.
+  const speedbar=state.mode==='parakite'?0:(state.accelerator??0);
+  const pz=z+weight*(speedbar*(y-3)*.1+pull*.22);
   const drop=1-inflation;
   // Reduced cloth shape: lower the centre first, lose cell volume, and let
   // broad folds settle aft. Common coordinates keep ribs and cascades attached.

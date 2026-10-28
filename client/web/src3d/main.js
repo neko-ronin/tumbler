@@ -277,9 +277,11 @@ export async function main() {
     document.getElementById('weather').value=weather;updateHelp(mode);
   }
   function updateHelp(mode){
-    const flightHelp='B + stick: wingovers · LT/RT: handles · LB/RB: motor · Y: view · Land then X: unhook · A: launch / air retry · D-pad: wing / ridge · Menu: weather';
+    const travel=mode==='parakite'?'forward: raise handles / dive · back: pull / flare':'forward: speedbar · back: brakes';
+    const power=mode==='paramotor'?' · LB/RB: motor':'';
+    const flightHelp=`Stick ${travel} · LT/RT: independent handles · B + steer: wingovers${power} · Y: view · Land then X: unhook · A: launch / air retry · D-pad: wing / ridge · Menu: weather`;
     const pad=[...(navigator.getGamepads?.()??[])].some(p=>p?.connected);
-    const keyboardFlight='Shift + A/D: wingovers · W/S: dive / flare · R/F: motor · V: view · E: unhook on safe ground · Space: ground launch · Launch: restart';
+    const keyboardFlight=`A/D: ${mode==='parakite'?'weight shift + outside release':'weight shift + inside brake'} · W/S: ${mode==='parakite'?'raise handles / pull to flare':'speedbar / brakes'} · Shift + steer: wingovers${mode==='paramotor'?' · R/F: motor':''} · V: view · E: unhook on safe ground · Space: ground launch · Launch: restart`;
     document.getElementById('help').textContent=flightConfig.modes[mode]?(pad?flightHelp:keyboardFlight):pad&&mode==='orbit'?'A: take flight · D-pad: wing / ridge · Menu: weather':(helps[mode]??helps.orbit);
   }
   function setActivity(mode){showStarts(mode);navigation.select(mode,siteSelect.value);mode=navigation.mode;modeSelect.value=mode;document.body.dataset.flying=String(!!flightConfig.modes[mode]);
@@ -495,7 +497,9 @@ export async function main() {
         `${flightConfig.modes[flight.mode].label}  /  ${flightConfig.weather[navigation.weather].label}\n`+
         `${(flight.speed*3.6).toFixed(0)} km/h AIR   ${(flight.groundSpeed*3.6).toFixed(0)} GROUND   ${Math.round(air.agl)} m AGL\n`+
         `${flight.vario>=0?'+':''}${flight.vario.toFixed(1)} m/s   ${flight.load.toFixed(1)} g   Wind from ${Math.round((Math.atan2(-air.wx,-air.wy)*180/Math.PI+360)%360)}° ${(air.windSpeed*3.6).toFixed(0)} km/h`+
-        (flight.mode==='paramotor'?`   Motor ${Math.round(flight.throttle*100)}%`:'')+
+        (flight.mode==='paramotor'?`   Motor ${Math.round(flight.engine*100)}% / set ${Math.round(flight.throttle*100)}%`:'')+
+        (flight.mode==='parakite'?`\nHandle pull L ${Math.round(flight.handleLeft*100)}% / R ${Math.round(flight.handleRight*100)}% · 45% best glide`:
+          `\nBrakes L ${Math.round(flight.brakeLeft*100)}% / R ${Math.round(flight.brakeRight*100)}% · Speedbar ${Math.round(flight.accelerator*100)}%`)+
         `\n${flight.figure}`+
         (flight.stall>.15?'\nLOW ENERGY · Ease the handles':air.lee>.15?'\nLEE SIDE · Descending, turbulent air':Math.abs(air.turbulence)>.85?'\nTURBULENT AIR':'');
       readout.dataset.warning=String(airborne&&!flight.grounded&&(flight.stall>.15||air.agl<12));

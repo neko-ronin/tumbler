@@ -14,6 +14,7 @@ export function launchFlight(config,mode,site,height,weather='soaring') {
   return {mode,weather,x,y,z:height(x,y)+(site.clearance_m??config.launch_clearance_m??18),
     heading:site.heading_deg*Math.PI/180,speed:config.modes[mode].trim_mps,vertical:0,vario:0,
     bank:0,rollRate:0,pitch:0,pitchRate:0,brakeLeft:0,brakeRight:0,accelerator:0,
+    handleLeft:mode==='parakite'?.45:0,handleRight:mode==='parakite'?.45:0,
     throttle:mode==='paramotor'?.55:0,engine:mode==='paramotor'?.55:0,
     load:1,pressure:1,stall:0,turbulence:0,groundSpeed:0,grounded:false,distance:0,
     maneuver:0,turnMemory:0,reversals:0,groundEffect:0,figure:'Trim glide'};
@@ -61,7 +62,7 @@ export function sampleAir(config,windBearing,state,time,height) {
  */
 export function canopySegment(state,config){
   const mode=config.modes[state.mode],h=state.heading??0,b=state.bank??0,right=[Math.sin(h),-Math.cos(h)];
-  const up=[-right[0]*Math.sin(b),-right[1]*Math.sin(b),Math.cos(b)],axis=[right[0]*Math.cos(b),right[1]*Math.cos(b),Math.sin(b)];
+  const up=[right[0]*Math.sin(b),right[1]*Math.sin(b),Math.cos(b)],axis=[right[0]*Math.cos(b),right[1]*Math.cos(b),-Math.sin(b)];
   const centre=[state.x+up[0]*mode.canopy_height_m,state.y+up[1]*mode.canopy_height_m,state.z-config.landing_clearance_m+up[2]*mode.canopy_height_m];
   const half=mode.span_m/2;
   return {a:centre.map((v,i)=>v-axis[i]*half),b:centre.map((v,i)=>v+axis[i]*half),radius:mode.chord_m/2};
@@ -153,18 +154,31 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   const control=clamp(input.brake||0,-1,1);
   let left=clamp((input.brakeLeft||0)+Math.max(0,control));
   let right=clamp((input.brakeRight||0)+Math.max(0,control));
-  let turn=clamp((input.turn||0)+(right-left)*.8,-1,1),release=0;
+  const steer=clamp(input.turn||0,-1,1);
+  let turn=clamp(steer+(right-left)*.8,-1,1),release=0;
   if(s.mode==='parakite'){
     // Neutral is the best-glide flag. Forward stick releases both handles;
     // weight shift releases the outside one, changing whole-wing incidence.
     const neutral=.45+control*(control>0?.55:.45);
-    s.handleLeft=clamp(neutral+(input.brakeLeft||0)*.55-Math.max(0,input.turn||0)*.4);
-    s.handleRight=clamp(neutral+(input.brakeRight||0)*.55-Math.max(0,-(input.turn||0))*.4);
-    turn=clamp((input.turn||0)*.5+(s.handleRight-s.handleLeft)*1.5,-1,1);
+    const targetLeft=clamp(neutral+(input.brakeLeft||0)*.55-Math.max(0,steer)*.4);
+    const targetRight=clamp(neutral+(input.brakeRight||0)*.55-Math.max(0,-steer)*.4);
+    // One actual handle state drives both incidence and flight response.
+    // At full release no outside travel remains: weight shift still rolls,
+    // without secretly pulling the inside handle for the player.
+    s.handleLeft=approach(s.handleLeft??.45,targetLeft,5,dt);
+    s.handleRight=approach(s.handleRight??.45,targetRight,5,dt);
+    turn=clamp(steer*.5+(s.handleRight-s.handleLeft)*1.5,-1,1);
     release=clamp((.45-(s.handleLeft+s.handleRight)*.5)/.45);
     left=clamp((s.handleLeft-.45)/.55);right=clamp((s.handleRight-.45)/.55);
+    s.brakeLeft=left;s.brakeRight=right;
+  }else{
+    // Assisted coordinated steering: weight shift plus modest inside brake.
+    // Explicit independent brakes still steer; steering assistance does not
+    // count twice toward turn demand. These amplitudes are game tuning.
+    left=clamp(left+Math.max(0,-steer)*.35);right=clamp(right+Math.max(0,steer)*.35);
+    s.brakeLeft=approach(s.brakeLeft??0,left,5,dt);s.brakeRight=approach(s.brakeRight??0,right,5,dt);
+    s.handleLeft=s.brakeLeft;s.handleRight=s.brakeRight;
   }
-  s.brakeLeft=approach(s.brakeLeft??0,left,5,dt);s.brakeRight=approach(s.brakeRight??0,right,5,dt);
   const brake=(s.brakeLeft+s.brakeRight)*.5;
   // An assisted interlock releases the ordinary speedbar when braking.
   const accelerator=brake>.08?0:clamp(Math.max(0,-control,input.accelerator||0));

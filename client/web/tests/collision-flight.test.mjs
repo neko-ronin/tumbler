@@ -29,6 +29,16 @@ test('canopySegment spans the wing above the feet',()=>{
  assert.ok(Math.abs(seg.a[0]-seg.b[0])<1e-9,'spans across the heading');
 });
 
+test('canopy collision banks into the commanded turn in every flight mode',()=>{
+ for(const mode of ['paraglider','parakite','paramotor'])for(const turn of [-1,1]){
+  let s=launchFlight(config,mode,site,flat);
+  for(let i=0;i<120;i++)s=stepFlight(s,{turn},1/120,i/120,config,245,flat);
+  const segment=canopySegment(s,config);
+  assert.equal(Math.sign(s.bank),turn,`${mode} bank`);
+  assert.equal(Math.sign(segment.b[2]-segment.a[2]),-turn,`${mode} right wingtip dips into turn`);
+ }
+});
+
 test('the wing collapses on touching a crown',()=>{
  const start=launchFlight(config,'paraglider',site,flat),hit=createCollisionIndex([crownAhead(start.z-2)]);
  let collapsedAt=null,overlapAt=null,step=0;

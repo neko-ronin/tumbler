@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../vendor/three.module.min.js';
-import {createMeadowAir} from '../src3d/air-cues.js';
+import {createAirCues,createMeadowAir} from '../src3d/air-cues.js';
 import {style} from '../src3d/style.js';
 
 test('meadow wind stays at fixed world positions and preserves the signed shared field',()=>{
@@ -37,6 +37,28 @@ test('meadow weather samples crossfade continuously, including a sign reversal',
     const disposed=[];for(const t of field.textures)t.addEventListener('dispose',()=>disposed.push(t));
     field.dispose();assert.equal(new Set(disposed).size,2);
   }finally{field.dispose();}
+});
+
+test('local and meadow wind initialize immediately and stagger their periodic fills',()=>{
+  let local=0,meadow=0;
+  const wind=()=>({wx:1,wy:2,lift:3,gust:4,intensity:5});
+  const ground={height:()=>0},camera={position:new T.Vector3()};
+  const cue=createAirCues(()=>{local++;return wind();},ground,{size:1});
+  const field=createMeadowAir(()=>{meadow++;return wind();},ground,{size:1});
+  try{
+    cue.update(camera,0);field.update(0);
+    assert.equal(local,1);assert.equal(meadow,1);
+    let elapsed=0,coincident=0;
+    const steps=[.016,.034,.05,.009,.041,.023,.027];
+    for(let i=0;i<1400;i++){
+      const dt=steps[i%steps.length],l=local,m=meadow;
+      cue.update(camera,dt);field.update(dt);elapsed+=dt;
+      if(local>l&&meadow>m)coincident++;
+    }
+    assert.equal(coincident,0,'normal capped frame steps do not combine the two field fills');
+    assert.ok(Math.abs((local-1)-elapsed*8)<2,'local field retains its 8 Hz cadence');
+    assert.ok(Math.abs((meadow-1)-elapsed*4)<2,'meadow field retains its 4 Hz cadence');
+  }finally{cue.dispose();field.dispose();}
 });
 
 test('grass roots follow the supplied terrain plane without changing stamp coverage',async()=>{

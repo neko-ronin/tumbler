@@ -13,7 +13,9 @@ export function createAirCues(sample,ground,{size=16,span=640,renderer}={}){
   style.air.value=texture;
   let elapsed=0,last=-1;
   function update(camera,dt){
-    elapsed+=dt;if(Math.floor(elapsed*8)===last)return;last=Math.floor(elapsed*8);
+    // Keep the 8 Hz local field halfway between the 4 Hz meadow fills.
+    // Both still sample current wind; the offset spreads their CPU work.
+    elapsed+=dt;const tick=Math.floor((elapsed+1/16)*8);if(tick===last)return;last=tick;
     const x=Math.round(camera.position.x/32)*32-span/2,z=Math.round(camera.position.z/32)*32-span/2;
     style.airGrid.value.set(x,z,span,1);
     for(let row=0;row<size;row++)for(let col=0;col<size;col++){

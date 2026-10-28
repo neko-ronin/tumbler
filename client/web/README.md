@@ -1,3 +1,18 @@
+# Para-mode controls and review startup — approved for main, 2026-10-28
+
+Parakite handles now change progressively and drive both flight response and
+canopy incidence. Conventional glider turns assist weight shift with inside
+brake; parakite turns retain outside-handle release. Anatomical left/right sail
+response, transient flex and mode-specific help/instruments are corrected.
+The review server regenerates viewer data before serving its manifest, so
+ordinary source edits no longer require a manual generation step before reload.
+Run `python3.11 client/web/tools/serve.py --port 8032` and open
+<http://127.0.0.1:8032/client/web/scene.html>.
+[Research, verification and simulation priorities](../../docs/reviews/para-modes-2026-10-28.md).
+The human approves committing this candidate and merging it into main.
+
+---
+
 # Flight harness repair — 2026-10-27
 
 Cat Ronin attaches by his hips during normal flight, so the seated clip's
