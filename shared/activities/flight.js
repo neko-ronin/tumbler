@@ -66,38 +66,57 @@ function scoreFlight(s,config){
 /** Assisted inflation and ground run. Running and the final leg push are
  * explicit launch assistance, separate from free-flight energy accounting.
  */
-function stepGroundLaunch(s,input,dt,time,config,bearing,height,hitTest,launchHeight){
+function abortGroundLaunch(s,figure){
+  s.launching=false;s.launchAborted=true;
+  s.speed=s.groundSpeed=s.launchRunSpeed=s.vx=s.vy=s.vz=s.vertical=s.vario=0;
+  s.figure=figure;return s;
+}
+function stepGroundLaunch(s,input,dt,time,config,bearing,height,hitTest,launchHeight,launchDryHeight){
   const c=config.ground_launch,m=config.modes[s.mode];releaseSuspension(s);
   s.launchTime=(s.launchTime??0)+dt;s.launchProgress=clamp(s.launchTime/c.inflate_s);
   s.launchStage=s.launchProgress<1?'inflating':'running';s.pressure=s.launchInflation=s.launchProgress;
   if(s.mode==='paramotor')s.throttle=clamp((s.throttle??0)+(input.throttle??0)*dt*.4);
   s.engine=approach(s.engine??0,s.throttle??0,1.8,dt);
-  if(s.launchProgress<1){s.speed=0;s.figure='Inflating wing';return s;}
-  if(s.launchTime-c.inflate_s>c.max_run_s){s.launching=false;s.launchAborted=true;s.speed=s.groundSpeed=0;s.figure='Launch stalled · find downhill ground or face the wind';return s;}
+  if(s.launchProgress<1){s.speed=s.groundSpeed=s.launchRunSpeed=s.vx=s.vy=s.vz=s.vertical=s.vario=0;s.figure='Inflating wing';return s;}
+  if(s.launchTime-c.inflate_s>c.max_run_s)return abortGroundLaunch(s,'Launch stalled · find downhill ground or face the wind');
   const air=sampleAir(config,bearing,s,time,height),ch=Math.cos(s.heading),sh=Math.sin(s.heading);
-  const floor=launchHeight(s.x,s.y),ahead=launchHeight(s.x+ch,s.y+sh);
-  if(!Number.isFinite(floor)||!Number.isFinite(ahead)){s.launching=false;s.launchAborted=true;s.speed=s.groundSpeed=0;s.figure='Launch blocked · need dry ground ahead';return s;}
+  // Current footing and a future dry floor are distinct questions. A ledge's
+  // lower floor need not be standable when the next step leaves the ground.
+  const floor=launchHeight(s.x,s.y),ahead=launchDryHeight(s.x+ch,s.y+sh);
+  if(!Number.isFinite(floor)||!Number.isFinite(ahead))return abortGroundLaunch(s,'Launch blocked · need dry ground ahead');
   const motor=s.mode==='paramotor'?config.propulsion:null;
   const thrust=motor?Math.min(motor.max_thrust_n*s.engine,motor.max_power_w*s.engine/Math.max(1,s.launchRunSpeed??0)):0;
   s.thrustN=thrust;
   const grade=(ahead-floor)/Math.hypot(1,ahead-floor);
   const accel=c.run_accel_mps2*(1-clamp(input.brake??0))-9.81*grade+(motor?thrust/motor.mass_kg:0);
-  const before=s.launchRunSpeed??0,run=clamp(before+accel*dt,0,m.trim_mps);
-  const x=s.x+ch*run*dt,y=s.y+sh*run*dt,ground=launchHeight(x,y),z=ground+config.landing_clearance_m;
-  const blocked=!Number.isFinite(ground)||hitTest?.([s.x,s.y,s.z],[x,y,z],.45)||
+  const before=s.launchRunSpeed??0,run=clamp(before+accel*dt,0,c.max_run_mps??m.trim_mps);
+  const x=s.x+ch*run*dt,y=s.y+sh*run*dt,ground=launchDryHeight(x,y),drop=floor-ground>c.dropoff_m;
+  const z=drop?s.z:ground+config.landing_clearance_m;
+  const blocked=!Number.isFinite(ground)||(!drop&&!Number.isFinite(launchHeight(x,y)))||hitTest?.([s.x,s.y,s.z],[x,y,z],.45)||
     config.collapse&&hitTest&&canopyTouches(canopySegment({...s,x,y,z},config),hitTest);
-  if(blocked){s.launching=false;s.launchAborted=true;s.speed=0;s.figure='Launch blocked · reposition and retry';return s;}
-  if(floor-(z-config.landing_clearance_m)>c.dropoff_m){s.x=x;s.y=y;s.grounded=false;s.launching=false;s.speed=Math.max(1,run-air.wx*ch-air.wy*sh);s.vertical=s.vario=0;s.figure='Taking flight';return s;}
+  if(blocked)return abortGroundLaunch(s,'Launch blocked · reposition and retry');
+  // Preserve the actual ground-run velocity for the first free-flight solve.
+  // A scalar airspeed plus the wind would otherwise invent crosswind motion.
+  s.vx=ch*run;s.vy=sh*run;
+  const forwardAir=Math.max(0,run-air.wx*ch-air.wy*sh),airspeed=Math.hypot(s.vx-air.wx,s.vy-air.wy);
+  if(drop){
+    s.x=x;s.y=y;s.distance+=run*dt;s.groundSpeed=s.launchRunSpeed=run;
+    s.launchDistance=(s.launchDistance??0)+run*dt;s.grounded=false;s.launching=false;
+    s.speed=airspeed;s.vz=s.vertical=s.vario=0;s.figure='Taking flight';return s;
+  }
+  const groundVertical=(z-s.z)/dt;
   s.x=x;s.y=y;s.z=z;s.distance+=run*dt;s.groundSpeed=run;s.launchRunSpeed=run;
   s.launchDistance=(s.launchDistance??0)+run*dt;
-  if(s.launchDistance>c.max_run_m){s.launching=false;s.launchAborted=true;s.speed=0;s.figure='Launch needs more airspeed · turn into wind';return s;}
-  s.speed=Math.max(0,run-air.wx*ch-air.wy*sh);s.vario=s.vertical=0;
-  s.launchProgress=clamp(s.speed/(m.trim_mps*c.takeoff_speed_fraction));
+  if(s.launchDistance>c.max_run_m)return abortGroundLaunch(s,'Launch needs more airspeed · face headwind or use clear descending ground');
+  // Instruments report the actual horizontal relative-air magnitude. The
+  // assisted forward takeoff gate must not count a sideways gust as a run.
+  s.speed=airspeed;s.vz=s.vario=s.vertical=groundVertical;
+  s.launchProgress=clamp(forwardAir/(m.trim_mps*c.takeoff_speed_fraction));
   if(motor)s.engineWorkJ=(s.engineWorkJ??0)+thrust*(before+run)*.5*dt;
   s.launchWorkHead=(s.launchWorkHead??0)+Math.max(0,(run*run-before*before)/(2*9.81))+Math.max(0,z-(floor+config.landing_clearance_m));
   s.figure='Running launch';
-  if(s.speed>=m.trim_mps*c.takeoff_speed_fraction){
-    s.grounded=false;s.launching=false;s.vertical=s.vario=c.hop_mps;
+  if(forwardAir>=m.trim_mps*c.takeoff_speed_fraction){
+    s.grounded=false;s.launching=false;s.vz=s.vertical=s.vario=c.hop_mps;
     s.launchWorkHead+=c.hop_mps*c.hop_mps/(2*9.81);s.figure='Taking flight';
   }
   return s;
@@ -241,7 +260,7 @@ function touchdown(s,vertical,groundSpeed,config){
 }
 
 const publish=(s,v)=>{
-  s.vx=v[0];s.vy=v[1];s.vertical=s.vario=v[2];s.speed=Math.hypot(v[0],v[1]);
+  s.vx=v[0];s.vy=v[1];s.vz=s.vertical=s.vario=v[2];s.speed=Math.hypot(v[0],v[1]);
   if(s.speed>.5)s.heading=Math.atan2(v[1],v[0]);
   s.figure=s.grounded?'Wing collapsed · unhook or relaunch':'Wing collapsed';
   return s;
@@ -262,10 +281,10 @@ function stepCollapsed(state,dt,config,height,hitTest){
   return publish(s,v);
 }
 
-export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest=null,launchHeight=height) {
+export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest=null,launchHeight=height,launchDryHeight=launchHeight) {
   if(!(dt>0)||!Number.isFinite(dt))return {...state};
   const s={...state},mode=config.modes[s.mode];
-  if(s.launching&&config.ground_launch)return stepGroundLaunch(s,input,dt,time,config,windBearing,height,hitTest,launchHeight);
+  if(s.launching&&config.ground_launch)return stepGroundLaunch(s,input,dt,time,config,windBearing,height,hitTest,launchHeight,launchDryHeight);
   if(s.grounded){releaseSuspension(s);return s;}
   if(config.collapse&&s.collapsed)return scoreFlight(stepCollapsed(s,dt,config,height,hitTest),config);
   const air=sampleAir(config,windBearing,s,time,height);
@@ -395,11 +414,11 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
     }
   }
   const hit=hitTest?.([state.x,state.y,state.z],[s.x,s.y,s.z],.45);
-  if(hit){s.x=state.x;s.y=state.y;s.z=state.z;s.impact=hit.kind;s.grounded=true;s.vertical=s.vario=s.speed=0;releaseSuspension(s);return scoreFlight(s,config);}
+  if(hit){s.x=state.x;s.y=state.y;s.z=state.z;s.impact=hit.kind;s.grounded=true;s.vx=s.vy=s.vz=s.vertical=s.vario=s.speed=0;releaseSuspension(s);return scoreFlight(s,config);}
   const floor=height(s.x,s.y)+config.landing_clearance_m;
   if(s.z<=floor){
     touchdown(s,Math.max(0,-s.vario),s.groundSpeed,config);
-    s.z=floor;s.grounded=true;s.vertical=s.vario=s.speed=0;releaseSuspension(s);
+    s.z=floor;s.grounded=true;s.vx=s.vy=s.vz=s.vertical=s.vario=s.speed=0;releaseSuspension(s);
   }
   return scoreFlight(s,config);
 }

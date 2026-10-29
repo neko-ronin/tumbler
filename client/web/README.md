@@ -1,3 +1,24 @@
+# PF-06 and para items 2–5 — iteration, 2026-10-29
+
+Taut suspension drift now preserves centre-of-mass and relative angular
+momentum in an isolated orbit. No arbitrary spring damping was added. Expensive
+cloth work remains at 30 Hz while lower harness and motor attachments follow
+the displayed pilot every render. Field notes → **Pilot posture** offers
+**Steadier** (default, monotone 0.18 s orientation animation) and **Follow
+suspension** (raw physical posture). Both retain the exact physical hip and
+canopy/collision frame; the choice never feeds forces, motor thrust, load or
+scores. Displayed motor attitude can briefly lag its true force axis.
+
+Reversal, sensitivity and 240/480 Hz trials retain existing aerodynamic
+coefficients after rejecting cosmetic parameter changes. Ground running is
+capped at 9 m/s; dry ledges and actual velocity carry into flight, and engine
+work stays cumulative across liftoff. Hard landings use the existing heavy
+landing clip. Flat still-air launch remains assisted and is not guaranteed.
+[Measurements, limits and review evidence](../../docs/reviews/para-iteration-2026-10-29.md).
+Real-wing/controller calibration and inverted maneuvers remain open.
+
+---
+
 # Coupled pilot and wing — visual review, 2026-10-28
 
 The shared flight model now translates the pilot and wing independently,

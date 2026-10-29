@@ -210,7 +210,8 @@
     "hop_mps": 2.4,
     "dropoff_m": 0.5,
     "max_run_m": 60,
-    "max_run_s": 12
+    "max_run_s": 12,
+    "max_run_mps": 9
   },
   "landing": {
     "smooth_mps": 1.5,

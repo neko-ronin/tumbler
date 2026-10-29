@@ -44,7 +44,12 @@ export function coupledPolar(mode,c){
   const mass=c.pilot_mass_kg+c.wing_mass_kg,area=mode.span_m*mode.chord_m*c.area_fraction;
   const v=Math.hypot(mode.trim_mps,mode.sink_mps),gamma=Math.atan2(mode.sink_mps,mode.trim_mps),q=RHO*v*v/2;
   const cl=mass*G*Math.cos(gamma)/(q*area);
-  const cd=Math.max(.001,(mass*G*Math.sin(gamma)-q*c.pilot_drag_area_m2)/(q*area));
+  const totalDrag=mass*G*Math.sin(gamma),pilotDrag=q*c.pilot_drag_area_m2,wingDrag=totalDrag-pilotDrag;
+  if(!(wingDrag>0)||!Number.isFinite(wingDrag))throw new RangeError(
+    `Infeasible coupled trim polar for ${mode.label??'wing'}: pilot drag ${pilotDrag.toFixed(2)} N leaves ${wingDrag.toFixed(2)} N of ${totalDrag.toFixed(2)} N total trim drag. Reduce pilot_drag_area_m2 or revise trim speed/sink.`);
+  // A fabricated minimum CD would hide an impossible calibration and prevent
+  // the selected trim/sink from being reproduced. Positive budgets fit exactly.
+  const cd=wingDrag/(q*area);
   return {area,cl,cd0:cd*(1-c.induced_share),induced:cd*c.induced_share/(cl*cl)};
 }
 
@@ -52,11 +57,13 @@ export function initializeCoupled(s,config,air){
   const c=config.coupled,m=config.modes[s.mode];
   const pilotPosition=[s.x,s.y,s.z-config.landing_clearance_m+c.harness_height_m];
   const lineLength=m.canopy_height_m-c.harness_height_m;
-  const velocity=[Math.cos(s.heading)*s.speed+air.wx,Math.sin(s.heading)*s.speed+air.wy,s.vario??s.vertical??0];
+  // Ground launch supplies the actual world velocity. Reconstructing a
+  // heading-only air vector here would invent a sideways crosswind impulse.
+  const velocity=[s.vx??Math.cos(s.heading)*s.speed+air.wx,s.vy??Math.sin(s.heading)*s.speed+air.wy,s.vz??s.vario??s.vertical??0];
   const relative=sub(velocity,airVector(air)),drag=.5*RHO*c.pilot_drag_area_m2*length(relative);
   const up=unit(add(relative.map(v=>v*drag),[0,0,c.pilot_mass_kg*G]));
   const out={pilotPosition,wingPosition:add(pilotPosition,up,lineLength),pilotVelocity:[...velocity],wingVelocity:[...velocity],
-    lineLength,massKg:c.pilot_mass_kg+c.wing_mass_kg,tensionN:0,lineSlackM:0,engineWorkJ:0,dragLossJ:0,catchLossJ:0,constraintLossJ:0,windWorkJ:0,numericalJ:0,maxProjectionM:0};
+    lineLength,massKg:c.pilot_mass_kg+c.wing_mass_kg,tensionN:0,lineSlackM:0,initialEngineWorkJ:s.engineWorkJ??0,engineWorkJ:0,dragLossJ:0,catchLossJ:0,constraintLossJ:0,windWorkJ:0,numericalJ:0,maxProjectionM:0};
   out.energyJ=out.initialEnergyJ=coupledEnergy(out,c);return out;
 }
 
@@ -80,16 +87,17 @@ export function constrainSuspension(c,rules,dt){
   return loss;
 }
 
-/** Rotate mass-weighted velocity under lift and the taut cable reaction.
- * Projecting the force first avoids falsely throwing away the canopy's
- * support work every substep. The reaction includes centripetal acceleration.
- * The exact rotation preserves relative kinetic energy in this tangent space.
+/** Rotate mass-weighted velocity under lift and its external cable reaction.
+ * Total tension includes curvature, but the centripetal part belongs to the
+ * exact relative cable drift below. Rotating the entire 6D velocity under a
+ * purely internal centripetal force would also scale COM momentum by cos(a).
+ * The lift rotation preserves kinetic energy in the constraint tangent space.
  */
 function liftStep(c,rules,air,lift,h){
   const mp=rules.pilot_mass_kg,mw=rules.wing_mass_kg,sp=Math.sqrt(mp),sw=Math.sqrt(mw);
   const n=unit(sub(c.wingPosition,c.pilotPosition)),u=sub(c.wingVelocity,c.pilotVelocity),w=1/mp+1/mw;
   const a=[0,0,0,...lift.map(v=>v/sw)],gradient=[...n.map(v=>-v/sp),...n.map(v=>v/sw)];
-  const candidate=(dot(lift,n)/mw+dot(u,u)/c.lineLength)/w;
+  const radial=dot(lift,n)/mw/w,candidate=radial+dot(u,u)/c.lineLength/w;
   const taut=c.lineSlackM<1e-6&&dot(u,n)>-1e-6&&candidate>0;
   if(!taut){
     // Without tension the wing cannot alter the pilot's velocity at all.
@@ -102,7 +110,7 @@ function liftStep(c,rules,air,lift,h){
     }
     return 0;
   }
-  if(taut)for(let i=0;i<6;i++)a[i]-=gradient[i]*candidate;
+  if(taut)for(let i=0;i<6;i++)a[i]-=gradient[i]*radial;
   const v=[...sub(c.pilotVelocity,air).map(v=>v*sp),...sub(c.wingVelocity,air).map(v=>v*sw)];
   const speed=length(v),accel=length(a),work=dot(v,a);
   // Work from a stale radial component is handled by the unilateral catch,
@@ -115,6 +123,35 @@ function liftStep(c,rules,air,lift,h){
     c.windWorkJ+=kinetic(c.pilotVelocity,mp)+kinetic(c.wingVelocity,mw)-before;
   }
   return taut?candidate:0;
+}
+
+/** Drift a taut cable by its exact central-force orbit about the COM.
+ * This geometric curvature preserves both relative kinetic/angular momentum
+ * and total linear momentum; it is not a spring or an artificial damper.
+ * The small signed velocity correction accounts for the other split forces
+ * only while their NET reaction remains tensile. Slack still uses free drift
+ * followed by the unilateral inelastic catch in constrainSuspension.
+ */
+function driftSuspension(c,rules,h,support){
+  const mp=rules.pilot_mass_kg,mw=rules.wing_mass_kg,total=mp+mw,w=1/mp+1/mw;
+  const r=sub(c.wingPosition,c.pilotPosition),n=unit(r),u=sub(c.wingVelocity,c.pilotVelocity);
+  const impulse=dot(u,n)/w,tension=support+impulse/h;
+  if(support>0&&c.lineSlackM<1e-6&&tension>0){
+    c.pilotVelocity=add(c.pilotVelocity,n,impulse/mp);c.wingVelocity=add(c.wingVelocity,n,-impulse/mw);
+    c.constraintLossJ+=impulse*impulse*w/2;
+    const velocity=sub(c.wingVelocity,c.pilotVelocity),speed=length(velocity),angle=speed*h/c.lineLength;
+    const relative=r.map(v=>v*c.lineLength/length(r));
+    const nextR=add(relative.map(v=>v*Math.cos(angle)),velocity,speed>1e-9?c.lineLength*Math.sin(angle)/speed:0);
+    const nextU=add(velocity.map(v=>v*Math.cos(angle)),relative,-speed*Math.sin(angle)/c.lineLength);
+    const centre=c.pilotPosition.map((v,i)=>(v*mp+c.wingPosition[i]*mw)/total);
+    const centreVelocity=c.pilotVelocity.map((v,i)=>(v*mp+c.wingVelocity[i]*mw)/total);
+    const nextCentre=add(centre,centreVelocity,h);
+    c.pilotPosition=add(nextCentre,nextR,-mw/total);c.wingPosition=add(nextCentre,nextR,mp/total);
+    c.pilotVelocity=add(centreVelocity,nextU,-mw/total);c.wingVelocity=add(centreVelocity,nextU,mp/total);
+    c.lineSlackM=0;return tension;
+  }
+  c.pilotPosition=add(c.pilotPosition,c.pilotVelocity,h);c.wingPosition=add(c.wingPosition,c.wingVelocity,h);
+  constrainSuspension(c,rules,h);return c.tensionN;
 }
 
 /** Force integration changes velocities, never a target speed or height.
@@ -179,18 +216,16 @@ export function stepCoupled(s,dt,config,sample){
       c.engineWorkJ+=mass*(impulse*along+.5*impulse*impulse);
       c.windWorkJ+=actual-mass*(impulse*along+.5*impulse*impulse);thrust+=impulse*mass/dt;
     }
-    for(const [position,velocity] of [['pilotPosition','pilotVelocity'],['wingPosition','wingVelocity']]){
-      c[velocity][2]-=G*h;c[position]=add(c[position],c[velocity],h);
-    }
-    constrainSuspension(c,rules,h);tension+=(support+c.tensionN)/count;
+    c.pilotVelocity[2]-=G*h;c.wingVelocity[2]-=G*h;
+    tension+=driftSuspension(c,rules,h,support)/count;
   }
   c.tensionN=tension;c.energyJ=coupledEnergy(c,rules);c.liftVelocityDot=liftDot;
   c.numericalJ+=(c.energyJ-before)-(c.engineWorkJ-workBefore)-(c.windWorkJ-windBefore)+(c.dragLossJ-dragBefore)+(c.catchLossJ+c.constraintLossJ-catchBefore);
   const [x,y,z]=c.pilotPosition,relative=sub(c.wingVelocity,wingAir),basis=wingBasis(s.heading,s.pitch,s.bank),pilot=pilotBasis(s);
   s.distance+=Math.hypot(x-s.x,y-s.y);s.x=x;s.y=y;s.z=z+config.landing_clearance_m-rules.harness_height_m;
-  s.speed=Math.hypot(relative[0],relative[1]);s.vertical=s.vario=c.pilotVelocity[2];s.vx=c.pilotVelocity[0];s.vy=c.pilotVelocity[1];
+  s.speed=Math.hypot(relative[0],relative[1]);s.vz=s.vertical=s.vario=c.pilotVelocity[2];s.vx=c.pilotVelocity[0];s.vy=c.pilotVelocity[1];
   s.groundSpeed=Math.hypot(s.vx,s.vy);s.load=tension/(rules.pilot_mass_kg*G);s.stall=stall;s.groundEffect=0;
-  s.pressure=clamp(s.load,0,1)*(1-stall*.6);s.thrustN=thrust;s.engineWorkJ=c.engineWorkJ;
+  s.pressure=clamp(s.load,0,1)*(1-stall*.6);s.thrustN=thrust;s.engineWorkJ=(c.initialEngineWorkJ??0)+c.engineWorkJ;
   s.pilotPitch=Math.atan2(dot(pilot.up,basis.forward),dot(pilot.up,basis.up));
   s.pilotRoll=Math.atan2(dot(pilot.up,basis.left),dot(pilot.up,basis.up));
   s.figure=c.lineSlackM>.02?'Lines slack':stall>.2?'Low energy · ease handles':s.engine>.1&&s.vario>.2?'Powered climb':

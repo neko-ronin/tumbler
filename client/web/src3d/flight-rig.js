@@ -53,7 +53,7 @@ function clothPoints(geometry){
     if(index===undefined){index=points.length;map.set(key,index);points.push(new T.Vector3(rest[i],rest[i+1],rest[i+2]));}
     indices.push(index);
   }
-  return {rest,points,indices:Uint32Array.from(indices),moved:new Float32Array(points.length*3)};
+  return {rest,points,indices:Uint32Array.from(indices),moved:new Float32Array(points.length*3),deformed:new Float32Array(points.length*3)};
 }
 
 // Average only sewn skin normals; keep ribs, intake walls and line edges crisp.
@@ -98,6 +98,25 @@ function coupledFitWeights(primitives,cloth){
   }
   return weights;
 }
+// The merged rig is a non-indexed triangle stream. Cache only the lower
+// equipment that can move between cloth ticks, including every triangle whose
+// normal changes when any one of its corners moves. Sewn sail normals stay in
+// the 30 Hz cloth cache; these attachment triangles are deliberately crisp.
+function attachmentIndices(cloth,pilotFit,coupledFit){
+  const points=[],vertices=[],triangles=[];
+  for(let i=0;i<cloth.points.length;i++)if(pilotFit[i]||coupledFit[i])points.push(i);
+  for(let i=0;i<cloth.indices.length;i++)if(pilotFit[cloth.indices[i]]||coupledFit[cloth.indices[i]])vertices.push(i);
+  for(let i=0;i<cloth.indices.length;i+=3)if([0,1,2].some(k=>pilotFit[cloth.indices[i+k]]||coupledFit[cloth.indices[i+k]]))triangles.push(i);
+  return {attachmentPoints:Uint32Array.from(points),attachmentVertices:Uint32Array.from(vertices),attachmentTriangles:Uint32Array.from(triangles),
+    attachmentStart:triangles[0]??0,attachmentEnd:triangles.length?triangles.at(-1)+3:0};
+}
+// Keep pending full-cloth uploads if simulation presentation updates more
+// often than the renderer draws. A partial gear update must not discard them.
+function queueUpdate(attribute,start,count){
+  if(!count)return;
+  if(!attribute.updateRanges.some(range=>range.start<=start&&range.start+range.count>=start+count))attribute.addUpdateRange(start,count);
+  attribute.needsUpdate=true;
+}
 // A parked canopy keeps its cloth draw but releases the equipment that would
 // otherwise obscure a standing pilot. Reuse the same vertex/deformation data;
 // switching the draw index also keeps depth and sun-shadow passes consistent.
@@ -121,7 +140,8 @@ export function createFlightRig(assets,config){
     const mesh=new T.Mesh(data.geometry,data.material);mesh.name=`${name}_fabric`;
     mesh.castShadow=true;mesh.frustumCulled=false;
     const cloth=clothPoints(mesh.geometry);
-    wings[name]={mesh,...cloth,pilotFit:pilotFitWeights(primitives,cloth),coupledFit:coupledFitWeights(primitives,cloth),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives)};group.add(mesh);
+    const pilotFit=pilotFitWeights(primitives,cloth),coupledFit=coupledFitWeights(primitives,cloth);
+    wings[name]={mesh,...cloth,pilotFit,coupledFit,...attachmentIndices(cloth,pilotFit,coupledFit),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives),cacheKey:null,floors:[]};group.add(mesh);
   }
   const source=assets[config.motor_asset].primitives;
   const cage=mergePrimitives(source.filter(p=>p.materialName!=='propeller'),'opaque');
@@ -129,8 +149,8 @@ export function createFlightRig(assets,config){
   motor.add(new T.Mesh(cage.geometry,cage.material));
   const blade=mergePrimitives(source.filter(p=>p.materialName==='propeller'),'opaque');
   const prop=new T.Mesh(blade.geometry,blade.material);motor.add(prop);
-  let clock=0,last=-1,elapsed=0;
-  const point=new T.Vector3(),normal=new T.Vector3(),pilotPivot=new T.Vector3(),pilotPoint=new T.Vector3(),sagDirection=new T.Vector3(),pilotRotation=new T.Quaternion(),pilotEuler=new T.Euler();
+  let clock=0,last=-1,lastMode=null,elapsed=0;
+  const point=new T.Vector3(),normal=new T.Vector3(),edgeA=new T.Vector3(),edgeB=new T.Vector3(),pilotPivot=new T.Vector3(),pilotPoint=new T.Vector3(),sagDirection=new T.Vector3(),pilotRotation=new T.Quaternion(),pilotEuler=new T.Euler();
   /** Optional presentation input: localAir is the shared air vector rotated
    * into rig axes (+Z forward); groundAt(x,z) returns local floor Y. Without
    * it, landed air is still, harnessed reads presentation then state and defaults true; floor Y is zero.
@@ -160,21 +180,31 @@ export function createFlightRig(assets,config){
       const index=harnessed?w.attachedIndex:w.releasedIndex;
       if(w.mesh.geometry.index!==index)w.mesh.geometry.setIndex(index);
     }
-    // Cloth work has a fixed 30 Hz budget independent of display refresh.
-    const tick=Math.floor(clock*30);if(tick===last)return;last=tick;
-    const w=wings[name],{mesh,points,indices,moved}=w,positions=mesh.geometry.attributes.position;
+    const w=wings[name],{mesh,points,indices,moved,deformed}=w,positions=mesh.geometry.attributes.position;
     const grounded=presentation.grounded??state.grounded??false;
+    // Cloth and full-mesh normal work stay at 30 Hz. Mode/ground transitions
+    // invalidate immediately; physical lower-equipment motion never waits for
+    // that cache, so it cannot detach from an interpolated hip between ticks.
+    const tick=Math.floor(clock*30),cacheKey=[state.mode,grounded,!!state.collapsed,harnessed,!!state.launching].join(':');
+    const refresh=tick!==last||state.mode!==lastMode||w.cacheKey!==cacheKey;
+    if(refresh){last=tick;lastMode=state.mode;w.cacheKey=cacheKey;}
     const air=presentation.localAir;
     const feed=air?Math.max(0,-air.z):0;
     // A collapsed wing (docs/design/COLLISION.md) trails crumpled above him in the
     // air and lies flat once he is down, like the parked wing.
     const target=state.launching?(state.launchInflation??state.launchProgress??0):state.collapsed?(grounded?0:.15):grounded?(!harnessed?0:T.MathUtils.smoothstep(feed,1.5,5.5)*(1-Math.max(state.brakeLeft??0,state.brakeRight??0)*.75)):1;
-    w.inflation+=(target-w.inflation)*(1-Math.exp(-elapsed*(target>w.inflation?1.5:1.05)));
-    elapsed=0;
+    if(refresh){
+      w.inflation+=(target-w.inflation)*(1-Math.exp(-elapsed*(target>w.inflation?1.5:1.05)));
+      elapsed=0;
+    }
     // Sample a small floor lattice, then interpolate it for all skin/line
     // points. This bounds terrain reads independently of asset tessellation.
-    const floors=[],cols=17,rows=9,half=config.modes[name].span_m*.5+.5;
-    if(grounded&&presentation.groundAt)for(let row=0;row<rows;row++)for(let col=0;col<cols;col++)floors.push(presentation.groundAt(-half+col*half*2/(cols-1),-6+row*9/(rows-1))+.025);
+    const cols=17,rows=9,half=config.modes[name].span_m*.5+.5;
+    if(refresh){
+      w.floors=[];
+      if(grounded&&presentation.groundAt)for(let row=0;row<rows;row++)for(let col=0;col<cols;col++)w.floors.push(presentation.groundAt(-half+col*half*2/(cols-1),-6+row*9/(rows-1))+.025);
+    }
+    const floors=w.floors;
     const floorAt=(x,z)=>{
       if(!floors.length)return .025;
       const a=T.MathUtils.clamp((x+half)/(half*2)*(cols-1),0,cols-1.000001),b=T.MathUtils.clamp((z+6)/9*(rows-1),0,rows-1.000001);
@@ -186,9 +216,14 @@ export function createFlightRig(assets,config){
     const slope2=slopeX*slopeX+slopeZ*slopeZ;
     const slack=pilotTransform?Math.max(0,state.coupled?.lineSlackM??0):0;
     sagDirection.fromArray(presentation.lineSagDirection??[0,-1,0]);
-    for(let i=0;i<points.length;i++){
+    const selected=refresh?null:w.attachmentPoints,count=selected?selected.length:points.length;
+    for(let k=0;k<count;k++){
+      const i=selected?selected[k]:k;
       const p=points[i];
-      deform(p.x,p.y,p.z,config.modes[name],state,w.inflation,clock,point);
+      if(refresh){
+        deform(p.x,p.y,p.z,config.modes[name],state,w.inflation,clock,point);
+        point.toArray(deformed,i*3);
+      }else point.fromArray(deformed,i*3);
       const fit=(pilotScale-1)*w.pilotFit[i];
       point.x+=(p.x-anchor[0])*fit;point.y+=(p.y-anchor[1])*fit;point.z+=(p.z-anchor[2])*fit;
       // The pilot, straps and motor rotate about one hip attachment. Lower
@@ -217,16 +252,31 @@ export function createFlightRig(assets,config){
       }
       moved[i*3]=point.x;moved[i*3+1]=point.y;moved[i*3+2]=point.z;
     }
-    for(let i=0;i<positions.count;i++){
+    const vertexIndices=refresh?null:w.attachmentVertices,vertexCount=vertexIndices?vertexIndices.length:positions.count;
+    for(let k=0;k<vertexCount;k++){
+      const i=vertexIndices?vertexIndices[k]:k;
       const n=indices[i]*3;positions.setXYZ(i,moved[n],moved[n+1],moved[n+2]);
     }
-    positions.needsUpdate=true;mesh.geometry.computeVertexNormals();
     const normals=mesh.geometry.attributes.normal;
-    for(const ids of w.smooth){
-      normal.set(0,0,0);for(const i of ids)normal.add(point.fromBufferAttribute(normals,i));normal.normalize();
-      for(const i of ids)normals.setXYZ(i,normal.x,normal.y,normal.z);
+    if(refresh){
+      mesh.geometry.computeVertexNormals();
+      for(const ids of w.smooth){
+        normal.set(0,0,0);for(const i of ids)normal.add(point.fromBufferAttribute(normals,i));normal.normalize();
+        for(const i of ids)normals.setXYZ(i,normal.x,normal.y,normal.z);
+      }
+      positions.clearUpdateRanges();normals.clearUpdateRanges();
+      queueUpdate(positions,0,positions.array.length);queueUpdate(normals,0,normals.array.length);
+    }else{
+      // Exact face normals for the moved, non-indexed equipment triangles;
+      // no new whole-sail normal calculation or trigonometric deformation.
+      for(const i of w.attachmentTriangles){
+        point.fromBufferAttribute(positions,i);edgeA.fromBufferAttribute(positions,i+1).sub(point);edgeB.fromBufferAttribute(positions,i+2).sub(point);
+        normal.crossVectors(edgeA,edgeB).normalize();
+        for(let k=0;k<3;k++)normals.setXYZ(i+k,normal.x,normal.y,normal.z);
+      }
+      const start=w.attachmentStart*3,count=(w.attachmentEnd-w.attachmentStart)*3;
+      queueUpdate(positions,start,count);queueUpdate(normals,start,count);
     }
-    normals.needsUpdate=true;
   }
   return {group,wings,motor,prop,update,dispose(){group.traverse(m=>{if(m.isMesh){m.geometry.dispose();m.material.dispose();}});}};
 }

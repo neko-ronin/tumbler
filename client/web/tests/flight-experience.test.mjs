@@ -67,8 +67,14 @@ test('parakite neutral is best-glide travel; a right turn releases the outside l
  const neutral=stepFlight(s,{},1/120,0,still,270,flat),right=stepFlight(s,{turn:1},1/120,0,still,270,flat);
  assert.equal(neutral.handleLeft,.45);assert.equal(neutral.handleRight,.45);
  assert.ok(right.handleLeft<right.handleRight);assert.ok(right.bank>0);
- const deep=fly('parakite',{brake:1},8);assert.ok(deep.stall>0);assert.ok(deep.pressure<1);
- const recovered=fly('parakite',{},4,still,deep);assert.ok(recovered.speed>deep.speed);assert.ok(recovered.stall<deep.stall);
+ // Post-stall force motion can pass through alternating stalled/unloaded
+ // phases. Test the held interval, not one arbitrary phase at exactly8s.
+ let deep={...s,z:1500},maxStall=0,minPressure=1;
+ for(let i=0;i<960;i++){deep=stepFlight(deep,{brake:1},1/120,i/120,still,270,flat);maxStall=Math.max(maxStall,deep.stall);minPressure=Math.min(minPressure,deep.pressure);}
+ assert.ok(maxStall>.2);assert.ok(minPressure<.8);
+ const released=fly('parakite',{},12,still,deep);
+ assert.ok(released.brakeLeft<.001&&released.brakeRight<.001,'release removes the deep-brake command');
+ assert.ok(released.speed>deep.speed);assert.ok(released.stall<.05);assert.ok(released.pressure>.8);
 });
 
 test('motor power spools rather than jumping, and zero power returns to a glide',()=>{

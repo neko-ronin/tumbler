@@ -2,26 +2,49 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {launchFlight,stepFlight} from '../../../shared/activities/flight.js';
-import {relaunchGround,unharnessFlight} from '../../../shared/activities/walk.js';
+import {relaunchGround,unharnessFlight,safeWalkGround} from '../../../shared/activities/walk.js';
 const read=p=>JSON.parse(readFileSync(new URL(p,import.meta.url)));
 const config=read('../../../shared/activities/flight.json'),walk=read('../../../shared/characters/player.json').walk;
 const still={...config,thermals:[],wind:{speed_mps:0,gust_mps:0},weather:{soaring:{wind_scale:0,gust_scale:0,thermal_scale:0,turbulence_mps:0}}};
 const flat=()=>0,site={xy_m:[0,0],heading_deg:0};
 const ready=mode=>({...launchFlight(still,mode,site,flat),grounded:true,z:config.landing_clearance_m,speed:0,engine:0,throttle:0});
 
-test('inflation stays put, ground run accelerates and the takeoff records assisted work in every mode',()=>{
+test('inflation stays put and a capped still-air flat run honestly aborts when trim launch airspeed is unavailable',()=>{
+ assert.equal(config.ground_launch.max_run_mps,walk.run_mps,'assisted launch uses the existing game running-speed ceiling');
  for(const mode of Object.keys(config.modes)){
   let s=relaunchGround(ready(mode),walk,still,flat),stages=new Set();
   assert.equal(s.speed,0);assert.equal(s.z,config.landing_clearance_m);
-  for(let i=0;i<1200&&s.grounded;i++){
+  for(let i=0;i<2400&&s.launching;i++){
    const before=s;s=stepFlight(s,{},1/120,i/120,still,270,flat);stages.add(s.launchStage);
    if(s.launchStage==='inflating'){assert.equal(s.x,0);assert.equal(s.y,0);assert.equal(s.z,before.z);}
-   if(s.launching)assert.equal(s.z,config.landing_clearance_m,'no altitude award during preparation');
+   assert.equal(s.z,config.landing_clearance_m,'no altitude award during preparation');
+   assert.ok(s.launchRunSpeed<=config.ground_launch.max_run_mps,'legs cannot silently accelerate to canopy trim speed');
   }
-  assert.deepEqual(stages,new Set(['inflating','running']));assert.equal(s.grounded,false,mode);
-  assert.ok(s.x>3&&s.speed>=config.modes[mode].trim_mps*.94,mode);
+  assert.deepEqual(stages,new Set(['inflating','running']));assert.ok(s.grounded&&s.launchAborted,mode);
+  assert.ok(s.x>3);assert.equal(s.speed,0);assert.equal(s.groundSpeed,0);
+  assert.match(s.figure,/headwind|descending ground/);
   assert.ok(s.launchWorkHead>0);assert.ok(s.launchTime>config.ground_launch.inflate_s);
-  const next=stepFlight(s,{},1/120,s.launchTime,still,270,flat);assert.ok(next.z>s.z,'the initial leg push clears flat ground');
+ }
+});
+
+test('dry ledges and sufficient headwind still permit capped assisted launches in every mode',()=>{
+ const ledge=x=>x<12?0:-10;
+ const windy={...still,wind:{speed_mps:15,gust_mps:0},weather:{soaring:{...still.weather.soaring,wind_scale:1}}};
+ for(const mode of Object.keys(config.modes))for(const kind of ['ledge','headwind']){
+  const rules=kind==='ledge'?still:windy,height=kind==='ledge'?ledge:flat,bearing=kind==='ledge'?270:90;
+  const footing=(x,y)=>safeWalkGround(x,y,walk,height,null,{dropOffs:true});
+  let s=relaunchGround(ready(mode),walk,rules,height),time=0;
+  while(s.launching&&time<20){
+   const before=s;s=stepFlight(s,{},1/120,time,rules,bearing,height,null,footing,height);time+=1/120;
+   if(before.grounded)assert.equal(s.z,before.z,'neither inflation nor ledge departure awards altitude');
+   assert.ok(s.launchRunSpeed<=rules.ground_launch.max_run_mps);
+  }
+  assert.equal(s.grounded,false,`${mode}: ${kind}`);assert.ok(s.launchWorkHead>0);
+  assert.ok(s.vx>0);assert.equal(s.vy,0);
+  const next=stepFlight(s,{},1/120,time,rules,bearing,height);
+  assert.ok(next.coupled,'the launch enters actual independent-body dynamics');
+  if(kind==='headwind')assert.ok(next.z>s.z,'the recorded leg push clears the flat ground');
+  else assert.equal(s.z,config.landing_clearance_m,'a dry ledge preserves departure height');
  }
 });
 

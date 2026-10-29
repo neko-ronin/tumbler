@@ -12,7 +12,7 @@ const read=p=>JSON.parse(readFileSync(new URL(p,import.meta.url)));
 const character=read('../../../shared/characters/player.json'),flight=read('../../../shared/activities/flight.json');
 const ride=read('../../../shared/activities/ride.json'),world=read('../../../shared/world/worldmap.json');
 const flat=()=>0,origin=()=>({x:0,y:0,z:0,heading:0,speed:0});
-function fixture(t){
+function fixture(t,{floor=flat}={}){
  const saved=new Map(['window','document','navigator'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
  const win=new EventTarget(),doc=new EventTarget(),pad={connected:true,axes:[0,0,0,0],buttons:Array.from({length:16},()=>({pressed:false,value:0}))};
  for(const [k,v]of Object.entries({window:win,document:doc,navigator:{getGamepads:()=>[pad]}}))Object.defineProperty(globalThis,k,{value:v,configurable:true});
@@ -20,7 +20,7 @@ function fixture(t){
  const rules={...flight,thermals:[],wind:{speed_mps:0,gust_mps:0},launches:[{...flight.launches[0],xy_m:[0,0],heading_deg:225,clearance_m:2}]};
  const rig=new T.Group(),cat={object:new T.Group(),update(){}};
  const camera=new T.PerspectiveCamera();
- const nav=createNavigation(camera,canvas,{target:new T.Vector3(),setTarget(){},update(){}},{height:flat},rules,world,rig,()=>null,{config:ride,rig:new T.Group(),meshes:{ski:new T.Group(),bike:new T.Group()},height:flat,snowAt:()=>1,surfaceAt:()=> 'snow'},cat,character);
+ const nav=createNavigation(camera,canvas,{target:new T.Vector3(),setTarget(){},update(){}},{height:floor},rules,world,rig,()=>null,{config:ride,rig:new T.Group(),meshes:{ski:new T.Group(),bike:new T.Group()},height:floor,snowAt:()=>1,surfaceAt:()=> 'snow'},cat,character);
  const key=(type,code)=>{const e=new Event(type);Object.defineProperties(e,{code:{value:code},target:{value:canvas}});win.dispatchEvent(e);};
  t.after(()=>{nav.dispose();for(const [k,v]of saved)v?Object.defineProperty(globalThis,k,v):delete globalThis[k];});
  return {nav,pad,key,win,rig,camera,cat};
@@ -193,14 +193,21 @@ test('safe unharness preserves location, rejects midair/impact/slope/obstacle, a
   assert.equal(harness.mode,mode);assert.equal(harness.grounded,true);assert.equal(harness.engine,0);
   const launch=walk.relaunchGround(harness,character.walk,flight,flat);
   assert.equal(launch.z,harness.z,'relaunch starts at current contact height');assert.equal(launch.grounded,true);assert.equal(launch.launching,true);
+  // A bounded run cannot promise trim airspeed on a flat in weak wind. Exercise
+  // a real clear ledge instead of requiring implausibly fast assisted legs.
+  const ledge=(x,y)=>(x-launch.x)*Math.cos(launch.heading)+(y-launch.y)*Math.sin(launch.heading)<12?0:-10;
+  const footing=(x,y)=>walk.safeWalkGround(x,y,character.walk,ledge,null,{dropOffs:true});
   let flying=launch;
-  for(let i=0;i<1200&&flying.grounded;i++)flying=stepFlight(flying,{},1/120,i/120,flight,world.wind.direction_deg,flat);
-  assert.equal(flying.grounded,false,'inflation and run lead to takeoff');assert.ok(flying.launchWorkHead>0,'assisted running work is explicit');
+  for(let i=0;i<1200&&flying.grounded;i++)flying=stepFlight(flying,{},1/120,i/120,flight,world.wind.direction_deg,ledge,null,footing,ledge);
+  assert.equal(flying.grounded,false,'inflation and a capped run depart a clear dry ledge');assert.ok(flying.launchWorkHead>0,'assisted running work is explicit');
  }
 });
 test('normal pad sequence lands, unhooks, walks, rehooks and launches locally; held/blur input cannot leak',t=>{
- const {nav,pad,win}=fixture(t);
+ let departure=null;
+ const floor=(x,y)=>departure&&(x-departure.x)*Math.cos(departure.heading)+(y-departure.y)*Math.sin(departure.heading)>=12?-10:0;
+ const {nav,pad,win}=fixture(t,{floor});
  for(const mode of Object.keys(flight.modes)){
+  departure=null;
   nav.select(mode);pad.buttons[4].pressed=true;for(let i=0;i<2000&&!nav.state.grounded;i++)nav.update(1/60);pad.buttons[4].pressed=false;
   assert.equal(nav.state.grounded,true);const landed={...nav.state};
   pad.buttons[2].pressed=true;nav.update(1/60);assert.equal(nav.mode,'walk');assert.equal(nav.state.x,landed.x);assert.equal(nav.state.y,landed.y);
@@ -211,6 +218,7 @@ test('normal pad sequence lands, unhooks, walks, rehooks and launches locally; h
   const forward=(foot.x-landed.x)*Math.cos(landed.heading)+(foot.y-landed.y)*Math.sin(landed.heading);
   assert.ok(forward>3,'forward after unhook follows the landed character heading');
   nav.setWeather('calm');
+  departure=foot;
   pad.buttons[2].pressed=true;nav.update(1/60);assert.equal(nav.mode,mode);assert.equal(nav.state.x,foot.x);assert.equal(nav.state.y,foot.y);assert.equal(nav.state.grounded,true);
   assert.equal(nav.state.weather,'calm','weather selected on foot survives re-entry');
   pad.buttons[0].pressed=true;nav.update(1/60);assert.equal(nav.state.grounded,true,'simultaneously held A is blocked across rehook');
@@ -218,6 +226,9 @@ test('normal pad sequence lands, unhooks, walks, rehooks and launches locally; h
   pad.buttons[0].pressed=true;nav.update(1/60);assert.equal(nav.state.launching,true);assert.ok(Math.hypot(nav.state.x-foot.x,nav.state.y-foot.y)<1);
   for(let i=0;i<600&&nav.state.grounded;i++)nav.update(1/60);
   assert.equal(nav.state.grounded,false,`${mode}: holding A does not restart preparation: ${JSON.stringify(nav.state)}`);
+  const launchTime=nav.state.launchTime;
+  for(let i=0;i<120;i++)nav.update(1/60);
+  assert.equal(nav.state.launching,false);assert.equal(nav.state.launchTime,launchTime,'continuing to hold A cannot restart preparation');
   pad.buttons[0].pressed=false;nav.update(1/60);
  }
  nav.select('orbit');nav.select('walk');nav.update(1/60);pad.buttons[0].pressed=true;win.dispatchEvent(new Event('blur'));nav.update(1/60);assert.equal(nav.mode,'walk');assert.equal(nav.state.jumpCount??0,0);

@@ -311,6 +311,8 @@ export async function main() {
   const motionSelect=document.getElementById('motion');
   motionSelect.value=matchMedia('(prefers-reduced-motion: reduce)').matches?'0':'1';navigation.setEffects(Number(motionSelect.value));
   motionSelect.addEventListener('change',()=>navigation.setEffects(Number(motionSelect.value)));
+  const pilotPostureSelect=document.getElementById('pilot-posture');
+  pilotPostureSelect.addEventListener('change',()=>navigation.setPilotMotion(pilotPostureSelect.value));
   const cloudPass=createCloudPass(renderer,scene,camera,worldmap.atmosphere,ground);
   document.getElementById('save-view').addEventListener('click',()=>{
     const speed=flightConfig.modes[navigation.mode]&&!navigation.state.grounded?Math.min(1,Math.max(0,(navigation.state.speed-12)/22)):0;

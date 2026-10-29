@@ -6,6 +6,7 @@ import {flightInput} from './flight-input.js';
 import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal,safeWalkGround} from '../../../shared/activities/walk.js';
 import {stepMoves} from '../../../shared/activities/moves.js';
 import {createFixedAirSampler} from './fixed-air.js';
+import {createFlightPosture} from './flight-posture.js';
 const JUMP_FRAME_M=2,AIM_S=.5;
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true;
@@ -18,13 +19,16 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const forward=new T.Vector3(),side=new T.Vector3();
   const target=new T.Vector3();
   const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
+  const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
+  let pilotMotion=options.pilotMotion??'steady';
+  let presentedGrounded=null,landingClipLeft=0;
   function frameMatrix(frame,out){
     flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
     flightUp.set(frame.up[0],frame.up[2],-frame.up[1]);
     flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
-  const clear=()=>{for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
+  const clear=()=>{for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   function key(e,down){if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     if(!down)blockedActions.delete(e.code);
     if(down&&(['Space','KeyE'].includes(e.code))&&(e.repeat||blockedActions.has(e.code)))return;
@@ -70,12 +74,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     updateFlightPresentation(0);
   }
   const walkHeight=(x,y)=>options.walkHeight?.(x,y)??(options.walkHeight?null:ground.height(x,y));
-  const launchHeight=(x,y)=>safeWalkGround(x,y,characterConfig.walk,walkHeight,hitTest);
+  const launchHeight=(x,y)=>safeWalkGround(x,y,characterConfig.walk,walkHeight,hitTest,{dropOffs:true});
   const characterHeight=(x,y)=>options.characterHeight?.(x,y)??walkHeight(x,y)??height(x,y);
   function changeHarness(){
     const foot=config.modes[mode]?unharnessFlight(state,characterConfig.walk,config,walkHeight,hitTest):null;
     const hooked=mode==='walk'?reharnessWalk(state,characterConfig.walk,config,walkHeight,hitTest):null;
     if(!foot&&!hooked){message='Find clear, stable ground before changing harness';return false;}
+    pilotPosture.reset();presentedGrounded=null;landingClipLeft=0;
     parkedWing=foot?{...state,pressure:0,engine:0,throttle:0,harnessed:false,launching:false}:null;
     state=foot??hooked;mode=foot?'walk':hooked.mode;accumulator=0;previousFlight=null;actionArmed=false;harnessArmed=false;actionHeld=false;message='';snap=true;view='chase';
     orbit.enabled=false;rig.visible=true;character.object.visible=true;
@@ -129,7 +134,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }else{
       const input=flightInput(pad,keys);
       accumulator+=Math.min(dt,.05);
-      while(accumulator>=1/120){previousFlight=state;state=stepFlight(state,input,1/120,time,config,worldmap.wind.direction_deg,height,hitTest,launchHeight);time+=1/120;accumulator-=1/120;}
+      while(accumulator>=1/120){previousFlight=state;state=stepFlight(state,input,1/120,time,config,worldmap.wind.direction_deg,height,hitTest,launchHeight,walkHeight);time+=1/120;accumulator-=1/120;}
       updateFlightPresentation(dt,flightPose());
       feedbackTime+=dt;
       if(options.haptics?.()!==false&&effects&&feedbackTime>.12&&pad?.vibrationActuator?.playEffect){
@@ -213,10 +218,21 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     rig.quaternion.setFromRotationMatrix(frameMatrix(frame,flightMatrix));
     if(coupled){
       frameMatrix(pilotFrame(pose,config),pilotMatrix);
+      if(pilotMotion==='steady'){
+        // A single cable gives an effective particle orientation, not a rigid
+        // human torso. Animate around the TRUE hip only; this posture and its
+        // eye/equipment appearance never return to the shared force model.
+        physicalPilotRotation.setFromRotationMatrix(pilotMatrix);
+        const rotation=pilotPosture.update(physicalPilotRotation,dt,snap);
+        pilotUp.set(0,1,0).applyQuaternion(rotation);
+        pilotOrigin.set(pose.coupled.pilotPosition[0],pose.coupled.pilotPosition[2],-pose.coupled.pilotPosition[1]).addScaledVector(pilotUp,-config.coupled.harness_height_m);
+        pilotMatrix.compose(pilotOrigin,rotation,unitScale);
+      }else pilotPosture.reset();
       character.object.position.setFromMatrixPosition(pilotMatrix);
       character.object.quaternion.setFromRotationMatrix(pilotMatrix);
       pilotTransform.copy(flightMatrix).invert().multiply(pilotMatrix);
     }else{
+      pilotPosture.reset();
       character.object.position.copy(rig.position);
       character.object.quaternion.copy(rig.quaternion);
       if(!pose.grounded&&!pose.collapsed){character.object.rotateX(-(pose.pilotPitch??0));character.object.rotateZ(pose.pilotRoll??-pose.bank*.25);}
@@ -226,13 +242,23 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // wing until unhooked or relaunched (the human's ruling, docs/design/COLLISION.md).
     restTime=pose.collapsed&&pose.grounded?restTime+dt:0;
     const tumble=characterConfig.fall_clips?.tumble;
-    const bodyClip=!pose.collapsed?undefined:!pose.grounded||restTime<(characterConfig.walk.jump?.tumble_s??.8)?tumble
+    const heavyLanding=characterConfig.landing?.heavy;
+    if(pose.grounded&&!pose.collapsed&&!pose.launching&&presentedGrounded===false&&pose.landingQuality==='hard'){
+      const action=character.actions?.[heavyLanding];landingClipLeft=action?.getClip().duration??0;
+      // The fade can outlast the nominal clip timer; never wrap into a second
+      // impact while the landing action is fading back to idle.
+      if(action){action.setLoop(T.LoopOnce,1);action.clampWhenFinished=true;}
+    }
+    if(!pose.grounded||pose.launching)landingClipLeft=0;
+    presentedGrounded=pose.grounded;
+    const bodyClip=!pose.collapsed?(landingClipLeft>0?heavyLanding:undefined):!pose.grounded||restTime<(characterConfig.walk.jump?.tumble_s??.8)?tumble
       :(characterConfig.idle_sequence??[]).find(step=>step.hold)?.clip;
     const attachment=characterConfig.flight_attachment;
     const flightAnchor=attachment&&!pose.grounded&&!pose.collapsed?(coupled?new T.Vector3(pose.coupled.pilotPosition[0],pose.coupled.pilotPosition[2],-pose.coupled.pilotPosition[1]):rig.localToWorld(new T.Vector3().fromArray(attachment.position_m))):null;
     character.update(dt,pose.launching&&pose.launchStage==='running'?'run':pose.grounded?'idle':'flight',pose.launching?(pose.launchRunSpeed??0):0,{mode:pose.mode,bank:pose.bank,grounded:pose.grounded,bodyClip,
       flightAnchor,
       groundZ:pose.grounded?characterHeight(pose.x,pose.y):undefined,groundHeight:pose.grounded?characterHeight:undefined});
+    landingClipLeft=Math.max(0,landingClipLeft-dt);
     if(view==='chase'){
       follow(dt,(12+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
     }else{
@@ -275,10 +301,11 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   }
   function setWeather(name){if(!config.weather[name])return;weather=name;if(state&&config.modes[mode])state={...state,weather};else if(mode==='walk'&&state?.harnessMode)state={...state,harnessWeather:weather};options.onFlightChange?.(mode,siteIndex,weather);}
   function setChallenge(id){if(id&&!config.challenges?.[id])throw new Error(`Unknown flight challenge: ${id}`);challengeId=id;if(state&&config.modes[mode])state=startFlightChallenge(state,id,config);}
+  function setPilotMotion(value){if(!['steady','physical'].includes(value))throw new Error(`Unknown pilot posture: ${value}`);pilotMotion=value;pilotPosture.reset();}
   // Fixed renderer fields share the live wind clock/weather, while their
   // immutable floor/trail queries may be reused for this scene's lifetime.
   function fixedEnvironmentSampler(options){
     return createFixedAirSampler((x,y,z,terrain)=>sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,terrain),height,options);
   }
-  return {select,update,poll,clear,changeHarness,launchHere,setWeather,setChallenge,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {select,update,poll,clear,changeHarness,launchHere,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }
