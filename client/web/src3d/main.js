@@ -421,7 +421,8 @@ export async function main() {
   setView(new URLSearchParams(location.search).get('view') in views ? new URLSearchParams(location.search).get('view') : 'home');
   setLight('golden');
 
-  const meadowFocus=meadowViewFocus(camera,ground);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
+  const player=()=>navigation.mode==='orbit'?null:navigation.state;
+  const meadowFocus=meadowViewFocus(camera,ground,undefined,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
 
   let frame = 0, contextLost = false, stopped = false, lastFrame = 0, lastStamp = 0;
   let presenting=false;
@@ -437,7 +438,7 @@ export async function main() {
     const result=await warmScene({
       prepare(){
         terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();
-        meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
+        meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
         airCues.update(camera,0);ecology.update(camera,elapsed);sky.position.copy(camera.position);
         const wind=navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);
         style.wind.value.set(wind.wx/Math.max(1,flightConfig.wind.speed_mps),-wind.wy/Math.max(1,flightConfig.wind.speed_mps));
@@ -485,7 +486,7 @@ export async function main() {
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
     navigation.update(Math.min(delta,50)/1000);applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
-    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
+    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;

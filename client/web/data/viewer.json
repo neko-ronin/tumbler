@@ -131,7 +131,7 @@
     },
     {
       "path": "client/web/src3d/groundcover.js",
-      "sha256": "53476a668cfba6c76e501e801d8fa1799eb37b5e9cb318e2218158bbd61668e8"
+      "sha256": "455719197ed41f080338fe2f18e917040b3d01874a316f5d9928643a20902826"
     },
     {
       "path": "client/web/src3d/heights.js",
@@ -143,7 +143,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "924273241fa8e17ceb225d44c50beaaad4a51ab93c72b0136245547d59e20899"
+      "sha256": "ce829e95afbb72493209599da153bfbaf6e4efd38f6775858d81a3647ad6e475"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -639,7 +639,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "46ed51e",
+  "commit": "3fc5211",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

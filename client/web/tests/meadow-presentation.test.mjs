@@ -180,6 +180,27 @@ test('third-person grass coverage follows the ground at the centre of the camera
   }finally{close.mesh.geometry.dispose();close.mesh.material.dispose();}
 });
 
+test('a player keeps unfaded close meadow at their feet however low the chase camera dips',async()=>{
+  const {buildCloseMeadow,meadowViewFocus}=await import('../src3d/groundcover.js');
+  const cover={covered:new Uint8Array(128*128).fill(1),resolution:128,quad:8,offsetX:-512,offsetY:-512},ground={height:()=>0};
+  const close=buildCloseMeadow(cover,ground),camera=new T.PerspectiveCamera(),matrix=new T.Matrix4(),traits=close.mesh.geometry.attributes.meadowTraits;
+  try{
+    // Five metres behind, aimed at his back; airborne or not, x/y are his.
+    for(const [eye,z]of [[2.4,0],[1.3,0],[.5,0],[2.9,1.4]]){
+      camera.position.set(0,eye,5.4);camera.lookAt(0,1.1+z,0);camera.updateMatrixWorld();
+      if(eye<2)assert.ok(meadowViewFocus(camera,ground).length()>21,'the scenario is the grazing view ray that faded his flowers');
+      const focus=meadowViewFocus(camera,ground,undefined,{x:0,y:0,z});close.update(camera,focus);
+      assert.ok(focus.length()<1e-9,'detail centres on the ground beneath him');
+      let near=0;
+      for(let i=0;i<close.mesh.count;i++){
+        close.mesh.getMatrixAt(i,matrix);const root=new T.Vector3().setFromMatrixPosition(matrix);if(Math.hypot(root.x,root.z)>12)continue;near++;
+        assert.ok(root.distanceTo(focus)<27+(traits.getY(i)-1)*40,'no plant near him has begun its fade');
+      }
+      assert.ok(near>200,`his surroundings stay populated: ${near}`);
+    }
+  }finally{close.mesh.geometry.dispose();close.mesh.material.dispose();}
+});
+
 test('canopy tiles keep ground-tangent roots, respect the stamp and retain overlapping transforms',async()=>{
   const {buildGrassCanopy}=await import('../src3d/grass-canopy.js');
   const cover={covered:new Uint8Array(8*8).fill(1),resolution:8,quad:8,offsetX:-32,offsetY:-32};cover.covered[27]=0;

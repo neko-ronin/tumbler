@@ -127,8 +127,13 @@ export function deterministicTurn(row, column) {
 
 /** Ground at the centre of the rendered view, bounded to the local detail
  * budget. A view turned in place must move detail without moving world roots.
+ * With a player (core x/y), the ground beneath them instead: a chase camera
+ * aims above their back, so its ray meets the ground only beyond them, ~60 m
+ * on once the camera dips low, and a jump slides that point. Either way the
+ * flowers at their feet faded out.
  */
-export function meadowViewFocus(camera,ground,result=new Vector3()){
+export function meadowViewFocus(camera,ground,result=new Vector3(),player=null){
+  if(player)return result.set(player.x,ground.height(player.x,player.y)??player.z,-player.y);
   if(!camera.getWorldDirection)return result.copy(camera.position).setY(ground.height(camera.position.x,-camera.position.z)??0);
   const direction=camera.getWorldDirection(new Vector3()),origin=camera.position;
   let previous=0;

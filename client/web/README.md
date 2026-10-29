@@ -19,6 +19,22 @@ Real-wing/controller calibration and inverted maneuvers remain open.
 
 ---
 
+# Character creation studio — local developer tool, 2026-10-28
+
+The [character studio](character-lab/README.md) now combines appearance creation,
+the existing animation lab, local GLB/clip inspection and saved designs. A
+versioned shared appearance recipe, an embeddable editor and a web presentation
+adapter are separated from developer diagnostics and persistence. The
+[independent player-editor preview](character-editor/preview.html) runs as static
+files with the same controls; game menu/save integration remains future work.
+Old animation workspaces and looks migrate without losing their settings.
+
+Run `python3.11 client/web/tools/character_lab_server.py --port 8067` and open
+<http://127.0.0.1:8067/client/web/character-lab/>. No new build dependencies,
+production game changes or deployment are included.
+
+---
+
 # Coupled pilot and wing — visual review, 2026-10-28
 
 The shared flight model now translates the pilot and wing independently,
