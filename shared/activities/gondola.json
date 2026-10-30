@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "units": "metres, seconds",
+  "note": "The Granite Ridge gondola: a detachable two-track ropeway from the tree village up to the Granite Ridge launch and the cirque rim. Stations are authored; towers are sited by shared/activities/gondola.js against the ground and the world's solids and crowns, so every client and test sites the same line. Cabins loop at constant speed and creep around each bullwheel for dwell_s, which is when riders board and step off.",
+  "stations": [
+    {"id": "village", "label": "Tree Village", "xy_m": [-650, 545], "exit_xy_m": [-668, 532]},
+    {"id": "ridge", "label": "Granite Ridge", "xy_m": [-340, 1600], "exit_xy_m": [-362, 1611], "launch": "granite-ridge"}
+  ],
+  "speed_mps": 6.0,
+  "dwell_s": 12.0,
+  "cabins": 28,
+  "track_m": 6.0,
+  "deck_m": 0.6,
+  "hanger_m": 4.2,
+  "cabin": {"width_m": 2.2, "length_m": 2.6, "height_m": 2.3, "seats": 8},
+  "sag": 0.012,
+  "tower": {"min_m": 14, "max_m": 64, "step_m": 4, "spacing_m": 20, "max_span_m": 420, "min_span_m": 60},
+  "clear_m": 8,
+  "corridor_m": 10,
+  "board_m": 6
+}

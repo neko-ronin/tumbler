@@ -22,6 +22,7 @@
     "fish": {"place": "river", "clip": "fish", "seconds": [60, 140], "effects": {"purpose": 0.4, "fun": 0.25}, "verb": "fish", "skill": "fish"},
     "play": {"place": "green", "clip": "play", "seconds": [20, 40], "effects": {"fun": 0.55, "energy": -0.15}, "verb": "play", "skill": "play"},
     "wander": {"place": "green", "clip": "idle", "seconds": [8, 20], "effects": {"fun": 0.15, "social": 0.05}, "verb": "wander"},
+    "gondola": {"place": "gondola", "clip": "gaze", "seconds": [30, 60], "effects": {"fun": 0.5, "energy": 0.1, "social": 0.1}, "verb": "ride the gondola for the view"},
     "fly": {"place": "launch", "clip": "harness", "seconds": [0, 0], "effects": {"thrill": 0.9, "fun": 0.4, "energy": -0.2}, "verb": "fly", "skill": "fly"}
   },
   "folk": [

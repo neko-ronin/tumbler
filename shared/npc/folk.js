@@ -9,13 +9,15 @@
  *
  * Agent control: observe(cat) returns a plain-JSON view of the cat and its
  * surroundings; command(cat, {verb, ...}) validates against VERBS and replaces
- * the plan. setController(cat, 'agent') stops the utility brain choosing, so an
+ * the plan. A gondola line (shared/activities/gondola.js), when given, carries
+ * pilots up to its launch and takes cats up for the view. setController(cat, 'agent') stops the utility brain choosing, so an
  * outside agent (an LLM, a script, a network peer) drives the cat entirely;
  * 'auto' lets the brain resume when the agent's plan runs out. Every decision
  * and outcome is an event in cat.events and world.onEvent, the agent's memory.
  */
 import {stepWalk,reharnessWalk,relaunchGround,relaunchRefusal,unharnessFlight,safeWalkGround} from '../activities/walk.js';
 import {launchFlight,stepFlight,sampleAir,canopySegment,canopyTouches} from '../activities/flight.js';
+import {boardGondola,rideAt} from '../activities/gondola.js';
 
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -40,7 +42,7 @@ function mulberry(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5>>>0;let t=a;t=M
 const hashSeed=text=>[...text].reduce((h,c)=>Math.imul(h^c.charCodeAt(0),16777619),2166136261);
 
 /** Places every cat can name, derived from data the core already owns. */
-export function createFolkWorld({config,worldmap,placement,flight,walk,height,ground=height,hitTest=null,onEvent=null}){
+export function createFolkWorld({config,worldmap,placement,flight,walk,height,ground=height,hitTest=null,gondola=null,onEvent=null}){
   if(config.version!==1)throw new Error(`Unsupported folk version: ${config.version}`);
   const homes={};
   for(const i of placement.instances)for(const tag of i.tags??[])homes[tag]=i.position_m.slice(0,2);
@@ -48,7 +50,7 @@ export function createFolkWorld({config,worldmap,placement,flight,walk,height,gr
   if(used.some(h=>!h))throw new Error('folk.json names a home that placement.json does not have');
   const green=[used.reduce((s,h)=>s+h[0],0)/used.length,used.reduce((s,h)=>s+h[1],0)/used.length];
   const river=(worldmap.water?.bodies??[]).find(b=>b.kind==='river');
-  return {config,worldmap,flight,walk,height,ground,hitTest,onEvent,homes,green,river,time:0,focus:null,cats:[]};
+  return {config,worldmap,flight,walk,height,ground,hitTest,gondola,onEvent,homes,green,river,time:0,focus:null,cats:[]};
 }
 
 /** The nearest dry bank point of the river to p, standing back from the water's edge. */
@@ -99,7 +101,8 @@ export function createFolk(world,models,{seed=1}={}){
     let view=at(toGreen+Math.PI,40),viewZ=-Infinity;
     for(let k=0;k<12;k++){const p=at(k/12*Math.PI*2,90+60*random()),h=world.height(...p);if(Number.isFinite(h)&&h>viewZ){view=p;viewZ=h;}}
     const cat={id:f.id,name:model.name,bio:f.bio,model:model.asset,height_m:model.height_m,gaits:model.ground_speed_mps,traits:f.traits,skills:f.skills,pace:f.pace??1,flightPlan:f.flight??null,
-      places:{home:spot,garden:openSpot(world,home,toGreen+Math.PI/2,14),view,river:riverBank(world,home),green:world.green,launch:null},
+      places:{home:spot,garden:openSpot(world,home,toGreen+Math.PI/2,14),view,river:riverBank(world,home),green:world.green,launch:null,
+        gondola:world.gondola?.stations[0].xy_m.slice()??null},
       needs:Object.fromEntries(NEEDS.map(k=>[k,.45+.4*random()])),
       body:{mode:'walk',state:{x:spot[0],y:spot[1],z,heading:toGreen+Math.PI,speed:0,grounded:true,jumpPhase:'grounded'},clip:'idle',clipSpeed:0,face:null},
       controller:'auto',plan:[],step:null,activity:null,last:null,events:[],random,index,said:null};
@@ -185,6 +188,7 @@ function available(world,cat,id){
   if(a.skill&&!cat.skills.includes(a.skill))return false;
   if(id==='fly'&&(!cat.flightPlan||!world.flight.modes[cat.flightPlan.mode]))return false;
   if(id==='visit')return world.cats.length>1;
+  if(id==='gondola')return !!world.gondola;
   return !!(a.place==='here'||a.place==='friend'||cat.places[a.place]||a.place==='green');
 }
 function score(world,cat,id){
@@ -215,7 +219,13 @@ function planFor(world,cat,id,options={}){
   if(id==='fly'){
     const mode=options.mode??cat.flightPlan?.mode,site=options.site??cat.flightPlan?.site;
     const launch=site&&site!==cat.flightPlan?.site?launchPlace(world,{...cat,flightPlan:{site}}):cat.places.launch;
-    return [{kind:'go',to:launch,pace:'run',label:'launch'},{kind:'fly',mode,site,effects:a.effects,activity:id},{kind:'go',to:'home',pace:'walk'}];
+    return [...liftTo(world,cat,launch),{kind:'go',to:launch,pace:'run',label:'launch'},{kind:'fly',mode,site,effects:a.effects,activity:id},{kind:'go',to:'home',pace:'walk'}];
+  }
+  if(id==='gondola'){
+    const [low,high]=world.gondola.stations;
+    return [{kind:'go',to:low.xy_m,pace:'walk',within:world.gondola.config.board_m*.6},{kind:'gondola',from:0,to:1},
+      {kind:'do',clip:a.clip,seconds,effects:a.effects,activity:id},
+      {kind:'go',to:high.xy_m,pace:'stroll',within:world.gondola.config.board_m*.6},{kind:'gondola',from:1,to:0},{kind:'go',to:'home',pace:'walk'}];
   }
   if(a.place==='friend'){
     const friend=options.friend??friendFor(world,cat);if(!friend)return null;
@@ -225,6 +235,14 @@ function planFor(world,cat,id,options={}){
   if(a.place!=='here')steps.push({kind:'go',to:a.place==='green'?placePoint(world,cat,'green'):a.place,pace:a.place==='home'&&cat.needs.energy<.25?'stroll':'walk'});
   steps.push({kind:'do',clip:a.clip,seconds,effects:a.effects,activity:id});
   return steps;
+}
+
+/** Ride the gondola first when its top station is near `target` and the walk to its bottom is much shorter. */
+function liftTo(world,cat,target){
+  const line=world.gondola;if(!line||!target)return [];
+  const [low,high]=line.stations,here=[cat.body.state.x,cat.body.state.y];
+  if(dist(high.xy_m,target)>150||dist(here,low.xy_m)+dist(high.exit_xy_m,target)+300>dist(here,target))return [];
+  return [{kind:'go',to:low.xy_m,pace:'walk',within:line.config.board_m*.6},{kind:'gondola',from:0,to:1}];
 }
 
 function begin(world,cat,plan,activity,source){
@@ -251,6 +269,7 @@ export function command(world,cat,cmd){
   const fail=error=>{emit(world,cat,'command_refused',{verb:cmd?.verb,error});return {ok:false,error};};
   if(!cmd||typeof cmd!=='object'||!Object.hasOwn(VERBS,cmd.verb))return fail(`verb must be one of ${Object.keys(VERBS).join(', ')}`);
   if(cat.body.mode==='flight'&&cmd.verb!=='say')return fail('cannot change plans while flying; wait for the landed event');
+  if(cat.body.mode==='gondola'&&cmd.verb!=='say')return fail('cannot change plans in a gondola cabin; wait for the rode_gondola event');
   const pace=cmd.pace??'walk';if(!PACES.includes(pace))return fail('pace must be stroll, walk or run');
   let plan;
   switch(cmd.verb){
@@ -483,6 +502,28 @@ function fly(world,cat,step,dt){
   return false;
 }
 
+/** Wait at the station for a cabin, ride it, and step off at the far station's exit. */
+function rideGondola(world,cat,step){
+  const line=world.gondola,s=cat.body.state;
+  if(!line){emit(world,cat,'path_failed',{reason:'no gondola'});return true;}
+  if(!step.ride){step.ride=boardGondola(line,step.from,world.time);emit(world,cat,'gondola_waiting',{station:line.stations[step.from].id,wait_s:Math.round(step.ride.wait_s)});}
+  const r=rideAt(line,step.ride,world.time);
+  if(r.waiting){cat.body.state={...s,speed:0};return false;}
+  if(!r.done){
+    // Riders sharing a cabin stand at their own place in it.
+    const sharing=world.cats.filter(c=>c.step?.ride?.cabin===step.ride.cabin&&c.body.mode==='gondola'),seat=Math.max(0,sharing.indexOf(cat));
+    const along=(seat%3-1)*.7,across=seat>2?.5:-.3;
+    if(cat.body.mode!=='gondola')emit(world,cat,'gondola_boarded',{station:line.stations[step.from].id,cabin:step.ride.cabin});
+    cat.body={...cat.body,mode:'gondola',state:{x:r.x+Math.cos(r.heading)*along-Math.sin(r.heading)*across,y:r.y+Math.sin(r.heading)*along+Math.cos(r.heading)*across,
+      z:r.floor_z,heading:r.heading+Math.PI/2,speed:0,grounded:true,jumpPhase:'grounded'}};
+    return false;
+  }
+  const [x,y]=r.exit_xy_m,z=world.height(x,y)??world.ground(x,y);
+  cat.body={...cat.body,mode:'walk',state:{x,y,z,heading:r.heading,speed:0,grounded:true,jumpPhase:'grounded'}};
+  emit(world,cat,'rode_gondola',{to:r.to.id});
+  return true;
+}
+
 function perform(world,cat,step,dt){
   step.t=(step.t??0)+dt;
   for(const [k,v] of Object.entries(step.effects??{}))cat.needs[k]=clamp(cat.needs[k]+v*dt/Math.max(1,step.seconds));
@@ -494,6 +535,7 @@ function perform(world,cat,step,dt){
 function clipFor(world,cat){
   const b=cat.body,s=b.state;
   if(b.mode==='flight')return s.launching&&s.launchStage==='running'?'run':s.grounded?'idle':'harness';
+  if(b.mode==='gondola')return 'gaze';
   const step=cat.step;
   if(step?.kind==='do'&&!(s.speed>.2))return step.clip;
   const speed=s.speed??0,cadence=world.config.walk.cadence;
@@ -523,6 +565,7 @@ export function stepFolk(world,dt,focus=null){
     let done=false;
     if(step?.kind==='go')done=walkTo(world,cat,step,dt);
     else if(step?.kind==='fly')done=fly(world,cat,step,dt);
+    else if(step?.kind==='gondola')done=rideGondola(world,cat,step);
     else if(step?.kind==='do'){cat.body.state={...cat.body.state,speed:0};done=perform(world,cat,step,dt);}
     else if(!step){cat.body.state={...cat.body.state,speed:0};cat.body.face=null;}
     if(done){

@@ -41,12 +41,12 @@ function puppet(asset,model){
     dispose(){root.traverse(n=>{if(n.isMesh){n.geometry.dispose();n.material.dispose();}});}};
 }
 
-export async function createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig,height,ground,hitTest,assets,scene,camera,canvas}){
+export async function createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig,height,ground,hitTest,gondola=null,assets,scene,camera,canvas}){
   const config=await fetchData('shared/npc/folk.json');
   const models=await fetchData(config.models);
   const bytes=await Promise.all(models.models.map(m=>fetchData(`shared/geometry/${m.asset}`,false)));
   const events=[];
-  const world=createFolkWorld({config,worldmap,placement,flight:flightConfig,walk:walkConfig,height,ground,hitTest,
+  const world=createFolkWorld({config,worldmap,placement,flight:flightConfig,walk:walkConfig,height,ground,hitTest,gondola,
     onEvent:e=>{events.push(e);if(events.length>256)events.shift();}});
   const cats=createFolk(world,models,{seed:Math.floor(Math.random()*1e9)});
   const byModel=Object.fromEntries(models.models.map(m=>[m.id,m]));

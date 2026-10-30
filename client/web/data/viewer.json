@@ -7,7 +7,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "36f94e97391029043690ff627920c567464f3cfb96f5c636a267a0d13e300136"
+      "sha256": "a0b11e621164022bdfd66aa611f8f9362354498aa449a39f720496fcec1e10d8"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -99,7 +99,7 @@
     },
     {
       "path": "client/web/src3d/folk.js",
-      "sha256": "dc0a2207e09b0fd3af1f4720a2423a4bc1dbd0d78e8da5b9bfbff20832eac946"
+      "sha256": "7585c834fbe9e8318ce1e116aaf3418b8f82db5ca9e6a1a7e728938f3f57da08"
     },
     {
       "path": "client/web/src3d/forest-field.js",
@@ -124,6 +124,10 @@
     {
       "path": "client/web/src3d/glb.js",
       "sha256": "96df4247620323788caaad027ee998ff86b70f5d60c63551127c3054e6059084"
+    },
+    {
+      "path": "client/web/src3d/gondola.js",
+      "sha256": "9b687585b25f9047337459ac4f969745d993a6e2b6d2a7ab9ebb8342fc3d785d"
     },
     {
       "path": "client/web/src3d/granite-shading.js",
@@ -151,7 +155,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "6b48ada573af5da451ae085f73493bb65bc8e549e89c247f1110f29a692d2356"
+      "sha256": "2bac8654a03b447c09a40e9a382da6e663ec4f667d162e2e3c56e532c8f96681"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -159,7 +163,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "f6a6dedca39e29ce0f26a0a91f2b6e768982eec656c74042a510835a75294c93"
+      "sha256": "ac9e5438a4a6649deb96e9cd41a8765e96727a19f87278a4c28189fa23f4705a"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -272,6 +276,14 @@
     {
       "path": "shared/activities/flight.json",
       "sha256": "1ab250cad06469bddc0ea884a8e53ad5b2d0f8fd8bf402fabe497d810df164ae"
+    },
+    {
+      "path": "shared/activities/gondola.js",
+      "sha256": "856b8eae02a6e7ba6c46bae110ffeb64a6d0f1b43737e06d4c0457e291ef2921"
+    },
+    {
+      "path": "shared/activities/gondola.json",
+      "sha256": "8c5ab32230f6dcea88908d43de4468cc3d5c8022e853ed0ca58a862a3f4b4be5"
     },
     {
       "path": "shared/activities/moves.js",
@@ -407,95 +419,99 @@
     },
     {
       "path": "shared/geometry/granite/bedrock_-1_4.glb",
-      "sha256": "4fa1df8602d23a944617edc353784b245ebbd640d5277d2f6572468feda376fa"
+      "sha256": "867eede2ee567b0b5eb4411eb036f77f99e5e5fe042aa781e8f5d1cc6b4f0c42"
     },
     {
       "path": "shared/geometry/granite/bedrock_-2_3.glb",
-      "sha256": "9e90a18a5420be19214667682c7266b899a13c6c60ac87b95e0ef9ae2d73ce4f"
+      "sha256": "e22aeaac297d8b5a1fa6b33784f3abb607e46a712608f62a7a59ece3dfe1c412"
     },
     {
       "path": "shared/geometry/granite/bedrock_-2_4.glb",
-      "sha256": "e07922d72e24d94e8283da4dc4349f3ad426abe71691c1651eef9d1f22b72336"
+      "sha256": "61238d6929c6bc866ca2169bb185e5ae0515666f80fc1276b62104983b9f9ddb"
     },
     {
       "path": "shared/geometry/granite/bedrock_-4_5.glb",
-      "sha256": "913bc1135b5dccb62baccfc1d8b2153cc3dd7779bb69a79a061ac2c19d640705"
+      "sha256": "b7108df9385715e22e71c28e08f7e6072eb37d2e08a1dd083b19c91535bf724f"
     },
     {
       "path": "shared/geometry/granite/bedrock_-5_4.glb",
-      "sha256": "7069513fcfd0ef109c6ee1b42603db138010e1539cefbabcbe3e9488ff812cd6"
+      "sha256": "90ec558f3862b5f04f9c3b91458d3faf8332c7ee2eedbd103db60c69d78b2f66"
     },
     {
       "path": "shared/geometry/granite/bedrock_-5_5.glb",
-      "sha256": "d2e785ad70864fc563cdda3a08b507393d2396647bff89ca0e0f46649cad70d7"
+      "sha256": "d0dd789f56b7ccd103941fd9c2eb2e1061e506920aa16cb8e33ca756439a6fc6"
     },
     {
       "path": "shared/geometry/granite/bedrock_-5_6.glb",
-      "sha256": "62231638c1019157183d97217ec93f1553d3d630235f50fdaa7438519860afce"
+      "sha256": "aa2b6ccfe3487540c9ee3542786f49932ddf2dc8e9a0bbe60a852f8e3368dc32"
     },
     {
       "path": "shared/geometry/granite/bedrock_-6_5.glb",
-      "sha256": "abdfe81dddab36a7f9b6e6d1e6de545049f759041558c093b53b238b42c02747"
+      "sha256": "b3b5a2fd15337250592dde0988615ea2ca9ea87df6bb3adf6da6e8ed0e288aa7"
     },
     {
       "path": "shared/geometry/granite/bedrock_-6_6.glb",
-      "sha256": "4826486ae8af3aa4f11dd951873b795642428282e2982e0de577ed3852675ca3"
+      "sha256": "c0bec843c7c32ec7ec0afffeca84d535cc695739b0a760d51c6ec57b9333b206"
     },
     {
       "path": "shared/geometry/granite/bedrock_-7_5.glb",
-      "sha256": "ae0472f4c4918ebbbc42d071e6c332fe5ddf24c6817b721c9a8eb7073c01d709"
+      "sha256": "d66421ecfbaa0abcba6ff2b5bcc32fad02d6bd8a5b13ecf1a32dfb68375b1f16"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-7_6.glb",
+      "sha256": "02dd66117ee0ca337c044b5f338342f66e23d7b981a017c2eae3caf8cc2c2a68"
     },
     {
       "path": "shared/geometry/granite/bedrock_1_2.glb",
-      "sha256": "b506ac010bd98d2b122628ee5dce31a7e1121107866d2d6486a66a465b7b6295"
+      "sha256": "0cd04fce7b8f9eb059014729579089c64ad9d192e44bc0ea5f13a0243e58149d"
     },
     {
       "path": "shared/geometry/granite/bedrock_1_3.glb",
-      "sha256": "ffb08b6d8c389b14590a7876d6dec94d0e674005feb1be510ae61b25509116da"
+      "sha256": "fb504919744abfaa47a5b51662285fbf4ef317923467e236b241837e20555c5d"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_2_2.glb",
+      "sha256": "27dc4713e4a23ccdf9b3e14df942fea9f4a3b6d95b432c7864ad3221dc7a059f"
     },
     {
       "path": "shared/geometry/granite/bedrock_2_3.glb",
-      "sha256": "b95edcb852a52dc1c397c2b7d1f87fdd17d8f30cfc75807cb85a25f465f2f02b"
+      "sha256": "35c7e36b130877022974ccc5f44ba91cf3cbc8957d6e1e3e202e11cfe568a1f8"
     },
     {
       "path": "shared/geometry/granite/bedrock_3_4.glb",
-      "sha256": "c54c55bcb1616ef533d27e72e67b2e4e7c2216dc097531af52bea9a9f8db3b25"
+      "sha256": "de2b7617df3c36e811e919c215946b1e25540b737b728e2a828675471a56034e"
     },
     {
       "path": "shared/geometry/granite/bedrock_3_5.glb",
-      "sha256": "af1ead6d37a3f943ab1abe1672fb3ded258ab06fb78c0156853cd9d85c16b479"
+      "sha256": "50fd712a706fb2901fbdd1c9c922b04cc4093612477672f552b6fd0bd2ddea16"
     },
     {
       "path": "shared/geometry/granite/bedrock_3_6.glb",
-      "sha256": "3fd7d985b543336c9f5c3b0381b6dbf619c9f3559c972909b671da839efe34a3"
+      "sha256": "53faeeb99d588b590abe2b17f58120d5852940dcbc2d4ee0d9bf751084c8159a"
     },
     {
       "path": "shared/geometry/granite/bedrock_4_4.glb",
-      "sha256": "2fd2ba29b07ef6b944c05d402f778cde1946fdbf6168da724991ef552ba8a576"
+      "sha256": "b418b9df2bbbcf9fe4d145d1cc824e3b5aec2d0f4d218c2fa1d8814b669bb3e2"
     },
     {
       "path": "shared/geometry/granite/bedrock_4_5.glb",
-      "sha256": "c1a8e69309fb7037d83ebcd13e1a45c4064e852d9087a82e3db7880ec466c1c2"
+      "sha256": "659f50a9229764607348e59ae1bf3a6465a229938ab9b6ec940e55e83ebfa15a"
     },
     {
       "path": "shared/geometry/granite/bedrock_4_6.glb",
-      "sha256": "c759b44e3ee9015e4d366d3e81efd46741ba06df4f607cf1ee956511426bf536"
+      "sha256": "70ac85f727164a6539ee9283dff53445b7a245532f573a7ae20cf81bc35cbc6e"
     },
     {
       "path": "shared/geometry/granite/bedrock_5_4.glb",
-      "sha256": "273908aa430e734b284ed8e0d6ce7d3f042592026068eed05c26bbe73481ec8d"
+      "sha256": "09527d99b5b480be95c4e14ff6ac465bb778f7f94d32eb7c28bece8b40b2f898"
     },
     {
       "path": "shared/geometry/granite/bedrock_5_5.glb",
-      "sha256": "9e098bd2ff87a61debb5074f19ba4ebf5abf5d96e7ca9a0fa199d0ad5579925a"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_5_6.glb",
-      "sha256": "eb2b9403b63a85182749b4c6272ccc12fe00dd6c21b53d9828f71416695ccd8b"
+      "sha256": "560cfa9adfb9bf0edae9f15fc9ac45c65324441461e676fc8b6a743e7113d178"
     },
     {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "716f3d16c9a0e1eefb2f2c245b6c80418386af9d934e1b92fe454b60267871b0"
+      "sha256": "86620025e48219ace4b2029857e8435dae9cca091e7ec15cb47dc12f6aea4d69"
     },
     {
       "path": "shared/geometry/granite/surface.js",
@@ -503,7 +519,7 @@
     },
     {
       "path": "shared/geometry/granite/terrain_patch.glb",
-      "sha256": "c2d546d8a5743aa3f893318ee00d26489b90c444568754432336913804a9da3a"
+      "sha256": "512c038fdc21c8859d27ac20f0c15a184a2a221ba0f1dfcb108aa1c04ed842ea"
     },
     {
       "path": "shared/geometry/homestead/homestead.glb",
@@ -535,7 +551,7 @@
     },
     {
       "path": "shared/geometry/river-granite/river_granite.glb",
-      "sha256": "e79b305e04f908873c8574ff41298c0695e6d1a4d36e967ee0f26ea5c4ac30d7"
+      "sha256": "310582335be0477ecf6942a53c215b3dd60ca12daa843f5c93dc392b9cb3c18b"
     },
     {
       "path": "shared/geometry/sports/bicycle.glb",
@@ -647,11 +663,11 @@
     },
     {
       "path": "shared/npc/folk.js",
-      "sha256": "efed783bc10205b02bfb069208f9e369001d8f9ddbb8af0741b53d8ceec55bcf"
+      "sha256": "08fa1d810398cb518ef6fc6dfebdeb24ee58da48ffb61cc4633ac84a583dea37"
     },
     {
       "path": "shared/npc/folk.json",
-      "sha256": "7479453cff3cb39356f76d86012aa5564eed43f5537fff3a782535e515a90ec7"
+      "sha256": "f9dcfd28298e86637292845180b1e2426bda216db6121c1df3edea832076dda7"
     },
     {
       "path": "shared/world/out/forest_floor.json",
@@ -663,15 +679,15 @@
     },
     {
       "path": "shared/world/out/landscape_transition.json",
-      "sha256": "0ce2b989f67b616b46579cc8d9318b2750dceca2cfe585d9e9039009d21acb20"
+      "sha256": "daeecec9f068576cc7cdfe040e6a0d80364c6f510fa549c171c43b07e3cf992c"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "408d01f944ec913bf93c2807e141eb4ef17f9e96b8506ea2b41710fa99622c0f"
+      "sha256": "72786e0e30ff88d86b58aedd1210fba089fdc7b4bb233a9fc83b220721b97f50"
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "b0e04909235c3bd3b81b06ef734004ae5986b02f84dd15c403f94300d0cd5ad8"
+      "sha256": "c2a9d13e4fa68859f8a4076616ab2effda44c018099672dbd9770d9ae5e61c39"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -691,7 +707,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "684c2c6",
+  "commit": "ef46fad",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
@@ -700,7 +716,7 @@
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "408d01f944ec"
+      "sha256_12": "72786e0e30ff"
     },
     {
       "path": "shared/world/out/fields_albedo.png",

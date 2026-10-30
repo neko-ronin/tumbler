@@ -21,7 +21,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
   const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
   let pilotMotion=options.pilotMotion??'steady';
-  let presentedGrounded=null,landingClipLeft=0;
+  let presentedGrounded=null,landingClipLeft=0,carried=null;
   function frameMatrix(frame,out){
     flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
     flightUp.set(frame.up[0],frame.up[2],-frame.up[1]);
@@ -36,7 +36,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     if(down&&(['Space','KeyE'].includes(e.code))&&(e.repeat||blockedActions.has(e.code)))return;
     if(down&&e.code==='Space')queuedPrimary=true;if(down&&e.code==='KeyE')queuedHarness=true;
-    if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||riding()||config.modes[mode]))toggleView();
+    if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||mode==='gondola'||riding()||config.modes[mode]))toggleView();
     if(down&&!e.repeat&&e.code==='KeyF'&&mode==='walk')character.toggleKatana?.();
     if(down&&!e.repeat&&e.code==='KeyQ'&&mode==='walk')character.attack?.();
     if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyE'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
@@ -100,11 +100,22 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(launched){state=startFlightChallenge(launched,challengeId,config);previousFlight=null;accumulator=0;message='';return true;}
     message=relaunchRefusal(state,characterConfig.walk,config,walkHeight,hitTest)==='canopy'?'No room for the wing here':'Need clear, stable ground and room ahead to launch';return false;
   }
+  /** Ride something the core moves (a gondola cabin): {x, y, z, heading} of the floor he stands on, every frame. */
+  function carry(pose){
+    if(mode!=='gondola'){
+      clear();message='';parkedWing=null;mode='gondola';orbit.enabled=false;rig.visible=false;ride.rig.visible=false;
+      character.object.visible=true;camera.fov=62;camera.updateProjectionMatrix();snap=true;yaw=0;pitch=-.12;
+    }
+    carried=pose;state={x:pose.x,y:pose.y,z:pose.z,heading:pose.heading,speed:0};
+  }
+  /** Step off onto the ground at [x, y], on foot. */
+  function alight(x,y,heading){state={x,y,heading};carried=null;mode='gondola';select('walk');}
   /** Called on display refreshes between render frames: a controller A tap
    * shorter than one 30 FPS frame is latched like a keyboard tap. */
   function poll(){if([...(navigator.getGamepads?.()??[])].find(p=>p?.connected)?.buttons[0]?.pressed)queuedPrimary=true;}
   function update(dt){
     const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
+    if(mode==='gondola'){time+=Math.min(dt,.05);updateCarried(dt,pad);return;}
     if(!riding()){
       const edge=i=>{const now=pad?.buttons[i]?.pressed??false,was=flightPressed.has(i);now?flightPressed.add(i):flightPressed.delete(i);return now&&!was;};
       const previous=edge(14),next=edge(15),up=edge(12),down=edge(13),changeView=edge(3),changeWeather=edge(9);
@@ -204,6 +215,16 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }else follow(dt,(climbing?6.9:5.4)*characterConfig.scale,Math.PI/2,(climbing?.6:0)*characterConfig.scale);
     // Below the water's surface, the client tints and fogs the view (main.js).
     const overhead=water?.(camera.position.x,-camera.position.z);underwater=!!overhead&&camera.position.y<overhead.surface_z;
+  }
+  function updateCarried(dt,pad){
+    yaw-=dead(pad?.axes[2])*dt*1.6;pitch=Math.max(-1.35,Math.min(1.35,pitch-dead(pad?.axes[3])*dt*1.4));
+    const p=carried??state;
+    character.object.position.set(p.x,p.z,-p.y);character.object.quaternion.setFromAxisAngle(new T.Vector3(0,1,0),p.heading+Math.PI/2);
+    character.update(dt,'idle',0,{groundZ:p.z,groundHeight:()=>p.z});
+    character.object.visible=view==='chase';
+    if(view==='first'){camera.position.set(p.x,p.z+1.65*characterConfig.scale,-p.y);look.set(pitch,yaw,0);camera.quaternion.setFromEuler(look);snap=false;}
+    else follow(dt,9*characterConfig.scale,Math.PI/2,.4);
+    orbit.target.copy(camera.position);
   }
   function flightPose(){
     if(!previousFlight||state.grounded)return state;
@@ -316,5 +337,5 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function fixedEnvironmentSampler(options){
     return createFixedAirSampler((x,y,z,terrain)=>sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,terrain),height,options);
   }
-  return {select,update,poll,clear,changeHarness,launchHere,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {select,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }
