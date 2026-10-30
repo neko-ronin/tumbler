@@ -2,8 +2,8 @@
   "version": 1,
   "note": "The valley's other cats. Engine-neutral: homes name placement tags, places are derived from the world map, flight sites and thermals; nothing here adds geography. Looks live in shared/geometry/cat-folk/recipes.json. Needs run 0 (empty) to 1 (met).",
   "models": "shared/geometry/cat-folk/models.json",
-  "walk": {"stroll_mps": 1.1, "walk_mps": 1.9, "run_mps": 4.2, "arrive_m": 2.2, "stuck_s": 4, "give_up_s": 30, "near_m": 260},
-  "flight": {"max_air_s": 420, "final_agl_m": 70, "flare_agl_m": 3.5, "cruise_agl_m": 900, "landing_offset_m": 60},
+  "walk": {"cadence": 1.25, "personal_m": 1.1, "arrive_m": 2.2, "stuck_s": 4, "give_up_s": 30, "near_m": 260},
+  "flight": {"max_air_s": 420, "final_agl_m": 70, "flare_agl_m": 3.5, "roundout_s": 3.5, "touchdown_mps": 0.7, "flare_gain": 0.15, "cruise_agl_m": 900, "landing_offset_m": 60},
   "needs": {
     "energy": {"decay_per_min": 0.035},
     "social": {"decay_per_min": 0.05},

@@ -98,7 +98,7 @@ export function createFolk(world,models,{seed=1}={}){
     // A lookout: the highest standable point a short walk uphill from home.
     let view=at(toGreen+Math.PI,40),viewZ=-Infinity;
     for(let k=0;k<12;k++){const p=at(k/12*Math.PI*2,90+60*random()),h=world.height(...p);if(Number.isFinite(h)&&h>viewZ){view=p;viewZ=h;}}
-    const cat={id:f.id,name:model.name,bio:f.bio,model:model.asset,height_m:model.height_m,traits:f.traits,skills:f.skills,pace:f.pace??1,flightPlan:f.flight??null,
+    const cat={id:f.id,name:model.name,bio:f.bio,model:model.asset,height_m:model.height_m,gaits:model.ground_speed_mps,traits:f.traits,skills:f.skills,pace:f.pace??1,flightPlan:f.flight??null,
       places:{home:spot,garden:openSpot(world,home,toGreen+Math.PI/2,14),view,river:riverBank(world,home),green:world.green,launch:null},
       needs:Object.fromEntries(NEEDS.map(k=>[k,.45+.4*random()])),
       body:{mode:'walk',state:{x:spot[0],y:spot[1],z,heading:toGreen+Math.PI,speed:0,grounded:true,jumpPhase:'grounded'},clip:'idle',clipSpeed:0,face:null},
@@ -316,6 +316,9 @@ function walkTo(world,cat,step,dt){
   const cfg=world.config.walk,s=cat.body.state;
   const target=placePoint(world,cat,step.to);
   if(!target){emit(world,cat,'path_failed',{reason:'unknown place',to:step.to});return true;}
+  // A friend who has left to fly cannot be caught on foot; chasing reads as a blocked path after give_up_s.
+  const other=world.cats.find(c=>c.id===step.to);
+  if(other&&(other.activity==='fly'||other.body.mode==='flight')){cat.plan=[];emit(world,cat,'plan_cancelled',{why:`${other.id} went flying`});return true;}
   const here=[s.x,s.y],d=dist(here,target),within=step.within??cfg.arrive_m;
   step.t=(step.t??0)+dt;
   if(step.follow){if(step.t>=step.follow)return true;if(d<within){cat.body.state={...s,speed:0};cat.body.face=step.to;return false;}}
@@ -330,18 +333,38 @@ function walkTo(world,cat,step,dt){
     return true;
   }
   const detour=stuck>cfg.stuck_s?(Math.floor(stuck/3)%2?1:-1)*1.2:0;
-  const pace=PACES.includes(step.pace)?step.pace:'walk',speed=cfg[pace+'_mps']*cat.pace*(cat.needs.energy<.15?.7:1);
-  const angle=Math.atan2(target[1]-s.y,target[0]-s.x)+detour,ux=Math.cos(angle),uy=Math.sin(angle);
-  const near=!world.focus||dist(here,world.focus)<cfg.near_m;
-  if(near){
+  // Each cat walks at its own stride's ground speed, so the paws stay planted at any pace.
+  const pace=PACES.includes(step.pace)?step.pace:'walk',speed=cat.gaits[pace]*cfg.cadence*cat.pace*(cat.needs.energy<.15?.7:1);
+  const angle=Math.atan2(target[1]-s.y,target[0]-s.x)+detour;
+  let ux=Math.cos(angle),uy=Math.sin(angle);
+  // Personal space: lean away from any cat on foot within personal_m, and keep right, so two meeting head-on pass.
+  for(const o of world.cats){
+    if(o===cat||o.body.mode!=='walk')continue;
+    const ox=s.x-o.body.state.x,oy=s.y-o.body.state.y,od=Math.hypot(ox,oy),push=(cfg.personal_m-od)/cfg.personal_m*2;
+    if(od>1e-3&&push>0){ux+=(ox/od+Math.sin(angle)*.6)*push;uy+=(oy/od-Math.cos(angle)*.6)*push;}
+  }
+  const um=Math.hypot(ux,uy);if(um>1e-6){ux/=um;uy/=um;}
+  if(isNear(world,here)){
     const run=speed>world.walk.walk_mps,mag=clamp(speed/(run?world.walk.run_mps:world.walk.walk_mps));
     cat.body.state=stepWalk(s,{x:ux*mag,y:uy*mag,run},dt,world.walk,world.height,world.hitTest);
   }else{
     // ponytail: kinematic far walk ignores colliders; nobody can see it, and it keeps 8 cats cheap.
     const travel=Math.min(speed*dt,d),x=s.x+ux*travel,y=s.y+uy*travel,z=world.height(x,y);
-    cat.body.state=Number.isFinite(z)?{...s,x,y,z,heading:angle,speed,vx:ux*speed,vy:uy*speed}:{...s,speed:0};
+    cat.body.state=Number.isFinite(z)?{...s,x,y,z,heading:Math.atan2(uy,ux),speed,vx:ux*speed,vy:uy*speed}:{...s,speed:0};
   }
   return false;
+}
+
+const isNear=(world,p)=>!world.focus||dist(p,world.focus)<world.config.walk.near_m;
+
+/** A far walk ignores colliders, so a cat coming into view may stand inside a trunk
+ * or a wall: step it out to the nearest open ground before the full rules take over. */
+function settle(world,cat){
+  const s=cat.body.state,near=isNear(world,[s.x,s.y]),was=cat.far;cat.far=!near;
+  if(!was||!near||cat.body.mode!=='walk'||safeWalkGround(s.x,s.y,world.walk,world.height,world.hitTest)!==null)return;
+  const [x,y]=openSpot(world,[s.x,s.y],s.heading??0,2);
+  cat.body.state={...s,x,y,z:world.height(x,y),speed:0,vx:0,vy:0};
+  emit(world,cat,'settled',{from:[Math.round(s.x),Math.round(s.y)],to:[Math.round(x),Math.round(y)]});
 }
 
 function headingInto(world,at,fallback){
@@ -386,14 +409,30 @@ export function pilotInput(world,cat,s,air){
   // Below the spiral, turn and land into the wind as pilots do.
   if(final&&agl<20&&!circle){const w=sampleAir(world.flight,world.worldmap.wind.direction_deg,s,world.time,world.ground);if(Math.hypot(w.wx,w.wy)>.5)desired=Math.atan2(-w.wy,-w.wx);}
   // Look ahead a wing span wide; steer for the nearest clear heading to the one wanted.
-  if(world.hitTest&&!maneuver){
+  // Away from the field, rising ground counts too: a slope climbs faster than a wing, so ground rising to
+  // within half the height (up to 30 m) of the wing's level blocks, and a turn must be clear all the way
+  // round, since the short way back to a thermal can cross the hill the long way does not. On final both
+  // stay off: rolling ground near the field reads as blocked, and avoiding (full throttle, hard turns) among
+  // the trees there collapses more wings than it saves (real-map approaches, 2026-10-30).
+  if(!maneuver){
     const reach=110,span=world.flight.modes[s.mode].span_m/2+1,lift=world.flight.modes[s.mode].canopy_height_m*.6;
-    const climb=(s.vario??0)/Math.max(5,s.speed);
-    const clear=h=>!world.hitTest([s.x,s.y,s.z+lift],[s.x+Math.cos(h)*reach,s.y+Math.sin(h)*reach,s.z+lift+climb*reach],span)
-      &&[.35,.7,1].every(f=>openAir(world,[s.x+Math.cos(h)*reach*f,s.y+Math.sin(h)*reach*f,s.z+lift+climb*reach*f],span));
-    if(!clear(s.heading)||!clear(desired)){
-      const options=[0,.4,-.4,.8,-.8,1.2,-1.2,1.8,-1.8,2.6,-2.6].map(d=>s.heading+d).filter(clear);
-      if(options.length)desired=options.sort((p,q)=>Math.abs(wrap(p-desired))-Math.abs(wrap(q-desired)))[0];
+    const climb=(s.vario??0)/Math.max(5,s.speed),margin=final?-Infinity:Math.min(30,agl*.5);
+    const clear=h=>!world.hitTest?.([s.x,s.y,s.z+lift],[s.x+Math.cos(h)*reach,s.y+Math.sin(h)*reach,s.z+lift+climb*reach],span)
+      &&[.35,.7,1].every(f=>{const x=s.x+Math.cos(h)*reach*f,y=s.y+Math.sin(h)*reach*f,z=s.z+climb*reach*f;
+        return !(world.ground(x,y)+margin>Math.max(s.z,z))&&openAir(world,[x,y,z+lift],span);});
+    const offsets=[.4,.8,1.2,1.8,2.6,Math.PI],want=wrap(desired-s.heading),side=want<0?-1:1;
+    const reachable=side=>{const out=[];for(const d of offsets){if(!clear(s.heading+side*d))break;out.push(side*d);}return out;};
+    const short=final?null:reachable(side);
+    if(!clear(s.heading)||!clear(desired)||short&&Math.abs(want)>=(offsets[short.length]??Infinity)){
+      if(final){
+        const options=[0,.4,-.4,.8,-.8,1.2,-1.2,1.8,-1.8,2.6,-2.6].map(d=>s.heading+d).filter(clear);
+        if(options.length)desired=options.sort((p,q)=>Math.abs(wrap(p-desired))-Math.abs(wrap(q-desired)))[0];
+      }else{
+        const options=[...(clear(s.heading)?[0]:[]),...short,...reachable(-side)];
+        // Commit to a side: steering at a heading 180° away would leave the side to chance.
+        const best=options.sort((p,q)=>Math.abs(wrap(s.heading+p-desired))-Math.abs(wrap(s.heading+q-desired)))[0];
+        if(best!==undefined)desired=s.heading+Math.sign(best)*Math.min(Math.abs(best),1.2);
+      }
       air.avoiding=true;
     }else air.avoiding=false;
   }
@@ -403,8 +442,14 @@ export function pilotInput(world,cat,s,air){
   // Near the ground only on the way down: the climb-out is near the ground too.
   const landing=final||air.t>15&&(s.vario??0)<-.3;
   if(landing&&agl<flare*4)turn*=.3;
-  // A progressive flare: the last metres trade speed for a soft touchdown, without stalling high.
-  if(landing&&agl<flare){brake=clamp((flare-agl)/(flare-1));turn=0;}
+  // Round out: from flare*3 down, work the brakes to sink no faster than agl/τ, easing off when the wing
+  // balloons and adding when it drops, as a pilot does by feel. A height-only flare balloons fast wings.
+  // Full brake (a stall) only in the last metre and a half.
+  if(landing&&(agl<flare*3||air.flare!==undefined)){
+    const want=-Math.max(g.touchdown_mps,agl/g.roundout_s);
+    air.flare=clamp((air.flare??0)+(want-(s.vario??0))*g.flare_gain,0,agl<1.5?1:.8);brake=air.flare;
+    if(agl<flare)turn=0;
+  }
   const throttle=s.mode==='paramotor'?(air.avoiding?1:final?-1:agl<220?1:agl>320?-1:0):0;
   return {turn,brake,throttle,accelerator:0,maneuver};
 }
@@ -451,8 +496,10 @@ function clipFor(world,cat){
   if(b.mode==='flight')return s.launching&&s.launchStage==='running'?'run':s.grounded?'idle':'harness';
   const step=cat.step;
   if(step?.kind==='do'&&!(s.speed>.2))return step.clip;
-  const speed=s.speed??0,cfg=world.config.walk;
-  return speed<.15?'idle':speed<cfg.stroll_mps*1.3?'stroll':speed<cfg.walk_mps*1.5?'walk':'run';
+  const speed=s.speed??0,cadence=world.config.walk.cadence;
+  if(speed<.15)return 'idle';
+  // The gait whose natural pace is nearest, by ratio: the client scales playback by what is left over.
+  return PACES.reduce((a,b)=>Math.abs(Math.log(speed/(cat.gaits[b]*cadence)))<Math.abs(Math.log(speed/(cat.gaits[a]*cadence)))?b:a);
 }
 
 /** Advance every cat by dt seconds. `focus` is the camera's [x, y], for the far-walk shortcut. */
@@ -462,6 +509,7 @@ export function stepFolk(world,dt,focus=null){
   const decay=world.config.needs;
   for(const cat of world.cats){
     for(const k of NEEDS)cat.needs[k]=clamp(cat.needs[k]-decay[k].decay_per_min*dt/60*(.5+.5*(cat.traits[k]??1)));
+    settle(world,cat);
     if(!cat.step&&!cat.plan.length&&cat.controller==='auto')decide(world,cat);
     if(!cat.step&&cat.plan.length){
       cat.step={...cat.plan.shift()};

@@ -647,11 +647,11 @@
     },
     {
       "path": "shared/npc/folk.js",
-      "sha256": "a40dfe6159f7be1bd4c45d321369bf5d10b5489a936e6aca3c86190cde05b60c"
+      "sha256": "efed783bc10205b02bfb069208f9e369001d8f9ddbb8af0741b53d8ceec55bcf"
     },
     {
       "path": "shared/npc/folk.json",
-      "sha256": "033ce4d9a1bd5c8736da1a4ce1560ba4d691e4ed369565b3e50cf46d9e82ca77"
+      "sha256": "7479453cff3cb39356f76d86012aa5564eed43f5537fff3a782535e515a90ec7"
     },
     {
       "path": "shared/world/out/forest_floor.json",
@@ -691,7 +691,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "70e436a",
+  "commit": "d4d143f",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
