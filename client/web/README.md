@@ -1,3 +1,18 @@
+# Katana combat — visual review, 2026-10-29
+
+Drawn and running, Cat Ronin now holds the katana two-handed at his right hip
+with the blade trailing behind and his body leaning into the run. Click, Q or
+gamepad B strikes; pressing again during a strike chains three authored
+attacks: a crescent spin, a rising cut into a back somersault, and a leaping
+overhead cleave that lands with shock rings, sparks, hit-stop and camera shake.
+Strikes leave a light trail, the blade's glow swells in a fight and every blow
+has procedural sound. The tsuka is now two-handed, with an octagonal guard,
+collar and glowing pommel. Clips are solved by
+`shared/geometry/cat-ronin/author_katana.py`; the original Cat Ronin keeps its
+four katana clips and cannot strike. Feel, timing and FX intensity await human review.
+
+---
+
 # PF-06 and para items 2–5 — iteration, 2026-10-29
 
 Taut suspension drift now preserves centre-of-mass and relative angular

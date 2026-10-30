@@ -257,7 +257,7 @@ export async function main() {
       return y;
     })});
   };
-  const soundscape=createSoundscape(habitats);
+  const soundscape=createSoundscape(habitats),cameraShake=new T.Vector3();
   character.onCue=name=>soundscape.cue(name);
   document.getElementById('sound').addEventListener('click',async e=>{const enabled=await soundscape.toggle();e.target.textContent=enabled?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(enabled));});
   const modeSelect=document.getElementById('activity'),siteSelect=document.getElementById('launch-site');
@@ -267,7 +267,7 @@ export async function main() {
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
-  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / stick: walk · Shift / L3: run · Space / A: jump or moving skip · E / X: reharness · Drag / right stick: look',
+  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / stick: walk · Shift / L3: run · Space / A: jump or moving skip · F / Y: katana · Click / Q / B: strike (again to chain) · E / X: reharness · Drag / right stick: look',
     parakite:'A/D steer · W dive / S flare · Drag to look · Launch to restart',
     ski:'A/D carve · W pole · S snowplough · Shift tuck · Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
     bike:'A/D steer · W pedal · S brake · Shift crouch · Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
@@ -485,7 +485,13 @@ export async function main() {
     if (delta > 0 && delta < 500) { samples.push(delta); if (samples.length > 240) samples.shift(); }
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
-    navigation.update(Math.min(delta,50)/1000);applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
+    // A landed katana blow shakes the view; the offset is taken back off before
+    // navigation places the camera again, so it never drifts the follow.
+    camera.position.sub(cameraShake);
+    navigation.update(Math.min(delta,50)/1000);
+    const quake=navigation.mode==='walk'?character.shake??0:0;
+    cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
+    applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
     terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.

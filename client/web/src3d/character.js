@@ -4,6 +4,7 @@ import { buildAssetMeshes } from './glb.js';
 import { installCharacterSurfaces } from './character-surface.js';
 import { trunkRadiusAt } from '../../../shared/activities/climb.js';
 import { gaitFor } from '../../../shared/activities/walk.js';
+import { createKatanaFx } from './katana-fx.js';
 const PAW_RADIUS=.05,FOOT_REACH_M=.2,PLANTED_M=.03,BODY_RISE_S=.07,BODY_DROP_S=.006,FLIP_PIVOT_M=.85,FLIP_START=.42,FLIP_END=.85,ROLL_PIVOT_M=.42,ROLL_START=.12,ROLL_END=.78,STRETCH=.1,SQUASH=.16;
 
 export function createCharacter(asset, config) {
@@ -106,14 +107,30 @@ export function createCharacter(asset, config) {
   // Katana layer: holstered/drawn loops and the draw/sheathe transitions. It is
   // the only layer that moves the katana bones, and while the blade is out it
   // outweighs the body clip on the arm it authors. Cues ride in the clip.
-  const katana=config.katana;let katanaState=null,katanaAction=null,cueIndex=0;
+  // Drawn, a run swaps in the two-handed trailing stance; an attack chain plays
+  // its clips once each and moves his whole body. Both own every bone they author
+  // (attack_weight): a two-handed grip cannot share an arm with the body's swing.
+  // The run stance and attacks are newer than some models (the original Cat
+  // Ronin): a model without those clips keeps the four it has and cannot strike.
+  const katana=config.katana&&{...config.katana,run:actions[config.katana.run]?config.katana.run:null,attacks:(config.katana.attacks??[]).filter(name=>actions[name])};
+  let katanaState=null,katanaAction=null,cueIndex=0,attackIndex=-1,attackQueued=false,hitStop=0,shake=0;
   if(katana)for(const state of ['holstered','draw','drawn','sheathe'])if(!actions[katana[state]])throw new Error(`Ronin is missing katana clip ${katana[state]}`);
-  function playKatana(state,fade){
-    const next=actions[katana[state]].reset().setEffectiveWeight(state==='holstered'?1:katana.arm_weight);
-    if(state==='draw'||state==='sheathe'){next.setLoop(T.LoopOnce,1);next.clampWhenFinished=true;}
+  const fx=katana?createKatanaFx(object,model,config.scale):null;
+  const grounded=pose=>['idle','stroll','walk','run'].includes(pose);
+  function playKatana(state,fade,clip=katana[state]){
+    const next=actions[clip].reset().setEffectiveWeight(state==='holstered'?1:state==='attack'||state==='run'?katana.attack_weight??katana.arm_weight:katana.arm_weight);
+    if(['draw','sheathe','attack'].includes(state)){next.setLoop(T.LoopOnce,1);next.clampWhenFinished=true;}
     if(fade)next.fadeIn(fade);next.play();
     if(katanaAction&&katanaAction!==next)fade?katanaAction.fadeOut(fade):katanaAction.stop();
     katanaAction=next;katanaState=state;cueIndex=0;
+    if(state!=='attack'){attackIndex=-1;attackQueued=false;}
+  }
+  /** A clip cue: the effects and the hit-stop/shake it calls for, then the client's sound. */
+  function cue(name){
+    fx?.cue(name);
+    if(name==='impact'){hitStop=.11;shake=.2;}
+    else if(name==='swish_heavy')shake=Math.max(shake,.05);
+    api.onCue?.(name);
   }
   if(katana)playKatana('holstered',0);
   function update(dt, pose, speed = 0, context = {}) {
@@ -173,7 +190,8 @@ export function createCharacter(asset, config) {
     const leanGoal=['stroll','walk','run'].includes(pose)?Math.max(-.3,Math.min(.3,Math.atan(speed*(context.turnRate??0)/9.81)+knocked)):0;
     lean+=(leanGoal-lean)*(1-Math.exp(-dt*8));model.rotation.z=-lean;
     // Starts and stops: pitch into acceleration (forward), back against braking.
-    const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))
+    // Running with the blade drawn, he leans his whole body into it.
+    const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))+(pose==='run'&&katanaState==='run'?.14:0)
       // A dive points his (prone) body along its path: nose down going down.
       :pose==='swim'&&context.swim?.swimPhase==='dive'?Math.max(-1.2,Math.min(1.2,Math.atan2(-(context.swim.vz??0),Math.max(.1,context.swim.speed??0)))):0;
     // The chain's third jump somersaults forward, starting just before the apex
@@ -208,14 +226,22 @@ export function createCharacter(asset, config) {
     elapsed+=dt;blinkTime-=dt;
     if(blinkTime<=0&&config.blink_clip){const blink=actions[config.blink_clip];blink.reset().setLoop(T.LoopOnce,1).play();blink.clampWhenFinished=true;blinkTime=3.2+1.7*(.5+.5*Math.sin(elapsed*1.37));}
     if(katana&&pose==='flight'&&katanaState!=='holstered')playKatana('holstered',.1);
+    // An attack ends if he leaves the ground (a ledge, the water, a trunk).
+    if(katana&&katanaState==='attack'&&!grounded(pose))playKatana('drawn',.1);
+    if(katana?.run&&['drawn','run'].includes(katanaState)){const stance=pose==='run'?'run':'drawn';if(stance!==katanaState)playKatana(stance,.2);}
     for(const [bone,rotation] of legPose.reverse())bone.quaternion.copy(rotation);legPose.length=0;
-    mixer.update(dt);
+    // Hit-stop: on a landed blow the animation all but freezes for a beat; physics does not.
+    mixer.update(hitStop>0?dt*.06:dt);hitStop-=dt;shake*=Math.exp(-dt*9);
     if(katana){
       const events=katanaAction.getClip().userData?.events??[];
-      while(cueIndex<events.length&&events[cueIndex].time<=katanaAction.time)api.onCue?.(events[cueIndex++].name);
+      while(cueIndex<events.length&&events[cueIndex].time<=katanaAction.time)cue(events[cueIndex++].name);
       const finished=katanaAction.time>=katanaAction.getClip().duration-1e-4;
       if(finished&&katanaState==='draw')playKatana('drawn',.1);
       else if(finished&&katanaState==='sheathe')playKatana('holstered',.1);
+      else if(finished&&katanaState==='attack'){
+        if(attackQueued&&attackIndex+1<katana.attacks.length){attackQueued=false;playKatana('attack',.05,katana.attacks[++attackIndex]);}
+        else playKatana(pose==='run'&&katana.run?'run':'drawn',.15);
+      }
     }
     // Keep the animated soles above the actual terrain, including slope under
     // either foot. This adjusts the rendered puppet only; physics owns its arc.
@@ -286,6 +312,7 @@ export function createCharacter(asset, config) {
         bodyLift=clear;bodyWorld=null;model.position.y+=clear;
       }
     }
+    if(fx){object.updateWorldMatrix(true,true);fx.update(dt,katanaState==='attack',katanaState!=='holstered');}
     shadow.visible=pose!=='flight';
     if(shadow.visible){
       const gap=Math.max(0,object.position.y-(context.groundZ??object.position.y));
@@ -298,14 +325,27 @@ export function createCharacter(asset, config) {
       }
     }
   }
-  /** Draw when holstered, sheathe when drawn; ignored mid-transition. */
+  /** Draw when holstered, sheathe when drawn; ignored mid-transition or mid-attack. */
   function toggleKatana(){
     if(katanaState==='holstered')playKatana('draw',.08);
-    else if(katanaState==='drawn')playKatana('sheathe',.08);
+    else if(katanaState==='drawn'||katanaState==='run')playKatana('sheathe',.08);
     return katanaState;
   }
-  const api = { object, model, update, toggleKatana, onCue:null, mixer, actions,
+  /** Attack: draws first when holstered; drawn, starts the chain; mid-attack,
+   * queues the next blow of the chain for when this one ends. On the ground only. */
+  function attack(){
+    if(!katana?.attacks.length||!grounded(lastPose))return katanaState;
+    if(katanaState==='holstered')return toggleKatana();
+    if(katanaState==='drawn'||katanaState==='run'){playKatana('attack',.06,katana.attacks[0]);attackIndex=0;}
+    else if(katanaState==='attack')attackQueued=attackIndex+1<katana.attacks.length;
+    return katanaState;
+  }
+  const api = { object, model, update, toggleKatana, attack, onCue:null, mixer, actions,
+    /** True while an attack plays: the client holds his feet still. */
+    get attacking(){return katanaState==='attack';},
+    /** Camera shake amplitude (m) a landed blow asks for; decays by itself. */
+    get shake(){return shake;},
     /** Paws the playing body clip has planted now: [{bone, target}] (from glTF extras.contacts). */
-    get contacts(){const clip=current?.getClip(),t=current?.time??0;return (clip?.userData.contacts??[]).filter(c=>t>=c.start-1e-6&&t<=c.end+1e-6);}, get clip() { return clipName; },get bodyAction(){return current;},get tailAction(){return tailAction;},get katanaAction(){return katanaAction;},get tailClip(){return tailName;},get katana(){return katanaState;}, dispose() { mixer.stopAllAction(); mixer.uncacheRoot(model); surfaces.dispose();for(const s of skeletons)s.dispose();for(const t of textures)t.dispose();for(const g of geometries)g.dispose();plaid.dispose();shadeTexture.dispose();shadow.geometry.dispose();shadow.material.dispose(); } };
+    get contacts(){const clip=current?.getClip(),t=current?.time??0;return (clip?.userData.contacts??[]).filter(c=>t>=c.start-1e-6&&t<=c.end+1e-6);}, get clip() { return clipName; },get bodyAction(){return current;},get tailAction(){return tailAction;},get katanaAction(){return katanaAction;},get tailClip(){return tailName;},get katana(){return katanaState;}, dispose() { mixer.stopAllAction(); mixer.uncacheRoot(model); surfaces.dispose();for(const s of skeletons)s.dispose();for(const t of textures)t.dispose();for(const g of geometries)g.dispose();plaid.dispose();shadeTexture.dispose();shadow.geometry.dispose();shadow.material.dispose();fx?.dispose(); } };
   return api;
 }

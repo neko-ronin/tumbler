@@ -130,6 +130,55 @@ test('katana layer hands the chest handle to the paw, extends the blade with a c
   cat.dispose();
 });
 
+test('drawn katana runs two-handed with the blade trailing, and strikes chain crescent → rising → cleave', () => {
+  const cat=character(),cues=[];cat.onCue=name=>cues.push(name);
+  const node=name=>{let found;cat.model.traverse(n=>{if(n.name===name&&!found)found=n;});assert.ok(found,name);return found;};
+  const at=name=>{cat.object.updateMatrixWorld(true);return node(name).getWorldPosition(new T.Vector3());};
+  const settle=(state,pose='idle',speed=0)=>{for(let i=0;i<300&&cat.katana!==state;i++)cat.update(1/30,pose,speed);assert.equal(cat.katana,state);};
+  cat.update(.1,'idle');
+  assert.equal(cat.attack(),'draw','a strike while holstered draws the blade first');settle('drawn');
+  settle('run','run',9);for(let i=0;i<10;i++)cat.update(1/30,'run',9);
+  // Both paws on the handle (the left one toward the pommel), the blade pointing behind him.
+  const grip=at('katana'),tip=at('blade.4'),blade=tip.clone().sub(grip).normalize();
+  const facing=new T.Vector3(0,0,1).applyQuaternion(cat.object.quaternion);
+  assert.ok(blade.dot(facing)<-.5,'the blade trails behind the run');
+  const left=at('paw.L'),along=left.clone().sub(grip).dot(blade);
+  assert.ok(along<0&&left.distanceTo(grip.clone().addScaledVector(blade,along))<.08,'the left paw holds the handle behind the right');
+  settle('drawn','idle');
+  cues.length=0;
+  assert.equal(cat.attack(),'attack');assert.ok(cat.attacking);
+  assert.equal(cat.toggleKatana(),'attack','the blade is not sheathed mid-strike');
+  const clips=new Set();
+  for(let i=0;i<240&&cat.katana==='attack';i++){if(i%6===0)cat.attack();cat.update(1/30,'idle');clips.add(cat.katanaAction.getClip().name);}
+  assert.deepEqual([...clips].filter(n=>n.startsWith('katana_slash')),config.katana.attacks,'held presses chain all three, in order');
+  assert.equal(cat.katana,'drawn','the chain ends back on guard');assert.ok(!cat.attacking);
+  for(const cue of ['swish','spin','charge','swish_heavy','impact','flick'])assert.ok(cues.includes(cue),`cue ${cue}`);
+  assert.ok(cues.indexOf('impact')>cues.indexOf('swish_heavy'));
+  // One press plays one blow; airborne he cannot start one.
+  cat.attack();for(let i=0;i<120&&cat.katana==='attack';i++)cat.update(1/30,'idle');
+  assert.equal(cat.katana,'drawn');
+  cat.update(1/30,'jump');assert.equal(cat.attack(),'drawn','no strike from the air');
+  cat.dispose();
+});
+
+test('a landed blow draws its trail, sparks and shake beside the character, not inside his bounds', () => {
+  const cat=character(),scene=new T.Scene();scene.add(cat.object);
+  cat.update(.1,'idle');cat.toggleKatana();for(let i=0;i<120&&cat.katana!=='drawn';i++)cat.update(1/30,'idle');
+  const before=new T.Box3().setFromObject(cat.object);
+  const fx=scene.getObjectByName('katana_fx');assert.ok(fx&&fx.parent===scene,'effects live beside him');
+  const ribbon=fx.children.find(c=>c.isMesh&&c.geometry.index);let trail=false,sparks=false,shake=0;
+  cat.attack();
+  for(let i=0;i<240&&cat.katana==='attack';i++){
+    if(i%6===0)cat.attack();cat.update(1/30,'idle');
+    trail||=ribbon.visible&&ribbon.geometry.drawRange.count>12;shake=Math.max(shake,cat.shake);sparks||=fx.children.some(c=>c.isPoints&&c.visible);
+  }
+  assert.ok(trail,'the swing leaves a ribbon');assert.ok(sparks,'the cleave throws sparks');assert.ok(shake>.1,'and shakes the view');
+  for(let i=0;i<60;i++)cat.update(1/30,'idle');
+  assert.ok(cat.shake<.01,'the shake dies away');
+  assert.ok(new T.Box3().setFromObject(cat.object).min.y>before.min.y-.05,'his bounds hold no effect geometry');
+  cat.dispose();assert.equal(fx.parent,null,'disposed with him');
+});
+
 test('studio audition hooks put a named clip on one layer without stopping the others', () => {
   const cat=character();
   cat.update(.2,'walk',3.5);assert.equal(cat.clip,'walk');

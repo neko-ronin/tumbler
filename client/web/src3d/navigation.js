@@ -35,12 +35,15 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(down&&e.code==='Space')queuedPrimary=true;if(down&&e.code==='KeyE')queuedHarness=true;
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||riding()||config.modes[mode]))toggleView();
     if(down&&!e.repeat&&e.code==='KeyF'&&mode==='walk')character.toggleKatana?.();
+    if(down&&!e.repeat&&e.code==='KeyQ'&&mode==='walk')character.attack?.();
     if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyE'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
   const kd=e=>key(e,true),ku=e=>key(e,false);
   window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);window.addEventListener('blur',clear);
   document.addEventListener('visibilitychange',clear);window.addEventListener('gamepaddisconnected',clear);
-  const down=e=>{if(mode==='orbit')return;drag=true;canvas.focus();canvas.setPointerCapture(e.pointerId);};
-  const up=()=>drag=false;
+  // On foot, a click that does not drag the view is an attack.
+  let press=null;
+  const down=e=>{if(mode==='orbit')return;drag=true;press={x:e.clientX,y:e.clientY,t:e.timeStamp};canvas.focus();canvas.setPointerCapture(e.pointerId);};
+  const up=e=>{drag=false;if(press&&mode==='walk'&&e.button===0&&e.timeStamp-press.t<300&&Math.hypot(e.clientX-press.x,e.clientY-press.y)<6)character.attack?.();press=null;};
   const move=e=>{if(mode==='orbit'||(!drag&&document.pointerLockElement!==canvas))return;yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointermove',move);
   const dead=v=>Math.abs(v??0)<.14?0:Math.sign(v)*(Math.abs(v)-.14)/.86;
@@ -120,6 +123,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       if(changeView&&config.modes[mode])toggleView();
       if(changeView&&mode==='walk')character.toggleKatana?.();
       if(edge(11)&&mode==='walk')toggleView();
+      if(edge(1)&&mode==='walk')character.attack?.();
       if(changeWeather){const names=Object.keys(config.weather),i=names.indexOf(weather);setWeather(names[(i+1)%names.length]);}
     }
     if(mode==='orbit'){time+=Math.min(dt,.05);orbit.update();return;}
@@ -171,7 +175,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const movement=forward.clone().multiplyScalar(y).addScaledVector(side,x);
     const before=state.speed??0;
     const water=options.walkHeight?.waterAt;
-    state=stepMoves(state,{x:movement.x,y:-movement.z,run,jump:actionHeld,stick:[x,y],pitch},dt,characterConfig.walk,
+    // He plants his feet to attack: no steering or jumping until the blow ends.
+    const busy=character.attacking===true;
+    state=stepMoves(state,{x:busy?0:movement.x,y:busy?0:-movement.z,run:run&&!busy,jump:actionHeld&&!busy,stick:busy?[0,0]:[x,y],pitch},dt,characterConfig.walk,
       {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height});
     const climbing=state.mode==='climb',swimming=state.mode==='swim';
     character.object.position.set(state.x,state.z,-state.y);

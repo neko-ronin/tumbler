@@ -39,22 +39,24 @@ export function createSoundscape(habitats){
   }
   return {toggle,update,cue:name=>{if(enabled)cues?.(name);},dispose(){context?.close();}};
 }
-/** One-shot character cues (the katana's latch, slides and locks) on an existing AudioContext. */
+/** One-shot character cues (the katana's latch, slides, locks and its fighting) on an existing AudioContext. */
 export function createCuePlayer(context){
   const hiss=context.createBuffer(1,context.sampleRate,context.sampleRate),white=hiss.getChannelData(0);
   for(let i=0;i<white.length;i++)white[i]=Math.random()*2-1;
   let lockRun=0,lastLock=-1;
   return function cue(name){
     const t=context.currentTime,out=context.createGain();out.gain.value=.5;out.connect(context.destination);
-    const burst=(dur,type,frequency,q,gain,sweep)=>{
-      const source=context.createBufferSource();source.buffer=hiss;
-      const filter=context.createBiquadFilter();filter.type=type;filter.Q.value=q;filter.frequency.setValueAtTime(frequency,t);
-      if(sweep)filter.frequency.exponentialRampToValueAtTime(sweep,t+dur);
-      const level=context.createGain();level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(gain,t+.004);level.gain.exponentialRampToValueAtTime(.0001,t+dur);
-      source.connect(filter).connect(level).connect(out);source.start(t,Math.random()*.8);source.stop(t+dur+.02);
+    // attack: seconds to the peak (a swish swells, a click does not); at: delay from now.
+    const burst=(dur,type,frequency,q,gain,sweep,attack=.004,at=0)=>{
+      const s=t+at,source=context.createBufferSource();source.buffer=hiss;
+      const filter=context.createBiquadFilter();filter.type=type;filter.Q.value=q;filter.frequency.setValueAtTime(frequency,s);
+      if(sweep)filter.frequency.exponentialRampToValueAtTime(sweep,s+dur);
+      const level=context.createGain();level.gain.setValueAtTime(0,s);level.gain.linearRampToValueAtTime(gain,s+attack);level.gain.exponentialRampToValueAtTime(.0001,s+dur);
+      source.connect(filter).connect(level).connect(out);source.start(s,Math.random()*.8);source.stop(s+dur+.02);
     };
-    const ring=(dur,frequency,gain,type='sine')=>{
-      const tone=context.createOscillator();tone.type=type;tone.frequency.value=frequency;
+    const ring=(dur,frequency,gain,type='sine',glide)=>{
+      const tone=context.createOscillator();tone.type=type;tone.frequency.setValueAtTime(frequency,t);
+      if(glide)tone.frequency.exponentialRampToValueAtTime(glide,t+dur);
       const level=context.createGain();level.gain.setValueAtTime(gain,t);level.gain.exponentialRampToValueAtTime(.0001,t+dur);
       tone.connect(level).connect(out);tone.start(t);tone.stop(t+dur+.02);
     };
@@ -78,6 +80,31 @@ export function createCuePlayer(context){
       if(name==='seat')ring(.1,150,.2);
     }
     else if(name==='hum'){ring(.9,110,.05,'sawtooth');ring(.9,220,.04);}
+    // The fight: a blade through air is band-passed noise falling in pitch as it
+    // passes; heavier cuts are lower and longer with a felt thump under them.
+    else if(name==='swish'){burst(.24,'bandpass',2400,1.6,.55,520,.05);ring(.2,1250,.03,'sine',600);}
+    else if(name==='swish_heavy'){burst(.38,'bandpass',1500,1.2,.8,180,.07);burst(.3,'highpass',5200,.7,.12,2500,.05);ring(.28,95,.35,'sine',40);}
+    else if(name==='spin')for(let i=0;i<3;i++)burst(.16,'bandpass',2000-i*350,2,.35-.08*i,600,.03,.06+i*.09);
+    else if(name==='ring'||name==='flick'){
+      // Steel ringing after the cut: inharmonic partials, like a struck bar.
+      const k=name==='flick'?1.25:1;if(name==='flick')burst(.1,'bandpass',3400,3,.4,1300,.02);
+      ring(1.1,1830*k,.05);ring(.9,2950*k,.035);ring(.6,4410*k,.02);
+    }
+    else if(name==='charge'){
+      // Gathering power: a buzzing tone and its shimmer rising together.
+      const tone=context.createOscillator(),filter=context.createBiquadFilter(),level=context.createGain();
+      tone.type='sawtooth';tone.frequency.setValueAtTime(90,t);tone.frequency.exponentialRampToValueAtTime(360,t+.5);
+      filter.type='lowpass';filter.Q.value=6;filter.frequency.setValueAtTime(300,t);filter.frequency.exponentialRampToValueAtTime(3200,t+.5);
+      level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(.11,t+.35);level.gain.exponentialRampToValueAtTime(.0001,t+.62);
+      tone.connect(filter).connect(level).connect(out);tone.start(t);tone.stop(t+.65);
+      ring(.6,880,.025,'sine',2600);
+    }
+    else if(name==='impact'){
+      // The blow lands: a sharp crack, a falling boom, rumble and the blade's ring.
+      burst(.07,'highpass',3000,.7,.9);burst(.7,'lowpass',420,.8,.7,90,.01);
+      ring(.75,130,.9,'sine',34);ring(.35,62,.6,'triangle',30);ring(1.3,1620,.04);ring(1,2470,.03);
+    }
+    else if(name==='land'){burst(.14,'lowpass',500,.7,.5,150);ring(.16,88,.3,'sine',45);}
     else if(/^grunt[123]$/.test(name)){
       // A gruff cat effort grunt: a low voice through two mouth formants, roughened
       // by a fast flutter (the growl), over a breathy push. The chain's later jumps

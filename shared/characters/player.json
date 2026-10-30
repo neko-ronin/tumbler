@@ -199,7 +199,14 @@
     "draw": "katana_draw",
     "drawn": "katana_drawn",
     "sheathe": "katana_sheathe",
-    "arm_weight": 6
+    "arm_weight": 6,
+    "run": "katana_run",
+    "attacks": [
+      "katana_slash_crescent",
+      "katana_slash_rising",
+      "katana_slash_cleave"
+    ],
+    "attack_weight": 40
   },
   "eyepatch": {
     "worn": "hex",
