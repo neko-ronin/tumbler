@@ -170,7 +170,7 @@
   </div>
   <script type="module">
     document.getElementById('loading-retry').addEventListener('click',()=>location.reload());
-    try { const {main}=await import('./src3d/main.js');await main(); }
+    try { const {main}=await import(new URL('src3d/main.js',document.baseURI));await main(); }
     catch(error) {
       console.error(error);document.body.dataset.loading='error';
       document.getElementById('loading-title').textContent='A pause in the journey';
