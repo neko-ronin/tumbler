@@ -29,8 +29,11 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
   const clear=()=>{for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
-  function key(e,down){if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
-    if(!down)blockedActions.delete(e.code);
+  function key(e,down){
+    // A control may receive focus between press and release. Always retire
+    // the held key, while leaving form key presses to the form itself.
+    if(!down){blockedActions.delete(e.code);keys.delete(e.code);return;}
+    if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
     if(down&&(['Space','KeyE'].includes(e.code))&&(e.repeat||blockedActions.has(e.code)))return;
     if(down&&e.code==='Space')queuedPrimary=true;if(down&&e.code==='KeyE')queuedHarness=true;
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||riding()||config.modes[mode]))toggleView();

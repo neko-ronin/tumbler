@@ -1,0 +1,349 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "ume",
+      "name": "Grandmother Ume",
+      "age": "elder",
+      "coat": "tortoiseshell",
+      "asset": "cat-folk/ume.glb",
+      "height_m": 1.2933,
+      "hip_m": 0.4545,
+      "sole_y_m": 0,
+      "flight_attachment": {
+        "bone": "hips",
+        "position_m": [
+          0,
+          0.65,
+          0
+        ]
+      },
+      "clips": [
+        "idle",
+        "stroll",
+        "walk",
+        "run",
+        "harness",
+        "sit",
+        "gaze",
+        "nap",
+        "chat",
+        "wave",
+        "tend",
+        "fish",
+        "play",
+        "stretch",
+        "blink"
+      ],
+      "ground_speed_mps": {
+        "stroll": 0.4336,
+        "walk": 0.8321,
+        "run": 1.6177
+      },
+      "triangles": 21456,
+      "bytes": 892364,
+      "sha256": "2b1463c08aca3f8cf227568e47e4a9bf91e5ea860df70084768266fe78a1c9a6"
+    },
+    {
+      "id": "pip",
+      "name": "Pip",
+      "age": "kitten",
+      "coat": "tuxedo",
+      "asset": "cat-folk/pip.glb",
+      "height_m": 1.0468,
+      "hip_m": 0.2813,
+      "sole_y_m": 0,
+      "flight_attachment": {
+        "bone": "hips",
+        "position_m": [
+          0,
+          0.65,
+          0
+        ]
+      },
+      "clips": [
+        "idle",
+        "stroll",
+        "walk",
+        "run",
+        "harness",
+        "sit",
+        "gaze",
+        "nap",
+        "chat",
+        "wave",
+        "tend",
+        "fish",
+        "play",
+        "stretch",
+        "blink"
+      ],
+      "ground_speed_mps": {
+        "stroll": 0.3527,
+        "walk": 0.6698,
+        "run": 1.273
+      },
+      "triangles": 18988,
+      "bytes": 811888,
+      "sha256": "780f3385543ede59e5f2ae190af2d8b8cf0a50dcb417202a1b44076f4865b745"
+    },
+    {
+      "id": "saffi",
+      "name": "Saffi",
+      "age": "adult",
+      "coat": "calico",
+      "asset": "cat-folk/saffi.glb",
+      "height_m": 1.584,
+      "hip_m": 0.585,
+      "sole_y_m": 0,
+      "flight_attachment": {
+        "bone": "hips",
+        "position_m": [
+          0,
+          0.65,
+          0
+        ]
+      },
+      "clips": [
+        "idle",
+        "stroll",
+        "walk",
+        "run",
+        "harness",
+        "sit",
+        "gaze",
+        "nap",
+        "chat",
+        "wave",
+        "tend",
+        "fish",
+        "play",
+        "stretch",
+        "blink"
+      ],
+      "ground_speed_mps": {
+        "stroll": 0.7565,
+        "walk": 1.4366,
+        "run": 2.7301
+      },
+      "triangles": 23448,
+      "bytes": 920140,
+      "sha256": "b1e27ddecdc8df1369ad3bc8ebe802eec684f753e239312614dd529e453e3a84"
+    },
+    {
+      "id": "kiri",
+      "name": "Kiri",
+      "age": "youth",
+      "coat": "colorpoint",
+      "asset": "cat-folk/kiri.glb",
+      "height_m": 1.4877,
+      "hip_m": 0.5461,
+      "sole_y_m": 0,
+      "flight_attachment": {
+        "bone": "hips",
+        "position_m": [
+          0,
+          0.65,
+          0
+        ]
+      },
+      "clips": [
+        "idle",
+        "stroll",
+        "walk",
+        "run",
+        "harness",
+        "sit",
+        "gaze",
+        "nap",
+        "chat",
+        "wave",
+        "tend",
+        "fish",
+        "play",
+        "stretch",
+        "blink"
+      ],
+      "ground_speed_mps": {
+        "stroll": 0.7143,
+        "walk": 1.3566,
+        "run": 2.578
+      },
+      "triangles": 20892,
+      "bytes": 863912,
+      "sha256": "3905f7fa778ad56e75493d8fe65fe187a544d6b4d8f423710fed02a0c2453b7a"
+    },
+    {
+      "id": "mabel",
+      "name": "Mabel",
+      "age": "adult",
+      "coat": "van",
+      "asset": "cat-folk/mabel.glb",
+      "height_m": 1.4341,
+      "hip_m": 0.5272,
+      "sole_y_m": 0,
+      "flight_attachment": {
+        "bone": "hips",
+        "position_m": [
+          0,
+          0.65,
+          0
+        ]
+      },
+      "clips": [
+        "idle",
+        "stroll",
+        "walk",
+        "run",
+        "harness",
+        "sit",
+        "gaze",
+        "nap",
+        "chat",
+        "wave",
+        "tend",
+        "fish",
+        "play",
+        "stretch",
+        "blink"
+      ],
+      "ground_speed_mps": {
+        "stroll": 0.6764,
+        "walk": 1.2845,
+        "run": 2.441
+      },
+      "triangles": 22860,
+      "bytes": 934160,
+      "sha256": "9168b2392139a901ec66a71832f77191e75948cdf0e851313c27d874b065319d"
+    },
+    {
+      "id": "juno",
+      "name": "Juno",
+      "age": "adult",
+      "coat": "solid",
+      "asset": "cat-folk/juno.glb",
+      "height_m": 1.6467,
+      "hip_m": 0.5865,
+      "sole_y_m": 0,
+      "flight_attachment": {
+        "bone": "hips",
+        "position_m": [
+          0,
+          0.65,
+          0
+        ]
+      },
+      "clips": [
+        "idle",
+        "stroll",
+        "walk",
+        "run",
+        "harness",
+        "sit",
+        "gaze",
+        "nap",
+        "chat",
+        "wave",
+        "tend",
+        "fish",
+        "play",
+        "stretch",
+        "blink"
+      ],
+      "ground_speed_mps": {
+        "stroll": 0.7565,
+        "walk": 1.4366,
+        "run": 2.7301
+      },
+      "triangles": 23668,
+      "bytes": 944848,
+      "sha256": "34a9389997cb982e6df21e812ddd0f73bbd670112cf7b9f20be045bc6fe6afe4"
+    },
+    {
+      "id": "ash",
+      "name": "Brother Ash",
+      "age": "elder",
+      "coat": "smoke",
+      "asset": "cat-folk/ash.glb",
+      "height_m": 1.5147,
+      "hip_m": 0.519,
+      "sole_y_m": 0,
+      "flight_attachment": {
+        "bone": "hips",
+        "position_m": [
+          0,
+          0.65,
+          0
+        ]
+      },
+      "clips": [
+        "idle",
+        "stroll",
+        "walk",
+        "run",
+        "harness",
+        "sit",
+        "gaze",
+        "nap",
+        "chat",
+        "wave",
+        "tend",
+        "fish",
+        "play",
+        "stretch",
+        "blink"
+      ],
+      "ground_speed_mps": {
+        "stroll": 0.5,
+        "walk": 0.9594,
+        "run": 1.8651
+      },
+      "triangles": 21596,
+      "bytes": 893896,
+      "sha256": "147de414797da00d9ecdd88b7eea94d26c8d86dbcc785f83807bc78ec5645172"
+    },
+    {
+      "id": "tobu",
+      "name": "Tobu",
+      "age": "adult",
+      "coat": "bicolor",
+      "asset": "cat-folk/tobu.glb",
+      "height_m": 1.4964,
+      "hip_m": 0.525,
+      "sole_y_m": 0,
+      "flight_attachment": {
+        "bone": "hips",
+        "position_m": [
+          0,
+          0.65,
+          0
+        ]
+      },
+      "clips": [
+        "idle",
+        "stroll",
+        "walk",
+        "run",
+        "harness",
+        "sit",
+        "gaze",
+        "nap",
+        "chat",
+        "wave",
+        "tend",
+        "fish",
+        "play",
+        "stretch",
+        "blink"
+      ],
+      "ground_speed_mps": {
+        "stroll": 0.6675,
+        "walk": 1.2676,
+        "run": 2.4089
+      },
+      "triangles": 22472,
+      "bytes": 911300,
+      "sha256": "ad53c4d954f537eceda2357ffe24c5281f42fa31ca06524c71c983db8fead411"
+    }
+  ]
+}

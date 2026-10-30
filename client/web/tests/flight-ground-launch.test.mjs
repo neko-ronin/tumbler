@@ -101,3 +101,41 @@ test('touchdown preserves measured descent and ground speed before stopping',()=
   assert.ok(s.landingGroundSpeed>10);assert.equal(s.speed,0);
  }
 });
+
+test('powered ledge departure records the last running step before coupled flight',()=>{
+ const ledge=x=>x<12?0:-10,dt=1/120;
+ const before={...ready('paramotor'),x:11.99,launching:true,
+  launchTime:still.ground_launch.inflate_s,launchRunSpeed:8,
+  throttle:1,engine:1,engineWorkJ:123,launchWorkHead:2};
+ const next=stepFlight(before,{},dt,0,still,270,ledge);
+ assert.equal(next.grounded,false);assert.equal(next.launching,false);
+ const expectedWork=next.thrustN*(before.launchRunSpeed+next.launchRunSpeed)*.5*dt;
+ assert.ok(expectedWork>0);
+ assert.ok(Math.abs(next.engineWorkJ-before.engineWorkJ-expectedWork)<1e-10,'departure records actual motor work');
+ const expectedHead=(next.launchRunSpeed**2-before.launchRunSpeed**2)/(2*9.81);
+ assert.ok(Math.abs(next.launchWorkHead-before.launchWorkHead-expectedHead)<1e-10,'ledge adds running assistance, without a hop or height award');
+ const airborne=stepFlight(next,{},dt,dt,still,270,ledge);
+ assert.equal(airborne.coupled.initialEngineWorkJ,next.engineWorkJ,'coupled flight inherits the complete ground ledger');
+ assert.equal(before.engineWorkJ,123,'stepping preserves the input state');
+});
+
+test('distance-limited powered runs retain work for the final completed step',()=>{
+ const dt=1/120,before={...ready('paramotor'),launching:true,
+  launchTime:still.ground_launch.inflate_s,launchRunSpeed:8,
+  launchDistance:still.ground_launch.max_run_m-.001,
+  throttle:1,engine:1,engineWorkJ:123,launchWorkHead:2};
+ const next=stepFlight(before,{},dt,0,still,270,flat);
+ assert.ok(next.grounded&&next.launchAborted);assert.ok(next.x>before.x);
+ assert.ok(next.engineWorkJ>before.engineWorkJ,'an abort cannot erase motor work over travelled ground');
+ assert.ok(next.launchWorkHead>before.launchWorkHead,'completed running acceleration is recorded');
+});
+
+test('a blocked powered step spends no displacement work',()=>{
+ const before={...ready('paramotor'),launching:true,
+  launchTime:still.ground_launch.inflate_s,launchRunSpeed:8,
+  throttle:1,engine:1,engineWorkJ:123,launchWorkHead:2};
+ const next=stepFlight(before,{},1/120,0,still,270,flat,()=>({kind:'structure'}));
+ assert.ok(next.launchAborted&&next.grounded);
+ assert.equal(next.x,before.x);assert.equal(next.y,before.y);
+ assert.equal(next.engineWorkJ,before.engineWorkJ);assert.equal(next.launchWorkHead,before.launchWorkHead);
+});

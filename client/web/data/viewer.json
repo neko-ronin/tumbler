@@ -98,6 +98,10 @@
       "sha256": "fb4339a11f6c8044ad3b81f7a5b2eabbb053d2e2570ce43a597fc3ee28fba134"
     },
     {
+      "path": "client/web/src3d/folk.js",
+      "sha256": "dc0a2207e09b0fd3af1f4720a2423a4bc1dbd0d78e8da5b9bfbff20832eac946"
+    },
+    {
       "path": "client/web/src3d/forest-field.js",
       "sha256": "c04f8714322f8f7c08a24b2e96b9d51604ff91e3e49baefd9a7cfbff05915dee"
     },
@@ -147,7 +151,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "5ada29f43764709aca36a6103e9ccd716fc9cb7e9977a9d203c154fde16b3d07"
+      "sha256": "6b48ada573af5da451ae085f73493bb65bc8e549e89c247f1110f29a692d2356"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -155,7 +159,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "a343128f1758efbc9c3e3e4b38ecda57909c6ac6470fb62d69b392bd80af9209"
+      "sha256": "f6a6dedca39e29ce0f26a0a91f2b6e768982eec656c74042a510835a75294c93"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -227,7 +231,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "5126dbafe5ba6900cb3abd56a5d9f94f96dc06b542b0ac41a5cd29341e88260c"
+      "sha256": "a99f277010854f440614f457d60b3353ceac725078ca4ed11008024cffeb63f1"
     },
     {
       "path": "client/web/src3d/world.js",
@@ -263,7 +267,7 @@
     },
     {
       "path": "shared/activities/flight.js",
-      "sha256": "59ae063faa77cdf7b843598fa9c03197e02f3d364a04de1dc4b2667420c02304"
+      "sha256": "ac3a325a5b3b177f8113b3462dd82592ef8142a34ce5dab90faf3b4d1dadb627"
     },
     {
       "path": "shared/activities/flight.json",
@@ -336,6 +340,42 @@
     {
       "path": "shared/geometry/blimp/blimp.glb",
       "sha256": "3bd255e08b8c5837696084c9167b228490833506d0be0721438f175b52abb160"
+    },
+    {
+      "path": "shared/geometry/cat-folk/ash.glb",
+      "sha256": "147de414797da00d9ecdd88b7eea94d26c8d86dbcc785f83807bc78ec5645172"
+    },
+    {
+      "path": "shared/geometry/cat-folk/juno.glb",
+      "sha256": "34a9389997cb982e6df21e812ddd0f73bbd670112cf7b9f20be045bc6fe6afe4"
+    },
+    {
+      "path": "shared/geometry/cat-folk/kiri.glb",
+      "sha256": "3905f7fa778ad56e75493d8fe65fe187a544d6b4d8f423710fed02a0c2453b7a"
+    },
+    {
+      "path": "shared/geometry/cat-folk/mabel.glb",
+      "sha256": "9168b2392139a901ec66a71832f77191e75948cdf0e851313c27d874b065319d"
+    },
+    {
+      "path": "shared/geometry/cat-folk/models.json",
+      "sha256": "2ae72314305a2c8f157ad558d330314e95112339cccae7ca38229b07b6d62ba8"
+    },
+    {
+      "path": "shared/geometry/cat-folk/pip.glb",
+      "sha256": "780f3385543ede59e5f2ae190af2d8b8cf0a50dcb417202a1b44076f4865b745"
+    },
+    {
+      "path": "shared/geometry/cat-folk/saffi.glb",
+      "sha256": "b1e27ddecdc8df1369ad3bc8ebe802eec684f753e239312614dd529e453e3a84"
+    },
+    {
+      "path": "shared/geometry/cat-folk/tobu.glb",
+      "sha256": "ad53c4d954f537eceda2357ffe24c5281f42fa31ca06524c71c983db8fead411"
+    },
+    {
+      "path": "shared/geometry/cat-folk/ume.glb",
+      "sha256": "2b1463c08aca3f8cf227568e47e4a9bf91e5ea860df70084768266fe78a1c9a6"
     },
     {
       "path": "shared/geometry/cat-ronin/ronin.glb",
@@ -606,6 +646,14 @@
       "sha256": "c9d5b06eee3d31d77bd738dc21ae8b62cd24c3b856e3cbacae3d89163e47eb16"
     },
     {
+      "path": "shared/npc/folk.js",
+      "sha256": "a40dfe6159f7be1bd4c45d321369bf5d10b5489a936e6aca3c86190cde05b60c"
+    },
+    {
+      "path": "shared/npc/folk.json",
+      "sha256": "033ce4d9a1bd5c8736da1a4ce1560ba4d691e4ed369565b3e50cf46d9e82ca77"
+    },
+    {
       "path": "shared/world/out/forest_floor.json",
       "sha256": "702db42d4ed690ad7ff011a2b7d6d3f79e8764bd0d07a8ce22f274f26b98bd41"
     },
@@ -643,7 +691,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "ebf8ba7",
+  "commit": "70e436a",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

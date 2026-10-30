@@ -95,6 +95,11 @@ function stepGroundLaunch(s,input,dt,time,config,bearing,height,hitTest,launchHe
   const blocked=!Number.isFinite(ground)||(!drop&&!Number.isFinite(launchHeight(x,y)))||hitTest?.([s.x,s.y,s.z],[x,y,z],.45)||
     config.collapse&&hitTest&&canopyTouches(canopySegment({...s,x,y,z},config),hitTest);
   if(blocked)return abortGroundLaunch(s,'Launch blocked · reposition and retry');
+  // Every accepted ground displacement spends work, including the last step
+  // off a ledge or past the run-distance limit. Record it before either exit;
+  // a blocked step above has not moved and must not spend this work.
+  if(motor)s.engineWorkJ=(s.engineWorkJ??0)+thrust*(before+run)*.5*dt;
+  s.launchWorkHead=(s.launchWorkHead??0)+Math.max(0,(run*run-before*before)/(2*9.81))+Math.max(0,z-(floor+config.landing_clearance_m));
   // Preserve the actual ground-run velocity for the first free-flight solve.
   // A scalar airspeed plus the wind would otherwise invent crosswind motion.
   s.vx=ch*run;s.vy=sh*run;
@@ -112,8 +117,6 @@ function stepGroundLaunch(s,input,dt,time,config,bearing,height,hitTest,launchHe
   // assisted forward takeoff gate must not count a sideways gust as a run.
   s.speed=airspeed;s.vz=s.vario=s.vertical=groundVertical;
   s.launchProgress=clamp(forwardAir/(m.trim_mps*c.takeoff_speed_fraction));
-  if(motor)s.engineWorkJ=(s.engineWorkJ??0)+thrust*(before+run)*.5*dt;
-  s.launchWorkHead=(s.launchWorkHead??0)+Math.max(0,(run*run-before*before)/(2*9.81))+Math.max(0,z-(floor+config.landing_clearance_m));
   s.figure='Running launch';
   if(forwardAir>=m.trim_mps*c.takeoff_speed_fraction){
     s.grounded=false;s.launching=false;s.vz=s.vertical=s.vario=c.hop_mps;
