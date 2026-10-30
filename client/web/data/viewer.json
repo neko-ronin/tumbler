@@ -35,11 +35,11 @@
     },
     {
       "path": "client/web/src3d/character-surface.js",
-      "sha256": "b951dd113fad5c1e459e3ff01553eeedbb7c4a2080c8006497403495ef10c0c9"
+      "sha256": "6f37bef02007c37e451f2a1e88903c569843f3f5934f83a7e7c41207d49daa59"
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "6189029d308a2438093d27028f49467a7dee6801366898e48e13b2f9ba8920f6"
+      "sha256": "dec0e25d5f433c14d765232066d0d901374ce41fcbfad231a1fb4c445ab093d5"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -255,7 +255,7 @@
     },
     {
       "path": "shared/activities/coupled-flight.js",
-      "sha256": "fa264df3ba93e0ce37696f3c787ff1ac01fdd53773d9c6839a87c140c98b50e3"
+      "sha256": "81feeaa1c676356a39cd7284e71b72c835a9c89b4fc961ccfde3a10dcea513bc"
     },
     {
       "path": "shared/activities/flight.js",
@@ -335,7 +335,7 @@
     },
     {
       "path": "shared/geometry/cat-ronin/ronin.glb",
-      "sha256": "2239ca52ecc541b5032f052a456b224334bef37aa89456cc8df717f4ca65de71"
+      "sha256": "8491c8b5b1066285bef231d125592fb42285be868bc6af6e92b045ef0e750aab"
     },
     {
       "path": "shared/geometry/dome/dome.glb",
@@ -639,7 +639,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "3fc5211",
+  "commit": "b7862e4",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

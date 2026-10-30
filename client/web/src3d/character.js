@@ -36,7 +36,7 @@ export function createCharacter(asset, config) {
     node.receiveShadow = true;
     if (node.material.name === 'flannel' && !node.material.map) { node.material.color.set('#ffffff'); node.material.map = plaid; }
   });
-  const surfaces=installCharacterSurfaces(model);
+  const surfaces=installCharacterSurfaces(model,config.face);
   const shadePixels = new Uint8Array(32 * 32 * 4);
   for (let y=0;y<32;y++) for (let x=0;x<32;x++) {
     const i=(y*32+x)*4,r=Math.hypot((x-15.5)/15.5,(y-15.5)/15.5);
@@ -49,7 +49,7 @@ export function createCharacter(asset, config) {
   const actions = Object.fromEntries(asset.animations.map(clip => [clip.name, mixer.clipAction(clip)]));
   for (const name of Object.values(config.clips)) if (!actions[name]) throw new Error(`Ronin is missing clip ${name}`);
   for (const name of Object.values(config.jump_clips??{})) if (!actions[name]) throw new Error(`Ronin is missing jump clip ${name}`);
-  const feet=[],paws={},bodyMeshes=[];model.traverse(node=>{if(node.isMesh&&!node.isSkinnedMesh&&node.geometry.boundingBox)bodyMeshes.push(node);});model.traverse(node=>{if(node.isMesh&&/^foot\./.test(node.parent?.name??''))feet.push(node);if(node.isMesh&&/^paw\./.test(node.parent?.name??''))paws[node.parent.name]=node;});
+  const feet=[],paws={},bodyMeshes=[];model.traverse(node=>{if(node.isMesh&&!node.isSkinnedMesh&&node.geometry.boundingBox||node.isSkinnedMesh&&!/^cat_tail|\.fur\d/.test(node.name))bodyMeshes.push(node);});model.traverse(node=>{if(node.isMesh&&/^foot\./.test(node.parent?.name??''))feet.push(node);if(node.isMesh&&/^paw\./.test(node.parent?.name??''))paws[node.parent.name]=node;});
   const footBox=new T.Box3(),meshBox=new T.Box3();let lastJump=0,bodyLift=0,bodyWorld=null;
   // Legs for foot planting: hip (thigh), knee (shin), ankle (heel) and the foot meshes.
   const legs=['L','R'].map(side=>({thigh:model.getObjectByName('thigh.'+side),shin:model.getObjectByName('shin.'+side),heel:model.getObjectByName('heel.'+side),
@@ -275,9 +275,12 @@ export function createCharacter(asset, config) {
         model.position.y+=bodyLift;model.updateWorldMatrix(true,true);
         legs.forEach((leg,i)=>{if(needs[i]-bodyLift>1e-3)raiseFoot(leg,needs[i]-bodyLift);});
       }else{
-        // Rolling, any part of him may lead into the ground, not only the soles.
+        // Rolling, any part of him may lead into the ground, not only the soles:
+        // his cloth too (sleeves, hakama), measured as the bones pose it. The
+        // tail may sweep the ground as he turns over.
         if(rollTurn)for(const mesh of bodyMeshes){
-          meshBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
+          if(mesh.isSkinnedMesh)mesh.computeBoundingBox();
+          meshBox.copy(mesh.isSkinnedMesh?mesh.boundingBox:mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
           const centre=meshBox.getCenter(new T.Vector3());clear=Math.max(clear,(context.groundHeight?.(centre.x,-centre.z)??context.groundZ)-meshBox.min.y);
         }
         bodyLift=clear;bodyWorld=null;model.position.y+=clear;

@@ -36,6 +36,16 @@ export function coupledEnergy(c,rules){
     G*(rules.pilot_mass_kg*c.pilotPosition[2]+rules.wing_mass_kg*c.wingPosition[2]);
 }
 
+/** Section lift is normal to both the relative flow and the span. Projecting
+ * wing-up onto the flow-normal plane instead adds spanwise force in sideslip,
+ * which can feed the lateral suspension oscillation. This reduced straight
+ * lifting line does not resolve anhedral or distributed canopy side forces.
+ */
+export function coupledLiftDirection(velocity,span){
+  return unit([velocity[1]*span[2]-velocity[2]*span[1],
+    velocity[2]*span[0]-velocity[0]*span[2],velocity[0]*span[1]-velocity[1]*span[0]],[0,0,0]);
+}
+
 /** Near-trim polar fits the existing mode's U/sink, not measured equipment.
  * Area fraction and induced share are explicit tuning: U/sink alone cannot
  * determine a wing's area, efficiency, stall curve or post-stall behavior.
@@ -191,7 +201,7 @@ export function stepCoupled(s,dt,config,sample){
     const alpha=Math.atan2(-dot(relative,basis.up),dot(relative,basis.forward));
     stall=clamp((Math.abs(alpha)-rules.stall_alpha_rad)/.3,0,1);
     const cl=clamp(polar.cl+rules.lift_slope*(alpha-rules.trim_alpha_rad),-rules.max_cl,rules.max_cl)*(1-stall*.8);
-    const liftUnit=unit(add(basis.up,relative,-dot(basis.up,relative)/Math.max(1e-9,speed*speed)));
+    const liftUnit=coupledLiftDirection(relative,basis.left);
     liftDot=dot(liftUnit,relative);
     const q=RHO*speed*speed/2;
     const support=liftStep(c,rules,wingAir,liftUnit.map(v=>v*q*polar.area*cl),h);
