@@ -42,7 +42,13 @@
       },
       "triangles": 21456,
       "bytes": 892364,
-      "sha256": "2b1463c08aca3f8cf227568e47e4a9bf91e5ea860df70084768266fe78a1c9a6"
+      "sha256": "2b1463c08aca3f8cf227568e47e4a9bf91e5ea860df70084768266fe78a1c9a6",
+      "cinematic": {
+        "asset": "cat-folk/cinematic/ume.glb",
+        "triangles": 170888,
+        "bytes": 4515848,
+        "sha256": "99a7fab60f0e66ea0c0ec3eb931c794ecdf7d39be1248c510e1676b65fd24876"
+      }
     },
     {
       "id": "pip",
@@ -85,7 +91,13 @@
       },
       "triangles": 18988,
       "bytes": 811888,
-      "sha256": "780f3385543ede59e5f2ae190af2d8b8cf0a50dcb417202a1b44076f4865b745"
+      "sha256": "780f3385543ede59e5f2ae190af2d8b8cf0a50dcb417202a1b44076f4865b745",
+      "cinematic": {
+        "asset": "cat-folk/cinematic/pip.glb",
+        "triangles": 172836,
+        "bytes": 4495592,
+        "sha256": "d7b962609eaa08882d5ec4fc2986042edb3a4ff4bdcf4849268e8b4f84355c20"
+      }
     },
     {
       "id": "saffi",
@@ -128,7 +140,13 @@
       },
       "triangles": 23448,
       "bytes": 920140,
-      "sha256": "b1e27ddecdc8df1369ad3bc8ebe802eec684f753e239312614dd529e453e3a84"
+      "sha256": "b1e27ddecdc8df1369ad3bc8ebe802eec684f753e239312614dd529e453e3a84",
+      "cinematic": {
+        "asset": "cat-folk/cinematic/saffi.glb",
+        "triangles": 198912,
+        "bytes": 5041048,
+        "sha256": "b8c1a16f212e27eb7bcfcd1ab83ae4cf51d586ab5f27ceb2a15e10f8dac45f0b"
+      }
     },
     {
       "id": "kiri",
@@ -171,7 +189,13 @@
       },
       "triangles": 20892,
       "bytes": 863912,
-      "sha256": "3905f7fa778ad56e75493d8fe65fe187a544d6b4d8f423710fed02a0c2453b7a"
+      "sha256": "3905f7fa778ad56e75493d8fe65fe187a544d6b4d8f423710fed02a0c2453b7a",
+      "cinematic": {
+        "asset": "cat-folk/cinematic/kiri.glb",
+        "triangles": 189830,
+        "bytes": 4909728,
+        "sha256": "78cf233149e9c7f906e053f12d651942a5e06b2ab016f936d303714fc17f9851"
+      }
     },
     {
       "id": "mabel",
@@ -214,7 +238,13 @@
       },
       "triangles": 22860,
       "bytes": 934160,
-      "sha256": "9168b2392139a901ec66a71832f77191e75948cdf0e851313c27d874b065319d"
+      "sha256": "9168b2392139a901ec66a71832f77191e75948cdf0e851313c27d874b065319d",
+      "cinematic": {
+        "asset": "cat-folk/cinematic/mabel.glb",
+        "triangles": 185996,
+        "bytes": 4900664,
+        "sha256": "61e89511841401a4c8e3572cac67a58b5aaf4624c0cec786f9e68824aa8bcbdd"
+      }
     },
     {
       "id": "juno",
@@ -257,16 +287,22 @@
       },
       "triangles": 23668,
       "bytes": 944848,
-      "sha256": "34a9389997cb982e6df21e812ddd0f73bbd670112cf7b9f20be045bc6fe6afe4"
+      "sha256": "34a9389997cb982e6df21e812ddd0f73bbd670112cf7b9f20be045bc6fe6afe4",
+      "cinematic": {
+        "asset": "cat-folk/cinematic/juno.glb",
+        "triangles": 203088,
+        "bytes": 5151272,
+        "sha256": "1d206a25183ceca1314abe726e221a940bc86ea984877050ef90d25b92809477"
+      }
     },
     {
       "id": "ash",
-      "name": "Brother Ash",
-      "age": "elder",
-      "coat": "smoke",
+      "name": "Lady Ash",
+      "age": "adult",
+      "coat": "shaded",
       "asset": "cat-folk/ash.glb",
-      "height_m": 1.5147,
-      "hip_m": 0.519,
+      "height_m": 1.4459,
+      "hip_m": 0.5463,
       "sole_y_m": 0,
       "flight_attachment": {
         "bone": "hips",
@@ -294,13 +330,19 @@
         "blink"
       ],
       "ground_speed_mps": {
-        "stroll": 0.5,
-        "walk": 0.9594,
-        "run": 1.8651
+        "stroll": 0.7046,
+        "walk": 1.338,
+        "run": 2.5427
       },
-      "triangles": 21596,
-      "bytes": 893896,
-      "sha256": "147de414797da00d9ecdd88b7eea94d26c8d86dbcc785f83807bc78ec5645172"
+      "triangles": 22776,
+      "bytes": 917384,
+      "sha256": "9a71f5738cdcafd8932fa973607b394631a797a1901e8679c7fa7410bc1524ab",
+      "cinematic": {
+        "asset": "cat-folk/cinematic/ash.glb",
+        "triangles": 184316,
+        "bytes": 4830080,
+        "sha256": "2048bce469cd2f9e7254541238ce4b9a4bee7ffb510facc78c4c0a1e7fb8d817"
+      }
     },
     {
       "id": "tobu",
@@ -343,7 +385,13 @@
       },
       "triangles": 22472,
       "bytes": 911300,
-      "sha256": "ad53c4d954f537eceda2357ffe24c5281f42fa31ca06524c71c983db8fead411"
+      "sha256": "ad53c4d954f537eceda2357ffe24c5281f42fa31ca06524c71c983db8fead411",
+      "cinematic": {
+        "asset": "cat-folk/cinematic/tobu.glb",
+        "triangles": 177998,
+        "bytes": 4587844,
+        "sha256": "86b59f49ddc4caaf0f34065d7bbe1250de6c407c4030f1b88c0a13b950df10ab"
+      }
     }
   ]
 }

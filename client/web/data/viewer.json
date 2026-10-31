@@ -7,7 +7,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "a0b11e621164022bdfd66aa611f8f9362354498aa449a39f720496fcec1e10d8"
+      "sha256": "efc4c3a1535a4471c3de10b9159608b77eda4b3edc85ba3af51914ca2ea986ca"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -99,7 +99,7 @@
     },
     {
       "path": "client/web/src3d/folk.js",
-      "sha256": "7585c834fbe9e8318ce1e116aaf3418b8f82db5ca9e6a1a7e728938f3f57da08"
+      "sha256": "07615f169f1d2b7aebb245bac04d2849a7aaa26256d4a08aa3231768c1e94bd9"
     },
     {
       "path": "client/web/src3d/forest-field.js",
@@ -155,7 +155,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "2bac8654a03b447c09a40e9a382da6e663ec4f667d162e2e3c56e532c8f96681"
+      "sha256": "f302c33c09638f6f3afab72696c64eb12832a6e84d3293116d658bd3ca89d5a3"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -355,7 +355,7 @@
     },
     {
       "path": "shared/geometry/cat-folk/ash.glb",
-      "sha256": "147de414797da00d9ecdd88b7eea94d26c8d86dbcc785f83807bc78ec5645172"
+      "sha256": "9a71f5738cdcafd8932fa973607b394631a797a1901e8679c7fa7410bc1524ab"
     },
     {
       "path": "shared/geometry/cat-folk/juno.glb",
@@ -371,7 +371,7 @@
     },
     {
       "path": "shared/geometry/cat-folk/models.json",
-      "sha256": "2ae72314305a2c8f157ad558d330314e95112339cccae7ca38229b07b6d62ba8"
+      "sha256": "4d08012bc1ec7ae22f2da6a89e7e6a0ad04c4efc6982bf7c9625db1684c0f0f5"
     },
     {
       "path": "shared/geometry/cat-folk/pip.glb",
@@ -663,11 +663,11 @@
     },
     {
       "path": "shared/npc/folk.js",
-      "sha256": "08fa1d810398cb518ef6fc6dfebdeb24ee58da48ffb61cc4633ac84a583dea37"
+      "sha256": "1453856d1bb1f2e4ad6ff6c96bcbe0a7d16262fc1b0bd486ae0e4a2a5ca21b09"
     },
     {
       "path": "shared/npc/folk.json",
-      "sha256": "f9dcfd28298e86637292845180b1e2426bda216db6121c1df3edea832076dda7"
+      "sha256": "090c5fffed096f50643ac0d8a4c6b1bfeb7d0708008af3590c7c6749ea84ac96"
     },
     {
       "path": "shared/world/out/forest_floor.json",
@@ -707,7 +707,7 @@
     }
   ],
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "ef46fad",
+  "commit": "f1d2286",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

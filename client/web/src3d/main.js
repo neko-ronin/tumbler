@@ -428,14 +428,23 @@ export async function main() {
     if ((e.code==='KeyH'||e.key==='Escape')&&!e.repeat&&!e.metaKey&&!e.ctrlKey) document.body.dataset.ui = document.body.dataset.ui==='hidden' ? '' : 'hidden';
     if (['1','2','3'].includes(e.key)) setView(['home','river','valley'][Number(e.key)-1]);
   });
-  setView(new URLSearchParams(location.search).get('view') in views ? new URLSearchParams(location.search).get('view') : 'home');
+  // Cat links: Cat Ronin drops you into walk mode; the folk get an orbit look-in.
+  const catNav=document.getElementById('cats');
+  for(const cat of folk.api.list()){const b=document.createElement('button');b.dataset.cat=cat.id;b.textContent=cat.name;catNav.append(b);}
+  catNav.addEventListener('click',e=>{
+    const id=e.target.closest('button')?.dataset.cat;if(!id)return;
+    if(id==='ronin'){if(navigation.mode!=='walk')setActivity('walk');canvas.focus();return;}
+    setActivity('orbit');const p=folk.api.focus(id);controls.setTarget(p[0],p[1]+.8,p[2]);controls.update();updateShadow(true);
+  });
+  const viewParam=new URLSearchParams(location.search).get('view');
+  setView(viewParam in views ? viewParam : 'village');
   setLight('golden');
 
   const player=()=>navigation.mode==='orbit'?null:navigation.state;
   const meadowFocus=meadowViewFocus(camera,ground,undefined,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
 
   let frame = 0, contextLost = false, stopped = false, lastFrame = 0, lastStamp = 0;
-  let presenting=false;
+  let presenting=false,intro=null;
   let elapsed = 0,lastReadout=0,lastQuality=0;
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
@@ -500,6 +509,8 @@ export async function main() {
     camera.position.sub(cameraShake);
     gondola.update();
     navigation.update(Math.min(delta,50)/1000);
+    // Intro pan: ease from the village view into the walk camera behind Cat Ronin.
+    if(intro){const k=Math.min(1,(time-intro.start)/2500),e=k*k*(3-2*k);camera.position.lerpVectors(intro.position,camera.position,e);camera.quaternion.slerpQuaternions(intro.quaternion,camera.quaternion,e);if(k===1)intro=null;}
     folk.update(Math.min(delta,50)/1000);
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
@@ -573,4 +584,11 @@ export async function main() {
   });
   window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
+  // Walk is the default: a ?view= link stays put (dev shortcut); otherwise the
+  // village view holds a few seconds, the UI hides, and the camera pans to him.
+  if(!viewParam)setTimeout(()=>{
+    if(navigation.mode!=='orbit'||document.body.dataset.view!=='village')return;
+    intro={position:camera.position.clone(),quaternion:camera.quaternion.clone(),start:performance.now()};
+    document.body.dataset.ui='hidden';setActivity('walk');canvas.focus();
+  },3000);
 }

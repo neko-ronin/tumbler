@@ -89,7 +89,7 @@ function openSpot(world,centre,angle,from=8){
 }
 
 /** Make the folk from folk.json. `models` is cat-folk/models.json (names, heights). */
-export function createFolk(world,models,{seed=1}={}){
+export function createFolk(world,models,{seed=1,aloft=false}={}){
   const {config}=world,byId=Object.fromEntries(models.models.map(m=>[m.id,m]));
   world.cats=config.folk.map((f,index)=>{
     const model=byId[f.id];if(!model)throw new Error(`No model for folk ${f.id}`);
@@ -111,6 +111,12 @@ export function createFolk(world,models,{seed=1}={}){
     return cat;
   });
   for(const cat of world.cats)emit(world,cat,'spawned',{at:cat.places.home.map(Math.round),controller:cat.controller});
+  // Pilots start the session already aloft, so the sky is not empty on load.
+  if(aloft)for(const cat of world.cats)if(cat.flightPlan&&cat.skills.includes('fly')&&world.flight.modes[cat.flightPlan.mode]){
+    const {mode,site}=cat.flightPlan,effects=world.config.activities.fly.effects;
+    begin(world,cat,[{kind:'go',to:'home',pace:'walk'}],'fly','spawn');
+    cat.step={kind:'fly',mode,site,effects,activity:'fly',aloft:true};launch(world,cat,cat.step);
+  }
   return world.cats;
 }
 
@@ -399,7 +405,7 @@ function launch(world,cat,step){
   const gl=fc.ground_launch,air=sampleAir(fc,world.worldmap.wind.direction_deg,{x:s.x,y:s.y,z:s.z+2,weather:'soaring'},world.time,world.ground);
   const headwind=-(air.wx*Math.cos(heading)+air.wy*Math.sin(heading));
   const runnable=gl&&headwind>=fc.modes[step.mode].trim_mps*gl.takeoff_speed_fraction-(gl.max_run_mps??Infinity)+.3;
-  const hooked=!site&&runnable&&reharnessWalk({...s,mode:'ground',heading,harnessMode:step.mode,harnessWeather:'soaring',grounded:true,jumpPhase:'grounded'},world.walk,fc,world.height,world.hitTest);
+  const hooked=!site&&!step.aloft&&runnable&&reharnessWalk({...s,mode:'ground',heading,harnessMode:step.mode,harnessWeather:'soaring',grounded:true,jumpPhase:'grounded'},world.walk,fc,world.height,world.hitTest);
   const ground=hooked?relaunchGround(hooked,world.walk,fc,world.height,world.hitTest):null;
   const state=ground??launchFlight(fc,step.mode,site??{xy_m:[s.x,s.y],heading_deg:heading*180/Math.PI,clearance_m:45},world.ground,'soaring');
   step.air={t:0,acc:0,launch:ground?'ground':site?'site':'assisted',aborts:0,airborne:!ground};

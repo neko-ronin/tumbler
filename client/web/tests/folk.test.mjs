@@ -113,3 +113,10 @@ test('a visit is called off when the friend leaves to fly',()=>{
   assert.ok(events.some(e=>e.cat==='tobu'&&e.event==='plan_cancelled'&&/kiri went flying/.test(e.why)));
   assert.ok(!events.some(e=>e.cat==='tobu'&&e.event==='path_failed'));
 });
+test('with aloft, pilots spawn already flying and still land',()=>{
+  const events=[],w=createFolkWorld({config,worldmap,placement,flight,walk,height,onEvent:e=>events.push(e)});createFolk(w,models,{seed:7,aloft:true});
+  const pilots=w.cats.filter(c=>c.flightPlan);assert.ok(pilots.length);
+  for(const c of pilots){assert.equal(c.body.mode,'flight');assert.ok(!c.body.state.grounded,`${c.id} airborne`);assert.ok(c.body.state.z-height(c.body.state.x,c.body.state.y)>10,`${c.id} above ground`);}
+  run(w,1200);
+  for(const c of pilots)assert.ok(events.find(e=>e.cat===c.id&&e.event==='landed'),`${c.id} landed`);
+});

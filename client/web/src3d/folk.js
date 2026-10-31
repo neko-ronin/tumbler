@@ -48,7 +48,7 @@ export async function createFolkLayer({fetchData,worldmap,placement,flightConfig
   const events=[];
   const world=createFolkWorld({config,worldmap,placement,flight:flightConfig,walk:walkConfig,height,ground,hitTest,gondola,
     onEvent:e=>{events.push(e);if(events.length>256)events.shift();}});
-  const cats=createFolk(world,models,{seed:Math.floor(Math.random()*1e9)});
+  const cats=createFolk(world,models,{seed:Math.floor(Math.random()*1e9),aloft:true});
   const byModel=Object.fromEntries(models.models.map(m=>[m.id,m]));
   const group=new T.Group();group.name='cat_folk';scene.add(group);
   const puppets=new Map(cats.map((cat,i)=>{const p=puppet(parseGLB(bytes[i]),byModel[cat.id]);group.add(p.object);return [cat.id,p];}));
