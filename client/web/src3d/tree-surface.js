@@ -16,7 +16,7 @@ export function createTreeSurface(recipe,{sun,shadowShader=null,interval='studyI
   material.defaultAttributeValues={[interval]:[0,1],leafKind:[0],canopyAO:[1]};
   material.onBeforeCompile=shader=>{
     shadowShader?.(shader);Object.assign(shader.uniforms,forestUniforms());
-    if(sprayMap){shader.uniforms.uTreeSprayMap={value:sprayMap};shader.uniforms.uTreePalette={value:palette.map(rgb=>new T.Vector3(...rgb))};shader.uniforms.uTreeCutoff={value:recipe.sprayCutoff??.3};}
+    if(sprayMap){shader.uniforms.uTreeSprayMap={value:sprayMap};shader.uniforms.uTreePalette={value:palette.map(rgb=>new T.Vector3(...rgb))};shader.uniforms.uTreeCutoff={value:recipe.sprayCutoff??(recipe.leafProfile==="redwood"?.37:.3)};}
     Object.assign(shader.uniforms,{uTreeRedBark:{value:+material.userData.treeRedBark},uTreeSun:sun,uTreeSunTint:treeLighting.sun,uTreeSkyTint:treeLighting.fill,uTreeGroundTint:treeLighting.ground,uTreeBands:{value:recipe.toonBands},uTreeRim:{value:recipe.rimStrength},
       uTreeOcclusion:{value:recipe.canopyShade},uTreeTransmission:{value:recipe.transmission*Math.exp((.4-recipe.leafThickness)*1.4)}});
     shader.vertexShader=`attribute float leafKind,canopyAO;attribute vec2 ${interval};varying float vTreeLeaf,vTreeAO;varying vec2 vTreeInterval,vTreeUV;varying vec3 vTreeNormal,vTreeWorld,vTreeLocal;\n`+shader.vertexShader;

@@ -231,7 +231,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       vec4 forestSoil=forestAt(vPlace);
       float forestMask=forestCoverAt(vPlace)*knownGround*(1.-coreSnow)*(1.-rockMask)*smoothstep(.08,.48,forestSoil.r);
       float moss=smoothstep(.43,.68,fbm(ground*.45)+.12*(clump-.5));
-      vec3 litterTexture=forestLitter(ground);
+      // Audit: the bed was sampled three times per terrain fragment even in
+      // meadow (mask 0) and from heights where it blurs to its mean. Skip it
+      // where it cannot show; one top-mip tap stands in for it from afar.
+      vec3 litterTexture=forestMask<.004?vec3(.3):footprint>10.?textureLod(uForestLitter,ground/1.5,9.).rgb:forestLitter(ground);
       vec3 litter=litterTexture*mix(.85,1.14,clump);
       litter=mix(litter,litter*vec3(.77,.96,.65),moss*.25);
       litter*=mix(1.,.87,forestSoil.b);
@@ -299,7 +302,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-granite-v19:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
+  material.customProgramCacheKey = () => `cozy-granite-v20:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
   return material;
 }
 

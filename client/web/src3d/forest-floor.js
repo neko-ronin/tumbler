@@ -19,12 +19,13 @@ function kit(type){
  }
  if(type==='fern'){
   for(let f=0;f<6;f++){
-   const angle=f*2.39996,dir=new T.Vector3(Math.sin(angle),0,Math.cos(angle)),side=new T.Vector3(dir.z,0,-dir.x),length=.65+hash(f,1)*.55;
-   const point=t=>dir.clone().multiplyScalar(t*length).setY(Math.sin(t*Math.PI*.85)*(.5+length*.25));
-   for(let j=1;j<8;j++){
-    const t=j/8,root=point(t),reach=Math.sin(t*Math.PI)*(.12+length*.12);
-    for(const sign of [-1,1]){const tip=root.clone().addScaledVector(side,sign*reach).addScaledVector(dir,reach*.6);tip.y-=reach*.12;blade(root,tip,reach*.15,Math.floor(hash(f,j)*2));}
-    blade(point((j-1)/8),root,.006,0);
+   const angle=f*2.39996,dir=new T.Vector3(Math.sin(angle),0,Math.cos(angle)),side=new T.Vector3(dir.z,0,-dir.x),length=.7+hash(f,1)*.7;
+   // Fronds rise, then arch over; pinnae shorten toward the tip.
+   const point=t=>dir.clone().multiplyScalar(t*length).setY(Math.sin(t*Math.PI*.8)*(.45+length*.3)-t*t*.1);
+   for(let j=1;j<9;j++){
+    const t=j/9,root=point(t),reach=Math.sin(Math.min(1,t*1.12+.05)*Math.PI)*(.1+length*.1)*(1-t*.35);
+    for(const sign of [-1,1]){const tip=root.clone().addScaledVector(side,sign*reach).addScaledVector(dir,reach*.7);tip.y-=reach*(.1+t*.3);blade(root,tip,reach*.17,Math.floor(hash(f,j)*2));}
+    blade(point((j-1)/9),root,.006,0);
    }
   }
  }else if(type==='sorrel'){
@@ -32,8 +33,9 @@ function kit(type){
    const a=i*2.39996,root=new T.Vector3(Math.sin(a)*.18,.10+hash(i,3)*.18,Math.cos(a)*.18);
    for(let j=0;j<3;j++){
     const angle=a+j*Math.PI*2/3,dir=new T.Vector3(Math.sin(angle),0,Math.cos(angle)),side=new T.Vector3(dir.z,0,-dir.x);
-    const centre=root.clone().addScaledVector(dir,.085);centre.y+=.028;
-    const outline=[[0,0],[.05,-.055],[.12,-.06],[.16,-.02],[.15,0],[.16,.02],[.12,.06],[.05,.055]].map(([along,across])=>root.clone().addScaledVector(dir,along).addScaledVector(side,across));
+    const centre=root.clone().addScaledVector(dir,.075);centre.y-=.012;
+    const lobe=[[0,0],[.04,-.05],[.1,-.058],[.14,-.03],[.115,0],[.14,.03],[.1,.058],[.04,.05]].map(([along,across])=>{const v=root.clone().addScaledVector(dir,along*1.15).addScaledVector(side,across*1.15);v.y-=along*.18+Math.abs(across)*.35;return v;});
+    const outline=lobe;
     for(let k=0;k<outline.length;k++)tri(centre,outline[k],outline[(k+1)%outline.length],j%2);
    }
   }
@@ -49,7 +51,7 @@ export function buildForestFloor(declaration,field,ground,snowAt,bareAt=()=>fals
  const group=new T.Group();group.name='forest_floor';const stats={plants:0,triangles:0,updates:0};
  const definitions=[...declaration.layers,{plant_type:'litter',cover_fraction:.55}];
  const pools=definitions.map(layer=>{
-  const type=layer.plant_type,range=type==='sorrel'?30:56,pitch=type==='sorrel'?.65:type==='fern'?1.8:2.1,capacity=type==='sorrel'?2400:900;
+  const type=layer.plant_type,range=type==='sorrel'?30:56,pitch=type==='sorrel'?.55:type==='fern'?1.5:2.1,capacity=type==='sorrel'?3000:1200;
   const geometry=kit(type),material=treeMaterial({toonBands:4,rimStrength:.25,canopyShade:.8,transmission:.8,leafThickness:.35});
   const base=material.onBeforeCompile;material.onBeforeCompile=shader=>{
    base(shader);shader.uniforms.uFloorRange={value:new T.Vector2(range*.65,range)};shader.uniforms.uFloorTime=style.time;shader.uniforms.uFloorWind=style.wind;
@@ -59,14 +61,14 @@ export function buildForestFloor(declaration,field,ground,snowAt,bareAt=()=>fals
    shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>',`#include <alphatest_fragment>
     float floorFade=(1.-smoothstep(uFloorRange.x,uFloorRange.y,distance(cameraPosition.xz,vTreeWorld.xz)))*(1.-smoothstep(9.,23.,abs(cameraPosition.y-vTreeWorld.y)));
     if(fract(dot(floor(gl_FragCoord.xy),vec2(.06711056,.00583715))*52.9829189)>floorFade)discard;`);
-  };material.customProgramCacheKey=()=>`forest-floor-v1-${type}`;
+  };material.customProgramCacheKey=()=>`forest-floor-v2-${type}`;
   const mesh=new T.InstancedMesh(geometry,material,capacity);mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);mesh.frustumCulled=false;mesh.count=0;group.add(mesh);return {mesh,type,layer,range,pitch,capacity};
  });
  const dummy=new T.Object3D(),color=new T.Color();let lastX=Infinity,lastY=Infinity;
  function update(camera){
   const x=camera.position.x,y=-camera.position.z,z=ground.height(x,y);
   if(z===null||camera.position.y-z>23){for(const {mesh}of pools)mesh.count=0;stats.plants=stats.triangles=0;lastX=Infinity;return;}
-  if(Math.hypot(x-lastX,y-lastY)<2)return;lastX=x;lastY=y;stats.plants=stats.triangles=0;stats.updates++;let triangleBudget=280000;
+  if(Math.hypot(x-lastX,y-lastY)<2)return;lastX=x;lastY=y;stats.plants=stats.triangles=0;stats.updates++;let triangleBudget=340000;
   for(const {mesh,type,layer,range,pitch,capacity}of pools){
    let count=0;const span=Math.ceil(range/pitch),cx=Math.floor(x/pitch),cy=Math.floor(y/pitch);
    for(let row=cy-span;row<=cy+span;row++)for(let col=cx-span;col<=cx+span;col++){

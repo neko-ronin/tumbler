@@ -19,6 +19,12 @@ const crownPrimitive=p=>/foliage|branch_bark/.test(p.materialName);
 export const retainedVillagePrimitive=p=>!crownPrimitive(p);
 function boundsOf(primitives){const box=new T.Box3();for(const p of primitives)box.union(p.geometry.boundingBox.clone().applyMatrix4(p.local));return box;}
 
+// Seen from above the stand left the ground showing between crowns. The core's
+// crown reach (collision reads it, as a soft 90th-percentile hull) stays as
+// authored; only the drawn feral foliage spreads sideways about the bole.
+// The village crown holds dwellings inside its envelope, so it keeps its own.
+export const CROWN_SPREAD=1.28;
+const spreadBounds=box=>{const min=box.min.toArray(),max=box.max.toArray();for(const a of [0,2]){min[a]*=CROWN_SPREAD;max[a]*=CROWN_SPREAD;}return {min,max};};
 export function fittedTreeGeometry(source,crown,stage,village=false,taper=.78,retainedBoleIndexCount=Infinity) {
   const box=boundsOf(source.primitives.filter(p=>/foliage/.test(p.materialName)));
   // Crown primitives share one vertex buffer as authored, but each owns its own once
@@ -29,7 +35,7 @@ export function fittedTreeGeometry(source,crown,stage,village=false,taper=.78,re
   for(const g of crownGeometries){crownBase.set(g.attributes.position.array,crownCount);crownCount+=g.attributes.position.count;}
   const joined=name=>{const out=new Float32Array(crownCount*3);for(const g of crownGeometries)out.set(g.attributes[name].array,crownBase.get(g.attributes.position.array)*3);return out;};
   const fit=stage.recipe.architecture==='feral'?fitForestCrown:fitCrown;
-  const fitted=fit(joined('position'),joined('normal'),...(stage.recipe.architecture==='feral'?[{min:box.min.toArray(),max:box.max.toArray()},[0,0],crown.extras?.fitBounds]:[stage.recipe,{min:box.min.toArray(),max:box.max.toArray()},taper]));
+  const fitted=fit(joined('position'),joined('normal'),...(stage.recipe.architecture==='feral'?[village?{min:box.min.toArray(),max:box.max.toArray()}:spreadBounds(box),[0,0],crown.extras?.fitBounds]:[stage.recipe,{min:box.min.toArray(),max:box.max.toArray()},taper]));
   const solids=village?(stage.includeBole?source.primitives.filter(p=>p.materialName==='redwood_bark'):[]):source.primitives.filter(p=>!/foliage/.test(p.materialName));
   const solidVertices=solids.reduce((n,p)=>n+p.geometry.attributes.position.count,0),count=solidVertices+crownCount;
   const position=new Float32Array(count*3),normal=new Float32Array(count*3),color=new Float32Array(count*3),uv=new Float32Array(count*2),leaf=new Uint8Array(count),ao=new Uint8Array(count).fill(255),indices=[];

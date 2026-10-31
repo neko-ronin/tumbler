@@ -3,9 +3,9 @@
  * occupancy and shoot placement; only the leaf carriers change. */
 import {SprayMesh} from './redwood-sprays.js';
 export const FOREST_PROFILES={
-  giant:{heightM:106,crownWidthM:23,crownBase:.45,taper:.34,seed:130,primaryBranches:236,secondaryPairs:6,explicitSprayStride:4,wildness:.92,crownGaps:.28,windSweep:.46,deadwood:.12,leafProfile:'redwood'},
-  redwood:{heightM:70,crownWidthM:20,crownBase:.4,taper:.28,seed:211,primaryBranches:210,secondaryPairs:6,explicitSprayStride:4,wildness:.92,crownGaps:.27,windSweep:.36,deadwood:.10,leafProfile:'redwood'},
-  pine:{heightM:45,crownWidthM:14.5,crownBase:.25,taper:.16,seed:307,primaryBranches:96,secondaryPairs:8,explicitSprayStride:3,wildness:1,crownGaps:.38,windSweep:.62,deadwood:.18,leafProfile:'pine'},
+  giant:{heightM:106,crownWidthM:23,crownBase:.45,taper:.46,seed:130,primaryBranches:236,secondaryPairs:6,explicitSprayStride:4,wildness:.92,crownGaps:.28,windSweep:.46,deadwood:.12,leafProfile:'redwood'},
+  redwood:{heightM:70,crownWidthM:20,crownBase:.4,taper:.40,seed:211,primaryBranches:210,secondaryPairs:6,explicitSprayStride:4,wildness:.92,crownGaps:.27,windSweep:.36,deadwood:.10,leafProfile:'redwood'},
+  pine:{heightM:45,crownWidthM:14.5,crownBase:.25,taper:.30,seed:307,primaryBranches:96,secondaryPairs:8,explicitSprayStride:3,wildness:1,crownGaps:.38,windSweep:.62,deadwood:.18,leafProfile:'pine'},
   fir:{heightM:54,crownWidthM:13.5,crownBase:.12,taper:.49,seed:419,primaryBranches:204,secondaryPairs:5,explicitSprayStride:4,wildness:.78,crownGaps:.20,windSweep:.35,deadwood:.08,leafProfile:'fir'}
 };
 export const forestSprayCutoff=(species,lod)=>species==='fir'&&Number(lod)>0?.33:.3;

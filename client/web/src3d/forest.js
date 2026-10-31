@@ -6,6 +6,7 @@ import * as T from '../vendor/three.module.min.js';
 import { instanceMatrix } from './world.js';
 import { mergePrimitives } from './glb.js';
 import { toonMaterial,style,sunShadowShader } from './style.js';
+import { treeShadowUniforms,SHADOW_EDGE_FADE } from './tree-shadows.js';
 
 export function stylizedTreeGeometry(asset) {
   const foliage = asset.primitives.filter(p => /foliage/.test(p.materialName));
@@ -336,14 +337,21 @@ export function buildTreeGroundShadows(placement, assets, ground) {
   for(const t of trees)if(!crowns.has(t.asset))crowns.set(t.asset,sourceBounds(assets[t.asset],true));
   const material=new T.MeshBasicMaterial({color:'#223526',transparent:true,opacity:.23,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,side:T.DoubleSide});
   material.onBeforeCompile=shader=>{
-    shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>',`#include <alphatest_fragment>
+    Object.assign(shader.uniforms,treeShadowUniforms());
+    shader.vertexShader='varying vec3 vDecalWorld;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvDecalWorld=position;');
+    shader.fragmentShader='uniform mat4 uTreeSunMatrix;uniform float uTreeSunReady;varying vec3 vDecalWorld;\n'+shader.fragmentShader.replace('#include <alphatest_fragment>',`#include <alphatest_fragment>
       float radius=length(vUv*2.-1.);
       diffuseColor.a*=1.-smoothstep(.22,1.,radius);
+      // Inside the live sun map the real shadow takes over, cross-fading
+      // across the same rim the map's lookup fades in over.
+      vec4 sunUv=uTreeSunMatrix*vec4(vDecalWorld,1.);sunUv.xy/=sunUv.w;
+      vec2 sunRim=min(sunUv.xy,1.-sunUv.xy);
+      diffuseColor.a*=1.-uTreeSunReady*smoothstep(0.,${SHADOW_EDGE_FADE.toFixed(3)},min(sunRim.x,sunRim.y));
       if(diffuseColor.a<.003)discard;
     `);
   };
   // Basic materials otherwise omit UVs when no texture is bound.
-  material.defines={USE_UV:''};material.customProgramCacheKey=()=> 'tree-ground-shadow-v1';
+  material.defines={USE_UV:''};material.customProgramCacheKey=()=> 'tree-ground-shadow-v2';
   const stats={trees:trees.length,patches:0,triangles:0,tiles:0,revision:0,contactFallbacks:0};let direction=null;
   function setSun(sun){
     if(direction&&direction.distanceToSquared(sun)<1e-10)return false;

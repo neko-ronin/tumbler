@@ -427,56 +427,56 @@
     "tree-design/forest-giant-lod0.glb": {
       "packed": "tree-design/forest-giant-lod0.meshopt.glb",
       "mode": "float",
-      "worst_mm": 3.963,
-      "source_bytes": 28557232,
-      "source_sha256": "b237953aa76feffafb8eb16b1d4d26fbe6fbc31db7ed021db411e776936a18da",
-      "bytes": 5306136,
-      "sha256": "b64d17a6eaed9070c190ca482ec79bb68b668b2d9c90300bb36580494fd77506"
+      "worst_mm": 3.962,
+      "source_bytes": 28557260,
+      "source_sha256": "f1973f379179cd11fc8278ae5cbf56f088950e52553b3b99cda08d66ade0d9cf",
+      "bytes": 5277944,
+      "sha256": "55f8244278720ca01b8e03eb2aa9feba98f1b2b23e722fd99f672633f958f2cb"
     },
     "tree-design/forest-giant-lod1.glb": {
       "packed": "tree-design/forest-giant-lod1.meshopt.glb",
       "mode": "float",
       "worst_mm": 3.953,
-      "source_bytes": 2236768,
-      "source_sha256": "8fcb401268808683dc1689e03aee68ff8fc6c100162346521fff701a3a044c03",
-      "bytes": 801588,
-      "sha256": "614e25a63a367042016b092cbfd4e8319931b0b46f14a2dcae1e30ca52e5f521"
+      "source_bytes": 2236796,
+      "source_sha256": "96379be0b1ffa50c291749c9b5531d59e74104cd017fe1dadaefd12d4d993858",
+      "bytes": 799748,
+      "sha256": "c0b9a739e9743a1f134e93460a83a6c38a1d6dd4ebff2c951c16fea718f85a64"
     },
     "tree-design/forest-pine-lod0.glb": {
       "packed": "tree-design/forest-pine-lod0.meshopt.glb",
       "mode": "float",
-      "worst_mm": 2.059,
-      "source_bytes": 29385924,
-      "source_sha256": "3e3f61010883bbbdc37d7ffe5f430061efdb1889b8edffbd03faa28b234f57fc",
-      "bytes": 5035156,
-      "sha256": "de2917be70511938ad4fe2bc5e35507c0cadbe5eaab93e9da8aa0760f451f23b"
+      "worst_mm": 2.054,
+      "source_bytes": 29385920,
+      "source_sha256": "09cbeee251e1903b9576acc485c5f952606b59bdf27c861bc5b303d20c60ebc0",
+      "bytes": 5008308,
+      "sha256": "6c2210aa873c4aeb9afc27253ce773aa9af9f7a759d5b299c85c3dca1c38f26e"
     },
     "tree-design/forest-pine-lod1.glb": {
       "packed": "tree-design/forest-pine-lod1.meshopt.glb",
       "mode": "float",
-      "worst_mm": 2.049,
-      "source_bytes": 1458428,
-      "source_sha256": "7c854b240f0f7e91aa5df424a380d2c74a2111d2d227b03960f31374763ae58e",
-      "bytes": 719116,
-      "sha256": "6d9c9765ba3efba149f7dbd748c91113b9c37a7de13e17dac4cd6ddff08e37ab"
+      "worst_mm": 2.051,
+      "source_bytes": 1458420,
+      "source_sha256": "1432a261e6309354a024682dc1e50a11ec94107268fc10e25b4bf340cb7c03c8",
+      "bytes": 718500,
+      "sha256": "a42f2e324d4ee5d87cc2f1da9199b8ba5871c333a9153933afdc6975a52de779"
     },
     "tree-design/forest-redwood-lod0.glb": {
       "packed": "tree-design/forest-redwood-lod0.meshopt.glb",
       "mode": "float",
-      "worst_mm": 3.966,
+      "worst_mm": 3.96,
       "source_bytes": 25548224,
-      "source_sha256": "2f69129357faea1a81550469db563506db70d4af916d506b3cdbddce754799c5",
-      "bytes": 4765328,
-      "sha256": "705bf6a7e631b94f55ed75e1cd9b991bfc786f7770de1a28a9f7e08c2b7b940d"
+      "source_sha256": "ceaf2260e5b06c07feeca2962a31408e9a39d67f6699058558905f5bc9be03bf",
+      "bytes": 4739708,
+      "sha256": "3ca3a3b10f9cd6a5cc8ca7848c00f2e0db98de4f0f38cd5b431d9a07627078ae"
     },
     "tree-design/forest-redwood-lod1.glb": {
       "packed": "tree-design/forest-redwood-lod1.meshopt.glb",
       "mode": "float",
-      "worst_mm": 3.96,
+      "worst_mm": 3.954,
       "source_bytes": 2038080,
-      "source_sha256": "2d25eeb960329afb2f2f69657c4da1f2ef200b50124d59fdb1b9b18323b54a70",
-      "bytes": 752432,
-      "sha256": "b204509d6b8d3b151e98baad9c0d5e768441f9f35975e46c123a388529ade4d1"
+      "source_sha256": "b3135709b4bb639706c90735b85045734dd63e2028561147add06b65f12b71d2",
+      "bytes": 750732,
+      "sha256": "2b837b77d22dd08278b2ef4dfebf8fd7054aea8026f3aa07f59a88c30c624f4b"
     },
     "water/water.glb": {
       "packed": "water/water.meshopt.glb",

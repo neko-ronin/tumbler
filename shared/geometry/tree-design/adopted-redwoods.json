@@ -23,7 +23,7 @@
       "recipe": {
         "heightM": 106,
         "crownBase": 0.45,
-        "taper": 0.34,
+        "taper": 0.46,
         "lean": 0,
         "transmission": 0.7,
         "leafThickness": 0.4,
@@ -60,7 +60,7 @@
       "recipe": {
         "heightM": 106,
         "crownBase": 0.45,
-        "taper": 0.34,
+        "taper": 0.46,
         "lean": 0,
         "transmission": 0.7,
         "leafThickness": 0.4,
@@ -97,7 +97,7 @@
       "recipe": {
         "heightM": 106,
         "crownBase": 0.45,
-        "taper": 0.34,
+        "taper": 0.46,
         "lean": 0,
         "transmission": 0.7,
         "leafThickness": 0.4,
@@ -134,7 +134,7 @@
       "recipe": {
         "heightM": 106,
         "crownBase": 0.45,
-        "taper": 0.34,
+        "taper": 0.46,
         "lean": 0,
         "transmission": 0.82,
         "leafThickness": 0.4,
@@ -210,7 +210,7 @@
         "heightM": 106,
         "crownWidthM": 23,
         "crownBase": 0.45,
-        "taper": 0.34,
+        "taper": 0.46,
         "seed": 130,
         "primaryBranches": 236,
         "secondaryPairs": 6,
@@ -237,7 +237,7 @@
           "recipe": {
             "heightM": 106,
             "crownBase": 0.45,
-            "taper": 0.34,
+            "taper": 0.46,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -274,7 +274,7 @@
           "recipe": {
             "heightM": 106,
             "crownBase": 0.45,
-            "taper": 0.34,
+            "taper": 0.46,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -311,7 +311,7 @@
           "recipe": {
             "heightM": 106,
             "crownBase": 0.45,
-            "taper": 0.34,
+            "taper": 0.46,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -348,7 +348,7 @@
           "recipe": {
             "heightM": 106,
             "crownBase": 0.45,
-            "taper": 0.34,
+            "taper": 0.46,
             "lean": 0,
             "transmission": 0.82,
             "leafThickness": 0.4,
@@ -377,7 +377,7 @@
         "heightM": 70,
         "crownWidthM": 20,
         "crownBase": 0.4,
-        "taper": 0.28,
+        "taper": 0.40,
         "seed": 211,
         "primaryBranches": 210,
         "secondaryPairs": 6,
@@ -404,7 +404,7 @@
           "recipe": {
             "heightM": 70,
             "crownBase": 0.4,
-            "taper": 0.28,
+            "taper": 0.40,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -441,7 +441,7 @@
           "recipe": {
             "heightM": 70,
             "crownBase": 0.4,
-            "taper": 0.28,
+            "taper": 0.40,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -478,7 +478,7 @@
           "recipe": {
             "heightM": 70,
             "crownBase": 0.4,
-            "taper": 0.28,
+            "taper": 0.40,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -515,7 +515,7 @@
           "recipe": {
             "heightM": 70,
             "crownBase": 0.4,
-            "taper": 0.28,
+            "taper": 0.40,
             "lean": 0,
             "transmission": 0.82,
             "leafThickness": 0.4,
@@ -544,7 +544,7 @@
         "heightM": 45,
         "crownWidthM": 14.5,
         "crownBase": 0.25,
-        "taper": 0.16,
+        "taper": 0.30,
         "seed": 307,
         "primaryBranches": 96,
         "secondaryPairs": 8,
@@ -571,7 +571,7 @@
           "recipe": {
             "heightM": 45,
             "crownBase": 0.25,
-            "taper": 0.16,
+            "taper": 0.30,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -608,7 +608,7 @@
           "recipe": {
             "heightM": 45,
             "crownBase": 0.25,
-            "taper": 0.16,
+            "taper": 0.30,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -645,7 +645,7 @@
           "recipe": {
             "heightM": 45,
             "crownBase": 0.25,
-            "taper": 0.16,
+            "taper": 0.30,
             "lean": 0,
             "transmission": 0.7,
             "leafThickness": 0.4,
@@ -682,7 +682,7 @@
           "recipe": {
             "heightM": 45,
             "crownBase": 0.25,
-            "taper": 0.16,
+            "taper": 0.30,
             "lean": 0,
             "transmission": 0.82,
             "leafThickness": 0.4,

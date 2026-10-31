@@ -107,11 +107,11 @@
     },
     {
       "path": "client/web/src3d/forest-floor.js",
-      "sha256": "7ef5d1886aea28625ea8991e3ccdc70a1dedbf47ede75e3abb9ea4411eeeaf71"
+      "sha256": "d43e32c7de1563fc8c705eb2566a9ebc62995fd055f45c8086e84e4a34d9a91d"
     },
     {
       "path": "client/web/src3d/forest.js",
-      "sha256": "e5f3595152d54dc8e497f43ab0435cec9f62c7ee6dd24227b099fc04b147f267"
+      "sha256": "ac9a4a24b09c53feb8c209362f5623361db6898f3ece3c96abb43021040e75a2"
     },
     {
       "path": "client/web/src3d/frame-pacing.js",
@@ -175,7 +175,7 @@
     },
     {
       "path": "client/web/src3d/redwood-rendering.js",
-      "sha256": "a2cca26d7b5c4b3b8bffbf161a99895519b2d91f2e27527bd4a064dcc9d9fe96"
+      "sha256": "194ee8692ba7b53ec3c6449e05257e3e0c545c6290323162db7e709c170cd025"
     },
     {
       "path": "client/web/src3d/river-granite.js",
@@ -187,7 +187,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "99ad2773de6f65fbae1720ff5060c0a72481674edc467a7a274a8b313daa90c9"
+      "sha256": "7218d8222febd14db72cc1961643d9358c39e9e8c3c553c1f8fff482525a72d6"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
@@ -227,15 +227,15 @@
     },
     {
       "path": "client/web/src3d/tree-shadows.js",
-      "sha256": "00d92c0ba4ad2ad0912e8b6556491145acc9c59eeecef2e850509a0115b04218"
+      "sha256": "58bc3fb92dbcbcc0a83a22510a1950d96bb7ec2a9723f3e8e8ccfdcc3ce0d373"
     },
     {
       "path": "client/web/src3d/tree-surface.js",
-      "sha256": "fc6814b034210daeff6c0c1e7f04c477e144a8599169a69700d9b62ffd6b15fa"
+      "sha256": "5d26a6a65df4b2cb396a388edb8e9e95b46aef470fa04eecf602ea4119a07554"
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "a99f277010854f440614f457d60b3353ceac725078ca4ed11008024cffeb63f1"
+      "sha256": "92189c291a9fc8dc6968520fd6ae67026fde9ab107e067273c02e5b18082faef"
     },
     {
       "path": "client/web/src3d/world.js",
@@ -571,7 +571,7 @@
     },
     {
       "path": "shared/geometry/tree-design/adopted-redwoods.json",
-      "sha256": "cce39becd96f77e2e2b61dedd596749da4396c32a33ef6878c19cdabbc6614b0"
+      "sha256": "3ef8521996903fe6f9023e6e63f1218b04e53231802806dd3cc9d75ab6f7bc2f"
     },
     {
       "path": "shared/geometry/tree-design/card-clusters.js",
@@ -591,31 +591,31 @@
     },
     {
       "path": "shared/geometry/tree-design/forest-giant-lod0.meshopt.glb",
-      "sha256": "b64d17a6eaed9070c190ca482ec79bb68b668b2d9c90300bb36580494fd77506"
+      "sha256": "55f8244278720ca01b8e03eb2aa9feba98f1b2b23e722fd99f672633f958f2cb"
     },
     {
       "path": "shared/geometry/tree-design/forest-giant-lod1.meshopt.glb",
-      "sha256": "614e25a63a367042016b092cbfd4e8319931b0b46f14a2dcae1e30ca52e5f521"
+      "sha256": "c0b9a739e9743a1f134e93460a83a6c38a1d6dd4ebff2c951c16fea718f85a64"
     },
     {
       "path": "shared/geometry/tree-design/forest-pine-lod0.meshopt.glb",
-      "sha256": "de2917be70511938ad4fe2bc5e35507c0cadbe5eaab93e9da8aa0760f451f23b"
+      "sha256": "6c2210aa873c4aeb9afc27253ce773aa9af9f7a759d5b299c85c3dca1c38f26e"
     },
     {
       "path": "shared/geometry/tree-design/forest-pine-lod1.meshopt.glb",
-      "sha256": "6d9c9765ba3efba149f7dbd748c91113b9c37a7de13e17dac4cd6ddff08e37ab"
+      "sha256": "a42f2e324d4ee5d87cc2f1da9199b8ba5871c333a9153933afdc6975a52de779"
     },
     {
       "path": "shared/geometry/tree-design/forest-redwood-lod0.meshopt.glb",
-      "sha256": "705bf6a7e631b94f55ed75e1cd9b991bfc786f7770de1a28a9f7e08c2b7b940d"
+      "sha256": "3ca3a3b10f9cd6a5cc8ca7848c00f2e0db98de4f0f38cd5b431d9a07627078ae"
     },
     {
       "path": "shared/geometry/tree-design/forest-redwood-lod1.meshopt.glb",
-      "sha256": "b204509d6b8d3b151e98baad9c0d5e768441f9f35975e46c123a388529ade4d1"
+      "sha256": "2b837b77d22dd08278b2ef4dfebf8fd7054aea8026f3aa07f59a88c30c624f4b"
     },
     {
       "path": "shared/geometry/tree-design/forest-sprays.js",
-      "sha256": "d02d827f396c9ab3e55ef175fff2704ba87c1873a18a35d5db04b02b7985e8da"
+      "sha256": "92b12d705a8783d03fe84f150f85a2b818abbc6e8e8901203c66fc82b74ae5ff"
     },
     {
       "path": "shared/geometry/tree-design/redwood-sprays.js",
@@ -777,7 +777,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "d8d45dc",
+  "commit": "2cd410f",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

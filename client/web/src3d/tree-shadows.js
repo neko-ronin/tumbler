@@ -3,6 +3,17 @@
  * shadow pass in material.onBeforeRender, including the first warm-up frame.
  */
 import * as T from '../vendor/three.module.min.js';
+// The renderer's own sun lookup lights everything outside its frustum, so a
+// receiver at the map's rim goes from unshadowed to fully shadowed in one pixel
+// and a descent shows the forest's shadows popping in. Fade the lookup out over
+// the outer EDGE_FADE of the map instead; the baked ground decals fade out by
+// the same amount (forest.js), so the hand-over is a cross-fade.
+export const SHADOW_EDGE_FADE=.14;
+{
+  const chunk=T.ShaderChunk.shadowmap_pars_fragment,start=chunk.indexOf('float getShadow('),mark='return mix( 1.0, shadow, shadowIntensity );',end=chunk.indexOf(mark,start);
+  if(start<0||end<0)throw new Error('three.js shadow chunk changed; update the shadow edge fade');
+  T.ShaderChunk.shadowmap_pars_fragment=chunk.slice(0,end)+`vec2 rim=min(shadowCoord.xy,1.-shadowCoord.xy);shadow=mix(1.,shadow,smoothstep(0.,${SHADOW_EDGE_FADE.toFixed(3)},min(rim.x,rim.y)));\n\t`+chunk.slice(end);
+}
 export const treeShadow={map:{value:null},matrix:{value:new T.Matrix4()},texel:{value:new T.Vector2(1/2048,1/2048)},bias:{value:0},normalBias:{value:0},ready:{value:0}};
 let light=null;
 export function bindTreeSunShadow(sun){light=sun;updateTreeSunShadow();}
@@ -35,6 +46,6 @@ float scenerySunLight(vec3 world,vec3 N){
   visible+=wx*wy*step(uv.z+dot(slope,coordinate-uv.xy)+uTreeSunBias,depth);
  }
  float edge=min(min(uv.x,uv.y),min(1.-uv.x,1.-uv.y));
- return mix(1.,visible/9.,smoothstep(.002,.016,edge));
+ return mix(1.,visible/9.,smoothstep(0.,${SHADOW_EDGE_FADE.toFixed(3)},edge));
 }
 `;

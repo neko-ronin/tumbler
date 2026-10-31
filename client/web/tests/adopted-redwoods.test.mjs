@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import * as T from '../vendor/three.module.min.js';
 import {parseGLB,makeMaterialFor,mergePrimitives} from '../src3d/glb.js';
 import {buildRedwoodSprays,rasterSprayAtlas} from '../../../shared/geometry/tree-design/redwood-sprays.js';
-import {fittedTreeGeometry,buildAdoptedRedwoods,retainedVillagePrimitive,releaseCrownSources} from '../src3d/redwood-rendering.js';
+import {CROWN_SPREAD,fittedTreeGeometry,buildAdoptedRedwoods,retainedVillagePrimitive,releaseCrownSources} from '../src3d/redwood-rendering.js';
 import {TREE_BUDGETS,preferredTreeLod,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality} from '../src3d/tree-budget.js';
 import {setTreeLighting} from '../src3d/tree-surface.js';
 import {style} from '../src3d/style.js';
@@ -69,8 +69,10 @@ test('all adopted species keep their original crown footprint, bare bole and hei
       // Leaves can be slightly inside a retained solid branch extremum; no
       // silhouette dimension or dwelling clearance is allowed to expand.
       for(let a=0;a<3;a++){
-        assert.ok(seen.min.getComponent(a)>=crown.min.getComponent(a)-1e-4,path+' crown minimum');
-        assert.ok(seen.max.getComponent(a)<=crown.max.getComponent(a)+1e-4,path+' crown maximum');
+        // Drawn forest crowns spread sideways by CROWN_SPREAD; the village's stay put.
+        const k=a!==1&&type!=='village'?CROWN_SPREAD:1;
+        assert.ok(seen.min.getComponent(a)>=crown.min.getComponent(a)*k-1e-4,path+' crown minimum');
+        assert.ok(seen.max.getComponent(a)<=crown.max.getComponent(a)*k+1e-4,path+' crown maximum');
         assert.ok(seen.getSize(new T.Vector3()).getComponent(a)>crown.getSize(new T.Vector3()).getComponent(a)*.78,path+' crown size');
       }
       assert.ok(g.index,'retain indexed needle topology instead of expanding every triangle');
