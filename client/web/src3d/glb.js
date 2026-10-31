@@ -18,7 +18,8 @@
  * | materials | `pbrMetallicRoughness`, base colour/roughness, double-sided, OPAQUE/MASK/BLEND; embedded PNGs on the blimp, generated redwood sprays and the Cat Ronin coat/hair |
  * | animation | node translation/rotation/scale, LINEAR or STEP; `extras.events` timed cues and other animation extras (e.g. `ground_speed_mps`) on `clip.userData`; inverse-bind skeletons and four-influence skin attributes |
  * | colours | RGB/RGBA vertex colours, including normalized integer storage |
- * | not used | morph targets, sparse accessors, interleaved buffer views, extensions, TEXCOORD_1, KHR_* |
+ * | packed | the game's cinematic cats only: gltfpack's `EXT_meshopt_compression` + `KHR_mesh_quantization`, decoded up front and widened to float32 (`unpack`, `widen`) |
+ * | not used | morph targets, sparse accessors, interleaved buffer views, any other extension, TEXCOORD_1 |
  *
  * ## Why it returns primitives rather than a scene
  *
@@ -64,6 +65,11 @@ import {
   ClampToEdgeWrapping,
   MirroredRepeatWrapping,
 } from "../vendor/three.module.min.js";
+import { MeshoptDecoder } from "../vendor/meshopt_decoder.module.js";
+
+await MeshoptDecoder.ready;
+// What gltfpack writes for the packed cinematic cats, and nothing more.
+const PACKED = new Set(["EXT_meshopt_compression", "KHR_mesh_quantization"]);
 
 const MAGIC = 0x46546c67; // "glTF"
 const CHUNK_JSON = 0x4e4f534a; // "JSON"
@@ -141,11 +147,57 @@ function readContainer(arrayBuffer) {
   if (!json.asset) refuse("the JSON chunk declares no asset");
   if (String(json.asset.version ?? "") !== "2.0") refuse(`glTF asset version ${json.asset.version}, expected 2.0`);
   if (!Array.isArray(json.buffers)) refuse("the JSON chunk declares no buffers");
-  if (json.buffers.length !== 1) refuse(`${json.buffers.length} buffers: this reader reads exactly one, and the core writes exactly one`);
   if (json.buffers[0].uri) refuse("an external buffer URI: this repository's assets embed their buffer, and an external one is a different thing to trust");
-  if (json.extensionsUsed?.length) refuse(`extensions: ${json.extensionsUsed.join(", ")}`);
+  const unknown = (json.extensionsUsed ?? []).filter((name) => !PACKED.has(name));
+  if (unknown.length) refuse(`extensions: ${unknown.join(", ")}`);
   if (json.extensions) refuse("extensions declared on the object");
+  if (json.extensionsUsed?.includes("EXT_meshopt_compression")) return unpack(json, bin);
+  if (json.buffers.length !== 1) refuse(`${json.buffers.length} buffers: this reader reads exactly one, and the core writes exactly one`);
   return { json, bin };
+}
+
+/**
+ * A gltfpack file (`pack_cinematic.py`) turned back into the plain one-buffer
+ * shape the rest of this reader reads: every compressed view is decoded into a
+ * fresh BIN, so nothing past this point knows meshopt exists. The second
+ * buffer is gltfpack's empty fallback and is never read. Quantized values
+ * (KHR_mesh_quantization) are widened later, where each accessor is used.
+ */
+function unpack(json, bin) {
+  if (!bin) refuse("a meshopt file with no BIN chunk");
+  const views = json.bufferViews ?? [];
+  const sizes = views.map((v) => {
+    const packed = v.extensions?.EXT_meshopt_compression;
+    if (!packed && v.buffer !== 0) refuse(`bufferView refers to buffer ${v.buffer} without meshopt compression`);
+    return packed ? packed.count * packed.byteStride : v.byteLength;
+  });
+  const out = new Uint8Array(sizes.reduce((sum, size) => sum + Math.ceil(size / 4) * 4, 0));
+  let offset = 0;
+  json.bufferViews = views.map((v, i) => {
+    const packed = v.extensions?.EXT_meshopt_compression;
+    const target = out.subarray(offset, offset + sizes[i]);
+    if (packed) {
+      if (packed.buffer !== 0) refuse(`bufferView ${i} compresses buffer ${packed.buffer}: gltfpack writes buffer 0`);
+      const source = new Uint8Array(bin, packed.byteOffset ?? 0, packed.byteLength);
+      MeshoptDecoder.decodeGltfBuffer(target, packed.count, packed.byteStride, source, packed.mode, packed.filter);
+    } else {
+      target.set(new Uint8Array(bin, v.byteOffset ?? 0, v.byteLength));
+    }
+    const plain = { buffer: 0, byteOffset: offset, byteLength: sizes[i] };
+    if (packed?.mode === "ATTRIBUTES" || v.byteStride) plain.byteStride = packed?.byteStride ?? v.byteStride;
+    offset += Math.ceil(sizes[i] / 4) * 4;
+    return plain;
+  });
+  json.buffers = [{ byteLength: out.byteLength }];
+  return { json, bin: out.buffer };
+}
+
+/** Normalized integers to floats, per the glTF spec's divisors; floats pass through. */
+function widen(json, index, values) {
+  if (values instanceof Float32Array) return values;
+  if (!json.accessors[index].normalized) return Float32Array.from(values);
+  const max = { 5120: 127, 5121: 255, 5122: 32767, 5123: 65535 }[json.accessors[index].componentType];
+  return Float32Array.from(values, (v) => Math.max(v / max, -1));
 }
 
 /**
@@ -187,30 +239,36 @@ function readAccessor(json, bin, index, state) {
   const view = json.bufferViews?.[viewIndex];
   if (!view) refuse(`accessor ${index} refers to bufferView ${viewIndex}, which does not exist`);
   if (view.buffer !== 0) refuse(`bufferView ${viewIndex} refers to buffer ${view.buffer}: this reader reads buffer 0`);
-  if (view.byteStride !== undefined) refuse(`bufferView ${viewIndex} declares a byteStride of ${view.byteStride} (interleaved): the core never writes that`);
   if (!bin) refuse(`accessor ${index} refers to the BIN chunk, and this GLB has none`);
 
   const withinView = accessor.byteOffset ?? 0;
-  const byteLength = componentType.bytes * numeric * accessor.count;
-  if (withinView + byteLength > view.byteLength) {
-    refuse(`accessor ${index} needs ${byteLength} bytes at ${withinView} of a ${view.byteLength}-byte bufferView: the file's own declaration and its own bytes disagree`);
+  const element = componentType.bytes * numeric;
+  // gltfpack pads elements to 4 bytes (a uint16 VEC3 has a stride of 8). A
+  // stride is fine; two accessors sharing those bytes is still refused below.
+  const stride = view.byteStride ?? element;
+  if (stride < element) refuse(`bufferView ${viewIndex} has a byteStride of ${stride}, shorter than accessor ${index}'s ${element}-byte element`);
+  const byteLength = element * accessor.count;
+  const span = accessor.count ? stride * (accessor.count - 1) + element : 0;
+  if (withinView + span > view.byteLength) {
+    refuse(`accessor ${index} needs ${span} bytes at ${withinView} of a ${view.byteLength}-byte bufferView: the file's own declaration and its own bytes disagree`);
   }
   // Overlap is the only failure that means interleaving: the range check also
   // accepts a view shared by two accessors that sit in disjoint halves of it,
   // which is still not interleaved, and refuses it when they overlap.
   const previous = state.ranges.get(viewIndex) ?? [];
   for (const [from, to, other] of previous) {
-    if (withinView < to && from < withinView + byteLength) {
+    if (withinView < to && from < withinView + span) {
       refuse(`bufferView ${viewIndex} holds accessor ${other} and accessor ${index} in overlapping bytes (interleaved attributes): the core never writes that, and a reader that read it twice would be guessing`);
     }
   }
-  previous.push([withinView, withinView + byteLength, index]);
+  previous.push([withinView, withinView + span, index]);
   state.ranges.set(viewIndex, previous);
 
   const start = (view.byteOffset ?? 0) + withinView;
-  const bytes = new Uint8Array(bin, start, byteLength);
   const values = new componentType.array(byteLength / componentType.bytes);
-  new Uint8Array(values.buffer, values.byteOffset, byteLength).set(bytes);
+  const into = new Uint8Array(values.buffer, values.byteOffset, byteLength);
+  if (stride === element) into.set(new Uint8Array(bin, start, byteLength));
+  else for (let i = 0; i < accessor.count; i++) into.set(new Uint8Array(bin, start + i * stride, element), i * element);
   const result = { values, numeric };
   state.accessors.set(index, result);
   return result;
@@ -258,11 +316,11 @@ function buildGeometry(json, bin, primitive, state, where) {
   if (vertexCount < 3) refuse(`${where}: ${vertexCount} vertices, which is not a surface`);
 
   const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new BufferAttribute(position.values, 3));
+  geometry.setAttribute("position", new BufferAttribute(widen(json, attributes.POSITION, position.values), 3));
   if (attributes.NORMAL !== undefined) {
     const normal = readAccessor(json, bin, attributes.NORMAL, state);
     if (normal.values.length !== position.values.length) refuse(`${where}: NORMAL and POSITION disagree in length`);
-    geometry.setAttribute("normal", new BufferAttribute(normal.values, 3));
+    geometry.setAttribute("normal", new BufferAttribute(widen(json, attributes.NORMAL, normal.values), 3));
   } else {
     geometry.computeVertexNormals();
   }
@@ -427,7 +485,7 @@ export function parseGLB(input) {
       const output = readAccessor(json, bin, sampler.output, state);
       if (input.numeric !== 1 || output.numeric !== (path === 'rotation' ? 4 : 3) || output.values.length !== input.values.length * output.numeric) refuse('animation sampler sizes disagree');
       const Track = path === 'rotation' ? QuaternionKeyframeTrack : VectorKeyframeTrack;
-      return new Track(`${node.uuid}.${property}`, input.values, output.values, interpolation === 'STEP' ? InterpolateDiscrete : InterpolateLinear);
+      return new Track(`${node.uuid}.${property}`, input.values, widen(json, sampler.output, output.values), interpolation === 'STEP' ? InterpolateDiscrete : InterpolateLinear);
     });
     const clip = new AnimationClip(animation.name, -1, tracks);
     // Timed cues (e.g. a blade locking) travel with the clip as glTF extras.

@@ -120,3 +120,14 @@ test('with aloft, pilots spawn already flying and still land',()=>{
   run(w,1200);
   for(const c of pilots)assert.ok(events.find(e=>e.cat===c.id&&e.event==='landed'),`${c.id} landed`);
 });
+
+// The game plays the cinematic tier, meshopt-packed (tools/pack_meshopt.py): every clip and gait speed must survive.
+test('each cat the game loads keeps its clips and gait speeds',async()=>{
+  const{parseGLB}=await import('../src3d/glb.js');const packed=read('shared/geometry/packed.json').assets;
+  for(const m of models.models){
+    const asset=packed[m.cinematic.asset]?.packed??m.cinematic.asset;
+    const clips=Object.fromEntries(parseGLB(readFileSync(new URL('../../../shared/geometry/'+asset,import.meta.url))).animations.map(c=>[c.name,c]));
+    for(const name of m.clips)assert.ok(clips[name],`${m.id} lost clip ${name}`);
+    for(const gait of ['stroll','walk','run'])assert.ok(clips[gait].userData.ground_speed_mps>0,`${m.id} ${gait} lost ground_speed_mps`);
+  }
+});

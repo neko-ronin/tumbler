@@ -44,7 +44,7 @@ function puppet(asset,model){
 export async function createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig,height,ground,hitTest,gondola=null,assets,scene,camera,canvas}){
   const config=await fetchData('shared/npc/folk.json');
   const models=await fetchData(config.models);
-  const bytes=await Promise.all(models.models.map(m=>fetchData(`shared/geometry/${m.asset}`,false)));
+  const bytes=await Promise.all(models.models.map(m=>fetchData(`shared/geometry/${m.cinematic?.asset??m.asset}`,false)));
   const events=[];
   const world=createFolkWorld({config,worldmap,placement,flight:flightConfig,walk:walkConfig,height,ground,hitTest,gondola,
     onEvent:e=>{events.push(e);if(events.length>256)events.shift();}});

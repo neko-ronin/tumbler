@@ -44,7 +44,10 @@ import {createLoadingScreen,warmScene,finishGpu,nextPaint} from './loading.js';
 
 const root = new URL('../../../', import.meta.url);
 const observed=new Map();
+// Source GLB -> its meshopt-packed copy (viewer.json's `packed`, from tools/pack_meshopt.py).
+let packed={};
 async function fetchData(path, json = true) {
+  path=packed[path]??path;
   const bytes=await fetchAssetBytes(path,root);observed.set(path,sha256(bytes));
   return json ? JSON.parse(new TextDecoder().decode(bytes)) : bytes;
 }
@@ -100,6 +103,8 @@ export async function main() {
     fetchData('client/web/data/farfield.f32', false), fetchData('shared/world/worldmap.json'),
     fetchData('shared/ecology/habitats.json'),
   ]);
+  observed.delete('client/web/data/viewer.json');  // the manifest cannot list its own hash
+  packed=manifest.packed??{};
   const transition=await fetchData('shared/world/out/landscape_transition.json');checkVersion(transition,1,'landscape transition');
   const geologyData=worldmap.mountains.geology?await fetchData(worldmap.mountains.geology):null;
   if(geologyData)checkVersion(geologyData,1,'mountain geology');
@@ -156,9 +161,7 @@ export async function main() {
     }
   }
   await Promise.all([loadAsset(), loadAsset(), loadAsset()]);
-  status.textContent='Checking world bytes…';
   loading.phase('Checking every page of the world…',2);
-  const verifiedFiles=await verifyFetched(manifest.fetched,observed,p=>fetchData(p,false));
   loading.phase('Sketches into sunlight. Growing the world…',3);
   await nextPaint();await nextPaint();
   const landscapeGrid=landscapeHeightGrid(blockGrid,farGrid);
@@ -242,6 +245,9 @@ export async function main() {
   const folk=await createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig:characterConfig.walk,height:walkHeight,ground:(x,y)=>ground.height(x,y),hitTest,gondola:gondolaLine,assets,scene,camera,canvas});
   // Cabins run on the folk world's clock, so the cats ride in the cabins drawn.
   const gondola=createGondolaLayer({line:gondolaLine,scene,navigation,clock:()=>folk.api.world.time,panel:document.getElementById('gondola-panel')});
+  // After the last fetchData, so each loaded file is checked against the bytes used.
+  status.textContent='Checking world bytes…';
+  const verifiedFiles=await verifyFetched(manifest.fetched,observed);
   // Full/half Cat Ronin (button, C, or ?cat=half): presentation and camera only;
   // speeds, jumps and collision stay full size. A start for a shrink/grow mechanic.
   const catSize=document.getElementById('cat-size'),HALF_CAT=.52;

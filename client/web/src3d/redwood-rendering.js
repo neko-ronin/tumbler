@@ -20,11 +20,18 @@ export const retainedVillagePrimitive=p=>!crownPrimitive(p);
 function boundsOf(primitives){const box=new T.Box3();for(const p of primitives)box.union(p.geometry.boundingBox.clone().applyMatrix4(p.local));return box;}
 
 export function fittedTreeGeometry(source,crown,stage,village=false,taper=.78,retainedBoleIndexCount=Infinity) {
-  const box=boundsOf(source.primitives.filter(p=>/foliage/.test(p.materialName))),raw=crown.primitives[0].geometry;
+  const box=boundsOf(source.primitives.filter(p=>/foliage/.test(p.materialName)));
+  // Crown primitives share one vertex buffer as authored, but each owns its own once
+  // meshopt-packed. Fit every distinct buffer once, end to end (the fit is per vertex
+  // against the bounds of all of them), and index each primitive into its own.
+  const crownGeometries=[...new Map(crown.primitives.map(p=>[p.geometry.attributes.position.array,p.geometry])).values()];
+  const crownBase=new Map();let crownCount=0;
+  for(const g of crownGeometries){crownBase.set(g.attributes.position.array,crownCount);crownCount+=g.attributes.position.count;}
+  const joined=name=>{const out=new Float32Array(crownCount*3);for(const g of crownGeometries)out.set(g.attributes[name].array,crownBase.get(g.attributes.position.array)*3);return out;};
   const fit=stage.recipe.architecture==='feral'?fitForestCrown:fitCrown;
-  const fitted=fit(raw.attributes.position.array,raw.attributes.normal.array,...(stage.recipe.architecture==='feral'?[{min:box.min.toArray(),max:box.max.toArray()},[0,0],crown.extras?.fitBounds]:[stage.recipe,{min:box.min.toArray(),max:box.max.toArray()},taper]));
+  const fitted=fit(joined('position'),joined('normal'),...(stage.recipe.architecture==='feral'?[{min:box.min.toArray(),max:box.max.toArray()},[0,0],crown.extras?.fitBounds]:[stage.recipe,{min:box.min.toArray(),max:box.max.toArray()},taper]));
   const solids=village?(stage.includeBole?source.primitives.filter(p=>p.materialName==='redwood_bark'):[]):source.primitives.filter(p=>!/foliage/.test(p.materialName));
-  const solidVertices=solids.reduce((n,p)=>n+p.geometry.attributes.position.count,0),count=solidVertices+raw.attributes.position.count;
+  const solidVertices=solids.reduce((n,p)=>n+p.geometry.attributes.position.count,0),count=solidVertices+crownCount;
   const position=new Float32Array(count*3),normal=new Float32Array(count*3),color=new Float32Array(count*3),uv=new Float32Array(count*2),leaf=new Uint8Array(count),ao=new Uint8Array(count).fill(255),indices=[];
   const vector=new T.Vector3(),normalMatrix=new T.Matrix3();let offset=0;
   for(const primitive of solids){
@@ -40,17 +47,16 @@ export function fittedTreeGeometry(source,crown,stage,village=false,taper=.78,re
     for(let i=0;i<Math.min(g.index?.count??p.count,retainedBoleIndexCount);i++)indices.push(offset+(g.index?g.index.getX(i):i));offset+=p.count;
   }
   position.set(fitted.positions,offset*3);normal.set(fitted.normals,offset*3);
-  const tint=raw.attributes.color;for(let i=0;i<raw.attributes.uv.count;i++){uv[(offset+i)*2]=raw.attributes.uv.getX(i);uv[(offset+i)*2+1]=raw.attributes.uv.getY(i);}
-  for(let i=0;i<raw.attributes.position.count;i++){
-    ao[offset+i]=Math.round(tint.getW(i)*255);
+  for(const g of crownGeometries){const at=offset+crownBase.get(g.attributes.position.array),{uv:uvs,color:tint}=g.attributes;
+    for(let i=0;i<g.attributes.position.count;i++){uv[(at+i)*2]=uvs.getX(i);uv[(at+i)*2+1]=uvs.getY(i);ao[at+i]=Math.round(tint.getW(i)*255);}
   }
-  for(const p of crown.primitives){const g=p.geometry,foliage=/foliage/.test(p.materialName),tone=p.materialName.match(/foliage_(dark|mid|new)/)?.[1];
+  for(const p of crown.primitives){const g=p.geometry,tint=g.attributes.color,at=offset+crownBase.get(g.attributes.position.array),foliage=/foliage/.test(p.materialName),tone=p.materialName.match(/foliage_(dark|mid|new)/)?.[1];
     // The core's original material values are the palette authority for each
     // species, including the separately authored occupied village trees.
     const palette=source.primitives.find(s=>tone?s.materialName.endsWith('foliage_'+tone):/^(redwood|conifer)_bark$/.test(s.materialName))?.baseColorFactor;
     if(!palette)throw new Error('Missing original redwood palette: '+p.materialName);
-    for(let i=0;i<g.index.count;i++){const id=g.index.getX(i);indices.push(offset+id);if(foliage)leaf[offset+id]=p.materialName.includes('spray')?2:1;
-      for(let a=0;a<3;a++)color[(offset+id)*3+a]=palette[a]*tint.getComponent(id,a);}}
+    for(let i=0;i<g.index.count;i++){const id=g.index.getX(i);indices.push(at+id);if(foliage)leaf[at+id]=p.materialName.includes('spray')?2:1;
+      for(let a=0;a<3;a++)color[(at+id)*3+a]=palette[a]*tint.getComponent(id,a);}}
   const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(position,3));g.setAttribute('normal',new T.BufferAttribute(normal,3));
   g.setAttribute('color',new T.BufferAttribute(color,3));g.setAttribute('uv',new T.BufferAttribute(uv,2));g.setAttribute('leafKind',new T.BufferAttribute(leaf,1));g.setAttribute('canopyAO',new T.BufferAttribute(ao,1,true));g.setIndex(indices);
   g.userData.treePalette=['dark','mid','new'].map(tone=>source.primitives.find(p=>p.materialName.endsWith('foliage_'+tone)).baseColorFactor.slice(0,3));

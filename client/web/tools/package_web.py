@@ -39,6 +39,7 @@ from pathlib import Path, PurePosixPath
 REPO = Path(__file__).resolve().parents[3]
 MANIFEST = "client/web/data/viewer.json"
 ENTRY = "client/web/scene.html"
+PACKED = "shared/geometry/packed.json"   # tools/pack_meshopt.py's record
 EXTRAS = ("client/web/vendor/LICENSE.three",)   # three.js is MIT: its notice ships with its code
 # The 2D map (`client/web/index.html`), linked from the scene: its page, the modules
 # `src/main.js` imports, and what it fetches. Files the manifest already names are
@@ -116,6 +117,21 @@ def verified_files(repo: Path) -> list[str]:
             problems.append(f"{rel}: sha256 {digest[:12]}, viewer.json says {source['sha256_12']}")
         if rel not in files:
             files.append(rel)
+    # Meshopt-packed GLBs: players fetch the packed copy (listed above); the source and
+    # the record (tools/pack_meshopt.py) ship too, because the published tests read them.
+    if manifest.get("packed"):
+        record = json.loads((repo / PACKED).read_text(encoding="utf-8"))["assets"]
+        files.append(PACKED)
+        for src in manifest["packed"]:
+            rel = plain_relative(src)
+            entry = record.get(rel.removeprefix("shared/geometry/"))
+            if not (repo / rel).is_file() or entry is None:
+                problems.append(f"{rel}: missing, or not in {PACKED}")
+                continue
+            if hashlib.sha256((repo / rel).read_bytes()).hexdigest() != entry["source_sha256"]:
+                problems.append(f"{rel}: changed since it was packed; rerun tools/pack_meshopt.py")
+            if rel not in files:
+                files.append(rel)
     for extra in (*EXTRAS, *MAP):
         if not (repo / extra).is_file():
             problems.append(f"{extra}: missing")
