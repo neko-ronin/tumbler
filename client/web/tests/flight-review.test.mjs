@@ -49,8 +49,10 @@ test('every windborne mote spawns inside its eviction circle and keeps drifting 
       ecology.update(camera,frame*.05);
       const after=positions();assert.equal(after.length,before.length);
       for(let i=0;i<before.length;i++){
-        assert.ok(Math.abs(after[i][0]-before[i][0]-.1)<1e-5,'east drift must follow the wind, including after a camera move');
-        assert.ok(Math.abs(after[i][1]-before[i][1]+.05)<1e-5,'south drift must follow the wind');
+        // Each mote takes its own share of the wind plus a slow wander, so check bounds, not equality.
+        const east=after[i][0]-before[i][0],south=before[i][1]-after[i][1];
+        assert.ok(east>.03&&east<.17,'east drift must follow the wind, including after a camera move');
+        assert.ok(south>.005&&south<.09,'south drift must follow the wind');
       }
       before=after;
     }

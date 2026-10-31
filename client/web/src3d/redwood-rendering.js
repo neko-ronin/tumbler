@@ -9,6 +9,7 @@ import {treeLightingKey} from './tree-surface.js';
 import {treeMaterial} from './tree-material.js';
 import {bakeBoughCards} from './tree-cards.js';
 import {bakeCards} from './tree-impostors.js';
+import {paletteOverride} from '../../../shared/geometry/tree-design/forest-palette.js';
 import {fitCrown} from '../../../shared/geometry/tree-design/fit-crown.js';
 import {fitForestCrown} from '../../../shared/geometry/tree-design/forest-sprays.js';
 import {TREE_BUDGETS,projectedTreePixels,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality} from './tree-budget.js';
@@ -25,7 +26,7 @@ function boundsOf(primitives){const box=new T.Box3();for(const p of primitives)b
 // The village crown holds dwellings inside its envelope, so it keeps its own.
 export const CROWN_SPREAD=1.28;
 const spreadBounds=box=>{const min=box.min.toArray(),max=box.max.toArray();for(const a of [0,2]){min[a]*=CROWN_SPREAD;max[a]*=CROWN_SPREAD;}return {min,max};};
-export function fittedTreeGeometry(source,crown,stage,village=false,taper=.78,retainedBoleIndexCount=Infinity) {
+export function fittedTreeGeometry(source,crown,stage,village=false,taper=.78,retainedBoleIndexCount=Infinity,override=undefined) {
   const box=boundsOf(source.primitives.filter(p=>/foliage/.test(p.materialName)));
   // Crown primitives share one vertex buffer as authored, but each owns its own once
   // meshopt-packed. Fit every distinct buffer once, end to end (the fit is per vertex
@@ -59,13 +60,13 @@ export function fittedTreeGeometry(source,crown,stage,village=false,taper=.78,re
   for(const p of crown.primitives){const g=p.geometry,tint=g.attributes.color,at=offset+crownBase.get(g.attributes.position.array),foliage=/foliage/.test(p.materialName),tone=p.materialName.match(/foliage_(dark|mid|new)/)?.[1];
     // The core's original material values are the palette authority for each
     // species, including the separately authored occupied village trees.
-    const palette=source.primitives.find(s=>tone?s.materialName.endsWith('foliage_'+tone):/^(redwood|conifer)_bark$/.test(s.materialName))?.baseColorFactor;
+    const palette=(tone&&override?.[tone])||source.primitives.find(s=>tone?s.materialName.endsWith('foliage_'+tone):/^(redwood|conifer)_bark$/.test(s.materialName))?.baseColorFactor;
     if(!palette)throw new Error('Missing original redwood palette: '+p.materialName);
     for(let i=0;i<g.index.count;i++){const id=g.index.getX(i);indices.push(at+id);if(foliage)leaf[at+id]=p.materialName.includes('spray')?2:1;
       for(let a=0;a<3;a++)color[(at+id)*3+a]=palette[a]*tint.getComponent(id,a);}}
   const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(position,3));g.setAttribute('normal',new T.BufferAttribute(normal,3));
   g.setAttribute('color',new T.BufferAttribute(color,3));g.setAttribute('uv',new T.BufferAttribute(uv,2));g.setAttribute('leafKind',new T.BufferAttribute(leaf,1));g.setAttribute('canopyAO',new T.BufferAttribute(ao,1,true));g.setIndex(indices);
-  g.userData.treePalette=['dark','mid','new'].map(tone=>source.primitives.find(p=>p.materialName.endsWith('foliage_'+tone)).baseColorFactor.slice(0,3));
+  g.userData.treePalette=['dark','mid','new'].map(tone=>override?.[tone]??source.primitives.find(p=>p.materialName.endsWith('foliage_'+tone)).baseColorFactor.slice(0,3));
   g.computeBoundingBox();g.computeBoundingSphere();return g;
 }
 /** Discard decoded generator prototypes after fitting. Render geometry owns
@@ -97,7 +98,7 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     if(!prepared){
       prepared=stages.map(stage=>{
         const crown=assets[stage.asset],sprayMap=crown.primitives.find(p=>p.texture)?.texture??null;
-        const g=fittedTreeGeometry(source,crown,stage,village,plan.silhouette.taper,plan.silhouette.retainedBoleIndexCount),material=treeMaterial(stage.recipe,{sprayMap,palette:g.userData.treePalette});
+        const g=fittedTreeGeometry(source,crown,stage,village,plan.silhouette.taper,plan.silhouette.retainedBoleIndexCount,paletteOverride(plan.targets[path])),material=treeMaterial(stage.recipe,{sprayMap,palette:g.userData.treePalette});
         if(stage.representation==='mesh'){bases.push(g);materials.push(material);return {geometry:g,material,triangles:triangles(g)};}
         const bake=()=>{const sourceMaterial=treeMaterial(stage.recipe,{sprayMap,palette:g.userData.treePalette,shadowShader:null});try{return stage.representation==='lattice'?bakeBoughCards(renderer,g,sourceMaterial,'lattice',stage.cards):bakeCards(renderer,g,sourceMaterial,'multiview',stage.cards);}finally{sourceMaterial.dispose();g.dispose();}};
         const kit=bake();kit.bake=bake;
@@ -169,10 +170,11 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     for(const mesh of beautyMeshes){mesh.count=counts.get(mesh);mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;mesh.geometry.attributes.forestInterval.needsUpdate=true;}
     stats.near=stats.lodCounts[0];stats.mid=stats.lodCounts[1]+stats.lodCounts[2];stats.far=stats.lodCounts[3];stats.culled=records.length-visible.length;stats.selectionMs=performance.now()-start;
   }
+  const rebake=kit=>{const next=kit.bake();kit.target.dispose();kit.target=next.target;kit.material.map=next.target.texture;kit.material.needsUpdate=true;next.geometry.dispose();next.material.dispose();next.material.studioMaskMaterial?.dispose();};
   return {group,stats,update,setQuality(quality){stats.budgets=options.budgets??treeBudgetsForQuality(quality);stats.quality=quality;lastKey='';},invalidateShadows(){stats.shadowRevision++;lastKey='';lastShadowKey='';},
     rebuildImpostors(direction){
       const key=lightKey();if(direction&&key===bakedLight)return;
-      for(const kit of kits){const next=kit.bake();kit.target.dispose();kit.target=next.target;kit.material.map=next.target.texture;kit.material.needsUpdate=true;next.geometry.dispose();next.material.dispose();next.material.studioMaskMaterial?.dispose();}
+      for(const kit of kits)rebake(kit);
       bakedLight=key;stats.shadowRevision++;lastKey='';},
     dispose(){for(const mesh of [...beautyMeshes,...batches.map(b=>b.proxy)])mesh.geometry.dispose();for(const g of bases)g.dispose();for(const m of materials)m.dispose();for(const kit of kits)kit.dispose();group.clear();}};
 }

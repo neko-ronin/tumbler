@@ -93,7 +93,11 @@
       body[data-flying="true"] details { bottom:14px; }
       body[data-flying="true"] .flight-guide { bottom:14px;left:14px;right:auto; }
     }
-  </style>
+      /* The eye settling on a butterfly: all but a spot round it softens. Driven by insect-visits.js. */
+    #focus{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:var(--f,0);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+      -webkit-mask-image:radial-gradient(circle at var(--x,50%) var(--y,60%),transparent 0 var(--r,40px),#000 calc(var(--r,40px) + 16vmin));mask-image:radial-gradient(circle at var(--x,50%) var(--y,60%),transparent 0 var(--r,40px),#000 calc(var(--r,40px) + 16vmin))}
+    #focus[hidden]{display:none}
+</style>
 </head>
 <body data-loading="loading">
   <section id="loading-screen" aria-labelledby="loading-title">
@@ -162,6 +166,7 @@
     </div>
   </section>
   <div id="world" inert aria-busy="true">
+  <div id="focus" aria-hidden="true" hidden></div>
   <main id="stage"><canvas id="canvas" tabindex="0" aria-label="Tumbler countryside. Drag to orbit, right-drag to pan, scroll to approach."></canvas></main>
   <header class="panel"><span class="sunmark" aria-hidden="true">☼</span><div><h1>Tumbler <span id="version" class="version"></span></h1><div id="status" role="status">Opening the countryside…</div></div></header>
   <div class="panel lighting"><label for="light">The light</label><select id="light"><option value="golden">Golden hour</option><option value="day">Clear morning</option><option value="dusk">Evening glow</option></select></div>

@@ -1,3 +1,40 @@
+# Insect visits — web client v0.5.3, 2026-10-31
+
+Stand still (walk mode) and a bee that comes within 1.3 m lands on your head; after
+a couple of seconds Cat Ronin gives it a slow, lazy wave of the right arm (a
+procedural pose over the clips) and it wanders peacefully off. Sit (idle long
+enough for the seated pose) and a butterfly that comes within 2.4 m lands on your
+nose and stays until you move: the head nods to it and everything but a spot round
+it softens (the `#focus` overlay), in first or third person. One insect of each
+kind at a time, with a cooldown. Logic: `client/web/src3d/insect-visits.js`
+(tests: `client/web/tests/insect-visits.test.mjs`).
+
+---
+
+# Meadow insects — web client v0.5.2, 2026-10-31
+
+Butterflies are real four-lobed wings (margins, veins, per-insect tints) with a
+hinged flap, glides and a wandering flight that faces its heading. The bee is a
+round bumblebee with shell fur (flaps plus a fine hair layer, drawn only within
+24 m), blurred wing haze instead of solid wings, a lazy wobbling flight, and a
+spatial buzz for the three nearest bees in the soundscape. Windborne motes are
+dust, petals and seed fluff: fainter, each with its own drag and wander.
+Sources: `shared/geometry/flight/build_flight.py`, `client/web/src3d/ecology.js`,
+`client/web/src3d/audio.js`.
+
+---
+
+# Forest polish — web client v0.5.2, 2026-10-31
+
+Wider pine and redwood crown bases, drawn crowns spread 1.28× so stands blanket
+from above, slightly more transparent redwood leaves, the human's per-type
+foliage colours at every LOD (`shared/geometry/tree-design/forest-palette.js`,
+with the replaced values recorded), a cheaper litter texture, a cross-faded
+sun-shadow edge and rebuilt ferns and sorrel. Details, files and open items:
+[forest polish review](../../docs/reviews/forest-polish-2026-10-31.md).
+
+---
+
 # Katana combat — visual review, 2026-10-29
 
 Drawn and running, Cat Ronin now holds the katana two-handed at his right hip

@@ -16,6 +16,27 @@ export function createCharacter(asset, config) {
   model.scale.setScalar(config.scale);
   model.position.y = -config.sole_y_m * config.scale;
   object.add(model);
+  // Small procedural layers over the authored clips, used by the insect visits (insect-visits.js):
+  // a shooing wave of the right arm, and a nod of the head toward something on his nose.
+  const gestureBones={arm:model.getObjectByName('upper_arm.R'),fore:model.getObjectByName('forearm.R'),head:model.getObjectByName('head')};
+  const gesture={shoo:0,wave:0,nod:0,armE:[-1.65,0,-.45],foreE:[0,0,0],flickE:[.7,0,0]},gestureQ=new T.Quaternion(),gestureE=new T.Euler();
+  const NOSE_LOCAL=new T.Vector3(0,.2,.3),TOP_LOCAL=new T.Vector3(0,.52,.02);  // head-bone space, metres
+  // A clip need not key these bones, in which case last frame's offset would still be on them and compound:
+  // each bone's pre-gesture rotation is kept and put back before the mixer runs.
+  const gestureBase=new Map();
+  function restoreGesture(){for(const [bone,q] of gestureBase)bone.quaternion.copy(q);gestureBase.clear();}
+  function applyGesture(){
+    const {arm,fore,head}=gestureBones;
+    for(const bone of [arm,fore,head])if(bone&&(gesture.shoo>.001||gesture.nod>.001))gestureBase.set(bone,bone.quaternion.clone());
+    if(gesture.shoo>.001&&arm&&fore){
+      // Unbothered: a slow, lazy raise and two easy brushes through the air, nothing hurried.
+      const w=gesture.shoo,flick=Math.sin((gesture.wave-.6)*5.4)*w;
+      const [ax,ay,az]=gesture.armE,[bx,by,bz]=gesture.foreE,[fx,fy,fz]=gesture.flickE;
+      arm.quaternion.premultiply(gestureQ.setFromEuler(gestureE.set(ax*w,ay*w,az*w)));
+      fore.quaternion.premultiply(gestureQ.setFromEuler(gestureE.set(bx*w+fx*flick,by*w+fy*flick,bz*w+fz*flick)));
+    }
+    if(gesture.nod>.001&&head)head.quaternion.premultiply(gestureQ.setFromEuler(gestureE.set(.42*gesture.nod,0,0)));
+  }
   const flightBone=config.flight_attachment&&model.getObjectByName(config.flight_attachment.bone);
   if(config.flight_attachment&&!flightBone)throw new Error(`Ronin is missing attachment bone ${config.flight_attachment.bone}`);
   const attachmentPoint=new T.Vector3(),attachmentTarget=new T.Vector3();
@@ -231,7 +252,9 @@ export function createCharacter(asset, config) {
     if(katana?.run&&['drawn','run'].includes(katanaState)){const stance=pose==='run'?'run':'drawn';if(stance!==katanaState)playKatana(stance,.2);}
     for(const [bone,rotation] of legPose.reverse())bone.quaternion.copy(rotation);legPose.length=0;
     // Hit-stop: on a landed blow the animation all but freezes for a beat; physics does not.
+    restoreGesture();
     mixer.update(hitStop>0?dt*.06:dt);hitStop-=dt;shake*=Math.exp(-dt*9);
+    applyGesture();
     if(katana){
       const events=katanaAction.getClip().userData?.events??[];
       while(cueIndex<events.length&&events[cueIndex].time<=katanaAction.time)cue(events[cueIndex++].name);
@@ -340,7 +363,14 @@ export function createCharacter(asset, config) {
     else if(katanaState==='attack')attackQueued=attackIndex+1<katana.attacks.length;
     return katanaState;
   }
-  const api = { object, model, update, toggleKatana, attack, onCue:null, mixer, actions,
+  /** Where an insect lands: the crown of his head and the tip of his nose, in world space (out: {top, nose}). */
+  function anchors(out){
+    model.updateWorldMatrix(true,true);const head=gestureBones.head;if(!head)return out;
+    head.localToWorld(out.top.copy(TOP_LOCAL));head.localToWorld(out.nose.copy(NOSE_LOCAL));return out;
+  }
+  const api = { object, model, update, toggleKatana, attack, onCue:null, mixer, actions, gesture, anchors,
+    /** True while the idle sequence holds a seated pose (he has stood still long enough to sit). */
+    get sitting(){return !!config.idle_sequence?.some(step=>step.hold&&step.clip===clipName);},
     /** True while an attack plays: the client holds his feet still. */
     get attacking(){return katanaState==='attack';},
     /** Camera shake amplitude (m) a landed blow asks for; decays by itself. */

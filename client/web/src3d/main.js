@@ -32,6 +32,7 @@ import { createFolkLayer } from './folk.js';
 import { createGondolaLayer } from './gondola.js';
 import { buildGondola, deckFloor } from '../../../shared/activities/gondola.js';
 import { buildEcology } from './ecology.js';
+import { createVisitorWatch } from './insect-visits.js';
 import { buildTethers, buildTrails, TRAIL_SURFACE_LIFT } from './details.js';
 import { createSoundscape } from './audio.js';
 import { buildWorldCollision } from './collision.js';
@@ -272,6 +273,7 @@ export async function main() {
     })});
   };
   const soundscape=createSoundscape(habitats),cameraShake=new T.Vector3();
+  const visitors=createVisitorWatch({ecology,character,navigation,camera,focusEl:document.getElementById('focus')});
   character.onCue=name=>soundscape.cue(name);
   document.getElementById('sound').addEventListener('click',async e=>{const enabled=await soundscape.toggle();e.target.textContent=enabled?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(enabled));});
   const modeSelect=document.getElementById('activity'),siteSelect=document.getElementById('launch-site');
@@ -519,7 +521,7 @@ export async function main() {
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
     applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
-    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);ecology.update(camera,elapsed);soundscape.update(camera,navigation);
+    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit));
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;

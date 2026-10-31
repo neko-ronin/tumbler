@@ -2,13 +2,13 @@
  * Original procedural sound, started only by the user's sound button.
  */
 export function createSoundscape(habitats){
-  let context=null,water=null,motor=null,wind=null,vario=null,cues=null,enabled=false;
+  let context=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,enabled=false;
   async function toggle(){
     if(!context){
       context=new AudioContext();const length=context.sampleRate*3;
       const buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);
       let last=0;for(let i=0;i<length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;data[i]=last*3.5;}
-      cues=createCuePlayer(context);
+      cues=createCuePlayer(context);beeVoices=Array.from({length:3},()=>createBeeVoice(context));
       function noise(frequency,gain,spatial=false){const source=context.createBufferSource();source.buffer=buffer;source.loop=true;
         const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=frequency;
         const level=context.createGain();level.gain.value=gain;source.connect(filter).connect(level);
@@ -20,7 +20,7 @@ export function createSoundscape(habitats){
     }
     enabled=!enabled;await (enabled?context.resume():context.suspend());return enabled;
   }
-  function update(camera,navigation){
+  function update(camera,navigation,nearby){
     if(!enabled||!context)return;
     const listener=context.listener,t=context.currentTime,position=camera.position;
     if(listener.positionX){listener.positionX.setValueAtTime(position.x,t);listener.positionY.setValueAtTime(position.y,t);listener.positionZ.setValueAtTime(position.z,t);
@@ -35,9 +35,34 @@ export function createSoundscape(habitats){
     vario.tone.frequency.setTargetAtTime(climb>0?620+Math.min(6,climb)*85:310,t,.08);
     vario.level.gain.setTargetAtTime(pulse?.014:climb<-3?.008:0,t,.025);
     const throttle=navigation.mode==='paramotor'&&!navigation.state?.grounded?navigation.state.throttle:0;
+    // Up to three of the closest bumblebees, each its own HRTF-placed voice; the rest of the meadow is silent.
+    const bees=nearby?nearby('bee',26,beeVoices.length):[];
+    beeVoices.forEach((voice,k)=>{
+      const bee=bees[k];
+      if(!bee){voice.level.gain.setTargetAtTime(0,t,.25);return;}
+      voice.panner.positionX.setTargetAtTime(bee.x,t,.04);voice.panner.positionY.setTargetAtTime(bee.y,t,.04);voice.panner.positionZ.setTargetAtTime(bee.z,t,.04);
+      voice.setPitch(150+(bee.id%7)*12,t);
+      const fade=Math.max(0,Math.min(1,(26-bee.d)/10));voice.level.gain.setTargetAtTime(.075*fade,t,.15);
+    });
     motor.level.gain.setTargetAtTime(throttle*.032,t,.1);motor.oscillator.frequency.setTargetAtTime(65+throttle*65,t,.1);
   }
   return {toggle,update,cue:name=>{if(enabled)cues?.(name);},dispose(){context?.close();}};
+}
+/** One bumblebee: a soft low buzz (saw plus an octave-down triangle, low-passed) that wanders in pitch and pulses
+ * lazily, with a breath of wing air, placed in space by an HRTF panner. Silent until its gain is raised. */
+export function createBeeVoice(context,out=context.destination){
+  const panner=context.createPanner();panner.panningModel='HRTF';panner.distanceModel='inverse';panner.refDistance=1.5;panner.rolloffFactor=1.7;panner.maxDistance=30;
+  const level=context.createGain();level.gain.value=0;
+  const saw=context.createOscillator(),sub=context.createOscillator(),body=context.createBiquadFilter(),swell=context.createGain();
+  saw.type='sawtooth';sub.type='triangle';saw.frequency.value=180;sub.frequency.value=90;body.type='lowpass';body.frequency.value=950;body.Q.value=1.2;swell.gain.value=.7;
+  const mix=context.createGain();mix.gain.value=.5;saw.connect(mix);sub.connect(mix);mix.connect(body).connect(swell);
+  const lfo=(rate,depth,target)=>{const o=context.createOscillator(),g=context.createGain();o.frequency.value=rate;g.gain.value=depth;o.connect(g).connect(target);o.start();return o;};
+  lfo(.7+Math.random()*.5,9,saw.frequency);lfo(.7,4.5,sub.frequency);lfo(4+Math.random()*1.5,.22,swell.gain);
+  const air=context.createBuffer(1,context.sampleRate,context.sampleRate),d=air.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const hiss=context.createBufferSource(),band=context.createBiquadFilter(),hissLevel=context.createGain();hiss.buffer=air;hiss.loop=true;band.type='bandpass';band.frequency.value=2600;band.Q.value=1.5;hissLevel.gain.value=.05;
+  hiss.connect(band).connect(hissLevel).connect(swell);
+  swell.connect(level).connect(panner).connect(out);saw.start();sub.start();hiss.start();
+  return {panner,level,setPitch(hz,t){saw.frequency.setTargetAtTime(hz,t,.3);sub.frequency.setTargetAtTime(hz/2,t,.3);}};
 }
 /** One-shot character cues (the katana's latch, slides, locks and its fighting) on an existing AudioContext. */
 export function createCuePlayer(context){
