@@ -1,14 +1,14 @@
 /** Browser presentation of the existing habitats, wind and flight motor.
  * Original procedural sound, started only by the user's sound button.
  */
-export function createSoundscape(habitats){
-  let context=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,enabled=false;
+export function createSoundscape(habitats,trees=new Float32Array(0)){
+  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,enabled=false;
   async function toggle(){
     if(!context){
       context=new AudioContext();const length=context.sampleRate*3;
       const buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);
       let last=0;for(let i=0;i<length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;data[i]=last*3.5;}
-      cues=createCuePlayer(context);beeVoices=Array.from({length:3},()=>createBeeVoice(context));
+      cues=createCuePlayer(context);birds=createBirds(context,createTreeIndex(trees));beeVoices=Array.from({length:3},()=>createBeeVoice(context));
       function noise(frequency,gain,spatial=false){const source=context.createBufferSource();source.buffer=buffer;source.loop=true;
         const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=frequency;
         const level=context.createGain();level.gain.value=gain;source.connect(filter).connect(level);
@@ -25,6 +25,7 @@ export function createSoundscape(habitats){
     const listener=context.listener,t=context.currentTime,position=camera.position;
     if(listener.positionX){listener.positionX.setValueAtTime(position.x,t);listener.positionY.setValueAtTime(position.y,t);listener.positionZ.setValueAtTime(position.z,t);
       const e=camera.matrixWorld.elements;listener.forwardX.setValueAtTime(-e[8],t);listener.forwardY.setValueAtTime(-e[9],t);listener.forwardZ.setValueAtTime(-e[10],t);listener.upX.setValueAtTime(e[4],t);listener.upY.setValueAtTime(e[5],t);listener.upZ.setValueAtTime(e[6],t);}
+    birds.update(position);
     let nearest=null,distance=Infinity;for(const h of habitats.habitats){const [x,y,z]=h.centre_m;const d=(x-position.x)**2+(-y-position.z)**2+(z-position.y)**2;if(d<distance){distance=d;nearest=h;}}
     if(nearest){const [x,y,z]=nearest.centre_m;water.panner.positionX.setValueAtTime(x,t);water.panner.positionY.setValueAtTime(z,t);water.panner.positionZ.setValueAtTime(-y,t);}
     const flying=['paraglider','parakite','paramotor'].includes(navigation.mode)&&!navigation.state?.grounded;
@@ -152,4 +153,78 @@ export function createCuePlayer(context){
       burst(dur*.7,'lowpass',900,.7,.12);
     }
   }
+}
+
+/** Approximate crown heights (m, before scale) of the placed tree kinds; birds sing from the upper-middle canopy. */
+const CROWN_M={'redwood/mountain_pine.glb':26,'redwood/silver_fir.glb':34,'redwood/redwood_canopy.glb':55,'redwood/giant_redwood.glb':90};
+/** The placed trees as flat scene-space records [x, groundY, z, crownM], so birds can be put where trees really stand. */
+export function treeSpots(instances){
+  const trees=instances.filter(i=>i.asset?.startsWith('redwood/')&&i.position_m),out=new Float32Array(trees.length*4);
+  trees.forEach((t,n)=>{const [x,y,z]=t.position_m;out.set([x,z,-y,(CROWN_M[t.asset]??30)*(t.scale?.[0]??1)],n*4);});
+  return out;
+}
+/** A hash grid over `treeSpots`: `near(x,z,radius)` returns record offsets of the trees within radius, touching a handful of cells. */
+export function createTreeIndex(spots,cell=32){
+  const cells=new Map(),key=(i,j)=>i*100003+j;
+  for(let n=0;n<spots.length;n+=4){const k=key(Math.floor(spots[n]/cell),Math.floor(spots[n+2]/cell));if(!cells.has(k))cells.set(k,[]);cells.get(k).push(n);}
+  return {spots,near(x,z,radius){
+    const out=[],r2=radius*radius;
+    for(let i=Math.floor((x-radius)/cell);i<=Math.floor((x+radius)/cell);i++)for(let j=Math.floor((z-radius)/cell);j<=Math.floor((z+radius)/cell);j++)
+      for(const n of cells.get(key(i,j))??[]){const dx=spots[n]-x,dz=spots[n+2]-z;if(dx*dx+dz*dz<=r2)out.push(n);}
+    return out;}};
+}
+// Three small songs: chips, a trill that sags in pitch, and a two-note whistle that drops a step ("fee-bee").
+// n: notes, len/gap: seconds, hz: base range, glide: pitch ratio across one note, step: ratio between notes.
+const SONGS=[
+  {n:[2,4],len:.07,gap:.1,hz:[4800,6200],glide:.8,step:1,vib:0},
+  {n:[6,10],len:.04,gap:.075,hz:[3400,4600],glide:1.08,step:.97,vib:0},
+  {n:[2,3],len:.24,gap:.12,hz:[2200,3200],glide:1.12,step:.82,vib:1},
+];
+/** Schedules one phrase of sine notes into `dest` starting at `t0`; returns its length in seconds. */
+export function birdPhrase(context,dest,song,t0,random=Math.random){
+  const n=song.n[0]+Math.floor(random()*(song.n[1]-song.n[0]+1)),base=song.hz[0]+random()*(song.hz[1]-song.hz[0]);
+  for(let k=0;k<n;k++){
+    const t=t0+k*(song.len+song.gap),f=base*song.step**k*(1+(random()-.5)*.06),osc=context.createOscillator(),env=context.createGain();
+    osc.type='sine';osc.frequency.setValueAtTime(f,t);osc.frequency.exponentialRampToValueAtTime(f*song.glide,t+song.len);
+    env.gain.setValueAtTime(0,t);env.gain.linearRampToValueAtTime(1-.5*k/n,t+Math.min(.015,song.len/4));
+    env.gain.setValueAtTime(1-.5*k/n,t+song.len*.6);env.gain.exponentialRampToValueAtTime(.0001,t+song.len);
+    osc.connect(env).connect(dest);osc.start(t);osc.stop(t+song.len+.02);
+    if(song.vib){const lfo=context.createOscillator(),depth=context.createGain();lfo.frequency.value=24;depth.gain.value=f*.012;lfo.connect(depth).connect(osc.frequency);lfo.start(t);lfo.stop(t+song.len+.02);}
+  }
+  return n*(song.len+song.gap);
+}
+/** Birds that live in the real trees. A few singers (never more than three) each perch in a tree near the listener and
+ * repeat a phrase from that exact spot through an HRTF panner, so the sound comes from the tree's direction and height.
+ * Recruiting is chance-weighted by how many trees are near, so a lone tree is almost silent, a forest is lively and
+ * open meadow is quiet. Singers stay put, and are released when the listener leaves them behind. Distance also darkens
+ * the voice (air absorbs highs) and a short forest-tail reverb sits behind it. */
+export function createBirds(context,index,{random=Math.random,reach=75,level=.05}={}){
+  const singers=[],voices=[];let recruitAt=0;
+  const tail=context.createBuffer(2,context.sampleRate*1.8,context.sampleRate);
+  for(let c=0;c<2;c++){const d=tail.getChannelData(c);for(let i=0;i<d.length;i++)d[i]=(random()*2-1)*Math.exp(-i/context.sampleRate*3.2);}
+  const verb=context.createConvolver(),wet=context.createGain(),soften=context.createBiquadFilter();verb.buffer=tail;wet.gain.value=.5;soften.type='lowpass';soften.frequency.value=3500;
+  const bus=context.createGain();bus.connect(soften).connect(verb).connect(wet).connect(context.destination);
+  function sing(s,d,t){
+    const song=SONGS[s.song],panner=context.createPanner(),air=context.createBiquadFilter(),gain=context.createGain();
+    panner.panningModel='HRTF';panner.distanceModel='inverse';panner.refDistance=8;panner.rolloffFactor=1.2;panner.maxDistance=reach+20;
+    panner.positionX.value=s.x;panner.positionY.value=s.y;panner.positionZ.value=s.z;
+    air.type='lowpass';air.frequency.value=Math.max(2800,12000-d*110);
+    gain.gain.value=level*Math.max(0,Math.min(1,(reach-d)/25));
+    gain.connect(air).connect(panner);panner.connect(context.destination);panner.connect(bus);
+    voices.push({panner,end:t+birdPhrase(context,gain,song,t+.02,random)+.1});
+  }
+  return {singers,update(position){
+    const t=context.currentTime,{x:px,y:py,z:pz}=position;
+    for(let k=voices.length;k--;)if(voices[k].end<t){voices[k].panner.disconnect();voices.splice(k,1);}
+    for(let k=singers.length;k--;)if(Math.hypot(singers[k].x-px,singers[k].y-py,singers[k].z-pz)>reach+15)singers.splice(k,1);
+    if(t>=recruitAt&&singers.length<3){
+      recruitAt=t+3+random()*7;
+      const near=index.near(px,pz,reach);
+      if(near.length&&random()<Math.min(1,near.length/40)){
+        const n=near[Math.floor(random()*near.length)],s=index.spots,y=s[n+1]+s[n+3]*(.3+.5*random());
+        if(Math.abs(y-py)<reach&&!singers.some(o=>Math.hypot(o.x-s[n],o.z-s[n+2])<6))singers.push({x:s[n],y,z:s[n+2],song:Math.floor(random()*SONGS.length),next:t+random()*2});
+      }
+    }
+    for(const s of singers)if(t>=s.next&&voices.length<6){sing(s,Math.hypot(s.x-px,s.y-py,s.z-pz),t);s.next=t+2.5+random()*6;}
+  }};
 }

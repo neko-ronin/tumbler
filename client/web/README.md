@@ -1,3 +1,16 @@
+# Birdsong in the trees — web client v0.5.4, 2026-10-31
+
+With sound on, up to three birds sing from real trees around you: each perches in a
+placed tree (mid-canopy height) and repeats a short chip, trill or two-note whistle
+from that exact spot, HRTF-placed so it comes from the tree's direction. Recruiting
+is weighted by how many trees are within 75 m, so a forest is lively, a lone tree
+almost silent and an open meadow quiet; birds are released when you walk away.
+Distance darkens the voice and a short forest tail sits behind it. Logic:
+`createBirds`/`treeSpots` in `client/web/src3d/audio.js` (tests:
+`client/web/tests/birds.test.mjs`); loudness is the `level` option (0.05).
+
+---
+
 # Insect visits — web client v0.5.3, 2026-10-31
 
 Stand still (walk mode) and a bee that comes within 1.3 m lands on your head; after

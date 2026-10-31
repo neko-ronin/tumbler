@@ -34,7 +34,7 @@ import { buildGondola, deckFloor } from '../../../shared/activities/gondola.js';
 import { buildEcology } from './ecology.js';
 import { createVisitorWatch } from './insect-visits.js';
 import { buildTethers, buildTrails, TRAIL_SURFACE_LIFT } from './details.js';
-import { createSoundscape } from './audio.js';
+import { createSoundscape, treeSpots } from './audio.js';
 import { buildWorldCollision } from './collision.js';
 import { sha256, verifyFetched, checkVersion, WORLDMAP_VERSION } from './provenance.js';
 import {fetchAssetBytes} from './asset-bytes.js';
@@ -272,7 +272,7 @@ export async function main() {
       return y;
     })});
   };
-  const soundscape=createSoundscape(habitats),cameraShake=new T.Vector3();
+  const soundscape=createSoundscape(habitats,treeSpots(placement.instances)),cameraShake=new T.Vector3();
   const visitors=createVisitorWatch({ecology,character,navigation,camera,focusEl:document.getElementById('focus')});
   character.onCue=name=>soundscape.cue(name);
   document.getElementById('sound').addEventListener('click',async e=>{const enabled=await soundscape.toggle();e.target.textContent=enabled?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(enabled));});
