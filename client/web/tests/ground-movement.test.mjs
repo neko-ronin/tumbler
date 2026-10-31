@@ -271,8 +271,22 @@ test('a short keyboard tap between render frames still accepts exactly one jump'
  for(let i=0;i<120;i++)nav.update(1/60);assert.equal(nav.state.jumpCount,1);assert.equal(nav.state.grounded,true);
 });
 
+test('looking around to walking is one shot: the view turns toward him on the way, with no cut at either end',t=>{
+ const {nav,camera,cat}=fixture(t);camera.position.set(30,20,40);camera.lookAt(60,0,0);
+ nav.select('walk');
+ const moves=[],turns=[],last=camera.position.clone(),facing=camera.quaternion.clone();
+ for(let i=0;i<90;i++){nav.update(1/30);moves.push(camera.position.distanceTo(last));turns.push(camera.quaternion.angleTo(facing));last.copy(camera.position);facing.copy(camera.quaternion);}
+ const sum=a=>a.reduce((s,v)=>s+v,0);
+ // slerpQuaternions(start, camera.quaternion) aliases its target: the view held its start angle, then snapped on the last frame.
+ assert.ok(Math.max(...turns)<.1*sum(turns),`one frame turned ${(100*Math.max(...turns)/sum(turns)).toFixed(0)}% of the way`);
+ assert.ok(Math.max(...moves)<.1*sum(moves),`one frame moved ${(100*Math.max(...moves)/sum(moves)).toFixed(0)}% of the way`);
+ camera.updateMatrixWorld();const seen=cat.object.position.clone().project(camera);
+ assert.ok(Math.abs(seen.x)<.8&&Math.abs(seen.y)<.8,'and it ends on him');
+});
+
 test('through a jump the view never jolts, and he rises in the frame without leaving it',t=>{
- const {nav,pad,camera,cat}=fixture(t);nav.select('walk');for(let i=0;i<30;i++)nav.update(1/30);
+ // Settle past the shot in from looking around first.
+ const {nav,pad,camera,cat}=fixture(t);nav.select('walk');for(let i=0;i<90;i++)nav.update(1/30);
  const screen=[],pitch=[],euler=new T.Euler();
  pad.buttons[0].pressed=true;
  for(let i=0;i<40;i++){

@@ -444,7 +444,7 @@ export async function main() {
   const meadowFocus=meadowViewFocus(camera,ground,undefined,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
 
   let frame = 0, contextLost = false, stopped = false, lastFrame = 0, lastStamp = 0;
-  let presenting=false,intro=null;
+  let presenting=false;
   let elapsed = 0,lastReadout=0,lastQuality=0;
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
@@ -509,8 +509,6 @@ export async function main() {
     camera.position.sub(cameraShake);
     gondola.update();
     navigation.update(Math.min(delta,50)/1000);
-    // Intro pan: ease from the village view into the walk camera behind Cat Ronin.
-    if(intro){const k=Math.min(1,(time-intro.start)/2500),e=k*k*(3-2*k);camera.position.lerpVectors(intro.position,camera.position,e);camera.quaternion.slerpQuaternions(intro.quaternion,camera.quaternion,e);if(k===1)intro=null;}
     folk.update(Math.min(delta,50)/1000);
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
@@ -585,10 +583,10 @@ export async function main() {
   window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
   // Walk is the default: a ?view= link stays put (dev shortcut); otherwise the
-  // village view holds a few seconds, the UI hides, and the camera pans to him.
+  // village view holds a few seconds, the UI hides, and the camera pans to him
+  // (navigation owns that shot, like any switch from looking around to walking).
   if(!viewParam)setTimeout(()=>{
     if(navigation.mode!=='orbit'||document.body.dataset.view!=='village')return;
-    intro={position:camera.position.clone(),quaternion:camera.quaternion.clone(),start:performance.now()};
     document.body.dataset.ui='hidden';setActivity('walk');canvas.focus();
   },3000);
 }

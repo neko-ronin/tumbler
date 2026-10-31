@@ -7,9 +7,9 @@ import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal,saf
 import {stepMoves} from '../../../shared/activities/moves.js';
 import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
-const JUMP_FRAME_M=2,AIM_S=.5;
+const JUMP_FRAME_M=2,AIM_S=.5,SHOT_S=2.5;
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
-  let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true;
+  let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true,shot=null;
   let weather='soaring',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0,restTime=0,challengeId='';
   let actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const flightPressed=new Set(),flightModes=Object.keys(config.modes);
@@ -50,7 +50,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const move=e=>{if(mode==='orbit'||(!drag&&document.pointerLockElement!==canvas))return;yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointermove',move);
   const dead=v=>Math.abs(v??0)<.14?0:Math.sign(v)*(Math.abs(v)-.14)/.86;
-  function toggleView(){view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';snap=true;}
+  function toggleView(){shot=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';snap=true;}
   function select(next,site='0'){
     if(next==='walk'&&config.modes[mode]){changeHarness();return;}
     if(mode==='walk'&&config.modes[next]){
@@ -62,6 +62,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       options.onFlightChange?.(mode,siteIndex,weather);return;
     }
     const previous=mode==='orbit'?null:state;
+    // Look around → walk is one continuous shot: the camera glides from where it was down to the chase view.
+    shot=mode==='orbit'&&next==='walk'?{from:camera.position.clone(),q:camera.quaternion.clone(),fov:camera.fov,raw:new T.Vector3(),aim:new T.Quaternion(),t:0}:null;
     clear();message='';parkedWing=null;mode=next;camera.fov=62;camera.updateProjectionMatrix();orbit.enabled=next==='orbit';rig.visible=config.modes[next]!==undefined;ride.rig.visible=riding()&&view==='chase';
     character.object.visible=characterConfig.modes.includes(next);snap=true;
     if(next==='orbit'){orbit.setTarget(camera.position.x,camera.position.y,camera.position.z-20);return;}
@@ -181,8 +183,17 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // While he climbs a tree, that tree's own trunk and crown boxes do not count.
     const own=box=>mode==='walk'&&state?.mode==='climb'&&box.min[0]<=state.trunk.x&&box.max[0]>=state.trunk.x&&box.min[1]<=state.trunk.y&&box.max[1]>=state.trunk.y;
     for(let i=0;i<12;i++){const box=hitTest?.(start,[chase.x,-chase.z,chase.y],.2);if(!box||own(box))break;chase.lerp(target,.2);}
+    if(shot&&mode!=='walk')shot=null;
+    if(shot&&!snap)camera.position.copy(shot.raw);
     if(snap)camera.position.copy(chase);else camera.position.lerp(chase,1-Math.exp(-dt*10));
     camera.lookAt(target);snap=false;
+    if(shot){
+      shot.raw.copy(camera.position);shot.aim.copy(camera.quaternion);shot.t+=dt;
+      const u=Math.min(1,shot.t/SHOT_S),k=u*u*u*(u*(u*6-15)+10);  // smootherstep: no jolt at either end
+      camera.position.lerpVectors(shot.from,shot.raw,k);camera.quaternion.slerpQuaternions(shot.q,shot.aim,k);
+      camera.fov=shot.fov+(62-shot.fov)*k;camera.updateProjectionMatrix();
+      if(u>=1)shot=null;
+    }
   }
   function updateWalk(dt,x,y,run){
     forward.set(-Math.sin(yaw),0,-Math.cos(yaw));side.set(Math.cos(yaw),0,-Math.sin(yaw));
