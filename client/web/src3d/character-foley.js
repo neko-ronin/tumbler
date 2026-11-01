@@ -4,6 +4,8 @@
  */
 export const FOLEY_CUES=new Set(['grunt1','grunt2','grunt3','catch','seat','land','impact','step_grass','step_gravel','step_stone','step_wood','step_snow','cloth','climb','swim','wade','harness']);
 
+const MOVEMENT_CUES=new Set([...FOLEY_CUES].filter(name=>!['catch','seat','impact'].includes(name)));
+
 /** Reviewed B textures, sharing one noise buffer. All sources stop and disconnect;
  * a bounded set of cue groups prevents long-session accumulation. */
 export function createFoleyPlayer(context,destination=context.destination){
@@ -13,7 +15,7 @@ export function createFoleyPlayer(context,destination=context.destination){
   return function play(name){
     if(!FOLEY_CUES.has(name))return false;
     if(groups.size>=12)return true;
-    const t=context.currentTime,out=context.createGain(),sources=new Set(),nodes=[out];out.connect(destination);groups.add(out);
+    const t=context.currentTime,out=context.createGain(),sources=new Set(),nodes=[out];out.gain.value=MOVEMENT_CUES.has(name)?.5:1;out.connect(destination);groups.add(out);
     function track(source){sources.add(source);source.onended=()=>{sources.delete(source);source.disconnect();if(!sources.size){for(const n of nodes)n.disconnect();groups.delete(out);}};}
     function air(dur,hz,gain,delay=0,type='bandpass',q=.7){
       const source=context.createBufferSource(),f=context.createBiquadFilter(),g=context.createGain(),at=t+delay;nodes.push(f,g);track(source);
@@ -27,11 +29,11 @@ export function createFoleyPlayer(context,destination=context.destination){
       source.connect(g).connect(out);source.start(at);source.stop(at+dur+.01);
     }
     const cloth=(g=.018)=>{air(.18,1000,g);air(.12,2700,g*.35,.035);};
-    const tick=(g=.04)=>{air(.028,2200,g);body(.045,920,g*.22);};
+    const tick=(g=.04,metal=true)=>{air(.028,2200,g);if(metal)body(.045,920,g*.22);};
     if(name.startsWith('grunt')){const k=Number(name.at(-1));air(.13+k*.025,730,.025+k*.011);air(.09+k*.02,1450,.009+k*.004,.012);cloth(.008);}
     else if(name==='catch'){air(.06,450,.07);body(.055,180,.022);cloth(.012);}
-    else if(name==='seat'){tick(.03);body(.075,240,.025);cloth(.014);}
-    else if(name==='impact'){air(.09,1100,.085);air(.13,340,.075);body(.15,125,.04);body(.16,1490,.005);}
+    else if(name==='seat'){tick(.03,false);body(.075,240,.025);cloth(.014);}
+    else if(name==='impact'){air(.09,1100,.085);air(.13,340,.075);body(.15,125,.04);}
     else if(name==='land'){air(.12,380,.065);body(.085,130,.025);cloth(.025);}
     else if(name==='step_grass'){air(.09,650,.042);air(.13,2100,.014,.01);body(.05,160,.01);}
     else if(name==='step_gravel'){air(.08,900,.032);for(let i=0;i<5;i++)air(.018,1800+i*340,.012,Math.random()*.075);body(.045,180,.009);}

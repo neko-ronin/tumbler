@@ -1,3 +1,10 @@
+# Audio balance follow-up — 2026-11-01
+
+Latest mix: locomotion cues at 50% amplitude; sword ringing/bell accents silent
+except completed extension at 20% of its prior level. Mechanical click/spring
+and air/body layers remain. The cleave cannot replay the extension ring.
+[Decision and scope](../../docs/reviews/audio-balance-followup-2026-11-01.md).
+
 # Character foley — reviewed and integrated locally, 2026-11-01
 
 Before changing character sound, read the [direction and review narrative](../../docs/design/CHARACTER-AUDIO.md).

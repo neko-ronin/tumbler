@@ -81,7 +81,7 @@ export function createCuePlayer(context,destination=context.destination,chargeBu
   const hiss=context.createBuffer(1,context.sampleRate,context.sampleRate),white=hiss.getChannelData(0);
   for(let i=0;i<white.length;i++)white[i]=Math.random()*2-1;
   const retained=new Set(['latch','eject','slide','lock','hum','swish','swish_heavy','spin','ring','flick','charge']);
-  let lockRun=0,lastLock=-1,charges=0;
+  let charges=0;
   return function cue(name){
     if(name==='charge'&&chargeBuffer){
       // Round-03 accepted Meow Cat #2 — Joseph SARDIN, exact compact edit.
@@ -107,12 +107,11 @@ export function createCuePlayer(context,destination=context.destination,chargeBu
       const level=context.createGain();level.gain.setValueAtTime(gain,t);level.gain.exponentialRampToValueAtTime(.0001,t+dur);
       track(tone);nodes.push(level);tone.connect(level).connect(out);tone.start(t);tone.stop(t+dur+.02);
     };
-    if(name==='latch'){burst(.03,'highpass',4200,.7,.45);ring(.05,2400,.06);}
+    if(name==='latch'){burst(.03,'highpass',4200,.7,.45);}
     else if(name==='eject'){
       // Preserve the human-approved spring: the same rising triangle and 31 Hz
-      // twang. Round its attack, tighten the air, and add a faint metal seat.
+      // twang. Keep its rounded attack and tightened air, without a bell accent.
       burst(.10,'bandpass',900,2,.19,3200);
-      ring(.14,2480,.012);ring(.09,3910,.006);
       const tone=context.createOscillator(),wobble=context.createOscillator(),depth=context.createGain(),level=context.createGain();
       tone.type='triangle';tone.frequency.setValueAtTime(170,t);tone.frequency.exponentialRampToValueAtTime(460,t+.1);
       wobble.frequency.value=31;depth.gain.setValueAtTime(70,t);depth.gain.exponentialRampToValueAtTime(4,t+.32);
@@ -122,13 +121,12 @@ export function createCuePlayer(context,destination=context.destination,chargeBu
     }
     else if(name==='slide')burst(.11,'bandpass',2600,6,.32,5200);
     else if(name==='lock'){
-      // Consecutive locks climb a little in pitch, so the chain reads as one mechanism.
-      lockRun=t-lastLock<.5?lockRun+1:0;lastLock=t;const k=1.06**lockRun;
-      burst(.02,'highpass',5000,.7,.6);ring(.18,2100*k,.1);ring(.12,3350*k,.06);ring(.06,5200*k,.035);
+      // Retain the mechanical detent, without the former rising bell partials.
+      burst(.02,'highpass',5000,.7,.6);
     }
     // The fight: a blade through air is band-passed noise falling in pitch as it
     // passes; heavier cuts are lower and longer with a felt thump under them.
-    else if(name==='swish'){burst(.24,'bandpass',2400,1.6,.55,520,.05);ring(.2,1250,.03,'sine',600);}
+    else if(name==='swish'){burst(.24,'bandpass',2400,1.6,.55,520,.05);}
     else if(name==='swish_heavy'){burst(.38,'bandpass',1500,1.2,.8,180,.07);burst(.3,'highpass',5200,.7,.12,2500,.05);ring(.28,95,.35,'sine',40);}
     else if(name==='spin')for(let i=0;i<3;i++)burst(.16,'bandpass',2000-i*350,2,.35-.08*i,600,.03,.06+i*.09);
     else if(name==='charge'){
@@ -138,31 +136,28 @@ export function createCuePlayer(context,destination=context.destination,chargeBu
       filter.type='lowpass';filter.Q.value=6;filter.frequency.setValueAtTime(300,t);filter.frequency.exponentialRampToValueAtTime(3200,t+.5);
       level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(.11,t+.35);level.gain.exponentialRampToValueAtTime(.0001,t+.62);
       track(tone);nodes.push(filter,level);tone.connect(filter).connect(level).connect(out);tone.start(t);tone.stop(t+.65);
-      ring(.6,880,.025,'sine',2600);
     }
 
   }
 }
 
-/** Round-02 accepted blade voice: higher, faint, tensioned metal ringing in air.
- * Exact studied partials/envelopes; direct destination levels avoid accidentally
- * halving the reviewed study through the legacy 0.5 cue bus. */
+/** Follow-up mix: only the completed draw rings, at 20% of its prior level.
+ * Consume old ring/flick/hum events silently, including the cleave's hum. */
 export function createBladeResonance(context,destination=context.destination){
   let active=0;
   return name=>{
-    if(!['hum','ring','flick'].includes(name))return false;
+    if(['hum','ring','flick'].includes(name))return true;
+    if(name!=='extend_complete')return false;
     if(active>=8)return true;
-    active++;const t=context.currentTime,sources=new Set();
+    active++;const t=context.currentTime,sources=new Set(),output=context.createGain();output.gain.value=.2;output.connect(destination);
     function partial(hz,dur,level){
       const tone=context.createOscillator(),gain=context.createGain();tone.frequency.value=hz;
       gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(level,t+.008);gain.gain.exponentialRampToValueAtTime(.00001,t+dur);
-      tone.connect(gain).connect(destination);sources.add(tone);
-      tone.onended=()=>{tone.disconnect();gain.disconnect();sources.delete(tone);if(!sources.size)active--;};
+      tone.connect(gain).connect(output);sources.add(tone);
+      tone.onended=()=>{tone.disconnect();gain.disconnect();sources.delete(tone);if(!sources.size){output.disconnect();active--;}};
       tone.start(t);tone.stop(t+dur+.02);
     }
-    const k=name==='hum'?.9:name==='flick'?1.12:1;
-    partial(3100*k,3.4,.014);partial(4870*k,2.7,.006);partial(6520*k,1.8,.0025);
-    if(name==='flick')partial(2100,.06,.014);
+    partial(3100*.9,3.4,.014);partial(4870*.9,2.7,.006);partial(6520*.9,1.8,.0025);
     return true;
   };
 }

@@ -122,6 +122,7 @@ test('katana layer hands the chest handle to the paw, extends the blade with a c
   assert.ok(shown('katana')>.99&&shown('katana.sheathed')<.01,'the paw holds the only handle');
   assert.ok(reach()-collapsed>.35,'four segments slid out of the handle');
   assert.deepEqual(cues.slice(0,3),['latch','eject','catch']);
+  assert.equal(cues.filter(c=>c==='extend_complete').length,1);assert.ok(!cues.includes('hum'));
   assert.deepEqual(cues.filter(c=>c==='lock').length,4);assert.ok(cues.indexOf('catch')<cues.indexOf('slide'));
   cues.length=0;cat.toggleKatana();settle('holstered');
   assert.equal(cues.at(-1),'seat');assert.ok(shown('katana')<.01&&shown('katana.sheathed')>.99);
@@ -152,6 +153,7 @@ test('drawn katana runs two-handed with the blade trailing, and strikes chain cr
   for(let i=0;i<240&&cat.katana==='attack';i++){if(i%6===0)cat.attack();cat.update(1/30,'idle');clips.add(cat.katanaAction.getClip().name);}
   assert.deepEqual([...clips].filter(n=>n.startsWith('katana_slash')),config.katana.attacks,'held presses chain all three, in order');
   assert.equal(cat.katana,'drawn','the chain ends back on guard');assert.ok(!cat.attacking);
+  assert.equal(cues.filter(c=>c==='extend_complete').length,0,'the cleave must not replay the finished-extension ring');
   for(const cue of ['swish','spin','charge','swish_heavy','impact','flick'])assert.ok(cues.includes(cue),`cue ${cue}`);
   assert.ok(cues.indexOf('impact')>cues.indexOf('swish_heavy'));
   // One press plays one blow; airborne he cannot start one.

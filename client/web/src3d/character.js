@@ -151,7 +151,9 @@ export function createCharacter(asset, config) {
     fx?.cue(name);
     if(name==='impact'){hitStop=.11;shake=.2;}
     else if(name==='swish_heavy')shake=Math.max(shake,.05);
-    api.onCue?.(name);
+    // The shared hum also marks the cleave; only the draw's final extension
+    // gets the remaining ring in this client's mix. Visual events stay intact.
+    api.onCue?.(name==='hum'&&katanaState==='draw'?'extend_complete':name);
   }
   if(katana)playKatana('holstered',0);
   function update(dt, pose, speed = 0, context = {}) {
