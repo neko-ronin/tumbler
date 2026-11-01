@@ -1,9 +1,9 @@
 /** Browser presentation of the existing habitats, wind and flight motor.
- * Original procedural sound, started only by the user's sound button.
+ * Original procedural sound, enabled by default and resumed after the first user gesture if autoplay is blocked.
  */
 export function createSoundscape(habitats,trees=new Float32Array(0)){
-  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,enabled=false;
-  async function toggle(){
+  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,enabled=true;
+  async function toggle(next=!enabled){
     if(!context){
       context=new AudioContext();const length=context.sampleRate*3;
       const buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);
@@ -18,8 +18,9 @@ export function createSoundscape(habitats,trees=new Float32Array(0)){
       wind=noise(550,.08);water=noise(1400,.3,true);
       const oscillator=context.createOscillator();oscillator.type='sawtooth';oscillator.frequency.value=85;const level=context.createGain();level.gain.value=0;const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=350;oscillator.connect(filter).connect(level).connect(context.destination);oscillator.start();motor={oscillator,level};
     }
-    enabled=!enabled;await (enabled?context.resume():context.suspend());return enabled;
+    enabled=next;await (enabled?context.resume():context.suspend());return enabled;
   }
+  async function unlock(){if(enabled&&context?.state==='suspended')await context.resume();}
   function update(camera,navigation,nearby){
     if(!enabled||!context)return;
     const listener=context.listener,t=context.currentTime,position=camera.position;
@@ -47,7 +48,7 @@ export function createSoundscape(habitats,trees=new Float32Array(0)){
     });
     motor.level.gain.setTargetAtTime(throttle*.032,t,.1);motor.oscillator.frequency.setTargetAtTime(65+throttle*65,t,.1);
   }
-  return {toggle,update,cue:name=>{if(enabled)cues?.(name);},dispose(){context?.close();}};
+  return {toggle,unlock,update,cue:name=>{if(enabled)cues?.(name);},dispose(){context?.close();}};
 }
 /** One bumblebee: a soft low buzz (saw plus an octave-down triangle, low-passed) that wanders in pitch and pulses
  * lazily, with a breath of wing air, placed in space by an HRTF panner. Silent until its gain is raised. */

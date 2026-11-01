@@ -275,7 +275,11 @@ export async function main() {
   const soundscape=createSoundscape(habitats,treeSpots(placement.instances)),cameraShake=new T.Vector3();
   const visitors=createVisitorWatch({ecology,character,navigation,camera,focusEl:document.getElementById('focus')});
   character.onCue=name=>soundscape.cue(name);
-  document.getElementById('sound').addEventListener('click',async e=>{const enabled=await soundscape.toggle();e.target.textContent=enabled?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(enabled));});
+  const soundButton=document.getElementById('sound');
+  soundscape.toggle(true).catch(()=>{});
+  const unlockSound=()=>soundscape.unlock().catch(()=>{});
+  window.addEventListener('pointerdown',unlockSound,{once:true});window.addEventListener('keydown',unlockSound,{once:true});
+  soundButton.addEventListener('click',async e=>{const enabled=await soundscape.toggle();e.target.textContent=enabled?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(enabled));});
   const modeSelect=document.getElementById('activity'),siteSelect=document.getElementById('launch-site');
   const rideModes=Object.keys(rideConfig.modes);
   function showStarts(mode){
