@@ -13,6 +13,24 @@ export const FOREST_GEOMETRY_KEYS=['seed','primaryBranches','secondaryPairs','ex
 export function forestRecipe(species,patch={}){return {...FOREST_PROFILES[species==='village'?'giant':species],...Object.fromEntries(FOREST_GEOMETRY_KEYS.filter(k=>patch[k]!==undefined).map(k=>[k,patch[k]]))};}
 const TAU=Math.PI*2,add=(a,b)=>a.map((v,i)=>v+b[i]),mul=(a,n)=>a.map(v=>v*n),sub=(a,b)=>a.map((v,i)=>v-b[i]),unit=a=>mul(a,1/(Math.hypot(...a)||1));
 const random=(seed,id)=>{const n=Math.sin(seed*17.137+id*127.13)*43758.5453;return n-Math.floor(n);};
+/** The single deterministic primary scaffold used by geometry and activity data. */
+export function* forestBranchScaffold(p){
+  const r=id=>random(p.seed,id),limbs=Math.round(p.primaryBranches),wind=r(27)*TAU,phase=r(33)*TAU;
+  for(let i=0;i<limbs;i++){
+    const f=(i+.3+r(i)*.45)/limbs,a=i*137.507764*Math.PI/180+(r(i+1)-.5)*p.wildness*1.8;
+    const patch=Math.sin(f*23+phase)+Math.cos(a*2+f*9+phase),missing=p.crownGaps>0&&patch<(-1.65+p.crownGaps*2.7)&&i>5&&i<limbs-4;
+    if(missing&&(p.deadwood===0||r(i+63)>.27))continue;
+    const dry=missing||r(i+64)<p.deadwood*(1-f)*.55;
+    const radial=[Math.cos(a),0,Math.sin(a)],side=[-Math.sin(a),0,Math.cos(a)];
+    const ageLobe=.78+p.wildness*(.26*Math.sin(f*17+a*1.7+phase)+.13*Math.sin(f*39-phase));
+    const directional=1+p.windSweep*.28*Math.cos(a-wind),reach=p.crownWidthM*.45*(1-f)**p.taper*ageLobe*directional*(.77+r(i+10)*.44)*(dry?.68:1);
+    const base=p.heightM*(p.crownBase+(1-p.crownBase)*f),lift=(r(i+81)-.5)*p.wildness*.52,sideBend=(r(i+99)-.5)*p.wildness*.65;
+    const droop=p.leafProfile==='fir'?-.37:p.leafProfile==='pine'?-.12:-.24;
+    const branch=t=>add(mul(radial,reach*t),add(mul(side,reach*(Math.sin(t*Math.PI)*sideBend+p.windSweep*.13*Math.sin(wind-a)*t*t)),[0,base+reach*((droop+lift)*t+(.38+r(i+82)*.18)*t*t*t),0]));
+    yield {i,f,a,radial,side,reach,base,dry,branch,radius:(p.leafProfile==='pine'?.035+reach*.015:.055+reach*.025)*(1-f*.3)};
+  }
+}
+
 export function buildForestSprays(p,lod=0){
   if(![0,1].includes(lod))throw new Error('Forest source LOD must be 0 or 1');
   for(const k of FOREST_GEOMETRY_KEYS)if(!Number.isFinite(p[k]))throw new Error('Invalid forest parameter '+k);
@@ -21,18 +39,10 @@ export function buildForestSprays(p,lod=0){
   const fitBounds={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]},support=(point,pad=0)=>{for(let a=0;a<3;a++){fitBounds.min[a]=Math.min(fitBounds.min[a],point[a]-pad);fitBounds.max[a]=Math.max(fitBounds.max[a],point[a]+pad);}},supportTube=(path,radius)=>{for(let j=0;j<=12;j++)support(path(j/12),radius);};
   const m=new SprayMesh({repairFacing:true,profile:p.leafProfile,support}),r=id=>random(p.seed,id),sprays=[],branches=[],limbs=Math.round(p.primaryBranches),pairs=Math.round(p.secondaryPairs),wind=r(27)*TAU,phase=r(33)*TAU;
   let dead=0,omitted=0;
-  for(let i=0;i<limbs;i++){
-    const f=(i+.3+r(i)*.45)/limbs,a=i*137.507764*Math.PI/180+(r(i+1)-.5)*p.wildness*1.8;
-    const patch=Math.sin(f*23+phase)+Math.cos(a*2+f*9+phase),missing=p.crownGaps>0&&patch<(-1.65+p.crownGaps*2.7)&&i>5&&i<limbs-4;
-    if(missing&&(p.deadwood===0||r(i+63)>.27)){omitted++;continue;}
-    const dry=missing||r(i+64)<p.deadwood*(1-f)*.55;if(dry)dead++;
-    const radial=[Math.cos(a),0,Math.sin(a)],side=[-Math.sin(a),0,Math.cos(a)];
-    const ageLobe=.78+p.wildness*(.26*Math.sin(f*17+a*1.7+phase)+.13*Math.sin(f*39-phase));
-    const directional=1+p.windSweep*.28*Math.cos(a-wind),reach=p.crownWidthM*.45*(1-f)**p.taper*ageLobe*directional*(.77+r(i+10)*.44)*(dry?.68:1);
-    const base=p.heightM*(p.crownBase+(1-p.crownBase)*f),lift=(r(i+81)-.5)*p.wildness*.52,sideBend=(r(i+99)-.5)*p.wildness*.65;
-    const droop=p.leafProfile==='fir'?-.37:p.leafProfile==='pine'?-.12:-.24;
-    const branch=t=>add(mul(radial,reach*t),add(mul(side,reach*(Math.sin(t*Math.PI)*sideBend+p.windSweep*.13*Math.sin(wind-a)*t*t)),[0,base+reach*((droop+lift)*t+(.38+r(i+82)*.18)*t*t*t),0]));
-    const path=Array.from({length:lod===0?7:5},(_,j)=>branch(j/(lod===0?6:4)));m.tube(path,(p.leafProfile==='pine'?.035+reach*.015:.055+reach*.025)*(1-f*.3),lod===0?7:5);supportTube(branch,(p.leafProfile==='pine'?.035+reach*.015:.055+reach*.025)*(1-f*.3));branches.push({base:[0,base,0],tip:branch(1),dry});
+  const scaffold=[...forestBranchScaffold(p)];omitted=limbs-scaffold.length;
+  for(const {i,f,a,radial,side,reach,base,dry,branch,radius} of scaffold){
+    if(dry)dead++;
+    const path=Array.from({length:lod===0?7:5},(_,j)=>branch(j/(lod===0?6:4)));m.tube(path,radius,lod===0?7:5);supportTube(branch,radius);branches.push({base:[0,base,0],tip:branch(1),dry});
     if(dry)continue;
     for(let j=0;j<pairs;j++)for(const flank of [-1,1]){
       const id=i*137+j*11+(flank+1)*3,t=.16+j/pairs*.77+(r(id+1)-.5)*.035,at=branch(t),len=(.40+reach*(p.leafProfile==='pine'?.42:.27))*(1-t*.38)*(.72+r(id+22)*.5);

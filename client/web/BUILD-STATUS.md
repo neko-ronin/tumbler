@@ -1,3 +1,20 @@
+# S4 branches and para recovery — local candidate, 2026-10-31
+
+`codex/s4` implements the recovered S4 slice: generator-owned primary branch
+graphs, limb running and directed tree-to-tree jumps. It also adds full-height
+climbing, giant-redwood crown launches in all three para modes, recoverable tip
+brushes/body contacts, and a single long-fall rebound without somersaults.
+
+Run `python3.11 client/web/tools/serve.py --port 8074` and open
+<http://127.0.0.1:8074/client/web/scene.html>. E / X on a trunk steps onto a nearby
+limb; Shift runs; Space / A leaps in the movement direction; E near the root
+returns to climbing; E at a giant-redwood crown launches the last para mode.
+
+Scope, reproducible browser review, measured checks and remaining acceptance
+limits: [S4 receipt](../../docs/reviews/s4-tree-activities-2026-10-31.md). Implementation remains in this worktree for review.
+
+---
+
 # Northern basin redesign — approved for release, 2026-10-27
 
 The human approves the natural/cohesive basin redesign for main and release. It restores the open grass habitat, reshapes the

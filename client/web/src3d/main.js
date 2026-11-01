@@ -1,3 +1,4 @@
+import {treePlayFocus} from './tree-surface.js';
 import {createRiverGranite} from '../../../shared/activities/river-surface.js';
 import {buildRiverGranite} from './river-granite.js';
 import {createAirCues,createMeadowAir} from './air-cues.js';
@@ -113,6 +114,7 @@ export async function main() {
   checkVersion(manifest,1,'viewer manifest');checkVersion(worldmap,WORLDMAP_VERSION,'world map');
   const [meadowData,flightConfig,rideConfig]=await Promise.all([fetchData(worldmap.activities.meadow_life),fetchData(worldmap.activities.flight),fetchData(worldmap.activities.ride)]);
   const characterConfig=await fetchData(worldmap.activities.character);
+  const branchData=await fetchData('shared/geometry/tree-design/branch-graphs.json');checkVersion(branchData,1,'tree branch graph');
   const treePlan=await fetchData('shared/geometry/tree-design/adopted-redwoods.json');checkVersion(treePlan,2,'forest rendering plan');
   checkVersion(characterConfig,1,'playable character');
   const forestCover=await fetchData('shared/world/out/forest_floor.json');checkVersion(forestCover,1,'forest ground cover');
@@ -234,7 +236,7 @@ export async function main() {
   const rideMeshes=Object.fromEntries(Object.entries(rideConfig.modes).map(([name,m])=>{const merged=mergePrimitives(assets[m.asset].primitives,'opaque');const mesh=new T.Mesh(merged.geometry,merged.material);mesh.castShadow=true;mesh.visible=false;rideRig.add(mesh);return [name,mesh];}));
   scene.add(rideRig);
   const rideHeight=createRideHeight((x,y)=>ground.height(x,y)??0,trail);
-  const hitTest=buildWorldCollision(placement,assets);
+  const hitTest=buildWorldCollision(placement,assets,treePlan,branchData);
   const character=createCharacter(assets[characterConfig.asset],characterConfig);scene.add(character.object);
   // The gondola's stations are floors to walk on: their decks and the ramps up to them.
   const gondolaLine=buildGondola(await fetchData('shared/activities/gondola.json'),(x,y)=>ground.height(x,y),hitTest);
@@ -521,6 +523,8 @@ export async function main() {
     camera.position.sub(cameraShake);
     gondola.update();
     navigation.update(Math.min(delta,50)/1000);
+    const treePlay=navigation.mode==='walk'&&['climb','branch','tree-jump'].includes(navigation.state?.mode);
+    const treePlayer=navigation.state;treePlayFocus.value.set(treePlayer?.x??0,(treePlayer?.z??0)+.9,-(treePlayer?.y??0),treePlay?1.8:0);
     folk.update(Math.min(delta,50)/1000);
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
@@ -540,7 +544,7 @@ export async function main() {
         ((flight.landingRunM??0)>.5?` · ${Math.round(flight.landingRunM)} m run`:''):'Landed';
       readout.textContent=rider?(rider.crashed?`Contact: ${rider.crashed} · Launch to go again`:
         `${rideConfig.modes[rider.mode].label} · ${(riderSpeed*3.6).toFixed(0)} km/h · ${Math.round(rider.startZ-rider.z)} m down · ${(rider.distance/1000).toFixed(2)} km · ${rider.grounded?rider.surface:'airborne'}`):
-        !airborne?(navigation.mode==='walk'?(navigation.message||`On foot · V / R3: ${navigation.view==='first'?'chase view':'first person'} · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
+        !airborne?(navigation.mode==='walk'?(navigation.message||(flight.mode==='climb'?(flight.launchReady?'Crown perch · E / X: launch para':'Climbing · E / X: step onto a nearby branch · Space / A: jump off'):flight.mode==='branch'?'On branch · move along limb · Space / A: leap toward another tree · E / X near trunk: climb':flight.mode==='tree-jump'?'Leaping to branch':null)||`On foot · V / R3: ${navigation.view==='first'?'chase view':'first person'} · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
         flight.launching?`${flight.launchStage==='running'?'Running for takeoff':'Inflating the wing'} · ${Math.round((flight.launchProgress??0)*100)}%\n${(flight.speed*3.6).toFixed(0)} km/h · E / X: cancel and unhook`:
         flight.grounded?`${flight.launchAborted?flight.figure:touchdown}${flight.impact?` · Contact with ${flight.impact}`:''}\n${navigation.message||'E / X: unhook · Space / A: launch here'}`:
         `${flightConfig.modes[flight.mode].label}  /  ${flightConfig.weather[navigation.weather].label}\n`+

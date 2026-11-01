@@ -30,21 +30,20 @@ function game(t){
  return {nav,cat,calls,key};
 }
 
-test('a collapsed flight presents the fall clip',t=>{
+test('a collapsed flight omits the somersaulting fall clip',t=>{
  const {nav,calls}=game(t);nav.select('paraglider');
  Object.assign(nav.state,{collapsed:true,vx:5,vy:0,vertical:-3});
  calls.length=0;nav.update(1/60);
  assert.ok(calls.length,'the character was drawn');
- assert.equal(calls.at(-1)[3].bodyClip,'fall_tumble');
+ assert.equal(calls.at(-1)[3].bodyClip,undefined);
 });
 
-test('after a collapsed landing he tumbles, then sits beside the wing',t=>{
+test('a long collapsed fall plays only its rebound clip, then rests',t=>{
  const {nav,calls}=game(t);nav.select('paraglider');
- Object.assign(nav.state,{collapsed:true,grounded:true,z:flight.landing_clearance_m,speed:0,vertical:0,vario:0,landingSpeed:14});
- calls.length=0;nav.update(1/60);
- assert.equal(calls.at(-1)[3].bodyClip,'fall_tumble','first the tumble');
- for(let i=0;i<120;i++)nav.update(1/60);
- assert.equal(calls.at(-1)[3].bodyClip,'sit','then he sits');
+ Object.assign(nav.state,{collapsed:true,grounded:false,z:2,vertical:-14,vx:0,vy:0});
+ let sawBounce=false;
+ for(let i=0;i<180;i++){nav.update(1/60);const clip=calls.at(-1)[3].bodyClip;assert.notEqual(clip,'fall_tumble');sawBounce ||= clip==='fall_bounce';}
+ assert.ok(sawBounce);assert.equal(nav.state.grounded,true);assert.equal(calls.at(-1)[3].bodyClip,undefined);
 });
 
 test('the wing deflates in the air after a collapse',()=>{

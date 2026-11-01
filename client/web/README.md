@@ -1,3 +1,19 @@
+# Branches, redwood launches and para recovery — S4 candidate, 2026-10-31
+
+Climb a tree with forward input, E / gamepad X steps onto a nearby primary
+branch, and movement follows the limb. Shift runs. Space / A leaps toward a
+reachable branch on another tree; without a target it jumps freely. E near the
+branch root returns to the trunk. Climbing follows the full bole taper to the
+crown; E at a giant-redwood perch launches the last selected para mode.
+
+Small wingtip/foliage brushes and weak body contacts recover. Broad canopy
+contacts and strong impacts still collapse the wing. A long collapsed fall
+rebounds once, without the previous somersault. The browser clears a small
+leaf-only opening around the climbing view to keep the character visible.
+
+Local implementation is on `codex/s4`. Source, controls, checks and review limits:
+[the S4 review](../../docs/reviews/s4-tree-activities-2026-10-31.md).
+
 # Birdsong in the trees — web client v0.5.4, 2026-10-31
 
 With sound on, up to three birds sing from real trees around you: each perches in a

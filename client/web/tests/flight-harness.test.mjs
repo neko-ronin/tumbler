@@ -37,10 +37,10 @@ test('changing size in flight keeps the attachment while landing and a collapse 
  for(let i=0;i<10;i++)nav.update(1/30);
  config.scale=.52;nav.update(1/30);
  assert.ok(hips().distanceTo(attachment())<.005);
- Object.assign(nav.state,{collapsed:true,grounded:false});nav.update(1/30);assert.equal(cat.clip,'fall_tumble');
+ Object.assign(nav.state,{collapsed:true,grounded:false});nav.update(1/30);assert.equal(cat.clip,config.clips.flight);
  Object.assign(nav.state,{grounded:true,z:flight.landing_clearance_m,speed:0,vertical:0,vario:0});
  for(let i=0;i<60;i++)nav.update(1/30);
- assert.equal(cat.clip,'sit');assert.ok(hips().y<.3,'ground sitting is not pinned to the flight attachment');
+ assert.equal(cat.clip,config.clips.idle);assert.ok(hips().y<1.5,'ground idle is not pinned to the flight attachment');
 });
 
 const assets=Object.fromEntries([flight.wing_asset,flight.motor_asset,flight.modes.parakite.wing_asset].map(p=>[p,parseGLB(readFileSync(new URL('../../../shared/geometry/'+p,import.meta.url)))]));

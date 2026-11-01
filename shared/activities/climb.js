@@ -11,7 +11,8 @@ export function trunkRadiusAt(trunk,z){
 }
 
 const chest=.9,body=.5;
-const holdRadius=(trunk,z,c)=>trunkRadiusAt(trunk,z)+c.hold_m;
+export const climbRadiusAt=(trunk,z)=>trunkRadiusAt({profile:trunk.climb_profile??trunk.profile},z);
+const holdRadius=(trunk,z,c)=>climbRadiusAt(trunk,z)+c.hold_m;
 
 /** The climbable trunk within reach of the cat, or null: thick enough
  * (`min_radius_m`) at his height and below the climbable top. Reach is
@@ -24,7 +25,9 @@ export function findTrunk(state,input,world,config){
   for(const box of world.hitTest.near?.([state.x,state.y,state.z+chest],reach+1)??[]){
     const t=box.trunk;
     // On a slope he touches the downhill side of the collider below the trunk's base: allow a step's worth.
-    if(!t||state.z<t.base_z-config.max_step_m||state.z>t.top_z-c.top_clearance_m)continue;
+    if(!t)continue;
+    const top=t.climb_top_z??t.top_z;
+    if(state.z<t.base_z-config.max_step_m||state.z>top-c.top_clearance_m)continue;
     // Reach is measured at the nearest of his body's collision heights, where a flare stops him;
     // an untyped box keeps the old measure, to its grown extent at his chest.
     const r=trunkRadiusAt(t,state.z+chest),gap=Math.min(...[config.radius_m,chest,1.5].map(h=>Math.hypot(state.x-t.x,state.y-t.y)-trunkRadiusAt(t,state.z+h)));
@@ -35,7 +38,7 @@ export function findTrunk(state,input,world,config){
 }
 
 export function attachClimb(state,box,config){
-  const t=box.trunk,c=config.climb,angle=Math.atan2(state.y-t.y,state.x-t.x),z=Math.min(state.z,t.top_z-c.top_clearance_m);
+  const t=box.trunk,c=config.climb,angle=Math.atan2(state.y-t.y,state.x-t.x),z=Math.min(state.z,(t.climb_top_z??t.top_z)-c.top_clearance_m);
   const s={...state,mode:'climb',trunk:t,trunkBox:box,angle,z,climbPhase:'mount',climbTime:0,climbPush:0,
     grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vx:0,vy:0,vz:0,speed:0,mountFrom:[state.x,state.y]};
   return mount(s,c);
@@ -62,7 +65,7 @@ function place(s,c){
  */
 function clearOf(s,config){
   const box=s.trunkBox,ux=Math.cos(s.angle),uy=Math.sin(s.angle);
-  if(box.type==='trunk'){const d=trunkRadiusAt(s.trunk,s.z)+config.radius_m+.02;return {x:s.trunk.x+ux*d,y:s.trunk.y+uy*d};}
+  if(box.type==='trunk'){const d=climbRadiusAt(s.trunk,s.z)+config.radius_m+.02;return {x:s.trunk.x+ux*d,y:s.trunk.y+uy*d};}
   const half=Math.max(box.max[0]-box.min[0],box.max[1]-box.min[1])/2+config.radius_m+.02;
   const d=Math.max(Math.hypot(s.x-s.trunk.x,s.y-s.trunk.y),half/Math.max(Math.abs(ux),Math.abs(uy)));
   return {x:s.trunk.x+ux*d,y:s.trunk.y+uy*d};
@@ -80,9 +83,9 @@ export function stepClimb(state,input,dt,config,world){
   if(edge){
     const out=[Math.cos(s.angle),Math.sin(s.angle)];
     return {...s,...clearOf(s,config),mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'push',jumpTime:0,jumpCount:(s.jumpCount??0)+1,jumpTier:1,
-      vx:out[0]*c.jump_out_mps,vy:out[1]*c.jump_out_mps,vz:c.jump_up_mps,jumpVz:c.jump_up_mps,speed:c.jump_out_mps,heading:s.angle,climbCooldown:.5,climbPhase:undefined};
+      vx:out[0]*c.jump_out_mps,vy:out[1]*c.jump_out_mps,vz:c.jump_up_mps,jumpVz:c.jump_up_mps,speed:c.jump_out_mps,heading:s.angle,climbCooldown:.5,climbPhase:undefined,launchReady:false};
   }
-  const [sx,sy]=input.stick??[0,0],fast=input.run?c.fast_factor:1,top=s.trunk.top_z-c.top_clearance_m;
+  const [sx,sy]=input.stick??[0,0],fast=input.run?c.fast_factor:1,top=(s.trunk.climb_top_z??s.trunk.top_z)-c.top_clearance_m;
   const vz=(sy>0?c.up_mps:c.down_mps)*sy*fast,around=c.around_mps*sx*fast;
   for(let remaining=Math.min(dt,.05);remaining>1e-10;){
     const step=Math.min(remaining,1/120);remaining-=step;
@@ -90,16 +93,18 @@ export function stepClimb(state,input,dt,config,world){
     const angle=s.angle+around*step/holdRadius(s.trunk,s.z,c),d=holdRadius(s.trunk,s.z,c);
     const x=s.trunk.x+Math.cos(angle)*d,y=s.trunk.y+Math.sin(angle)*d;
     // Anything but this tree's own trunk stops the way round.
-    const blocked=world.hitTest.near?.([x,y,s.z+body],.25).some(box=>box!==s.trunkBox&&box.trunk!==s.trunk);
+    const blocked=world.hitTest.near?.([x,y,s.z+body],.25).some(box=>box!==s.trunkBox&&box.trunk!==s.trunk&&
+      !(box.crown&&box.crown.x===s.trunk.x&&box.crown.y===s.trunk.y));
     if(!blocked)s.angle=angle;
     place(s,c);
     const floor=world.height(s.x,s.y)??s.trunk.base_z;
     if(vz<0&&s.z<=floor+.02){
       const clear=clearOf(s,config),z=world.height(clear.x,clear.y)??floor;
-      return {...s,...clear,mode:'ground',grounded:true,jumpPhase:'grounded',jumpTime:0,z,groundZ:z,vx:0,vy:0,vz:0,speed:0,climbCooldown:.5,climbPhase:undefined};
+      return {...s,...clear,mode:'ground',grounded:true,jumpPhase:'grounded',jumpTime:0,z,groundZ:z,vx:0,vy:0,vz:0,speed:0,climbCooldown:.5,climbPhase:undefined,launchReady:false};
     }
   }
   s.vz=vz;s.around=around;s.speed=Math.hypot(vz,around);
   s.climbPhase=s.z>=top-1e-9&&vz>=0?'perch':vz||around?'climb':'grip';
+  s.launchReady=s.climbPhase==='perch'&&!!s.trunk.launch_mode;
   return s;
 }

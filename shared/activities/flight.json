@@ -148,7 +148,14 @@
     "terminal_mps": 15,
     "restitution": 0.2,
     "knock": 0.15,
-    "foliage_drag_per_s": 1.5
+    "foliage_drag_per_s": 1.5,
+    "body_impact_collapse_mps": 6.5,
+    "recoverable_tip_fraction": 0.22,
+    "recoverable_foliage_fraction": 0.18,
+    "tip_brush_roll_rps": 0.12,
+    "tip_brush_pressure": 0.08,
+    "bounce_threshold_mps": 11,
+    "bounce_rebound": 0.35
   },
   "weather": {
     "calm": {

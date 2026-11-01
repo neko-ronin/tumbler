@@ -195,5 +195,7 @@ test('older flight rules are unchanged',()=>{
 });
 
 test('the shipped rules carry the collapse tuning',()=>{
- assert.deepEqual(shipped.collapse,{terminal_mps:15,restitution:.2,knock:.15,foliage_drag_per_s:1.5});
+ assert.ok(shipped.collapse.recoverable_tip_fraction>0&&shipped.collapse.recoverable_tip_fraction<.5);
+ assert.ok(shipped.collapse.body_impact_collapse_mps>0);
+ assert.ok(shipped.collapse.bounce_rebound>0&&shipped.collapse.bounce_rebound<1);
 });

@@ -3,7 +3,7 @@
  * docs/design/FLIGHT-MANUALS.md. This is not a flight-training model.
  */
 import {knockDirection} from './collision.js';
-import {stepCoupled,wingBasis,pilotBasis} from './coupled-flight.js';
+import {stepCoupled,wingBasis,pilotBasis,coupledEnergy} from './coupled-flight.js';
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const approach=(a,b,rate,dt)=>a+(b-a)*(1-Math.exp(-rate*dt));
 const wave=(x,y,z,t)=>Math.sin(x*.013+y*.009+t*.73+z*.005)*.55+Math.sin(x*.043-y*.031-t*1.87)*.3+Math.sin(y*.11+z*.07+t*3.1)*.15;
@@ -21,6 +21,17 @@ export function launchFlight(config,mode,site,height,weather='soaring') {
     load:1,pressure:1,stall:0,turbulence:0,groundSpeed:0,grounded:false,distance:0,
     pilotPitch:0,pilotRoll:0,pilotPitchRate:0,pilotRollRate:0,challenge:null,
     maneuver:0,turnMemory:0,reversals:0,groundEffect:0,figure:'Trim glide'};
+}
+
+/** A giant redwood crown perch is a deliberate launch surface. The tree
+ * collision record supplies its launch mode; ordinary trunks remain perches.
+ */
+export function launchTreeFlight(config,mode,state,height,weather='soaring'){
+  if(state.mode!=='climb'||state.climbPhase!=='perch'||state.trunk?.launch_mode!=='para'||!config.modes[mode])
+    throw new Error('This tree perch is not a launch point for that flight mode');
+  const heading=Math.atan2(state.y-state.trunk.y,state.x-state.trunk.x);
+  return launchFlight(config,mode,{xy_m:[state.x,state.y],heading_deg:heading*180/Math.PI,
+    clearance_m:state.z+config.landing_clearance_m-height(state.x,state.y)},height,weather);
 }
 
 /** Reduced angular suspension response about the harness attachment. Forces
@@ -210,6 +221,20 @@ export function canopyTouches(segment,hitTest){
   return false;
 }
 
+/** Contact coverage across the full wing span. `u` is measured tip to tip;
+ * a small touch confined to either outer wingtip is recoverable.
+ */
+function canopyContact(segment,hitTest){
+  const d=segment.b.map((v,i)=>v-segment.a[i]),n=Math.max(1,Math.ceil(Math.hypot(...d))),points=[];
+  for(let k=0;k<=n;k++){
+    const u=k/n,p=segment.a.map((v,i)=>v+d[i]*u),soft=!!hitTest.soft?.(p,segment.radius)?.length,solid=!!hitTest(p,p,segment.radius);
+    if(soft||solid)points.push({u,soft,solid});
+  }
+  return {points,fraction:points.length/(n+1),softFraction:points.filter(p=>p.soft).length/(n+1),
+    solidFraction:points.filter(p=>p.solid).length/(n+1),tipOnly:points.length>0&&points.every(p=>Math.abs(2*p.u-1)>=.72),
+    side:points.length?points.reduce((sum,p)=>sum+2*p.u-1,0)/points.length:0};
+}
+
 const BODY=.45,G=9.81;
 
 /** The pilot's body against a solid between `prev` and `s`: keep the speed along the
@@ -233,7 +258,7 @@ function bounce(prev,s,v,c,hitTest){
   const out=hitTest.pushOut?.([[s.x,s.y,s.z]],BODY);
   if(out?.offset){s.x+=out.offset[0];s.y+=out.offset[1];s.z+=out.offset[2];}
   else if(!out){s.x=prev.x;s.y=prev.y;s.z=prev.z;}
-  return true;
+  return {hit:true,normalImpact:Math.max(0,-into)};
 }
 
 /** Foliage at the body: drag on every component, and a knock on each crown newly entered. */
@@ -253,7 +278,12 @@ function brush(s,v,dt,c,hitTest){
 function settle(s,v,config,height){
   const floor=height(s.x,s.y)+config.landing_clearance_m;
   if(s.z>floor)return;
-  s.z=floor;s.grounded=true;touchdown(s,Math.max(0,-v[2]),Math.hypot(v[0],v[1]),config);v[0]=v[1]=v[2]=0;
+  const impact=Math.max(0,-v[2]);s.z=floor;touchdown(s,impact,Math.hypot(v[0],v[1]),config);
+  if(!s.fallBounce&&impact>=(config.collapse.bounce_threshold_mps??Infinity)){
+    s.fallBounce=true;s.fallImpactSpeed=impact;s.grounded=false;
+    v[2]=impact*(config.collapse.bounce_rebound??0);return;
+  }
+  s.grounded=true;v[0]=v[1]=v[2]=0;
 }
 
 function touchdown(s,vertical,groundSpeed,config){
@@ -407,16 +437,37 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
       const work=mass*G*shift[2];c.contactWorkJ=(c.contactWorkJ??0)+work;c.energyJ+=work;
     }
   }
+  let bodyContact=false;s.canopyBrush=false;
   if(config.collapse&&hitTest){
-    // A canopy touching foliage or a solid collapses, and so does any contact of
-    // his body: the canopy is above him. A solid bounces him instead of stopping him.
-    const c=config.collapse,v=[(s.x-state.x)/dt,(s.y-state.y)/dt,(s.z-state.z)/dt];
-    const solid=bounce(state,s,v,c,hitTest),leaves=brush(s,v,dt,c,hitTest);
-    if(solid||leaves||canopyTouches(canopySegment(s,config),hitTest)){
+    // The body bounces from a solid. Only strong normal impact or broad canopy
+    // contact collapses the wing; light brushes and wingtip grazes recover.
+    const contactPosition=[s.x,s.y,s.z],c=config.collapse,v=s.coupled?[...s.coupled.pilotVelocity]:[(s.x-state.x)/dt,(s.y-state.y)/dt,(s.z-state.z)/dt];
+    const solid=bounce(state,s,v,c,hitTest);bodyContact=!!solid;const leaves=brush(s,v,dt,c,hitTest);const wing=canopyContact(canopySegment(s,config),hitTest);
+    const tipBrush=wing.tipOnly&&wing.fraction<=(c.recoverable_tip_fraction??0);
+    const softBrush=wing.softFraction>0&&wing.softFraction<=(c.recoverable_foliage_fraction??0);
+    if(tipBrush||softBrush){
+      if(!state.canopyBrush){
+        s.rollRate=clamp((s.rollRate??0)+wing.side*(c.tip_brush_roll_rps??0),-1,1);
+        s.pressure=Math.max(.45,(s.pressure??1)-(c.tip_brush_pressure??0));
+      }
+      s.canopyBrush=true;
+    }
+    const canopyFailure=wing.solidFraction>0&&!tipBrush||wing.softFraction>(c.recoverable_foliage_fraction??0)&&!tipBrush;
+    if(solid&&solid.normalImpact>=(c.body_impact_collapse_mps??0)||leaves&&c.recoverable_foliage_fraction===undefined||canopyFailure){
       s.collapsed=true;releaseSuspension(s);settle(s,v,config,height);return scoreFlight(publish(s,v),config);
     }
+    if(solid||leaves){
+      if(s.coupled){
+        const particles=s.coupled,before=coupledEnergy(particles,config.coupled);
+        const shift=[s.x,s.y,s.z].map((x,i)=>x-contactPosition[i]);
+        for(const key of ['pilotPosition','wingPosition'])particles[key]=particles[key].map((x,i)=>x+shift[i]);
+        particles.pilotVelocity=[...v];particles.energyJ=coupledEnergy(particles,config.coupled);
+        particles.contactWorkJ=(particles.contactWorkJ??0)+particles.energyJ-before;
+      }else{s.speed=Math.hypot(v[0],v[1]);if(s.speed>.5)s.heading=Math.atan2(v[1],v[0]);}
+      s.vx=v[0];s.vy=v[1];s.vz=s.vertical=s.vario=v[2];s.groundSpeed=Math.hypot(v[0],v[1]);
+    }
   }
-  const hit=hitTest?.([state.x,state.y,state.z],[s.x,s.y,s.z],.45);
+  const hit=bodyContact?null:hitTest?.([state.x,state.y,state.z],[s.x,s.y,s.z],.45);
   if(hit){s.x=state.x;s.y=state.y;s.z=state.z;s.impact=hit.kind;s.grounded=true;s.vx=s.vy=s.vz=s.vertical=s.vario=s.speed=0;releaseSuspension(s);return scoreFlight(s,config);}
   const floor=height(s.x,s.y)+config.landing_clearance_m;
   if(s.z<=floor){

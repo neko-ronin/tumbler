@@ -26,9 +26,10 @@ const placed=({x,y,base_z,scale},profile)=>profile.map(([h,r])=>[base_z+h*scale,
 const widest=profile=>Math.max(...profile.map(([,r])=>r));
 
 /** A solid tapering trunk; `trunk` is the climb record (climb.js). */
-export function trunkShape({id,x,y,base_z,scale,profile,top_h}){
+export function trunkShape({id,x,y,base_z,scale,profile,top_h,climb_top_h=top_h,climb_profile,asset}){
   const p=placed({x,y,base_z,scale},profile),r=widest(p),top_z=base_z+top_h*scale;
-  return {id,type:'trunk',kind:'tree',min:[x-r,y-r,base_z],max:[x+r,y+r,top_z],trunk:{x,y,base_z,top_z,profile:p}};
+  const climb_top_z=base_z+climb_top_h*scale,launch_mode=asset==='redwood/giant_redwood.glb'?'para':undefined;
+  return {id,type:'trunk',kind:'tree',min:[x-r,y-r,base_z],max:[x+r,y+r,top_z],trunk:{x,y,base_z,top_z,climb_top_z,launch_mode,climb_profile:climb_profile?placed({x,y,base_z,scale},climb_profile):undefined,profile:p}};
 }
 
 /** A soft crown: foliage that knocks and slows, never stops. */

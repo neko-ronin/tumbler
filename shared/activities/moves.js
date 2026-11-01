@@ -3,13 +3,19 @@
  * walking input plus `stick: [right, forward]` (raw) and camera `pitch`.
  * A contract without `climb` tuning is plain walking, field for field.
  */
+import {mountNearbyBranch,stepBranch,stepTreeJump,branchLanding} from './branches.js';
 import {stepWalk} from './walk.js';
 import {findTrunk,attachClimb,stepClimb} from './climb.js';
 import {stepSwim} from './swim.js';
 import {surfaceGap} from './collision.js';
 
 export function stepMoves(state,input,dt,config,world){
-  if(state.mode==='climb')return stepClimb(state,input,dt,config,world);
+  if(state.mode==='branch')return stepBranch(state,input,dt,config,world);
+  if(state.mode==='tree-jump')return stepTreeJump(state,input,dt,config,world);
+  if(state.mode==='climb'){
+    if(input.branch){const branch=mountNearbyBranch(state,config,world);if(branch)return branch;}
+    return stepClimb(state,input,dt,config,world);
+  }
   if(state.mode==='swim')return stepSwim(state,input,dt,config,world);
   // With swimming, water is a surface he can walk or fall onto, and then swims in.
   // In water he walks (and falls) onto the bed. He starts swimming once it is
@@ -22,6 +28,7 @@ export function stepMoves(state,input,dt,config,world){
   if(water&&water.depth>=config.swim.exit_depth_m&&(s.grounded||s.z<=water.surface_z+1e-6||s.jumpPhase==='bounce'))
     s={...s,mode:'swim',grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vz:0,swimPhase:'wade',climbPush:0};
   if(s.mode==='swim')return s;
+  const landed=branchLanding(state,s,config,world);if(landed)return landed;
   const c=config.climb;
   if(!c)return s;
   s.climbCooldown=Math.max(0,(state.climbCooldown??0)-dt);

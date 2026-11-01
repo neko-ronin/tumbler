@@ -79,6 +79,16 @@
       "chain_s": 0.25,
       "chain_mps": [16.6, 20],
       "chain_speed_mps": 3
+    },
+    "branches": {
+      "min_radius_m": 0.07,
+      "mount_reach_m": 1.25,
+      "walk_mps": 3.5,
+      "run_mps": 7,
+      "leap_mps": 18,
+      "leap_up_mps": 12,
+      "leap_range_m": 14,
+      "gravity_mps2": 24
     }
   },
   "tail_clips": {
