@@ -25,6 +25,15 @@ function fixture(t,{floor=flat}={}){
  t.after(()=>{nav.dispose();for(const [k,v]of saved)v?Object.defineProperty(globalThis,k,v):delete globalThis[k];});
  return {nav,pad,key,win,rig,camera,cat};
 }
+test('arrow keys look around on foot while WASD remains locomotion',t=>{
+ const {nav,key,camera}=fixture(t);nav.select('walk');nav.update(1/60);key('keydown','KeyV');key('keyup','KeyV');nav.update(1/60);
+ const position={x:nav.state.x,y:nav.state.y},before=camera.quaternion.clone();
+ key('keydown','ArrowRight');for(let i=0;i<30;i++)nav.update(1/60);key('keyup','ArrowRight');nav.update(1/60);
+ assert.ok(camera.quaternion.angleTo(before)>.1,'right arrow turns the view');
+ assert.equal(nav.state.x,position.x,'looking does not move the player east/west');assert.equal(nav.state.y,position.y,'looking does not move the player north/south');
+ key('keydown','KeyW');for(let i=0;i<30;i++)nav.update(1/60);key('keyup','KeyW');
+ assert.ok(Math.hypot(nav.state.x-position.x,nav.state.y-position.y)>.1,'WASD still moves the player');
+});
 test('controller A jumps on foot without restarting at a ridge, and holding it cannot jump again',t=>{
  const {nav,pad}=fixture(t);nav.select('walk');nav.update(1/60);const before={...nav.state};
  pad.buttons[0].pressed=true;for(let i=0;i<180;i++)nav.update(1/60);

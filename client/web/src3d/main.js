@@ -85,11 +85,17 @@ export async function main() {
   const camera = new T.PerspectiveCamera(62, 1, .15, 30000);
   camera.position.set(-1600, 200, -780);
   const controls = createOrbitControls(camera, canvas);
+  const renderTargets=[[640,400],[800,500],[960,600],[1024,640],[1152,720],[1280,720],[1280,800],[1366,768],[1440,900],[1680,1050],[1920,1200],[2560,1600]];
+  const renderTarget=document.getElementById('render-target'),renderTargetLabel=document.getElementById('render-target-label');
   let pixelRatio = 1,qualityScale=1;
   const resolutionGovernor=createResolutionGovernor({frameBudgetMs:WEB_FRAME_MS});
   const framePacer=createFramePacer();
   function resize() {
     const { width, height } = canvas.getBoundingClientRect();
+    const [targetWidth,targetHeight]=renderTargets[Number(renderTarget.value)]??renderTargets[8];
+    pixelRatio=Math.min(targetWidth/Math.max(1,width),targetHeight/Math.max(1,height));
+    renderTargetLabel.value=`${targetWidth} × ${targetHeight}`;
+    renderTargetLabel.textContent=renderTargetLabel.value;
     camera.aspect = width / Math.max(1, height);
     camera.updateProjectionMatrix();
     renderer.setPixelRatio(pixelRatio*qualityScale);
@@ -395,7 +401,7 @@ export async function main() {
     updateShadow(true);
   }
   document.getElementById('light').addEventListener('change', e => setLight(e.target.value));
-  document.getElementById('resolution').addEventListener('change', e => { pixelRatio = Number(e.target.value); resize(); });
+  renderTarget.addEventListener('input',resize);
   const home = placement.instances.find(i => i.kind === 'homestead');
   const [hx,hy,hz] = home.position_m;
   // These are camera bookmarks, never placement decisions.

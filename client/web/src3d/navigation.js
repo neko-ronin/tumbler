@@ -155,9 +155,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     if(mode==='orbit'){time+=Math.min(dt,.05);orbit.update();return;}
     const lx=dead(pad?.axes[0]),ly=dead(pad?.axes[1]),rx=dead(pad?.axes[2]),ry=dead(pad?.axes[3]);
-    yaw-=rx*dt*1.6;pitch=Math.max(-1.35,Math.min(1.35,pitch-ry*dt*1.4));
-    const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+lx;
-    const y=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-ly;
+    yaw-=(rx+Number(keys.has('ArrowRight'))-Number(keys.has('ArrowLeft')))*dt*1.6;
+    pitch=Math.max(-1.35,Math.min(1.35,pitch-(ry+Number(keys.has('ArrowDown'))-Number(keys.has('ArrowUp')))*dt*1.4));
+    const x=Number(keys.has('KeyD'))-Number(keys.has('KeyA'))+lx;
+    const y=Number(keys.has('KeyW'))-Number(keys.has('KeyS'))-ly;
     if(riding()){time+=Math.min(dt,.05);updateRide(dt,pad,x,y);return;}
     if(mode==='walk'){
       time+=Math.min(dt,.05);
