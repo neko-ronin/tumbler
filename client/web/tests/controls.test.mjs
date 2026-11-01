@@ -22,6 +22,20 @@ test("orbit controls leave the camera stationary until input arrives", () => {
     for (let frame = 0; frame < 60; frame += 1) controls.update();
     assert.ok(camera.position.distanceTo(initial) < 1e-9, "an idle camera must not drift or zoom");
 
+    const originalTheta = controls.spherical.theta;
+    const arrowDown = new Event("keydown", { cancelable: true });
+    Object.defineProperties(arrowDown, { code: { value: "ArrowRight" }, target: { value: canvas } });
+    window.dispatchEvent(arrowDown);
+    assert.equal(arrowDown.defaultPrevented, true, "orbit arrows should not scroll the page");
+    for (let frame = 0; frame < 60; frame += 1) controls.update();
+    window.dispatchEvent(new Event("keyup"));
+    assert.ok(controls.spherical.theta > originalTheta + 0.1, "right arrow rotates the orbit camera");
+    const arrowTheta = controls.spherical.theta;
+    const dragDown = new Event("mousedown"); Object.assign(dragDown, { button: 0, clientX: 300, clientY: 300 }); canvas.dispatchEvent(dragDown);
+    const dragMove = new Event("mousemove"); Object.assign(dragMove, { clientX: 420, clientY: 300 }); document.dispatchEvent(dragMove);
+    document.dispatchEvent(new Event("mouseup")); controls.update();
+    assert.ok(controls.spherical.theta < arrowTheta, "dragging right rotates opposite to the right arrow");
+
     const wheel = new Event("wheel", { cancelable: true });
     wheel.deltaY = 120;
     canvas.dispatchEvent(wheel);

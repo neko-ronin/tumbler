@@ -49,6 +49,21 @@ export function createOrbitControls(camera, canvas) {
   const panSpeed = 1.0;
   const rotateSpeed = 1.0;
   const zoomSpeed = 1.0;
+  const keys = new Set();
+  const keyCodes = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+
+  function onKeyDown(event) {
+    if (!enabled || !keyCodes.has(event.code) || /INPUT|SELECT|TEXTAREA/.test(event.target?.tagName ?? "")) return;
+    keys.add(event.code);
+    event.preventDefault();
+  }
+
+  function onKeyUp(event) {
+    keys.delete(event.code);
+  }
+
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keyup", onKeyUp);
 
   function getZoomScale() {
     return Math.pow(0.95, -sphericalDelta.radius * (enableDamping ? dampingFactor : 1));
@@ -57,6 +72,11 @@ export function createOrbitControls(camera, canvas) {
   const offset = new Vector3();
   function update() {
     if (!enabled) return;
+    // Match right-drag rotation: 0.005 radians per pixel. At 60 updates/sec,
+    // a held arrow travels 120 pixels/sec, close to a comfortable mouse drag.
+    const keyStep = 0.01;
+    sphericalDelta.theta += (Number(keys.has("ArrowRight")) - Number(keys.has("ArrowLeft"))) * keyStep;
+    sphericalDelta.phi += (Number(keys.has("ArrowDown")) - Number(keys.has("ArrowUp"))) * keyStep;
     offset.subVectors(camera.position, target);
 
     // In spherical coordinates
@@ -226,6 +246,7 @@ export function createOrbitControls(camera, canvas) {
 
   function setTarget(x, y, z) {
     target.set(x, y, z);
+    keys.clear();
     sphericalDelta.set(0, 0, 0); panOffset.set(0, 0, 0);
   }
 
@@ -257,6 +278,9 @@ export function createOrbitControls(camera, canvas) {
       canvas.removeEventListener("touchstart", handleTouchStart);
       canvas.removeEventListener("touchmove", handleTouchMove);
       canvas.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      keys.clear();
       canvas.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
