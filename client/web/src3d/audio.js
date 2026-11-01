@@ -1,14 +1,22 @@
+import {createFoleyPlayer} from './character-foley.js';
+
 /** Browser presentation of the existing habitats, wind and flight motor.
  * Original procedural sound, enabled by default and resumed after the first user gesture if autoplay is blocked.
  */
-export function createSoundscape(habitats,trees=new Float32Array(0)){
-  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,enabled=true;
+export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=null){
+  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,characterBus=null,enabled=true;
   async function toggle(next=!enabled){
+    enabled=next;
     if(!context){
-      context=new AudioContext();const length=context.sampleRate*3;
+      context=new AudioContext();
+      let chargeBuffer=null;
+      try{if(chargeBytes)chargeBuffer=await context.decodeAudioData(chargeBytes.slice(0));}
+      catch(error){const failed=context;context=null;await failed.close();throw error;}
+      const length=context.sampleRate*3;
       const buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);
       let last=0;for(let i=0;i<length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;data[i]=last*3.5;}
-      cues=createCuePlayer(context);birds=createBirds(context,createTreeIndex(trees));beeVoices=Array.from({length:3},()=>createBeeVoice(context));
+      characterBus=context.createPanner();characterBus.panningModel='HRTF';characterBus.distanceModel='inverse';characterBus.refDistance=5;characterBus.rolloffFactor=1;characterBus.maxDistance=100;characterBus.connect(context.destination);
+      cues=createCuePlayer(context,characterBus,chargeBuffer);birds=createBirds(context,createTreeIndex(trees));beeVoices=Array.from({length:3},()=>createBeeVoice(context));
       function noise(frequency,gain,spatial=false){const source=context.createBufferSource();source.buffer=buffer;source.loop=true;
         const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=frequency;
         const level=context.createGain();level.gain.value=gain;source.connect(filter).connect(level);
@@ -18,14 +26,15 @@ export function createSoundscape(habitats,trees=new Float32Array(0)){
       wind=noise(550,.08);water=noise(1400,.3,true);
       const oscillator=context.createOscillator();oscillator.type='sawtooth';oscillator.frequency.value=85;const level=context.createGain();level.gain.value=0;const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=350;oscillator.connect(filter).connect(level).connect(context.destination);oscillator.start();motor={oscillator,level};
     }
-    enabled=next;await (enabled?context.resume():context.suspend());return enabled;
+    await (enabled?context.resume():context.suspend());return enabled;
   }
   async function unlock(){if(enabled&&context?.state==='suspended')await context.resume();}
   function update(camera,navigation,nearby){
-    if(!enabled||!context)return;
+    if(!enabled||!context||!birds)return;
     const listener=context.listener,t=context.currentTime,position=camera.position;
     if(listener.positionX){listener.positionX.setValueAtTime(position.x,t);listener.positionY.setValueAtTime(position.y,t);listener.positionZ.setValueAtTime(position.z,t);
       const e=camera.matrixWorld.elements;listener.forwardX.setValueAtTime(-e[8],t);listener.forwardY.setValueAtTime(-e[9],t);listener.forwardZ.setValueAtTime(-e[10],t);listener.upX.setValueAtTime(e[4],t);listener.upY.setValueAtTime(e[5],t);listener.upZ.setValueAtTime(e[6],t);}
+    const actor=navigation.state;if(actor&&characterBus){characterBus.positionX.setValueAtTime(actor.x,t);characterBus.positionY.setValueAtTime(actor.z+.9,t);characterBus.positionZ.setValueAtTime(-actor.y,t);}
     birds.update(position);
     let nearest=null,distance=Infinity;for(const h of habitats.habitats){const [x,y,z]=h.centre_m;const d=(x-position.x)**2+(-y-position.z)**2+(z-position.y)**2;if(d<distance){distance=d;nearest=h;}}
     if(nearest){const [x,y,z]=nearest.centre_m;water.panner.positionX.setValueAtTime(x,t);water.panner.positionY.setValueAtTime(z,t);water.panner.positionZ.setValueAtTime(-y,t);}
@@ -48,7 +57,7 @@ export function createSoundscape(habitats,trees=new Float32Array(0)){
     });
     motor.level.gain.setTargetAtTime(throttle*.032,t,.1);motor.oscillator.frequency.setTargetAtTime(65+throttle*65,t,.1);
   }
-  return {toggle,unlock,update,cue:name=>{if(enabled)cues?.(name);},dispose(){context?.close();}};
+  return {toggle,unlock,update,cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},dispose(){context?.close();}};
 }
 /** One bumblebee: a soft low buzz (saw plus an octave-down triangle, low-passed) that wanders in pitch and pulses
  * lazily, with a breath of wing air, placed in space by an HRTF panner. Silent until its gain is raised. */
@@ -67,93 +76,95 @@ export function createBeeVoice(context,out=context.destination){
   return {panner,level,setPitch(hz,t){saw.frequency.setTargetAtTime(hz,t,.3);sub.frequency.setTargetAtTime(hz/2,t,.3);}};
 }
 /** One-shot character cues (the katana's latch, slides, locks and its fighting) on an existing AudioContext. */
-export function createCuePlayer(context){
+export function createCuePlayer(context,destination=context.destination,chargeBuffer=null){
+  const foley=createFoleyPlayer(context,destination),blade=createBladeResonance(context,destination);
   const hiss=context.createBuffer(1,context.sampleRate,context.sampleRate),white=hiss.getChannelData(0);
   for(let i=0;i<white.length;i++)white[i]=Math.random()*2-1;
-  let lockRun=0,lastLock=-1;
+  const retained=new Set(['latch','eject','slide','lock','hum','swish','swish_heavy','spin','ring','flick','charge']);
+  let lockRun=0,lastLock=-1,charges=0;
   return function cue(name){
-    const t=context.currentTime,out=context.createGain();out.gain.value=.5;out.connect(context.destination);
+    if(name==='charge'&&chargeBuffer){
+      // Round-03 accepted Meow Cat #2 — Joseph SARDIN, exact compact edit.
+      if(charges>=4)return;charges++;
+      const source=context.createBufferSource(),gain=context.createGain();source.buffer=chargeBuffer;gain.gain.value=.5;
+      source.connect(gain).connect(destination);source.onended=()=>{source.disconnect();gain.disconnect();charges--;};source.start(context.currentTime);return;
+    }
+    if(foley(name)||blade(name)||!retained.has(name))return;
+    const t=context.currentTime,out=context.createGain();out.gain.value=['swish','swish_heavy','lock'].includes(name)?.4:.5;out.connect(destination);
+    const sources=new Set(),nodes=[out];
+    const track=source=>{sources.add(source);source.onended=()=>{source.disconnect();sources.delete(source);if(!sources.size)for(const node of nodes)node.disconnect();};};
     // attack: seconds to the peak (a swish swells, a click does not); at: delay from now.
     const burst=(dur,type,frequency,q,gain,sweep,attack=.004,at=0)=>{
       const s=t+at,source=context.createBufferSource();source.buffer=hiss;
       const filter=context.createBiquadFilter();filter.type=type;filter.Q.value=q;filter.frequency.setValueAtTime(frequency,s);
       if(sweep)filter.frequency.exponentialRampToValueAtTime(sweep,s+dur);
       const level=context.createGain();level.gain.setValueAtTime(0,s);level.gain.linearRampToValueAtTime(gain,s+attack);level.gain.exponentialRampToValueAtTime(.0001,s+dur);
-      source.connect(filter).connect(level).connect(out);source.start(s,Math.random()*.8);source.stop(s+dur+.02);
+      track(source);nodes.push(filter,level);source.connect(filter).connect(level).connect(out);source.start(s,Math.random()*.8);source.stop(s+dur+.02);
     };
     const ring=(dur,frequency,gain,type='sine',glide)=>{
       const tone=context.createOscillator();tone.type=type;tone.frequency.setValueAtTime(frequency,t);
       if(glide)tone.frequency.exponentialRampToValueAtTime(glide,t+dur);
       const level=context.createGain();level.gain.setValueAtTime(gain,t);level.gain.exponentialRampToValueAtTime(.0001,t+dur);
-      tone.connect(level).connect(out);tone.start(t);tone.stop(t+dur+.02);
+      track(tone);nodes.push(level);tone.connect(level).connect(out);tone.start(t);tone.stop(t+dur+.02);
     };
     if(name==='latch'){burst(.03,'highpass',4200,.7,.45);ring(.05,2400,.06);}
     else if(name==='eject'){
-      // The spring letting go: a short airy push and a wobbling twang that rises as it unloads.
-      burst(.12,'bandpass',900,2,.22,3200);
+      // Preserve the human-approved spring: the same rising triangle and 31 Hz
+      // twang. Round its attack, tighten the air, and add a faint metal seat.
+      burst(.10,'bandpass',900,2,.19,3200);
+      ring(.14,2480,.012);ring(.09,3910,.006);
       const tone=context.createOscillator(),wobble=context.createOscillator(),depth=context.createGain(),level=context.createGain();
       tone.type='triangle';tone.frequency.setValueAtTime(170,t);tone.frequency.exponentialRampToValueAtTime(460,t+.1);
       wobble.frequency.value=31;depth.gain.setValueAtTime(70,t);depth.gain.exponentialRampToValueAtTime(4,t+.32);
-      level.gain.setValueAtTime(.13,t);level.gain.exponentialRampToValueAtTime(.0001,t+.34);
+      level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(.13,t+.006);level.gain.exponentialRampToValueAtTime(.0001,t+.31);
       wobble.connect(depth).connect(tone.frequency);tone.connect(level).connect(out);
-      tone.start(t);wobble.start(t);tone.stop(t+.36);wobble.stop(t+.36);
+      track(tone);track(wobble);nodes.push(depth,level);tone.start(t);wobble.start(t);tone.stop(t+.34);wobble.stop(t+.34);
     }
-    else if(name==='catch'){burst(.06,'lowpass',600,.7,.5);ring(.09,160,.22);}
     else if(name==='slide')burst(.11,'bandpass',2600,6,.32,5200);
-    else if(name==='lock'||name==='seat'){
+    else if(name==='lock'){
       // Consecutive locks climb a little in pitch, so the chain reads as one mechanism.
-      lockRun=t-lastLock<.5?lockRun+1:0;lastLock=t;const k=name==='seat'?.6:1.06**lockRun;
+      lockRun=t-lastLock<.5?lockRun+1:0;lastLock=t;const k=1.06**lockRun;
       burst(.02,'highpass',5000,.7,.6);ring(.18,2100*k,.1);ring(.12,3350*k,.06);ring(.06,5200*k,.035);
-      if(name==='seat')ring(.1,150,.2);
     }
-    else if(name==='hum'){ring(.9,110,.05,'sawtooth');ring(.9,220,.04);}
     // The fight: a blade through air is band-passed noise falling in pitch as it
     // passes; heavier cuts are lower and longer with a felt thump under them.
     else if(name==='swish'){burst(.24,'bandpass',2400,1.6,.55,520,.05);ring(.2,1250,.03,'sine',600);}
     else if(name==='swish_heavy'){burst(.38,'bandpass',1500,1.2,.8,180,.07);burst(.3,'highpass',5200,.7,.12,2500,.05);ring(.28,95,.35,'sine',40);}
     else if(name==='spin')for(let i=0;i<3;i++)burst(.16,'bandpass',2000-i*350,2,.35-.08*i,600,.03,.06+i*.09);
-    else if(name==='ring'||name==='flick'){
-      // Steel ringing after the cut: inharmonic partials, like a struck bar.
-      const k=name==='flick'?1.25:1;if(name==='flick')burst(.1,'bandpass',3400,3,.4,1300,.02);
-      ring(1.1,1830*k,.05);ring(.9,2950*k,.035);ring(.6,4410*k,.02);
-    }
     else if(name==='charge'){
       // Gathering power: a buzzing tone and its shimmer rising together.
       const tone=context.createOscillator(),filter=context.createBiquadFilter(),level=context.createGain();
       tone.type='sawtooth';tone.frequency.setValueAtTime(90,t);tone.frequency.exponentialRampToValueAtTime(360,t+.5);
       filter.type='lowpass';filter.Q.value=6;filter.frequency.setValueAtTime(300,t);filter.frequency.exponentialRampToValueAtTime(3200,t+.5);
       level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(.11,t+.35);level.gain.exponentialRampToValueAtTime(.0001,t+.62);
-      tone.connect(filter).connect(level).connect(out);tone.start(t);tone.stop(t+.65);
+      track(tone);nodes.push(filter,level);tone.connect(filter).connect(level).connect(out);tone.start(t);tone.stop(t+.65);
       ring(.6,880,.025,'sine',2600);
     }
-    else if(name==='impact'){
-      // The blow lands: a sharp crack, a falling boom, rumble and the blade's ring.
-      burst(.07,'highpass',3000,.7,.9);burst(.7,'lowpass',420,.8,.7,90,.01);
-      ring(.75,130,.9,'sine',34);ring(.35,62,.6,'triangle',30);ring(1.3,1620,.04);ring(1,2470,.03);
-    }
-    else if(name==='land'){burst(.14,'lowpass',500,.7,.5,150);ring(.16,88,.3,'sine',45);}
-    else if(/^grunt[123]$/.test(name)){
-      // A gruff cat effort grunt: a low voice through two mouth formants, roughened
-      // by a fast flutter (the growl), over a breathy push. The chain's later jumps
-      // grunt harder and longer; the triple's rises into a short shout.
-      const tier=+name[5],k=1+(Math.random()-.5)*.1,dur=[.2,.24,.36][tier-1],peak=[.7,.8,.9][tier-1];
-      const voice=context.createOscillator(),flutter=context.createOscillator(),rough=context.createGain(),level=context.createGain();
-      voice.type='sawtooth';const f=[118,132,124][tier-1]*k;
-      voice.frequency.setValueAtTime(f*1.12,t);
-      if(tier===3){voice.frequency.linearRampToValueAtTime(f*1.45,t+dur*.45);voice.frequency.exponentialRampToValueAtTime(f*.85,t+dur);}
-      else voice.frequency.exponentialRampToValueAtTime(f*.78,t+dur);
-      // The flutter swings the rough stage's gain between 0.4 and 1, inside the envelope.
-      const depth=context.createGain();flutter.frequency.value=34*k;depth.gain.value=.3;rough.gain.value=.7;
-      flutter.connect(depth).connect(rough.gain);
-      level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(peak,t+.012);level.gain.setValueAtTime(peak,t+dur*.5);level.gain.exponentialRampToValueAtTime(.0001,t+dur);
-      for(const [frequency,q,gain] of [[640,4,1],[1350,6,.45]]){
-        const formant=context.createBiquadFilter(),mix=context.createGain();formant.type='bandpass';formant.frequency.value=frequency*(tier===3?1.15:1);formant.Q.value=q;mix.gain.value=gain;
-        voice.connect(formant).connect(mix).connect(rough);
-      }
-      rough.connect(level).connect(out);voice.start(t);flutter.start(t);voice.stop(t+dur+.02);flutter.stop(t+dur+.02);
-      burst(dur*.7,'lowpass',900,.7,.12);
-    }
+
   }
+}
+
+/** Round-02 accepted blade voice: higher, faint, tensioned metal ringing in air.
+ * Exact studied partials/envelopes; direct destination levels avoid accidentally
+ * halving the reviewed study through the legacy 0.5 cue bus. */
+export function createBladeResonance(context,destination=context.destination){
+  let active=0;
+  return name=>{
+    if(!['hum','ring','flick'].includes(name))return false;
+    if(active>=8)return true;
+    active++;const t=context.currentTime,sources=new Set();
+    function partial(hz,dur,level){
+      const tone=context.createOscillator(),gain=context.createGain();tone.frequency.value=hz;
+      gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(level,t+.008);gain.gain.exponentialRampToValueAtTime(.00001,t+dur);
+      tone.connect(gain).connect(destination);sources.add(tone);
+      tone.onended=()=>{tone.disconnect();gain.disconnect();sources.delete(tone);if(!sources.size)active--;};
+      tone.start(t);tone.stop(t+dur+.02);
+    }
+    const k=name==='hum'?.9:name==='flick'?1.12:1;
+    partial(3100*k,3.4,.014);partial(4870*k,2.7,.006);partial(6520*k,1.8,.0025);
+    if(name==='flick')partial(2100,.06,.014);
+    return true;
+  };
 }
 
 /** Approximate crown heights (m, before scale) of the placed tree kinds; birds sing from the upper-middle canopy. */

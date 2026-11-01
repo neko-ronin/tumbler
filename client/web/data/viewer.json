@@ -6,6 +6,10 @@
       "sha256": "53afa6c28496da3dbd63571722ab9fc14653c602991ca8c6f3df739fe96d8dc3"
     },
     {
+      "path": "client/web/assets/audio/character/charge.wav",
+      "sha256": "20daa51e7c94ff7703293e590e5b28704a8e88dc9bff0321d4da71880c002306"
+    },
+    {
       "path": "client/web/scene.html",
       "sha256": "ce1749c9c8a0bb95931bd87116821d57cf04e774635ba55278adf1dc94cd5a41"
     },
@@ -27,11 +31,15 @@
     },
     {
       "path": "client/web/src3d/audio.js",
-      "sha256": "2eb3c262da92f19ae4b5f645c456a49165343c14299ba332a8efbe80f87ee9fe"
+      "sha256": "2508983b389be15d41fcc741324c0619eb7599b1bce146b0118a6d0c8b92b46d"
     },
     {
       "path": "client/web/src3d/canopy-light.js",
       "sha256": "90d423b7714ee459efbed9003824f134b0cc76f210f30be19ee30fb8f21e987e"
+    },
+    {
+      "path": "client/web/src3d/character-foley.js",
+      "sha256": "57f58a8df883d0f6215b160a5248af821bbbbc3da7f6adfc5f16ed57ae38916f"
     },
     {
       "path": "client/web/src3d/character-surface.js",
@@ -39,7 +47,7 @@
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "5bb774bc7afae75de395e82af191251bc3210b979f9219cbb11aabb07e432996"
+      "sha256": "b62bf57a91853789aebf914665ff1b5ea344fe1307af800be9efdc3c96131601"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -159,7 +167,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "775cd7479daeea9b273b9ecac71c7dcefee6d09b0323a5c5b380bec678444873"
+      "sha256": "447996afae34b4f9eede3731c75daca5da3cc3ffd94dd9869beee64264143d62"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -793,7 +801,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "40d6a48",
+  "commit": "60c692d",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

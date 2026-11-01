@@ -187,3 +187,13 @@ test('studio audition hooks put a named clip on one layer without stopping the o
   cat.update(.2,'idle',0,{tailClip:'tail_alert'});assert.equal(cat.tailClip,'tail_alert');assert.equal(cat.clip,'idle');
   cat.dispose();
 });
+
+test('walking exposes actual animated paw plant edges for foley and clears them in flight',()=>{
+  const cat=character();let previous=new Set(),plants=0;
+  for(let i=0;i<120;i++){
+    cat.object.position.x=i/30*3.5;cat.update(1/30,'walk',3.5,{groundZ:0,groundHeight:()=>0});
+    const down=new Set(cat.footContacts);for(const paw of down)if(!previous.has(paw))plants++;previous=down;
+  }
+  assert.ok(plants>=6&&plants<30,`planted-paw transitions, not a frame timer: ${plants}`);
+  cat.update(1/30,'flight',0);assert.deepEqual(cat.footContacts,[]);cat.dispose();
+});

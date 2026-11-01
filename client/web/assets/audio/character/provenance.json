@@ -1,0 +1,37 @@
+{
+  "name": "Meow Cat #2",
+  "author": "Joseph SARDIN",
+  "publisher": "BigSoundBank",
+  "sound_number": 1890,
+  "page": "https://bigsoundbank.com/meow-cat-2-s1890.html",
+  "download": "https://bigsoundbank.com/UPLOAD/bwf-en/1890.wav",
+  "license": "CC0 (publisher page)",
+  "license_scope": "Publisher explicitly permits editing, redistribution and commercial use without attribution.",
+  "sha256": "fe182a75fa840790197eb6570748c391efec690c335d804aeaa199842bf40f1d",
+  "bytes": 425246,
+  "inspection": {
+    "magic": "RIFF/WAVE",
+    "max_download_bytes": 2000000,
+    "codec": "pcm_s24le",
+    "sample_rate_hz": 48000,
+    "channels": 1,
+    "bits": 24,
+    "duration_s": 2.373396,
+    "bounded_decode": "ffmpeg decode completed successfully",
+    "source_peak_dbfs": -1.5,
+    "source_mean_dbfs": -19.8
+  },
+  "usage": "Game charge: compact edit accepted in round-03 review.",
+  "edits": "make_auditions.py; no pitch or speed change; metadata removed from derived files",
+  "limitations": "Technical inspection is not a malware scan, human audition, or acceptance of the edited performance.",
+  "runtime": {
+    "file": "charge.wav",
+    "bytes": 65358,
+    "sha256": "20daa51e7c94ff7703293e590e5b28704a8e88dc9bff0321d4da71880c002306",
+    "duration_s": 0.68,
+    "gain": 0.5,
+    "trigger": "Existing charge animation events: rising attack frame 1, cleave frame 0, at 24 fps.",
+    "recipe": "build_charge.py"
+  },
+  "approval": "docs/reviews/character-audio-2026-11-01/round-03/03-user-review.json"
+}

@@ -36,6 +36,7 @@ import { buildEcology } from './ecology.js';
 import { createVisitorWatch } from './insect-visits.js';
 import { buildTethers, buildTrails, TRAIL_SURFACE_LIFT } from './details.js';
 import { createSoundscape, treeSpots } from './audio.js';
+import {createFoleyEvents} from './character-foley.js';
 import { buildWorldCollision } from './collision.js';
 import { sha256, verifyFetched, checkVersion, WORLDMAP_VERSION } from './provenance.js';
 import {fetchAssetBytes} from './asset-bytes.js';
@@ -120,6 +121,7 @@ export async function main() {
   checkVersion(manifest,1,'viewer manifest');checkVersion(worldmap,WORLDMAP_VERSION,'world map');
   const [meadowData,flightConfig,rideConfig]=await Promise.all([fetchData(worldmap.activities.meadow_life),fetchData(worldmap.activities.flight),fetchData(worldmap.activities.ride)]);
   const characterConfig=await fetchData(worldmap.activities.character);
+  const chargeBytes=await fetchData('client/web/assets/audio/character/charge.wav',false);
   const branchData=await fetchData('shared/geometry/tree-design/branch-graphs.json');checkVersion(branchData,1,'tree branch graph');
   const treePlan=await fetchData('shared/geometry/tree-design/adopted-redwoods.json');checkVersion(treePlan,2,'forest rendering plan');
   checkVersion(characterConfig,1,'playable character');
@@ -280,9 +282,32 @@ export async function main() {
       return y;
     })});
   };
-  const soundscape=createSoundscape(habitats,treeSpots(placement.instances)),cameraShake=new T.Vector3();
+  const soundscape=createSoundscape(habitats,treeSpots(placement.instances),chargeBytes),cameraShake=new T.Vector3();
   const visitors=createVisitorWatch({ecology,character,navigation,camera,focusEl:document.getElementById('focus')});
   character.onCue=name=>soundscape.cue(name);
+  const foleyEvents=createFoleyEvents(name=>soundscape.cue(name));
+  // Interpret existing physical/stamped facts; never infer a material from color.
+  // Unclassified bare ground uses a restrained earth/grit texture, not a new world tag.
+  function footstepSurface(s){
+    if(s.mode==='branch')return 'wood';
+    if(snowAt(s.x,s.y)>.03)return 'snow';
+    if((riverSurface.granite(s.x,s.y)??0)>.22)return 'stone';
+    const base=blockGrid.sample(s.x,s.y)??farGrid.sample(s.x,s.y),rock=geologyHeight?.(s.x,s.y);
+    if(rock!=null&&rock>base)return 'stone';
+    if(surfaceAt(s.x,s.y)==='trail')return 'gravel';
+    const col=Math.round((s.x-cover.offsetX)/cover.quad),row=Math.round((s.y-cover.offsetY)/cover.quad);
+    return col>=0&&row>=0&&col<cover.resolution&&row<cover.resolution&&cover.covered[row*cover.resolution+col]?'grass':'gravel';
+  }
+  let foleySpeed=0;
+  function updateFoley(dt){
+    const s=navigation.state;if(!s||navigation.mode==='orbit'){foleyEvents.reset();foleySpeed=0;return;}
+    const action=character.bodyAction,clip=action?.getClip();
+    foleyEvents.update({mode:navigation.mode,activity:s.mode,x:s.x,y:s.y,z:s.z,speed:s.speed??0,
+      grounded:!!s.grounded,swimPhase:s.swimPhase,turnRate:s.turnRate,accel:dt>0?((s.speed??0)-foleySpeed)/dt:0,
+      feet:character.footContacts,bark:character.contacts.filter(c=>c.target==='bark').map(c=>c.bone),
+      clip:clip?.name,cycle:clip?Math.floor(action.time/clip.duration*2):0,surface:footstepSurface(s)},dt);
+    foleySpeed=s.speed??0;
+  }
   const soundButton=document.getElementById('sound');
   soundscape.toggle(true).catch(()=>{});
   const unlockSound=()=>soundscape.unlock().catch(()=>{});
@@ -535,7 +560,7 @@ export async function main() {
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
     applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
-    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit));
+    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit));updateFoley(Math.min(delta,50)/1000);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;

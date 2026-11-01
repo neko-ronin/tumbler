@@ -1,3 +1,16 @@
+# Character foley — reviewed and integrated locally, 2026-11-01
+
+Before changing character sound, read the [direction and review narrative](../../docs/design/CHARACTER-AUDIO.md).
+The three-round design review is complete: body/contact foley, the polished
+spring, modestly lower swishes, ascending lock and long faint high blade rings
+are implemented. The final review accepts the compact **Meow Cat #2 — Joseph
+SARDIN** charge, now loaded as verified game data. Original source, recipe and
+provenance live in `assets/audio/character/`; no external library was installed.
+[Implementation, validation and acceptance limits](../../docs/reviews/character-audio-2026-11-01/round-03/completion.md).
+No deployment or fresh audible in-game acceptance is claimed.
+
+---
+
 # Branches, redwood launches and para recovery — S4 candidate, 2026-10-31
 
 Climb a tree with forward input, E / gamepad X steps onto a nearby primary

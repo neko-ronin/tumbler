@@ -72,7 +72,7 @@ export function createCharacter(asset, config) {
   for (const name of Object.values(config.clips)) if (!actions[name]) throw new Error(`Ronin is missing clip ${name}`);
   for (const name of Object.values(config.jump_clips??{})) if (!actions[name]) throw new Error(`Ronin is missing jump clip ${name}`);
   const feet=[],paws={},bodyMeshes=[];model.traverse(node=>{if(node.isMesh&&!node.isSkinnedMesh&&node.geometry.boundingBox||node.isSkinnedMesh&&!/^cat_tail|\.fur\d/.test(node.name))bodyMeshes.push(node);});model.traverse(node=>{if(node.isMesh&&/^foot\./.test(node.parent?.name??''))feet.push(node);if(node.isMesh&&/^paw\./.test(node.parent?.name??''))paws[node.parent.name]=node;});
-  const footBox=new T.Box3(),meshBox=new T.Box3();let lastJump=0,bodyLift=0,bodyWorld=null;
+  const footBox=new T.Box3(),meshBox=new T.Box3();let lastJump=0,bodyLift=0,bodyWorld=null,footContacts=[];
   // Legs for foot planting: hip (thigh), knee (shin), ankle (heel) and the foot meshes.
   const legs=['L','R'].map(side=>({thigh:model.getObjectByName('thigh.'+side),shin:model.getObjectByName('shin.'+side),heel:model.getObjectByName('heel.'+side),
     meshes:feet.filter(mesh=>mesh.parent.name==='foot.'+side)})).filter(leg=>leg.thigh&&leg.shin&&leg.heel&&leg.meshes.length);
@@ -297,6 +297,7 @@ export function createCharacter(asset, config) {
       object.worldToLocal(attachmentTarget.copy(context.flightAnchor));
       model.position.add(attachmentTarget.sub(attachmentPoint));
     }
+    footContacts=[];
     if(pose!=='flight'&&context.groundZ!==undefined){
       model.updateWorldMatrix(true,true);
       // Each foot: how far it must rise. A planted paw stands on its own floor;
@@ -306,6 +307,7 @@ export function createCharacter(asset, config) {
         footBox.makeEmpty();for(const mesh of leg.meshes)footBox.union(meshBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld));
         const centre=footBox.getCenter(new T.Vector3()),floor=context.groundHeight?.(centre.x,-centre.z)??context.groundZ;
         const down=footBox.min.y-base<PLANTED_M;planted.push(down);
+        if(down&&!jump&&['stroll','walk','run'].includes(pose))footContacts.push(leg.thigh.name);
         needs.push(down?floor+Math.max(0,footBox.min.y-base)-footBox.min.y:floor-footBox.min.y);clear=Math.max(clear,floor-footBox.min.y);
       }
       const high=Math.max(clear,...needs);
@@ -369,6 +371,8 @@ export function createCharacter(asset, config) {
     head.localToWorld(out.top.copy(TOP_LOCAL));head.localToWorld(out.nose.copy(NOSE_LOCAL));return out;
   }
   const api = { object, model, update, toggleKatana, attack, onCue:null, mixer, actions, gesture, anchors,
+    /** Animated planted feet measured before IK, for contact-driven presentation. */
+    get footContacts(){return footContacts;},
     /** True while the idle sequence holds a seated pose (he has stood still long enough to sit). */
     get sitting(){return !!config.idle_sequence?.some(step=>step.hold&&step.clip===clipName);},
     /** True while an attack plays: the client holds his feet still. */
