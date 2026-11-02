@@ -175,7 +175,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "4e332f0550c5984f9f2ded4582809848372b2f16ea40ae6de6a8f82e23746758"
+      "sha256": "8bd078f19262bc3896f99a18bafd6ea3a8028e66e5de1ea657597336ec240842"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -271,7 +271,7 @@
     },
     {
       "path": "shared/activities/branches.js",
-      "sha256": "5f731eb924cd7a88002beaed36646e3c05d8614cf88980c2c925b3bce34f8ab2"
+      "sha256": "5f67d1500eb31bca38fa3665aa81574572c6a2aafa574b0655d74b05e4e1e569"
     },
     {
       "path": "shared/activities/climb.js",
@@ -801,7 +801,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "c5ac6e3",
+  "commit": "b5fec8d",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

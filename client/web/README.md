@@ -1,3 +1,14 @@
+# Tree-jump camera and animation polish — local candidate, 2026-11-01
+
+Tree traversal keeps the player's view through takeoff and touchdown. The chase
+view eases into wider tree framing and follows vertical movement more closely.
+Branch jumps use the shared running-leap clip, hang at the ballistic apex and
+settle through the existing landing phase. Fresh jump presses can chain out;
+holding jump cannot retrigger it. [Evidence and reproduction](../../docs/reviews/branch-jump-polish-2026-11-01.md).
+This is on `codex/branch-jump-polish`, based on main `b5fec8d`; unmerged and unpublished.
+
+---
+
 # Audio balance follow-up — 2026-11-01
 
 Latest mix: locomotion cues at 50% amplitude; sword ringing/bell accents silent

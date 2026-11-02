@@ -46,7 +46,7 @@ test('giant perch launches at actual height and rejects other perches',()=>{
 
 test('descending feet land on branches, while an upward crossing does not catch',()=>{
  const {world}=fixture(),previous={x:2,y:0,z:11},state={x:2,y:0,z:9.8,vz:-5,grounded:false};
- const landed=branchLanding(previous,state,config,world);assert.equal(landed.mode,'branch');assert.equal(landed.grounded,true);
+ const landed=branchLanding(previous,state,config,world);assert.equal(landed.mode,'branch');assert.equal(landed.grounded,true);assert.equal(landed.jumpPhase,'landing');
  assert.equal(branchLanding(previous,{...state,vz:5},config,world),null);
 });
 test('branch queries filter distant limbs and bound the expanded-tree cache',()=>{
@@ -64,5 +64,39 @@ test('climbing continues beyond the physical crown base and follows the full bol
   assert.equal(s.climbPhase,'perch');assert.ok(Math.abs(s.z-(100-config.climb.top_clearance_m))<1e-9);assert.equal(s.launchReady,true);
   assert.ok(Math.abs(Math.hypot(s.x,s.y)-climbRadiusAt(box.trunk,s.z)-config.climb.hold_m)<1e-9);assert.ok(Math.hypot(s.x,s.y)<.5,'paws follow the narrow leader');
   s=stepClimb(s,{jump:true},dt,config,world);assert.equal(s.mode,'ground');assert.equal(s.launchReady,false);
+ }
+});
+
+
+test('tree leap has a fresh running-leap cycle and a cancellable landing at each refresh rate',()=>{
+ for(const hz of [30,60,120]){
+  const {trees,world}=fixture();let s=mountNearbyBranch({mode:'climb',trunkBox:trees[0].trunkBox,x:.72,y:0,z:10,heading:0,jumpCount:4},config,world);
+  s=stepBranch(s,{x:1,jump:true},1/hz,config,world);
+  assert.equal(s.jumpStyle,'leap');assert.equal(s.jumpCount,5);
+  while(s.mode==='tree-jump')s=stepTreeJump(s,{jump:true},1/hz,config,world);
+  assert.equal(s.jumpPhase,'landing');assert.equal(s.jumpProgress,0);assert.ok(s.landingSpeed>0);
+  const landed=s;let time=0;
+  const blocked=stepBranch(s,{x:1},1/hz,config,{hitTest:()=>({})});
+  assert.equal(blocked.x,s.x);assert.ok(blocked.jumpProgress>0,'blocked movement still recovers from landing');
+  while(s.jumpPhase==='landing'){s=stepBranch(s,{jump:true},1/hz,config,world);time+=1/hz;}
+  assert.ok(time>=config.jump.landing_s&&time<config.jump.landing_s+1/hz+1e-9);
+  assert.equal(s.mode,'branch');assert.equal(s.jumpCount,5);
+  s=stepBranch(landed,{jump:false},1/hz,config,world);
+  s=stepBranch(s,{x:-1,jump:true},1/hz,config,world);
+  assert.equal(s.mode,'tree-jump','fresh press can chain out of the landing');assert.equal(s.jumpCount,6);
+ }
+});
+
+
+test('leap animation hangs at the ballistic apex for raised and lower target limbs',()=>{
+ for(const dz of [-3,2]){
+  const trees=[tree('a',0,1),tree('b',10,-1)];trees[1].matrix[14]=dz;trees[1].min[2]+=dz;trees[1].max[2]+=dz;
+  const hitTest=()=>null;hitTest.branchesNear=createBranchIndex(trees);const world={hitTest};
+  let s=mountNearbyBranch({mode:'climb',trunkBox:trees[0].trunkBox,x:.72,y:0,z:10,heading:0},config,world);
+  s=stepBranch(s,{x:1,jump:true},.02,config,world);assert.equal(s.mode,'tree-jump');
+  for(let i=0;i<25;i++)s=stepTreeJump(s,{},.02,config,world);
+  assert.ok(Math.abs(s.vz)<1e-9);assert.ok(Math.abs(s.jumpProgress-.5)<1e-9);
+  while(s.mode==='tree-jump')s=stepTreeJump(s,{},.02,config,world);
+  assert.equal(s.branch.treeId,'b');assert.equal(s.jumpPhase,'landing');
  }
 });

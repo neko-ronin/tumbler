@@ -63,7 +63,8 @@ export function branchLanding(previous,state,config,world){
     const n=nearest(b,xyz(state)),bounds=limits(b,c);if(!bounds||n.d<bounds.start||n.d>bounds.end)continue;
     const p=branchPoint(b,n.d).point,top=p[2]+p[3];
     if(previous.z>=top-.04&&state.z<=top+.04&&Math.hypot(state.x-p[0],state.y-p[1])<=p[3]+config.radius_m&&(!best||top>best.top))best={b,d:n.d,top};
-  }return best?onBranch(state,best.b,best.d,c):null;
+  }if(!best)return null;
+  return {...onBranch(state,best.b,best.d,c),heading:state.heading,jumpPhase:'landing',jumpTime:0,jumpProgress:0,landingSpeed:Math.abs(state.vz)};
 }
 function leap(s,input,c,world,radius){
   const length=Math.hypot(input.x??0,input.y??0),dir=length>.1?[input.x/length,input.y/length]:[Math.cos(s.heading),Math.sin(s.heading)];let best=null;
@@ -77,24 +78,37 @@ function leap(s,input,c,world,radius){
       const score=h+(1-align)*8+Math.abs(dz)*.2;if(clear&&(!best||score<best.score))best={b,d,time,v,score,target};
     }
   }
-  return best?{...s,mode:'tree-jump',grounded:false,jumpPhase:'airborne',jumpStyle:'hop',jumpTier:1,jumpVz:c.leap_up_mps,jumpHeld:true,jumpTime:0,jumpProgress:0,leap:best,leapOrigin:xyz(s),vx:best.v[0],vy:best.v[1],vz:best.v[2],speed:Math.hypot(...best.v.slice(0,2)),heading:Math.atan2(best.v[1],best.v[0])}:null;
+  return best?{...s,mode:'tree-jump',grounded:false,jumpPhase:'airborne',jumpStyle:'leap',jumpTier:1,jumpCount:(s.jumpCount??0)+1,jumpVz:c.leap_up_mps,jumpHeld:true,jumpTime:0,jumpProgress:0,leap:best,leapOrigin:xyz(s),vx:best.v[0],vy:best.v[1],vz:best.v[2],speed:Math.hypot(...best.v.slice(0,2)),heading:Math.atan2(best.v[1],best.v[0])}:null;
 }
 export function stepBranch(state,input,dt,config,world){
   const c=config.branches,s={...state},edge=!!input.jump&&!state.jumpHeld;s.jumpHeld=!!input.jump;
   if(input.branch){const box=s.branch.trunkBox,t=box.trunk;if(Math.hypot(s.x-t.x,s.y-t.y)<=climbRadiusAt(t,s.z)+c.mount_reach_m)return attachClimb(s,box,config);}
   if(edge){const target=leap(s,input,c,world,config.radius_m);if(target)return target;
     const n=Math.hypot(input.x??0,input.y??0),dx=n>1e-5?(input.x??0)/n:Math.cos(s.heading),dy=n>1e-5?(input.y??0)/n:Math.sin(s.heading);
-    return {...s,mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'hop',jumpTier:1,jumpTime:0,jumpVz:c.leap_up_mps,vz:c.leap_up_mps,vx:dx*c.leap_mps,vy:dy*c.leap_mps,climbCooldown:.25};}
+    return {...s,mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'leap',jumpTier:1,jumpCount:(s.jumpCount??0)+1,jumpTime:0,jumpProgress:0,jumpVz:c.leap_up_mps,vz:c.leap_up_mps,vx:dx*c.leap_mps,vy:dy*c.leap_mps,climbCooldown:.25};}
   const at=branchPoint(s.branch,s.branchDistance),along=(input.x??0)*at.tangent[0]+(input.y??0)*at.tangent[1],speed=(input.run?c.run_mps*Math.max(.5,s.branch.stiffness):c.walk_mps)*clamp(along,-1,1);
   const d=clamp(s.branchDistance+speed*Math.min(.05,dt),s.branchLimits.start,s.branchLimits.end),next=onBranch(s,s.branch,d,c);
   const obstruction=world.hitTest([s.x,s.y,s.z+.8],[next.x,next.y,next.z+.8],config.radius_m);
-  if(obstruction&&obstruction!==s.branch.trunkBox)return {...s,speed:0};
+  // Keep the shared landing phase while balancing or running out on the limb.
+  // A fresh jump above still wins immediately; holding jump cannot retrigger it.
+  if(s.jumpPhase==='landing'){
+    const time=(s.jumpTime??0)+Math.max(0,dt),duration=config.jump?.landing_s??.18;
+    next.jumpTime=time;next.jumpProgress=duration>0?Math.min(1,time/duration):1;
+    next.jumpPhase=next.jumpProgress<1?'landing':'grounded';
+  }
+  if(obstruction&&obstruction!==s.branch.trunkBox)return {...s,jumpPhase:next.jumpPhase,jumpTime:next.jumpTime,jumpProgress:next.jumpProgress,speed:0};
   next.jumpHeld=s.jumpHeld;next.speed=dt>0?distance(xyz(s),xyz(next))/dt:0;next.heading=Math.abs(speed)>.05?Math.atan2(at.tangent[1]*Math.sign(speed),at.tangent[0]*Math.sign(speed)):s.heading;
   return next;
 }
 export function stepTreeJump(state,input,dt,config,world){
   const s={...state},c=config.branches,l=s.leap,t=Math.min(l.time,s.jumpTime+Math.min(dt,.05)),v=l.v,o=s.leapOrigin;
-  s.x=o[0]+v[0]*t;s.y=o[1]+v[1]*t;s.z=o[2]+v[2]*t-c.gravity_mps2*t*t/2;s.vz=v[2]-c.gravity_mps2*t;s.jumpTime=t;s.jumpProgress=t/l.time;s.jumpHeld=!!input.jump;
+  s.x=o[0]+v[0]*t;s.y=o[1]+v[1]*t;s.z=o[2]+v[2]*t-c.gravity_mps2*t*t/2;s.vz=v[2]-c.gravity_mps2*t;s.jumpTime=t;
+  // The authored leap reaches its hang pose at half phase. A higher/lower
+  // destination changes total flight time, but not the ballistic apex time.
+  const apex=Math.min(l.time,v[2]/c.gravity_mps2);
+  s.jumpProgress=t<=apex?.5*t/apex:.5+.5*(t-apex)/(l.time-apex);s.jumpHeld=!!input.jump;
   if(world.hitTest([state.x,state.y,state.z+.8],[s.x,s.y,s.z+.8],config.radius_m))return {...state,mode:'ground',grounded:false,jumpPhase:'airborne',vx:0,vy:0,vz:0,climbCooldown:0};
-  return t>=l.time-1e-9?onBranch(s,l.b,l.d,c):s;
+  if(t<l.time-1e-9)return s;
+  const landed=onBranch(s,l.b,l.d,c);
+  return {...landed,heading:s.heading,jumpPhase:'landing',jumpTime:0,jumpProgress:0,landingSpeed:Math.abs(s.vz)};
 }

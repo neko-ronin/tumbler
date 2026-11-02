@@ -21,6 +21,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
   const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
   let pilotMotion=options.pilotMotion??'steady';
+  let treeFraming=0;
   let presentedGrounded=null,landingClipLeft=0,carried=null;
   function frameMatrix(frame,out){
     flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
@@ -28,7 +29,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
-  const clear=()=>{queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
+  const clear=()=>{treeFraming=0;queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   function key(e,down){
     // A control may receive focus between press and release. Always retire
     // the held key, while leaving form key presses to the form itself.
@@ -183,7 +184,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // world holds still, and touchdown eases in rather than jolting, since the
     // aim's speed and acceleration stay continuous. The bound is soft: the
     // further he gets from the aim (JUMP_FRAME_M is far), the quicker it follows.
-    const gap=target.y-(aimY??target.y),w=2*(1+(gap/JUMP_FRAME_M)**2)/AIM_S,x=w*dt,decay=1/(1+x+.48*x*x+.235*x*x*x);
+    const gap=target.y-(aimY??target.y),w=2*(1+(gap/JUMP_FRAME_M)**2)/(AIM_S-.26*treeFraming),x=w*dt,decay=1/(1+x+.48*x*x+.235*x*x*x);
     if(snap||aimY===null||mode!=='walk'){aimY=target.y;aimV=0;}
     else{const pull=(aimV-w*gap)*dt;aimV=(aimV-w*pull)*decay;aimY=target.y+(pull-gap)*decay;}
     target.y=aimY;
@@ -192,8 +193,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     chase.y=Math.max(chase.y,height(chase.x,-chase.z)+.45);
     // Pull the camera in along the same view ray when a tree or home blocks it.
     const start=[target.x,-target.z,target.y];
-    // While he climbs a tree, that tree's own trunk and crown boxes do not count.
-    const own=box=>{const trunk=state?.mode==='climb'?state.trunk:null;return mode==='walk'&&trunk&&box.min[0]<=trunk.x&&box.max[0]>=trunk.x&&box.min[1]<=trunk.y&&box.max[1]>=trunk.y;};
+    // The occupied tree's trunk/crown boxes do not push the view into the
+    // puppet. The existing leaf-only opening handles canopy visibility.
+    const own=box=>{const trunk=state?.mode==='climb'?state.trunk:['branch','tree-jump'].includes(state?.mode)?state.branch?.trunkBox?.trunk:null;return mode==='walk'&&trunk&&box.min[0]<=trunk.x&&box.max[0]>=trunk.x&&box.min[1]<=trunk.y&&box.max[1]>=trunk.y;};
     for(let i=0;i<12;i++){const box=hitTest?.(start,[chase.x,-chase.z,chase.y],.2);if(!box||own(box))break;chase.lerp(target,.2);}
     if(shot&&mode!=='walk')shot=null;
     if(shot&&!snap)camera.position.copy(shot.raw);
@@ -210,7 +212,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function updateWalk(dt,x,y,run){
     forward.set(-Math.sin(yaw),0,-Math.cos(yaw));side.set(Math.cos(yaw),0,-Math.sin(yaw));
     const movement=forward.clone().multiplyScalar(y).addScaledVector(side,x);
-    const before=state.speed??0,beforeMode=state.mode;
+    const before=state.speed??0;
     const water=options.walkHeight?.waterAt;
     // He plants his feet to attack: no steering or jumping until the blow ends.
     const busy=character.attacking===true;
@@ -219,7 +221,6 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(queuedBranch)message=state.mode==='climb'?'No branch within reach · climb or circle toward a limb':'';
     else if(x||y)message='';
     queuedBranch=false;
-    if(state.mode==='branch'&&beforeMode!=='branch'){yaw=state.heading;pitch=-.3;snap=true;}
     const climbing=state.mode==='climb',branching=state.mode==='branch',swimming=state.mode==='swim';
     character.object.position.set(state.x,state.z,-state.y);
     // Where the model faces now versus where it travels: a big gap asks for a pivot.
@@ -239,7 +240,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(view==='first'){
       camera.position.set(state.x,state.z+1.65*characterConfig.scale,-state.y);
       look.set(pitch,yaw,0);camera.quaternion.setFromEuler(look);snap=false;
-    }else follow(dt,(climbing?6.9:5.4)*characterConfig.scale,Math.PI/2,(climbing?.6:0)*characterConfig.scale);
+    }else {
+      // One continuous composition across bark, limb, leap and touchdown. The
+      // player's yaw/pitch stay theirs, including on a backwards branch landing.
+      const treePlay=['climb','branch','tree-jump'].includes(state.mode);
+      treeFraming+=((treePlay?1:0)-treeFraming)*(1-Math.exp(-dt*5));
+      follow(dt,(5.4+1.5*treeFraming)*characterConfig.scale,Math.PI/2,.6*treeFraming*characterConfig.scale);
+    }
     // Below the water's surface, the client tints and fogs the view (main.js).
     const overhead=water?.(camera.position.x,-camera.position.z);underwater=!!overhead&&camera.position.y<overhead.surface_z;
   }

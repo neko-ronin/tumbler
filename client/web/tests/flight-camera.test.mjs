@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as T from '../vendor/three.module.min.js';
 import {createNavigation} from '../src3d/navigation.js';
+import {createBranchIndex,mountNearbyBranch,stepBranch} from '../../../shared/activities/branches.js';
 import {launchFlight,stepFlight,canopySegment} from '../../../shared/activities/flight.js';
 
 const read=path=>JSON.parse(readFileSync(new URL(path,import.meta.url)));
@@ -22,7 +23,7 @@ function fixture(t,config=rules){
  const camera=new T.PerspectiveCamera(62,16/9),rig=new T.Group(),character={object:new T.Group(),update(){}};
  const nav=createNavigation(camera,canvas,{target:new T.Vector3(),update(){},setTarget(){}},{height:flat},config,world,rig,()=>null,{config:ride,rig:new T.Group(),meshes:{}},character,characterConfig);
  t.after(()=>{nav.dispose();for(const [key,value]of previous)value?Object.defineProperty(globalThis,key,value):delete globalThis[key];});
- return {nav,camera,rig,pad,win};
+ return {nav,camera,rig,pad,win,character};
 }
 
 test('rendered rigid canopy frame agrees with collision across heading, bank and pitch',t=>{
@@ -97,4 +98,25 @@ test('first-person camera and glider use the same continuous flight position',t=
   assert.ok(Math.abs(camera.position.z-rig.position.z)<1e-9);
   assert.ok(Math.abs(camera.position.y-rig.position.y-rules.landing_clearance_m-.15)<1e-9);
  }
+});
+
+
+test('branch touchdown preserves the camera direction and eases through contact',t=>{
+ const {nav,camera,character}=fixture(t);
+ const tree=(id,x,direction)=>({id,matrix:[1,0,0,0,0,0,1,0,0,-1,0,0,x,0,0,1],min:[x-8,-8,0],max:[x+8,8,20],trunkBox:{trunk:{x,y:0,base_z:0,top_z:4,profile:[[0,.5],[15,.5]]}},graph:[{id:0,stiffness:1,path:[[0,10,0,.4],[direction*3,10,0,.3],[direction*6,10,0,.1]]}]});
+ const trees=[tree('a',0,1),tree('b',10,-1)],hitTest=()=>null;hitTest.branchesNear=createBranchIndex(trees);
+ const world={hitTest};
+ let s=mountNearbyBranch({mode:'climb',trunkBox:trees[0].trunkBox,x:.72,y:0,z:10,heading:0},characterConfig.walk,world);
+ // Install the real shared directed arc without changing the navigation camera.
+ nav.select('walk');Object.assign(nav.state,s);for(let i=0;i<240;i++)nav.update(1/60);
+ s=stepBranch(s,{x:1,jump:true},1/60,characterConfig.walk,world);
+ // Navigation's fixture hit test is empty; the authoritative target still comes
+ // from the core branch graph above, with an inward-facing destination tangent.
+ Object.assign(nav.state,s);let last=camera.position.clone(),q=camera.quaternion.clone(),largest=0,angle=0;
+ while(nav.state.mode==='tree-jump'){
+  nav.update(1/60);largest=Math.max(largest,camera.position.distanceTo(last));angle=Math.max(angle,camera.quaternion.angleTo(q));last.copy(camera.position);q.copy(camera.quaternion);
+ }
+ assert.equal(nav.state.branch.treeId,'b');assert.equal(nav.state.jumpPhase,'landing');
+ assert.ok(largest<.6,`camera step ${largest} m`);assert.ok(angle<.12,`camera step ${angle} rad`);
+ assert.ok(Math.abs(camera.position.z-character.object.position.z)>3,'camera keeps its side rather than adopting the inward branch tangent');
 });
