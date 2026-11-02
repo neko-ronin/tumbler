@@ -47,7 +47,7 @@
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "9fcd2fd3f52f0d9ddc87842606c190184a269690b5c3fcdb02032002adcbe657"
+      "sha256": "acea8b52c984df99f267025bc52633c887a9383b336b096a3397eb1356fe4ef4"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -83,7 +83,7 @@
     },
     {
       "path": "client/web/src3d/ecology.js",
-      "sha256": "a89ba4d23189ec7b653759a6263d5408afb9c18777ed179df60efcb3daa3b9d1"
+      "sha256": "e9a6f27a8efddab49ff886149a2646847bfd3a3086fa1970c04ca484d572486e"
     },
     {
       "path": "client/web/src3d/fixed-air.js",
@@ -155,7 +155,7 @@
     },
     {
       "path": "client/web/src3d/insect-visits.js",
-      "sha256": "e777d739181aa83d0039db680e3b3087f00e44a8caa985292c2e7bf19c143483"
+      "sha256": "4f7055b5037e05996211ebac302adf01ae412c099378a938d0370b4b86b96eb0"
     },
     {
       "path": "client/web/src3d/katana-fx.js",
@@ -331,7 +331,7 @@
     },
     {
       "path": "shared/characters/player.json",
-      "sha256": "aa6ad0bea01e1a06198a7a4eb8ced3c36bdad7455e0168dc042a32236d560721"
+      "sha256": "1bb1780c0eae5c3b6e9770e95976fe96db77d480fa066e00b8336da751c370c9"
     },
     {
       "path": "shared/ecology/aquatic.js",
@@ -801,7 +801,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "b5fec8d",
+  "commit": "de3b292",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

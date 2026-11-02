@@ -19,8 +19,8 @@ export function createCharacter(asset, config) {
   // Small procedural layers over the authored clips, used by the insect visits (insect-visits.js):
   // a shooing wave of the right arm, and a nod of the head toward something on his nose.
   const gestureBones={arm:model.getObjectByName('upper_arm.R'),fore:model.getObjectByName('forearm.R'),head:model.getObjectByName('head')};
-  const gesture={shoo:0,wave:0,nod:0,armE:[-1.65,0,-.45],foreE:[0,0,0],flickE:[.7,0,0]},gestureQ=new T.Quaternion(),gestureE=new T.Euler();
-  const NOSE_LOCAL=new T.Vector3(0,.2,.3),TOP_LOCAL=new T.Vector3(0,.52,.02);  // head-bone space, metres
+  const gesture={shoo:0,wave:0,nod:0,armE:[-2.85,0,-.35],foreE:[0,0,0],flickE:[.45,0,0]},gestureQ=new T.Quaternion(),gestureE=new T.Euler();
+  const NOSE_LOCAL=new T.Vector3(0,.2,.3),TOP_LOCAL=new T.Vector3(0,.59,.02);  // head-bone space, metres
   // A clip need not key these bones, in which case last frame's offset would still be on them and compound:
   // each bone's pre-gesture rotation is kept and put back before the mixer runs.
   const gestureBase=new Map();
@@ -29,8 +29,8 @@ export function createCharacter(asset, config) {
     const {arm,fore,head}=gestureBones;
     for(const bone of [arm,fore,head])if(bone&&(gesture.shoo>.001||gesture.nod>.001))gestureBase.set(bone,bone.quaternion.clone());
     if(gesture.shoo>.001&&arm&&fore){
-      // Unbothered: a slow, lazy raise and two easy brushes through the air, nothing hurried.
-      const w=gesture.shoo,flick=Math.sin((gesture.wave-.6)*5.4)*w;
+      // A quick raise and one clear brush beside the head; the bee leaves on that brush.
+      const w=gesture.shoo,flick=Math.sin(Math.max(0,gesture.wave-.42)*10)*w;
       const [ax,ay,az]=gesture.armE,[bx,by,bz]=gesture.foreE,[fx,fy,fz]=gesture.flickE;
       arm.quaternion.premultiply(gestureQ.setFromEuler(gestureE.set(ax*w,ay*w,az*w)));
       fore.quaternion.premultiply(gestureQ.setFromEuler(gestureE.set(bx*w+fx*flick,by*w+fy*flick,bz*w+fz*flick)));
@@ -104,9 +104,9 @@ export function createCharacter(asset, config) {
     // Undo the shin's turn at the ankle (relative, so decomposition error cancels).
     leg.heel.quaternion.premultiply(leg.shin.getWorldQuaternion(q()).invert().multiply(shinBefore));leg.heel.updateWorldMatrix(false,true);
   }
-  let current = null, clipName = null,lean=0,barkFit=0,swimShot=null,swimShotLeft=0,pitch=0,idleTime=0,pivotClip=null,pivotLeft=0,tailAction=null,tailName=null,tailCategory=null,tailTime=0,tailIndex=0,lastPose=null,landedTime=0,blinkTime=3.7,elapsed=0;
+  let current = null, clipName = null,lean=0,barkFit=0,swimShot=null,swimShotLeft=0,pitch=0,idleTime=0,pivotClip=null,pivotLeft=0,tailAction=null,tailName=null,tailCategory=null,tailTime=0,tailIndex=0,lastPose=null,landedTime=0,blinkTime=3.7,elapsed=0,eyePoseAction=null,eyePoseTime=0;
   for(const names of Object.values(config.tail_clips??{}))for(const name of names)if(!actions[name])throw new Error(`Ronin is missing tail clip ${name}`);
-  for(const name of [config.landing?.heavy,config.landing?.roll,config.pivot?.left,config.pivot?.right,...(config.idle_sequence??[]).map(step=>step.clip),...Object.values(config.climb_clips??{}),...Object.values(config.fall_clips??{}),...Object.values(config.swim_clips??{})])
+  for(const name of [config.landing?.heavy,config.landing?.roll,config.pivot?.left,config.pivot?.right,...(config.idle_sequence??[]).flatMap(step=>[step.clip,step.eye_pose?.clip]),...Object.values(config.climb_clips??{}),...Object.values(config.fall_clips??{}),...Object.values(config.swim_clips??{})])
     if(name&&!actions[name])throw new Error(`Ronin is missing clip ${name}`);
   // Idle extras: after `after_s` seconds standing, play the clip once, or keep
   // it (`hold`) until he moves. The latest step that is due wins.
@@ -247,7 +247,16 @@ export function createCharacter(asset, config) {
       tailCategory=category;tailName=choices[tailIndex];tailTime=next.getClip().duration*(category==='idle'?1:2);
     }
     elapsed+=dt;blinkTime-=dt;
-    if(blinkTime<=0&&config.blink_clip){const blink=actions[config.blink_clip];blink.reset().setLoop(T.LoopOnce,1).play();blink.clampWhenFinished=true;blinkTime=3.2+1.7*(.5+.5*Math.sin(elapsed*1.37));}
+    // A held eye pose is shared character data (the authored blink's closed
+    // sample), independent of the seated body loop. Ease shut, then hold; on
+    // waking let the rest of that clip reopen the lids before normal blinking.
+    const eyePose=config.idle_sequence?.find(step=>step.clip===clipName)?.eye_pose;
+    if(eyePose){
+      const action=actions[eyePose.clip];
+      if(eyePoseAction!==action){eyePoseAction?.stop();eyePoseAction=action;eyePoseTime=0;action.reset().setLoop(T.LoopOnce,1).play();action.clampWhenFinished=true;action.paused=true;}
+      eyePoseTime=Math.min(eyePose.time_s,eyePoseTime+dt*eyePose.time_s/.35);action.time=eyePoseTime;
+    }else if(eyePoseAction){eyePoseAction.paused=false;eyePoseAction=null;blinkTime=3.7;}
+    if(!eyePose&&blinkTime<=0&&config.blink_clip){const blink=actions[config.blink_clip];blink.reset().setLoop(T.LoopOnce,1).play();blink.clampWhenFinished=true;blinkTime=3.2+1.7*(.5+.5*Math.sin(elapsed*1.37));}
     if(katana&&pose==='flight'&&katanaState!=='holstered')playKatana('holstered',.1);
     // An attack ends if he leaves the ground (a ledge, the water, a trunk).
     if(katana&&katanaState==='attack'&&!grounded(pose))playKatana('drawn',.1);

@@ -32,7 +32,7 @@ export function buildEcology(habitats,meadowData,assets,ground,cover,renderer,sa
       // Butterflies hinge the wings about the body with a fold, and glide open between bursts; other insects keep the buzz shear.
       shader.vertexShader=(butterfly?'attribute float aSeed;attribute float aCalm;\n':'')+shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
 ${butterfly?`float ph=aSeed*6.2832,flap=smoothstep(-.3,.3,sin(uTime*.9+ph*3.)),th=.45+sin(uTime*(24.+aSeed*6.)+ph)*.8*flap-.15*(1.-flap);
-th=mix(th,.55+.4*sin(uTime*1.4+ph),aCalm);float ax=abs(position.x);transformed.x=sign(position.x)*ax*cos(th);transformed.y+=ax*sin(th);`:`transformed.y+=sin(uTime*90.)*abs(position.x)*.65;`}`);};
+th=mix(th,1.05+.08*sin(uTime*1.4+ph),aCalm);float ax=abs(position.x);transformed.x=sign(position.x)*ax*cos(th);transformed.y+=ax*sin(th);`:`transformed.y+=sin(uTime*90.)*abs(position.x)*.65;`}`);};
     mesh.material.customProgramCacheKey=()=>`insect-wing-${species.kind}`;
   }
   // Windborne bits: glinting dust, tumbling petals and seed fluff, one instanced sprite mesh per kind.

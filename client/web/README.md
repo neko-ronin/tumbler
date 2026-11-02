@@ -1,3 +1,10 @@
+# Seated nap — local candidate, 2026-11-01
+
+After 30 seconds idle, Cat Ronin sits and naps immediately: the existing seated
+doze loop provides the head/breathing motion, and his eye eases shut and stays
+closed until he moves. The shared idle step names the closed sample of the
+existing blink clip; the browser holds that eye layer and resumes it to wake.
+
 # Tree-jump camera and animation polish — local candidate, 2026-11-01
 
 Tree traversal keeps the player's view through takeoff and touchdown. The chase
@@ -61,10 +68,10 @@ Distance darkens the voice and a short forest tail sits behind it. Logic:
 # Insect visits — web client v0.5.3, 2026-10-31
 
 Stand still (walk mode) and a bee that comes within 1.3 m lands on your head; after
-a couple of seconds Cat Ronin gives it a slow, lazy wave of the right arm (a
-procedural pose over the clips) and it wanders peacefully off. Sit (idle long
+a couple of seconds Cat Ronin gives it a brisk raised brush of the right arm (a
+procedural pose over the clips), then it wanders peacefully off. Sit (idle long
 enough for the seated pose) and a butterfly that comes within 2.4 m lands on your
-nose and stays until you move: the head nods to it and everything but a spot round
+nose, with its wings angled away from the face, and stays until you move: the head nods to it and everything but a spot round
 it softens (the `#focus` overlay), in first or third person. One insect of each
 kind at a time, with a cooldown. Logic: `client/web/src3d/insect-visits.js`
 (tests: `client/web/tests/insect-visits.test.mjs`).

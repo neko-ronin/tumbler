@@ -12,7 +12,7 @@
 import * as T from '../vendor/three.module.min.js';
 
 const RULES={
-  bee:{reach:1.3,still:2.5,approach:1.8,perch:2.4,gesture:3.8,liftAt:1.5,leave:10,cooldown:90},
+  bee:{reach:1.3,still:2.5,approach:1.8,perch:2.4,gesture:1.65,liftAt:.68,leave:10,cooldown:90},
   butterfly:{reach:2.4,approach:2.8,leave:8,cooldown:60,settle:1.4},
 };
 const ease=t=>t*t*(3-2*t),clamp01=t=>Math.max(0,Math.min(1,t));
@@ -24,6 +24,16 @@ export function createVisit(kind){
   const v={kind,state:'idle',id:-1,lastId:-1,releasedAt:-99,t:0,cool:0,start:new T.Vector3(),pos:new T.Vector3(),away:new T.Vector3(),
     heading:0,pitch:0,roll:0,landed:false,fade:1,shrink:0,gesture:0,wave:0,gestureT:-1,focus:0};
   const goal=new T.Vector3();
+  // The anchor is a surface, while an insect is drawn about its body origin.
+  // Bee feet reach .0406 m below that origin; ecology draws them at 1.7–2×.
+  function landing(p){
+    goal.copy(anchor(p));
+    if(bee)goal.y+=.0406*(1.7+v.id%3*.15)+.003;
+    // Butterfly stands head-up on the nose tip; local feet point back to the face.
+    else {goal.x+=Math.sin(p.yaw??0)*.020;goal.z+=Math.cos(p.yaw??0)*.020;}
+    return goal;
+  }
+  const perchHeading=p=>(p?.yaw??0)+(bee?0:Math.PI);
   const anchor=p=>bee?p.top:p.nose;
   const free=p=>p?.active&&!p.moving&&(bee?p.still>=rule.still:p.sitting);
 
@@ -35,7 +45,7 @@ export function createVisit(kind){
     v.id=i;v.state='approach';v.t=0;v.start.set(x,y,z);v.pos.copy(v.start);v.landed=false;v.fade=1;return true;
   }
   function leave(p,time){
-    v.state='leave';v.t=0;v.landed=false;
+    v.leavePitch=v.pitch;v.state='leave';v.t=0;v.landed=false;
     // Off to one side and a little behind, never straight at the player's face.
     const side=(v.id%2?1:-1)*(1.2+(v.id%5)*.12),yaw=(p?.yaw??0)+side;
     v.away.set(Math.sin(yaw),0,Math.cos(yaw));v.start.copy(v.pos);
@@ -46,29 +56,34 @@ export function createVisit(kind){
     v.cool=Math.max(0,v.cool-dt);
     if(v.gestureT>=0){
       v.gestureT+=dt;const g=v.gestureT,len=rule.gesture;
-      v.gesture=g>=len?0:ease(clamp01(g/1))*(1-ease(clamp01((g-(len-1))/1)));v.wave=g;
+      v.gesture=g>=len?0:ease(clamp01(g/.42))*(1-ease(clamp01((g-(len-.55))/.55)));v.wave=g;
       if(g>=len){v.gestureT=-1;v.gesture=0;}
     }
     if(v.state==='idle'){v.focus=Math.max(0,v.focus-dt/.8);return;}
-    const a=anchor(p??{top:v.pos,nose:v.pos});
+    const a=landing(p??{top:v.pos,nose:v.pos});
     const calm=p?.active&&!p.moving&&(bee||p.sitting||v.state==='leave');
     if(v.state!=='leave'&&!calm){leave(p,time);}
     v.t+=dt;
     if(v.state==='approach'){
       const k=ease(clamp01(v.t/rule.approach));
       goal.copy(a);
-      v.pos.lerpVectors(v.start,goal,k);
+      if(bee){
+        // Rise outside the head, cross above the crown, then lower the feet.
+        const u=clamp01(v.t/rule.approach),rise=ease(clamp01(u/.35)),cross=ease(clamp01((u-.35)/.4)),down=ease(clamp01((u-.75)/.25));
+        const high=Math.max(v.start.y,goal.y+.24);
+        v.pos.set(v.start.x+(goal.x-v.start.x)*cross,v.start.y+(high-v.start.y)*rise+(goal.y-high)*down,v.start.z+(goal.z-v.start.z)*cross);
+      }else v.pos.lerpVectors(v.start,goal,k);
       // A fluttering, descending arc rather than a straight line.
-      const flutter=(1-k)*(bee?.1:.2);
+      const flutter=(1-k)*(bee?0:.2);
       v.pos.x+=Math.sin(v.t*5.3)*flutter;v.pos.y+=Math.sin(v.t*4.1)*flutter*.7+(1-k)*k*(bee?.15:.3);
       const dir=goal.clone().sub(v.pos);
       if(k<.85&&dir.lengthSq()>1e-4)v.heading=turn(v.heading,Math.atan2(dir.x,dir.z),.2);
-      else v.heading=turn(v.heading,(p?.yaw??0)+(bee?0:Math.PI),.12);
+      else v.heading=turn(v.heading,perchHeading(p),.12);
       v.shrink=k;
-      v.pitch=-.45*Math.sin(Math.PI*k)*(bee?1:.7);v.roll=Math.sin(v.t*3.1)*.3*(1-k);
+      v.pitch=bee?-.45*Math.sin(Math.PI*k):-Math.PI/2*ease(clamp01((k-.6)/.4))-.315*Math.sin(Math.PI*k);v.roll=Math.sin(v.t*3.1)*.3*(1-k);
       if(k>=1){v.state=bee?'perch':'settle';v.t=0;v.landed=true;}
     }else if(v.state==='perch'||v.state==='settle'){
-      v.pos.copy(a);v.landed=true;v.shrink=1;v.pitch=0;v.roll=0;v.heading=turn(v.heading,(p?.yaw??0)+(bee?0:Math.PI),.25);
+      v.pos.copy(a);v.landed=true;v.shrink=1;v.pitch=bee?0:-Math.PI/2;v.roll=0;v.heading=turn(v.heading,perchHeading(p),.25);
       if(bee&&v.state==='perch'&&v.t>=rule.perch){v.state='shoo';v.t=0;v.gestureT=0;}
       if(!bee)v.focus=Math.min(1,v.focus+dt/rule.settle);
     }else if(v.state==='shoo'){
@@ -77,9 +92,10 @@ export function createVisit(kind){
     }else if(v.state==='leave'){
       const speed=Math.min(bee?3.2:2.4,.6+.4*v.t);
       v.pos.addScaledVector(v.away,speed*dt);
-      v.pos.y+=(v.t<4?.35:.12)*dt;
+      // Clear the ears before drifting sideways away from the crown.
+      v.pos.y+=(bee&&v.t<.4?.9:v.t<4?.35:.12)*dt;
       v.heading=turn(v.heading,Math.atan2(v.away.x,v.away.z)+Math.sin(v.t*.9)*.35,.08);
-      v.pitch=bee?Math.sin(v.t*2.3)*.3-.1:0;v.roll=Math.sin(v.t*1.7)*.4;
+      v.pitch=bee?Math.sin(v.t*2.3)*.3-.1:v.leavePitch*(1-ease(clamp01(v.t/.5)));v.roll=Math.sin(v.t*1.7)*.4;
       v.fade=clamp01((rule.leave-v.t)/1.2);v.shrink=clamp01(1-v.t/1.5);
       if(!bee)v.focus=Math.max(0,v.focus-dt/.8);
       if(v.t>=rule.leave)release(time);
