@@ -25,7 +25,7 @@ function orbit(relativeSpeed=10){
   // An isolated integration fixture, not a deployable flight configuration:
   // zero CL/CdA and zero profile/induced drag remove every aerodynamic force.
   // The ordinary activity's uniform gravity remains, so only the COM falls.
-  const config={...source,coupled:{...source.coupled,max_cl:0,pilot_drag_area_m2:0,induced_share:1,stall_alpha_rad:10}};
+  const config={...source,coupled:{...source.coupled,max_cl:0,pilot_drag_area_m2:0,side_force_slope:0,induced_share:1,stall_alpha_rad:10}};
   const s={mode:'paraglider',heading:0,pitch:0,bank:0,pitchRate:0,speed:10,
     vertical:0,vario:0,x:0,y:0,z:1800,distance:0,engine:0,brakeLeft:0,brakeRight:0,accelerator:0};
   s.coupled=initializeCoupled(s,config,zeroAir());

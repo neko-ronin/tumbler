@@ -215,6 +215,19 @@ export function stepCoupled(s,dt,config,sample){
       const loss=kinetic(relative,mass)-kinetic(next,mass);c.dragLossJ+=loss;
       c.windWorkJ+=kinetic(c[key],mass)-kinetic(prior,mass)+loss;
     }
+    // Reduced canopy side-force derivative: Fspan = -rho/2*S*Cy*V*vspan.
+    // The straight lifting line above has no resistance beyond ordinary drag
+    // to spanwise flow. Real arched canopies have distributed side forces;
+    // this passive approximation supplies their missing dissipative response,
+    // not their roll/yaw moments or an automatic return-to-level force.
+    // Freeze V for an exponential substep: no overshoot or energy injection.
+    prior=[...c.wingVelocity];relative=sub(prior,wingAir);
+    const side=dot(relative,basis.left),sideRate=RHO*polar.area*(rules.side_force_slope??0)*length(relative)/(2*rules.wing_mass_kg);
+    const next=add(relative,basis.left,side*Math.expm1(-sideRate*h));
+    c.wingVelocity=add(next,wingAir);
+    const sideLoss=kinetic(relative,rules.wing_mass_kg)-kinetic(next,rules.wing_mass_kg);
+    c.dragLossJ+=sideLoss;
+    c.windWorkJ+=kinetic(c.wingVelocity,rules.wing_mass_kg)-kinetic(prior,rules.wing_mass_kg)+sideLoss;
     if(s.mode==='paramotor'&&config.propulsion){
       const motor=config.propulsion,dir=pilotBasis(s).forward,mass=rules.pilot_mass_kg;
       const along=dot(sub(c.pilotVelocity,pilotAir),dir),available=motor.max_power_w*s.engine*h;

@@ -5,6 +5,28 @@ doze loop provides the head/breathing motion, and his eye eases shut and stays
 closed until he moves. The shared idle step names the closed sample of the
 existing blink clip; the browser holds that eye layer and resumes it to wake.
 
+# Para speed presentation — local candidate, 2026-11-01
+
+All three para modes now share pilot-relative airspeed and nearby-surface speed
+cues, with a stronger parakite profile. Flight effects selects Full/Subtle/Reduced;
+Reduced fixes FOV at 62 and skips peripheral optics. Sound adds directional
+near-pass, fabric and load cues. A compact course arrow stays visible with H;
+Field notes → Course guide hides it. No trajectory or landscape changes are made
+by this presentation layer. [Implementation, preview and limits](../../docs/reviews/para-speed-presentation-2026-11-01.md).
+
+# Gondola Weave — local terrain-led para prototype, 2026-11-01
+
+Open `scene.html?course=gondola-weave&mode=parakite`, or choose Parakiting →
+Gondola Weave · high ridge. H shows the UI; A/D steers, W releases, S flares,
+V changes view and Launch retries. Six descending traverses use the existing
+mountain beside the gondola. Extra starts explore the middle shoulder, cirque
+lip and granite riverbank. The rejected Needle Run rock structures are removed
+from runtime and all affected trees restored. Terrain and original rock meshes
+are preserved. [Source, measurements and limits](../../docs/reviews/gondola-weave-2026-11-01.md).
+Course direction is human-approved. Cable grinding, first-person embodiment upgrades
+and human acceptance of the new presentation remain future work.
+No deployment is claimed.
+
 # Tree-jump camera and animation polish — local candidate, 2026-11-01
 
 Tree traversal keeps the player's view through takeoff and touchdown. The chase

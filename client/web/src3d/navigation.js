@@ -328,8 +328,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       else camera.position.set(pose.x,pose.z+.15,-pose.y);
       look.set(pitch+pose.pitch*.2,pose.heading-Math.PI/2+yaw,-pose.bank*.08*effects);camera.quaternion.setFromEuler(look);snap=false;
     }
-    const desired=62+Math.min(18,Math.max(0,pose.speed-12)*.8)*effects;
-    camera.fov+= (desired-camera.fov)*(1-Math.exp(-dt*3));camera.updateProjectionMatrix();
+    const presentation=options.flightPresentation?.(pose,view,dt,effects);
+    const desired=presentation?.fov??(62+Math.min(18,Math.max(0,pose.speed-12)*.8)*effects);
+    camera.fov=effects>0?camera.fov+(desired-camera.fov)*(1-Math.exp(-dt*3)):62;camera.updateProjectionMatrix();
     let pilotOffset;
     if(pose.launching&&attachment&&character.model){
       rig.updateMatrixWorld(true);character.object.updateMatrixWorld(true);

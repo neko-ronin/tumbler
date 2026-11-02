@@ -108,6 +108,50 @@
       ],
       "heading_deg": 225,
       "clearance_m": 32
+    },
+    {
+      "id": "gondola-high-ridge",
+      "label": "Gondola Weave \u00b7 high ridge",
+      "xy_m": [
+        -540,
+        1720
+      ],
+      "heading_deg": 0,
+      "clearance_m": 45,
+      "terrain_protection": false
+    },
+    {
+      "id": "gondola-midline",
+      "label": "Gondola \u00b7 middle shoulder",
+      "xy_m": [
+        -457.5,
+        1200
+      ],
+      "heading_deg": 270,
+      "clearance_m": 100,
+      "terrain_protection": false
+    },
+    {
+      "id": "cirque-lip",
+      "label": "Granite Cirque \u00b7 lip",
+      "xy_m": [
+        192,
+        1441
+      ],
+      "heading_deg": 250,
+      "clearance_m": 55,
+      "terrain_protection": false
+    },
+    {
+      "id": "granite-riverbank",
+      "label": "Granite River \u00b7 south bank",
+      "xy_m": [
+        3150,
+        -1100
+      ],
+      "heading_deg": 90,
+      "clearance_m": 35,
+      "terrain_protection": false
     }
   ],
   "thermals": [
@@ -193,6 +237,7 @@
     "harness_height_m": 0.65,
     "area_fraction": 0.65,
     "pilot_drag_area_m2": 0.12,
+    "side_force_slope": 0.08,
     "induced_share": 0.55,
     "trim_alpha_rad": 0.12,
     "lift_slope": 4.5,

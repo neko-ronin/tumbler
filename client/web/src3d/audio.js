@@ -1,10 +1,11 @@
+import {createParaVoice} from './para-audio.js';
 import {createFoleyPlayer} from './character-foley.js';
 
 /** Browser presentation of the existing habitats, wind and flight motor.
  * Original procedural sound, enabled by default and resumed after the first user gesture if autoplay is blocked.
  */
 export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=null){
-  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,characterBus=null,enabled=true;
+  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,characterBus=null,paraVoice=null,enabled=true;
   async function toggle(next=!enabled){
     enabled=next;
     if(!context){
@@ -23,13 +24,13 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
         let panner=null;if(spatial){panner=context.createPanner();panner.panningModel='HRTF';panner.distanceModel='inverse';panner.refDistance=10;panner.maxDistance=260;level.connect(panner).connect(context.destination);}else level.connect(context.destination);
         source.start();return {source,filter,level,panner};}
       const tone=context.createOscillator(),toneLevel=context.createGain();tone.type='sine';tone.frequency.value=700;toneLevel.gain.value=0;tone.connect(toneLevel).connect(context.destination);tone.start();vario={tone,level:toneLevel};
-      wind=noise(550,.08);water=noise(1400,.3,true);
+      wind=noise(550,.08);water=noise(1400,.3,true);paraVoice=createParaVoice(context);
       const oscillator=context.createOscillator();oscillator.type='sawtooth';oscillator.frequency.value=85;const level=context.createGain();level.gain.value=0;const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=350;oscillator.connect(filter).connect(level).connect(context.destination);oscillator.start();motor={oscillator,level};
     }
     await (enabled?context.resume():context.suspend());return enabled;
   }
   async function unlock(){if(enabled&&context?.state==='suspended')await context.resume();}
-  function update(camera,navigation,nearby){
+  function update(camera,navigation,nearby,presentation=null){
     if(!enabled||!context||!birds)return;
     const listener=context.listener,t=context.currentTime,position=camera.position;
     if(listener.positionX){listener.positionX.setValueAtTime(position.x,t);listener.positionY.setValueAtTime(position.y,t);listener.positionZ.setValueAtTime(position.z,t);
@@ -39,13 +40,16 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     let nearest=null,distance=Infinity;for(const h of habitats.habitats){const [x,y,z]=h.centre_m;const d=(x-position.x)**2+(-y-position.z)**2+(z-position.y)**2;if(d<distance){distance=d;nearest=h;}}
     if(nearest){const [x,y,z]=nearest.centre_m;water.panner.positionX.setValueAtTime(x,t);water.panner.positionY.setValueAtTime(z,t);water.panner.positionZ.setValueAtTime(-y,t);}
     const flying=['paraglider','parakite','paramotor'].includes(navigation.mode)&&!navigation.state?.grounded;
-    const speed=flying?navigation.state.speed:0,turbulence=flying?Math.abs(navigation.state.turbulence??0):0;
+    const speed=flying?(presentation?.active?presentation.airSpeed:navigation.state.speed):0,turbulence=flying?Math.abs(navigation.state.turbulence??0):0;
     wind.level.gain.setTargetAtTime(flying?Math.min(.28,.055+speed*.005+turbulence*.012):.055,t,.2);
     wind.filter.frequency.setTargetAtTime(400+speed*35+turbulence*80,t,.2);
     const climb=flying?navigation.state.vario:0,pulse=climb>.25&&Math.sin(t*(5+Math.min(6,climb)*2))>.15;
     vario.tone.frequency.setTargetAtTime(climb>0?620+Math.min(6,climb)*85:310,t,.08);
     vario.level.gain.setTargetAtTime(pulse?.014:climb<-3?.008:0,t,.025);
-    const throttle=navigation.mode==='paramotor'&&!navigation.state?.grounded?navigation.state.throttle:0;
+    let passPan=0;
+    if(presentation?.feature){const p=presentation.feature.point,e=camera.matrixWorld.elements,dx=p[0]-position.x,dy=p[2]-position.y,dz=-p[1]-position.z;passPan=(dx*e[0]+dy*e[1]+dz*e[2])/Math.max(1,Math.hypot(dx,dy,dz));}
+    paraVoice.update(presentation,t,passPan);
+    const throttle=navigation.mode==='paramotor'&&!navigation.state?.grounded?(navigation.state.engine??navigation.state.throttle):0;
     // Up to three of the closest bumblebees, each its own HRTF-placed voice; the rest of the meadow is silent.
     const bees=nearby?nearby('bee',26,beeVoices.length):[];
     beeVoices.forEach((voice,k)=>{
@@ -57,7 +61,7 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     });
     motor.level.gain.setTargetAtTime(throttle*.032,t,.1);motor.oscillator.frequency.setTargetAtTime(65+throttle*65,t,.1);
   }
-  return {toggle,unlock,update,cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},dispose(){context?.close();}};
+  return {toggle,unlock,update,cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},get paraTargets(){return paraVoice?.targets;},dispose(){paraVoice?.dispose();context?.close();}};
 }
 /** One bumblebee: a soft low buzz (saw plus an octave-down triangle, low-passed) that wanders in pitch and pulses
  * lazily, with a breath of wing air, placed in space by an HRTF panner. Silent until its gain is raised. */

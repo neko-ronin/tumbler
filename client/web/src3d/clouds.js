@@ -82,28 +82,14 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
     const box=new T.Mesh(geometry,material);box.userData.cloudMarch={full:material,skip:exterior};box.position.copy(centre);box.scale.copy(extent);box.name=`cumulus_${cell.seed}`;volumes.add(box);
   }
   const fullscreen=new T.Scene(),quadCamera=new T.OrthographicCamera(-1,1,1,-1,0,1);
-  const flightFX={value:0};
   const rays=createSunRays(opaque.depthTexture,cloudy.texture,opaque.texture);
   fullscreen.add(new T.Mesh(new T.PlaneGeometry(2,2),new T.ShaderMaterial({depthWrite:false,depthTest:false,
-    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uFlightFX:flightFX,uRays:{value:rays.target.texture},uRayStrength:rays.strength,uRayDepth:{value:new T.Vector2(camera.near,camera.far)},uWarmth:style.warmth},
+    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uRays:{value:rays.target.texture},uRayStrength:rays.strength,uRayDepth:{value:new T.Vector2(camera.near,camera.far)},uWarmth:style.warmth},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
-    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth,uRays;uniform float uFlightFX,uRayStrength,uWarmth;uniform vec2 uRayDepth;varying vec2 vUv;
+    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth,uRays;uniform float uRayStrength,uWarmth;uniform vec2 uRayDepth;varying vec2 vUv;
       vec3 composite(vec2 uv){vec4 c=texture2D(uCloud,uv);return texture2D(uWorld,uv).rgb*(1.-c.a)+c.rgb;}
       void main(){
-        vec2 radial=vUv-.5;float radius=length(radial);
-        float edge=smoothstep(.28,.68,radius)*uFlightFX;
         vec3 color=composite(vUv);
-        // Depth-aware peripheral radial blur. Centre/path stays sharp; no history buffer.
-        if(edge>.01){
-          float depth=texture2D(uDepth,vUv).r,total=1.;
-          for(int i=1;i<=3;i++){
-            vec2 uv=clamp(vUv-radial*float(i)*.004*edge,vec2(.001),vec2(.999));
-            float agree=1.-smoothstep(.00002,.0006,abs(texture2D(uDepth,uv).r-depth));
-            color+=composite(uv)*agree;total+=agree;
-          }
-          color/=total;
-        }
-        color*=1.-edge*.09;
         // A small amount of aerial scattering is visible in front of distant
         // forest surfaces too. Reject nearby solids with full-resolution depth;
         // the source aperture itself rejects a sun hidden behind a ridge.
@@ -129,8 +115,7 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
     const above=camera.position.y>atmosphere.cloud_top_m;
     for(const box of volumes.children)box.material=box.userData.cloudMarch[above?'skip':'full'];
   }
-  function render({speed=0,strength=1}={}){
-    flightFX.value=speed*strength;
+  function render({strength=1,target=null}={}){
     style.sunEffects.value=strength;
     renderer.getDrawingBufferSize(dimensions);
     if(opaque.width!==dimensions.x||opaque.height!==dimensions.y){opaque.setSize(dimensions.x,dimensions.y);cloudy.setSize(Math.ceil(dimensions.x*.5),Math.ceil(dimensions.y*.5));size.set(cloudy.width,cloudy.height);}
@@ -151,7 +136,7 @@ export function createCloudPass(renderer,scene,camera,atmosphere,ground){
     }
     renderer.render(volumes,camera);
     rays.render(renderer,camera,dimensions.x,dimensions.y,strength);
-    renderer.setClearColor(color,alpha);renderer.setRenderTarget(null);renderer.render(fullscreen,quadCamera);
+    renderer.setClearColor(color,alpha);renderer.setRenderTarget(target);renderer.render(fullscreen,quadCamera);
   }
-  return {render,flightFX,rays,volumes,opaque,cloudy,shadows,lighting,dispose(){renderer.domElement.removeEventListener('webglcontextrestored',resetMarch);lighting.dispose();shadows.dispose();rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>{m.userData.cloudMarch.full.dispose();m.userData.cloudMarch.skip.dispose();});}};
+  return {render,rays,volumes,opaque,cloudy,shadows,lighting,dispose(){renderer.domElement.removeEventListener('webglcontextrestored',resetMarch);lighting.dispose();shadows.dispose();rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});volumes.children.forEach(m=>{m.userData.cloudMarch.full.dispose();m.userData.cloudMarch.skip.dispose();});}};
 }

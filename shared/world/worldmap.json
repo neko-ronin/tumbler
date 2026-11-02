@@ -8004,7 +8004,10 @@
         "inner_m": 700.0,
         "outer_m": 1300.0,
         "landform": {
-          "radii_m": [760.0, 700.0],
+          "radii_m": [
+            760.0,
+            700.0
+          ],
           "edge_blend": 0.28,
           "smoothing_m": 112.0,
           "floor_slope": 0.48,
@@ -8307,7 +8310,8 @@
       "cluster_m": 200.0
     },
     "ride": "shared/activities/ride.json",
-    "character": "shared/characters/player.json"
+    "character": "shared/characters/player.json",
+    "speedflying": "shared/activities/speedflying.json"
   },
   "snow": {
     "season": "late spring",

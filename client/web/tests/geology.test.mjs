@@ -82,7 +82,7 @@ test('ground sampling adds the shared roof and retains all unoccupied geography'
  for(const p of individuals){const [x,y]=p.position_m;assert.equal(refined.height(x,y),base.height(x,y),'existing individual floor '+p.asset);}
  for(let y=-2000;y<1000;y+=40)for(let x=-2000;x<2000;x+=40)assert.equal(refined.height(x,y),base.height(x,y));
  const flight=JSON.parse(read('shared/activities/flight.json'));
- for(const launch of flight.launches)for(let y=-60;y<=60;y+=12)for(let x=-60;x<=60;x+=12){const [a,b]=launch.xy_m;assert.equal(refined.height(a+x,b+y),base.height(a+x,b+y),'launch neighbourhood');}
+ for(const launch of flight.launches.filter(l=>l.terrain_protection!==false))for(let y=-60;y<=60;y+=12)for(let x=-60;x<=60;x+=12){const [a,b]=launch.xy_m;assert.equal(refined.height(a+x,b+y),base.height(a+x,b+y),'launch neighbourhood');}
 });
 
 test('published terrain refinements preserve source boundaries and the existing error-bounded topology',()=>{
