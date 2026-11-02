@@ -7,21 +7,28 @@ import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal,saf
 import {stepMoves} from '../../../shared/activities/moves.js';
 import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
+import {composeFollowView,createFollowRange,createCameraBoom,createFollowCamera,clearCameraTerrain,clearTerrainBoom,cameraTerrainRadius} from './follow-camera.js';
+import {cameraProfile} from '../../../shared/activities/camera.js';
 const JUMP_FRAME_M=2,AIM_S=.5,SHOT_S=2.5;
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true,shot=null,preferredFlightMode='paraglider';
   let weather='soaring',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0,challengeId='';
   let queuedBranch=false,actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
+  const director=createFollowCamera(),boom=createCameraBoom(),range=createFollowRange();
+  let movementYaw=null,lastInput=[0,0],terrainLift=0;
+  const fallback={version:1,profiles:{climb:{distance:6.9,lift:.6,pitch:-.24,follow_rate:8,return_delay_s:.9},branch:{distance:5.8,lift:.25,pitch:-.3,follow_rate:.65,return_delay_s:2.4,follow_hold_s:.9,follow_ramp_s:2.2,max_turn_rad_s:.55},'tree-jump':{distance:6.9,lift:.6,pitch:-.3,follow_rate:0,return_delay_s:2.4},walk:{distance:5.4,lift:0,pitch:-.24,follow_rate:1.1,return_delay_s:1.8},flight:{distance:12,lift:0,pitch:-.34,follow_rate:1.1,return_delay_s:1.8},ride:{distance:6.5,lift:0,pitch:0,follow_rate:1.1,return_delay_s:1.8}},areas:[]};
+  const policy=()=>cameraProfile(options.cameraPolicy??fallback,mode==='walk'?(state?.mode??'walk'):riding()?'ride':mode==='gondola'?'gondola':'flight',[state?.x??0,state?.y??0,state?.z??0],options.forestSpacingM??0);
   const flightPressed=new Set(),flightModes=Object.keys(config.modes);
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
   const keys=new Set(),blockedActions=new Set(),look=new T.Euler(0,0,0,'YXZ');
   const height=(x,y)=>options.floorHeight?.(x,y)??ground.height(x,y)??0;
   const forward=new T.Vector3(),side=new T.Vector3();
-  const target=new T.Vector3();
+  const target=new T.Vector3(),framingSubject=new T.Vector3(),framingFoot=new T.Vector3();
+  const framingHead=character.model?.getObjectByName('head'),framingFeet=['heel.L','heel.R'].map(name=>character.model?.getObjectByName(name)).filter(Boolean);
   const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
   const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
   let pilotMotion=options.pilotMotion??'steady';
-  let treeFraming=0;
+  let treeFraming=0,framedDistance=null,framedLift=0;
   let presentedGrounded=null,landingClipLeft=0,carried=null;
   function frameMatrix(frame,out){
     flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
@@ -29,7 +36,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
-  const clear=()=>{treeFraming=0;queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
+  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   function key(e,down){
     // A control may receive focus between press and release. Always retire
     // the held key, while leaving form key presses to the form itself.
@@ -48,10 +55,14 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   let press=null;
   const down=e=>{if(mode==='orbit')return;drag=true;press={x:e.clientX,y:e.clientY,t:e.timeStamp};canvas.focus();canvas.setPointerCapture(e.pointerId);};
   const up=e=>{drag=false;if(press&&mode==='walk'&&e.button===0&&e.timeStamp-press.t<300&&Math.hypot(e.clientX-press.x,e.clientY-press.y)<6)character.attack?.();press=null;};
-  const move=e=>{if(mode==='orbit'||(!drag&&document.pointerLockElement!==canvas))return;yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
+  const move=e=>{if(mode==='orbit'||(!drag&&document.pointerLockElement!==canvas))return;if(e.movementX||e.movementY){director.manual();if(movementYaw!==null)movementYaw-=e.movementX*.003;}yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
+  const cancel=()=>{drag=false;press=null;};
+  canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('lostpointercapture',cancel);
+  const wheel=e=>{if(mode==='orbit'||e.ctrlKey)return;const unit=e.deltaMode===1?16:e.deltaMode===2?canvas.clientHeight||800:1;const dx=e.deltaX*unit*.003,dy=e.deltaY*unit*.003;if(dx||dy){director.manual();yaw-=dx;if(movementYaw!==null)movementYaw-=dx;pitch=Math.max(-1.35,Math.min(1.35,pitch-dy));}e.preventDefault();};
+  canvas.addEventListener('wheel',wheel,{passive:false});
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointermove',move);
   const dead=v=>Math.abs(v??0)<.14?0:Math.sign(v)*(Math.abs(v)-.14)/.86;
-  function toggleView(){shot=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';snap=true;}
+  function toggleView(){director.manual();movementYaw=null;shot=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';snap=true;}
   function select(next,site='0'){
     if(config.modes[mode])preferredFlightMode=mode;
     if(next==='walk'&&config.modes[mode]){changeHarness();return;}
@@ -156,10 +167,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     if(mode==='orbit'){time+=Math.min(dt,.05);orbit.update();return;}
     const lx=dead(pad?.axes[0]),ly=dead(pad?.axes[1]),rx=dead(pad?.axes[2]),ry=dead(pad?.axes[3]);
-    yaw-=(rx+Number(keys.has('ArrowRight'))-Number(keys.has('ArrowLeft')))*dt*1.6;
+    const manualX=rx+Number(keys.has('ArrowRight'))-Number(keys.has('ArrowLeft')),manualY=ry+Number(keys.has('ArrowDown'))-Number(keys.has('ArrowUp'));
+    if(manualX||manualY){director.manual();if(movementYaw!==null)movementYaw-=manualX*dt*1.6;}
+    yaw-=manualX*dt*1.6;
     pitch=Math.max(-1.35,Math.min(1.35,pitch-(ry+Number(keys.has('ArrowDown'))-Number(keys.has('ArrowUp')))*dt*1.4));
     const x=Number(keys.has('KeyD'))-Number(keys.has('KeyA'))+lx;
     const y=Number(keys.has('KeyW'))-Number(keys.has('KeyS'))-ly;
+    if(mode!=='walk'&&view==='chase'){const auto=director.step(dt,yaw,pitch,0,true,policy(),drag);yaw=auto.yaw;pitch=auto.pitch;}
     if(riding()){time+=Math.min(dt,.05);updateRide(dt,pad,x,y);return;}
     if(mode==='walk'){
       time+=Math.min(dt,.05);
@@ -177,7 +191,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     orbit.target.copy(camera.position);orbit.target.y=height(camera.position.x,-camera.position.z);
   }
-  function follow(dt,distance,heading,lift=0){
+  function follow(dt,distance,heading,lift=0,presentation={}){
+    const {direct=false,introProgress=0,rangeEase,rangeStart=false,groundRange=false}=presentation;
     target.copy(character.object.position).add(new T.Vector3(0,(config.modes[mode]?2.7:1.1*characterConfig.scale)+lift,0));
     // On foot the aim follows his height on a critically damped spring (Unity's
     // SmoothDamp) instead of riding it: in a jump he rises in the frame while the
@@ -185,34 +200,47 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // aim's speed and acceleration stay continuous. The bound is soft: the
     // further he gets from the aim (JUMP_FRAME_M is far), the quicker it follows.
     const gap=target.y-(aimY??target.y),w=2*(1+(gap/JUMP_FRAME_M)**2)/(AIM_S-.26*treeFraming),x=w*dt,decay=1/(1+x+.48*x*x+.235*x*x*x);
-    if(snap||aimY===null||mode!=='walk'){aimY=target.y;aimV=0;}
+    if(snap||aimY===null||mode!=='walk'||state?.mode==='climb'){aimY=target.y;aimV=0;}
     else{const pull=(aimV-w*gap)*dt;aimV=(aimV-w*pull)*decay;aimY=target.y+(pull-gap)*decay;}
-    target.y=aimY;
+    // The jump spring must never leave the aim buried in an uphill floor.
+    target.y=Math.max(aimY,height(target.x,-target.z)+.9*characterConfig.scale);
+    if(groundRange)distance=range.update(camera.position,target,distance,rangeEase,rangeStart,Math.min(distance,4.6*characterConfig.scale));
     const angle=heading-Math.PI/2+yaw;
     chase.set(target.x+Math.sin(angle)*Math.cos(pitch)*distance,target.y-Math.sin(pitch)*distance,target.z+Math.cos(angle)*Math.cos(pitch)*distance);
-    chase.y=Math.max(chase.y,height(chase.x,-chase.z)+.45);
-    // Pull the camera in along the same view ray when a tree or home blocks it.
-    const start=[target.x,-target.z,target.y];
-    // The occupied tree's trunk/crown boxes do not push the view into the
-    // puppet. The existing leaf-only opening handles canopy visibility.
-    const own=box=>{const trunk=state?.mode==='climb'?state.trunk:['branch','tree-jump'].includes(state?.mode)?state.branch?.trunkBox?.trunk:null;return mode==='walk'&&trunk&&box.min[0]<=trunk.x&&box.max[0]>=trunk.x&&box.min[1]<=trunk.y&&box.max[1]>=trunk.y;};
-    for(let i=0;i<12;i++){const box=hitTest?.(start,[chase.x,-chase.z,chase.y],.2);if(!box||own(box))break;chase.lerp(target,.2);}
+
     if(shot&&mode!=='walk')shot=null;
-    if(shot&&!snap)camera.position.copy(shot.raw);
-    if(snap)camera.position.copy(chase);else camera.position.lerp(chase,1-Math.exp(-dt*10));
-    camera.lookAt(target);snap=false;
+    boom.place(camera.position,target,chase,dt,snap||direct);
+    const baseEyeY=camera.position.y;
+    clearTerrainBoom(camera.position,target,height,cameraTerrainRadius(camera));
+    const requiredLift=camera.position.y-baseEyeY;
+    terrainLift=snap?requiredLift:Math.max(requiredLift,terrainLift*Math.exp(-dt*3));
+    camera.position.y=baseEyeY+terrainLift;
+    const lowerFraction=policy().screen_lower_fraction;
+    framingSubject.copy(target);
+    if(lowerFraction&&framingHead&&framingFeet.length){
+      character.object.updateWorldMatrix(true,true);framingHead.getWorldPosition(framingSubject);
+      for(const foot of framingFeet)framingSubject.addScaledVector(foot.getWorldPosition(framingFoot),1/framingFeet.length);
+      framingSubject.multiplyScalar(.5);
+    }
+    composeFollowView(camera,target,lowerFraction,framingSubject);snap=false;
     if(shot){
       shot.raw.copy(camera.position);shot.aim.copy(camera.quaternion);shot.t+=dt;
-      const u=Math.min(1,shot.t/SHOT_S),k=u*u*u*(u*(u*6-15)+10);  // smootherstep: no jolt at either end
+      const u=Math.min(1,shot.t/SHOT_S),k=Math.max(introProgress,u*u*u*(u*(u*6-15)+10));  // smootherstep: no jolt at either end
       camera.position.lerpVectors(shot.from,shot.raw,k);camera.quaternion.slerpQuaternions(shot.q,shot.aim,k);
       camera.fov=shot.fov+(62-shot.fov)*k;camera.updateProjectionMatrix();
-      if(u>=1)shot=null;
+      clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));
+      if(k>=1)shot=null;
     }
   }
   function updateWalk(dt,x,y,run){
-    forward.set(-Math.sin(yaw),0,-Math.cos(yaw));side.set(Math.cos(yaw),0,-Math.sin(yaw));
+    // Latch the movement basis during a held direction so automatic camera
+    // rotation cannot turn a straight run into a spiral. Manual look still steers it.
+    if(movementYaw===null||Math.hypot(x-lastInput[0],y-lastInput[1])>.15||(!x&&!y))movementYaw=yaw;
+    lastInput=[x,y];
+    const basis=view==='first'?yaw:movementYaw;
+    forward.set(-Math.sin(basis),0,-Math.cos(basis));side.set(Math.cos(basis),0,-Math.sin(basis));
     const movement=forward.clone().multiplyScalar(y).addScaledVector(side,x);
-    const before=state.speed??0;
+    const before=state.speed??0,beforeMode=state.mode,fromX=state.x,fromY=state.y;
     const water=options.walkHeight?.waterAt;
     // He plants his feet to attack: no steering or jumping until the blow ends.
     const busy=character.attacking===true;
@@ -221,6 +249,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(queuedBranch)message=state.mode==='climb'?'No branch within reach · climb or circle toward a limb':'';
     else if(x||y)message='';
     queuedBranch=false;
+    if(state.mode==='branch'&&beforeMode!=='branch')movementYaw=null;
     const climbing=state.mode==='climb',branching=state.mode==='branch',swimming=state.mode==='swim';
     character.object.position.set(state.x,state.z,-state.y);
     // Where the model faces now versus where it travels: a big gap asks for a pivot.
@@ -235,29 +264,33 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const gait=gaitFor(state.speed,characterConfig.walk,characterConfig.clips);
     character.update(dt,climbing?'climb':swimming?'swim':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{climb:climbing?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching?state.z:characterHeight(state.x,state.y),groundHeight:branching?()=>state.z:characterHeight,knock:state.knock,knockSide:state.knockSide});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);
-    // Walk heading follows movement; the camera's yaw stays independently controllable.
+    const profile=policy();let distanceFollow=false,distanceEase=0,distanceStart=false;
+    if(view==='chase'){const auto=director.step(dt,yaw,pitch,state.heading-Math.PI/2,state.speed>.15&&!busy,profile,drag,climbing,Math.hypot(state.x-fromX,state.y-fromY));yaw=auto.yaw;pitch=auto.pitch;boom.rotate(auto.transport??0);distanceFollow=auto.distanceFollow??false;distanceEase=auto.distanceEase??0;distanceStart=auto.distanceStart??false;}
     character.object.visible=view==='chase';
     if(view==='first'){
       camera.position.set(state.x,state.z+1.65*characterConfig.scale,-state.y);
       look.set(pitch,yaw,0);camera.quaternion.setFromEuler(look);snap=false;
     }else {
-      // One continuous composition across bark, limb, leap and touchdown. The
-      // player's yaw/pitch stay theirs, including on a backwards branch landing.
-      const treePlay=['climb','branch','tree-jump'].includes(state.mode);
-      treeFraming+=((treePlay?1:0)-treeFraming)*(1-Math.exp(-dt*5));
-      follow(dt,(5.4+1.5*treeFraming)*characterConfig.scale,Math.PI/2,.6*treeFraming*characterConfig.scale);
+      // Preserve continuous tree framing while using the authored per-mode goals.
+      // Heading, pitch and ground trailing range retain their travel-based curve.
+      const treePlay=['climb','branch','tree-jump'].includes(state.mode),blend=1-Math.exp(-dt*5);
+      treeFraming+=((treePlay?1:0)-treeFraming)*blend;
+      framedDistance=snap||framedDistance===null?profile.distance:framedDistance+(profile.distance-framedDistance)*blend;
+      framedLift=snap?profile.lift:framedLift+(profile.lift-framedLift)*blend;
+      follow(dt,framedDistance*characterConfig.scale,Math.PI/2,framedLift*characterConfig.scale,{direct:distanceFollow,introProgress:distanceEase,groundRange:profile.follow_distance_m>0,rangeEase:distanceFollow?distanceEase:undefined,rangeStart:distanceStart});
     }
     // Below the water's surface, the client tints and fogs the view (main.js).
     const overhead=water?.(camera.position.x,-camera.position.z);underwater=!!overhead&&camera.position.y<overhead.surface_z;
   }
   function updateCarried(dt,pad){
-    yaw-=dead(pad?.axes[2])*dt*1.6;pitch=Math.max(-1.35,Math.min(1.35,pitch-dead(pad?.axes[3])*dt*1.4));
+    const rx=dead(pad?.axes[2])+Number(keys.has('ArrowRight'))-Number(keys.has('ArrowLeft')),ry=dead(pad?.axes[3])+Number(keys.has('ArrowDown'))-Number(keys.has('ArrowUp'));
+    if(rx||ry)director.manual();yaw-=rx*dt*1.6;pitch=Math.max(-1.35,Math.min(1.35,pitch-ry*dt*1.4));
     const p=carried??state;
     character.object.position.set(p.x,p.z,-p.y);character.object.quaternion.setFromAxisAngle(new T.Vector3(0,1,0),p.heading+Math.PI/2);
     character.update(dt,'idle',0,{groundZ:p.z,groundHeight:()=>p.z});
     character.object.visible=view==='chase';
     if(view==='first'){camera.position.set(p.x,p.z+1.65*characterConfig.scale,-p.y);look.set(pitch,yaw,0);camera.quaternion.setFromEuler(look);snap=false;}
-    else follow(dt,9*characterConfig.scale,Math.PI/2,.4);
+    else {const p=policy();follow(dt,p.distance*characterConfig.scale,Math.PI/2,p.lift);}
     orbit.target.copy(camera.position);
   }
   function flightPose(){
@@ -321,7 +354,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       groundZ:pose.grounded?characterHeight(pose.x,pose.y):undefined,groundHeight:pose.grounded?characterHeight:undefined});
     landingClipLeft=Math.max(0,landingClipLeft-dt);
     if(view==='chase'){
-      follow(dt,(12+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
+      follow(dt,(policy().distance+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
     }else{
       character.object.visible=false;
       if(coupled)camera.position.copy(new T.Vector3(0,config.landing_clearance_m+.15,0).applyMatrix4(pilotMatrix));
@@ -349,11 +382,11 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     while(accumulator>=1/120){state=stepRide(state,{...input,hop},1/120,ride.config,ride.height,ride.surfaceAt,hitTest);hop=false;accumulator-=1/120;}
     const p=new T.Vector3(state.x,state.z,-state.y),h=state.heading;
     ride.rig.position.copy(p);ride.rig.rotation.set(-state.pitch,h+Math.PI/2,state.lean);
-    if(!drag&&view==='chase'){yaw*=Math.exp(-dt*1.5);pitch*=Math.exp(-dt*1.5);}
+    const profile=policy();
     if(view==='chase'){
-      chase.set(p.x-Math.cos(h+yaw)*6.5,p.y+2.6-pitch*4,p.z+Math.sin(h+yaw)*6.5);
+      chase.set(p.x-Math.cos(h+yaw)*profile.distance,p.y+2.6-pitch*4,p.z+Math.sin(h+yaw)*profile.distance);
       if(snap)camera.position.copy(chase);else camera.position.lerp(chase,1-Math.exp(-dt*6));
-      camera.position.y=Math.max(camera.position.y,height(camera.position.x,-camera.position.z)+.8);
+      clearTerrainBoom(camera.position,new T.Vector3(p.x,p.y+1.2,p.z),height,cameraTerrainRadius(camera));
       camera.lookAt(p.x,p.y+1.2,p.z);
     }else{
       camera.position.set(p.x+Math.cos(h)*.15,p.y+1.62,p.z-Math.sin(h)*.15);
@@ -369,5 +402,5 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function fixedEnvironmentSampler(options){
     return createFixedAirSampler((x,y,z,terrain)=>sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,terrain),height,options);
   }
-  return {select,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

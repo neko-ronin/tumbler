@@ -11,7 +11,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "0be679958241f4b3a3e47d45d37d7f5d887f5c25f5c892dc777a48ce7022ed1b"
+      "sha256": "48fbf7fe02ecf31d53ec9fe114992d884a8cea551355154e49bf7fe66b45be74"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -31,7 +31,7 @@
     },
     {
       "path": "client/web/src3d/audio.js",
-      "sha256": "ebc44f3e01a77c142b13d24f966a77dfef94897f5d8a4b6b423c87f48aa40536"
+      "sha256": "051f7e37bde995e3cac069bcda72698fcb1884f417e1c81120cfb2cfd8184330"
     },
     {
       "path": "client/web/src3d/canopy-light.js",
@@ -110,6 +110,10 @@
       "sha256": "7f5158326045d0a9588fa588058c0ae50f4d623179ff4082d9c1a10921884f4f"
     },
     {
+      "path": "client/web/src3d/follow-camera.js",
+      "sha256": "7733a98f5c54bc0859b6289f718fd11b79269abe88ef1192e5829ced8a071d6b"
+    },
+    {
       "path": "client/web/src3d/forest-field.js",
       "sha256": "c04f8714322f8f7c08a24b2e96b9d51604ff91e3e49baefd9a7cfbff05915dee"
     },
@@ -167,7 +171,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "43abead09de7a41d2b832806820e2866c43cd3ec05efa7771a69190aaa7ffd41"
+      "sha256": "c6d7069170587dbb1d1ac4d1b72fc28a5b70e5d1a672cff0e86bc712aaf6b087"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -175,7 +179,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "c52c726bd40e11e9ca00dcbafc01b46388ea8e555f06d1873ab86b9123a12f11"
+      "sha256": "7a1c747db3f104825c621117eaa1c45eb8ee2977cd891c550cd614693c3fd5dc"
     },
     {
       "path": "client/web/src3d/para-audio.js",
@@ -196,6 +200,10 @@
     {
       "path": "client/web/src3d/placements.js",
       "sha256": "59d264e58a78c2f7faa368cecacf63bfa3283dfc6f17daf6ec638d478a59e162"
+    },
+    {
+      "path": "client/web/src3d/player-visibility.js",
+      "sha256": "8f1c90777b334b3991bad22d83f46389ef2905bb0a61658fb5bef54c5b6d8774"
     },
     {
       "path": "client/web/src3d/provenance.js",
@@ -259,11 +267,15 @@
     },
     {
       "path": "client/web/src3d/tree-surface.js",
-      "sha256": "fa655cfd1276de92e09c2c4cd65133c6361839f6f2713bb563f11ef40c848f9c"
+      "sha256": "5108f17dc43ffe3e0c3faba25cd0fd2cfd78de29dd1d95df7f9172050cba7057"
     },
     {
       "path": "client/web/src3d/version.js",
       "sha256": "916a560c1d43a2e499d969ded193d71137a785668cadcac9f75ac2c2462b465f"
+    },
+    {
+      "path": "client/web/src3d/visibility-feather.js",
+      "sha256": "3457acdef543132535e85b1aa0d275feabe9910f71c55e05c409ff979b8b6f6d"
     },
     {
       "path": "client/web/src3d/world.js",
@@ -290,6 +302,14 @@
       "sha256": "5f67d1500eb31bca38fa3665aa81574572c6a2aafa574b0655d74b05e4e1e569"
     },
     {
+      "path": "shared/activities/camera.js",
+      "sha256": "dd4ed7a61509a52026eeff3b1249a723a39559663e341615a102a795ff1299d6"
+    },
+    {
+      "path": "shared/activities/camera.json",
+      "sha256": "f61d9d5029cc3840ed1a941d1418ed672404c667e2f5ea8af2fd6bc597eb8ef9"
+    },
+    {
       "path": "shared/activities/climb.js",
       "sha256": "46f2159c88486504f136e58f7a2124d11ff52239255ca3be4f98f238d542249d"
     },
@@ -312,6 +332,10 @@
     {
       "path": "shared/activities/flight.json",
       "sha256": "9df8addf17b3d1bf2b157d9de42062751c4824680b53816a0af1cb5f1215f6b5"
+    },
+    {
+      "path": "shared/activities/forest-spacing.js",
+      "sha256": "224557a65c3b790513da465539cfd59d91aacd498839d1850953881b2a061837"
     },
     {
       "path": "shared/activities/gondola.js",
@@ -825,7 +849,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "1233445",
+  "commit": "3bcd307",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

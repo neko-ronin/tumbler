@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "profiles": {
+    "walk": {
+      "distance": 5.4,
+      "lift": 0,
+      "pitch": -0.24,
+      "follow_rate": 1.1,
+      "return_delay_s": 1.8,
+      "follow_hold_s": 0,
+      "follow_ramp_s": 0,
+      "max_turn_rad_s": 3.5,
+      "follow_spacing_fraction": 0,
+      "follow_hold_fraction": 0,
+      "follow_distance_m": 12,
+      "follow_hold_m": 2,
+      "screen_lower_fraction": 0.5
+    },
+    "climb": {
+      "distance": 6.9,
+      "lift": 0.6,
+      "pitch": -0.24,
+      "follow_rate": 8,
+      "return_delay_s": 0.9,
+      "follow_hold_s": 0,
+      "follow_ramp_s": 0.12,
+      "max_turn_rad_s": 3.5,
+      "screen_lower_fraction": 0.5
+    },
+    "branch": {
+      "distance": 5.8,
+      "lift": 0.25,
+      "pitch": -0.3,
+      "follow_rate": 0.65,
+      "return_delay_s": 2.4,
+      "follow_hold_s": 0.9,
+      "follow_ramp_s": 2.2,
+      "max_turn_rad_s": 0.55,
+      "screen_lower_fraction": 0.5
+    },
+    "tree-jump": {
+      "distance": 6.9,
+      "lift": 0.6,
+      "pitch": -0.3,
+      "follow_rate": 0,
+      "return_delay_s": 2.4,
+      "follow_hold_s": 0,
+      "follow_ramp_s": 0,
+      "max_turn_rad_s": 3,
+      "screen_lower_fraction": 0.5
+    },
+    "swim": {
+      "distance": 5.4,
+      "lift": 0,
+      "pitch": -0.18,
+      "follow_rate": 0.55,
+      "return_delay_s": 1.8,
+      "follow_hold_s": 0.9,
+      "follow_ramp_s": 2.2,
+      "max_turn_rad_s": 0.55,
+      "screen_lower_fraction": 0.5
+    },
+    "flight": {
+      "distance": 12,
+      "lift": 0,
+      "pitch": -0.34,
+      "follow_rate": 1.1,
+      "return_delay_s": 1.8,
+      "follow_hold_s": 0,
+      "follow_ramp_s": 0,
+      "max_turn_rad_s": 3
+    },
+    "ride": {
+      "distance": 6.5,
+      "lift": 0,
+      "pitch": 0,
+      "follow_rate": 1.1,
+      "return_delay_s": 1.8,
+      "follow_hold_s": 0,
+      "follow_ramp_s": 0,
+      "max_turn_rad_s": 3
+    },
+    "gondola": {
+      "distance": 9,
+      "lift": 0.4,
+      "pitch": -0.12,
+      "follow_rate": 0,
+      "return_delay_s": 2.4,
+      "follow_hold_s": 0,
+      "follow_ramp_s": 0,
+      "max_turn_rad_s": 3
+    }
+  },
+  "areas": []
+}

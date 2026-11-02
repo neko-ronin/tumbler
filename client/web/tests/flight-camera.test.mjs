@@ -14,14 +14,14 @@ const rules={...flight,coupled:undefined,thermals:[],wind:{speed_mps:0,gust_mps:
 const world=read('../../../shared/world/worldmap.json'),ride=read('../../../shared/activities/ride.json'),characterConfig=read('../../../shared/characters/player.json');
 const flat=()=>0;
 
-function fixture(t,config=rules){
+function fixture(t,config=rules,cameraPolicy){
  const previous=new Map(['window','document','navigator'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
  const win=new EventTarget(),doc=new EventTarget();
  const pad={connected:true,axes:[0,0,0,0],buttons:Array.from({length:16},()=>({pressed:false,value:0}))};
  for(const [key,value] of Object.entries({window:win,document:doc,navigator:{getGamepads:()=>[pad]}}))Object.defineProperty(globalThis,key,{value,configurable:true});
  const canvas=new EventTarget();canvas.focus=()=>{};canvas.setPointerCapture=()=>{};
  const camera=new T.PerspectiveCamera(62,16/9),rig=new T.Group(),character={object:new T.Group(),update(){}};
- const nav=createNavigation(camera,canvas,{target:new T.Vector3(),update(){},setTarget(){}},{height:flat},config,world,rig,()=>null,{config:ride,rig:new T.Group(),meshes:{}},character,characterConfig);
+ const nav=createNavigation(camera,canvas,{target:new T.Vector3(),update(){},setTarget(){}},{height:flat},config,world,rig,()=>null,{config:ride,rig:new T.Group(),meshes:{}},character,characterConfig,{cameraPolicy});
  t.after(()=>{nav.dispose();for(const [key,value]of previous)value?Object.defineProperty(globalThis,key,value):delete globalThis[key];});
  return {nav,camera,rig,pad,win,character};
 }
@@ -101,8 +101,8 @@ test('first-person camera and glider use the same continuous flight position',t=
 });
 
 
-test('branch touchdown preserves the camera direction and eases through contact',t=>{
- const {nav,camera,character}=fixture(t);
+for(const [label,cameraPolicy] of [['fallback',undefined],['authored',read('../../../shared/activities/camera.json')]])test(`branch touchdown preserves camera direction and eases through contact (${label})`,t=>{
+ const {nav,camera,character}=fixture(t,rules,cameraPolicy);
  const tree=(id,x,direction)=>({id,matrix:[1,0,0,0,0,0,1,0,0,-1,0,0,x,0,0,1],min:[x-8,-8,0],max:[x+8,8,20],trunkBox:{trunk:{x,y:0,base_z:0,top_z:4,profile:[[0,.5],[15,.5]]}},graph:[{id:0,stiffness:1,path:[[0,10,0,.4],[direction*3,10,0,.3],[direction*6,10,0,.1]]}]});
  const trees=[tree('a',0,1),tree('b',10,-1)],hitTest=()=>null;hitTest.branchesNear=createBranchIndex(trees);
  const world={hitTest};

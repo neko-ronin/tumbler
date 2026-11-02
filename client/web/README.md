@@ -1,3 +1,29 @@
+# Player camera tracking — 12 m window, 2026-11-02
+
+Ground follow holds correction for the first **2 m** of actual travel, then
+smoothly completes by **12 m total**. Heading, pitch and trailing distance use
+the same curve. Close-character/terrain clearance takes priority over distance
+lag. The on-foot body moves **halfway from its existing screen position toward
+the bottom** (a centred body moves to 75% down). Climbing retains its tight following
+and leaf opening. Mouse/trackpad/arrows/right stick still override with a quiet
+delay; first-person and flight framing retain their prior behavior.
+
+Scenery and climbing leaf/branch visibility openings now keep their clear centres
+and fade through a soft outer rim. **Field notes → Transparency spotlight**
+turns both openings on/off together (off by default). [Shader/GPU review](../../docs/reviews/visibility-feather-2026-11-02.md).
+
+**Field notes → Wind & river ambience** mutes just the wind and water layers.
+Character sounds, birds, insects, motor and flight tones keep their existing
+controls; the master Sound button still controls everything. Ambience defaults on.
+[Routing and checks](../../docs/reviews/wind-water-audio-toggle-2026-11-02.md).
+
+Quick regression loop (no GLB parsing or renderer):
+`node --test client/web/tests/camera-traversal.test.mjs client/web/tests/player-camera.test.mjs`.
+It covers real forest terrain, head distance, backsteps, reversals and climbing.
+[12 m easing and lower-framing review](../../docs/reviews/player-camera-framing-2026-11-02.md).
+[Revision, rendered replay commands and limits](../../docs/reviews/player-camera-revision-2026-11-01.md).
+Branch `codex/player-camera`; preview server: `python3.11 client/web/tools/serve.py --port 8074`.
+
 # Seated nap — local candidate, 2026-11-01
 
 After 30 seconds idle, Cat Ronin sits and naps immediately: the existing seated

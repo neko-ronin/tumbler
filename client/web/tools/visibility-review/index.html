@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><title>Visibility feather review</title>
+<style>body{margin:24px;background:#202720;color:#eee;font:16px system-ui}main{display:flex;gap:24px;flex-wrap:wrap}h1{font-size:22px}h2{font-size:16px}canvas{width:480px;height:480px;max-width:90vw}pre{white-space:pre-wrap}</style>
+<h1>Visibility openings · actual material paths</h1><p>Scenery, climbing foliage, and the combined tree/scenery shader. The centre stays clear; the rim gradually returns. Add <code>?hard=1</code> for the hard-edge control.</p><main id="panels"></main><pre id="results">Preparing…</pre>
+<script type="module">
+import * as T from '../../vendor/three.module.min.js';
+import {createPlayerVisibility} from '../../src3d/player-visibility.js';
+import {createTreeSurface,treePlayFocus} from '../../src3d/tree-surface.js';
+import {visibilityFeather} from '../../src3d/visibility-feather.js';
+const hard=new URLSearchParams(location.search).has('hard');visibilityFeather.value=hard?0:1;
+const size=480,results=[];
+for(const kind of ['scenery','near-player','foliage','combined']){
+ const isFoliage=kind==='foliage'||kind==='combined';
+ const panel=document.createElement('section');panel.innerHTML=`<h2>${kind} · ${hard?'hard control':'soft rim'}</h2>`;document.querySelector('main').append(panel);
+ const renderer=new T.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setSize(size,size);renderer.setClearColor(0xffffff);panel.append(renderer.domElement);
+ const scene=new T.Scene(),camera=new T.PerspectiveCamera(62,1,.15,100);camera.position.set(0,0,6);camera.lookAt(0,0,0);
+ const geometry=new T.PlaneGeometry(8,8),n=geometry.attributes.position.count;
+ geometry.setAttribute('color',new T.Float32BufferAttribute(new Float32Array(n*3).fill(.35),3));
+ geometry.setAttribute('leafKind',new T.Float32BufferAttribute(new Float32Array(n).fill(1),1));
+ geometry.setAttribute('canopyAO',new T.Float32BufferAttribute(new Float32Array(n).fill(1),1));
+ geometry.setAttribute('studyInterval',new T.Float32BufferAttribute(new Float32Array(n*2).map((_,i)=>i%2),2));
+ const material=!isFoliage?new T.MeshBasicMaterial({color:0x725135}):createTreeSurface({leafProfile:'redwood',toonBands:4,rimStrength:0,canopyShade:.85,transmission:0,leafThickness:.4},{sun:{value:new T.Vector3(0,1,1).normalize()}});
+ const plane=new T.Mesh(geometry,material);plane.position.z=kind==='near-player'?.3:1;scene.add(plane);
+ if(!isFoliage)createPlayerVisibility(camera,renderer,[scene]).update(new T.Vector3(0,0,0),true);
+ else {treePlayFocus.value.set(0,0,0,1.8);if(kind==='combined')createPlayerVisibility(camera,renderer,[scene]).update(new T.Vector3(0,0,0),true,1,true);}
+ renderer.render(scene,camera);
+ const gl=renderer.getContext(),pixels=new Uint8Array(size*size*4);gl.readPixels(0,0,size,size,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+ const buckets=Array.from({length:65},()=>({clear:0,total:0})),units=2*(6-plane.position.z)*Math.tan(31*Math.PI/180)/size;
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const radius=Math.hypot(x+.5-size/2,y+.5-size/2)*units,bin=Math.floor(radius/.05);if(bin>=buckets.length)continue;
+  const i=(y*size+x)*4,b=buckets[bin];b.total++;if(pixels[i]>245&&pixels[i+1]>245&&pixels[i+2]>245)b.clear++;
+ }
+ const partial=buckets.map(b=>b.total?b.clear/b.total:0).filter(v=>v>.1&&v<.9).length;
+ const core=buckets.slice(0,8).reduce((a,b)=>[a[0]+b.clear,a[1]+b.total],[0,0]);
+ const result={kind,hard,partialRings:partial,coreClearFraction:core[0]/core[1],glError:gl.getError()};
+ if(result.glError!==0||result.coreClearFraction<.999||(!hard&&partial<5)||(hard&&partial>2))throw new Error(JSON.stringify(result));
+ results.push(result);
+}
+document.querySelector('#results').textContent=JSON.stringify(results,null,2);window.visibilityReview=results;
+</script>
