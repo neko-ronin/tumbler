@@ -1,7 +1,7 @@
 /** Fixed renderer queries may reuse immutable world heights, never air values.
  * The caller continues to supply current core time and weather on every sample.
  */
-export function createFixedAirSampler(sample,height,{maxTerrainSamples=32768}={}){
+export function createFixedAirSampler(sample,height,{maxTerrainSamples=32768,terrainAnchors=[]}={}){
  if(!Number.isInteger(maxTerrainSamples)||maxTerrainSamples<0)throw Error('Invalid fixed-air terrain capacity');
  const rows=new Map();let count=0;
  function terrain(x,y){
@@ -14,5 +14,7 @@ export function createFixedAirSampler(sample,height,{maxTerrainSamples=32768}={}
   }
   return value;
  }
+ // Reserve known fixed references before moving samples can fill the cache.
+ for(const [x,y]of terrainAnchors)terrain(x,y);
  return {sample:(x,y,z)=>sample(x,y,z,terrain),get terrainSamples(){return count;},dispose(){rows.clear();count=0;}};
 }

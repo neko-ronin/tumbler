@@ -97,10 +97,10 @@ test('controller mapping keeps analogue brakes, power and speed independent',()=
 test('canopy deforms actual sail vertices with fixed harness and bounded cloth work',()=>{
  const assets={};for(const path of [config.wing_asset,config.motor_asset,config.modes.parakite.wing_asset])assets[path]=parseGLB(readFileSync(new URL('../../../shared/geometry/'+path,import.meta.url)));
  const rig=createFlightRig(assets,config),s={...launchFlight(config,'paraglider',site,flat),brakeLeft:.8,bank:.5,rollRate:.2,turbulence:1};
- const {mesh,rest}=rig.wings.paraglider;rig.update(.1,s);const p=mesh.geometry.attributes.position;
+ const {mesh,rest,indices,controlFit}=rig.wings.paraglider;rig.update(.1,s);const p=mesh.geometry.attributes.position;
  let sailMoved=false;
- for(let i=0;i<p.count;i++){const n=i*3;assert.ok([p.getX(i),p.getY(i),p.getZ(i)].every(Number.isFinite));if(rest[n+1]<1.3)assert.equal(p.getY(i),rest[n+1]);if(rest[n+1]>3&&Math.abs(p.getY(i)-rest[n+1])>.02)sailMoved=true;}
- assert.ok(sailMoved);const before=p.array.slice();rig.update(.001,{...s,brakeLeft:0});assert.deepEqual(p.array,before,'skip cloth work before next 30 Hz tick');
+ for(let i=0;i<p.count;i++){const n=i*3;assert.ok([p.getX(i),p.getY(i),p.getZ(i)].every(Number.isFinite));if(rest[n+1]<1.3&&!controlFit[indices[i]])assert.equal(p.getY(i),rest[n+1]);if(rest[n+1]>3&&Math.abs(p.getY(i)-rest[n+1])>.02)sailMoved=true;}
+ assert.ok(sailMoved);const before=p.array.slice();rig.update(.001,{...s,brakeLeft:0});for(let i=0;i<p.count;i++)if(!controlFit[indices[i]])for(let axis=0;axis<3;axis++)assert.equal(p.array[i*3+axis],before[i*3+axis],'non-control cloth waits for its 30 Hz tick');
  rig.update(.1,{...s,mode:'paramotor',engine:1});assert.equal(rig.motor.visible,true);assert.ok(rig.prop.rotation.z>0);rig.dispose();
 });
 

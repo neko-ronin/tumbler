@@ -39,3 +39,19 @@ test('a fixed query cache has a hard capacity and releases its world-height data
  fixed.sample(25,2,4);assert.equal(fixed.terrainSamples,3);
  fixed.dispose();assert.equal(fixed.terrainSamples,0);
 });
+
+test('moving render samples retain immutable thermal anchors without retaining a moving trail',()=>{
+ let time=0,weather='soaring',anchorReads=0;
+ const anchors=config.thermals.map(t=>t.xy_m),isAnchor=(x,y)=>anchors.some(p=>p[0]===x&&p[1]===y);
+ const terrain=(x,y)=>{if(isAnchor(x,y))anchorReads++;return height(x,y);};
+ const sample=(x,y,z,basis)=>sampleAir(config,285,{x,y,z,weather},time,basis);
+ const renderer=createFixedAirSampler(sample,terrain,{maxTerrainSamples:anchors.length,terrainAnchors:anchors});
+ try{
+  for(const name of Object.keys(config.weather))for(let i=0;i<40;i++){
+   time=i*.37;weather=name;const p=[-310+i*3.1,1600-i*2.7,1200-i*1.3];
+   assert.deepEqual(renderer.sample(...p),sample(...p,height));
+  }
+  assert.equal(anchorReads,anchors.length,'fixed thermal-base heights must be read once despite changing render positions/time/weather');
+  assert.equal(renderer.terrainSamples,new Set(anchors.map(p=>p.join(','))).size,'moving positions must not consume permanent cache space');
+ }finally{renderer.dispose();}
+});

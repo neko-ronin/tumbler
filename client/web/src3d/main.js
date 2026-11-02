@@ -1,3 +1,4 @@
+import {createFirstPersonFlight} from './first-person-flight.js';
 import {forestSpacing} from '../../../shared/activities/forest-spacing.js';
 import {createParaGuide} from './para-guide.js';
 import {createParaSignals} from './para-signals.js';
@@ -257,6 +258,7 @@ export async function main() {
   const rideHeight=createRideHeight((x,y)=>ground.height(x,y)??0,trail);
   const hitTest=buildWorldCollision(placement,assets,treePlan,branchData);
   const character=createCharacter(assets[characterConfig.asset],characterConfig);scene.add(character.object);
+  const firstPerson=createFirstPersonFlight(characterConfig,{compile:root=>{const target=renderer.getRenderTarget();try{renderer.setRenderTarget(cloudPass.opaque);return renderer.compileAsync(root,camera,scene);}finally{renderer.setRenderTarget(target);}}}),leftGrip=new T.Vector3(),rightGrip=new T.Vector3();scene.add(firstPerson.group);
   // The gondola's stations are floors to walk on: their decks and the ramps up to them.
   const gondolaLine=buildGondola(await fetchData('shared/activities/gondola.json'),(x,y)=>ground.height(x,y),hitTest);
   const paraSignals=createParaSignals({height:(x,y)=>walkHeight.floorHeight(x,y),hitTest,gondola:gondolaLine,clock:()=>folk?.api.world.time??0});
@@ -265,7 +267,7 @@ export async function main() {
   // Match the existing presentation lift of the rendered tread. Its authored
   // profile remains the shared physical floor; this offset only clears pixels.
   const characterHeight=(x,y)=>{const z=walkHeight.floorHeight(x,y),t=walkHeight.trailAt(x,y);return z===null?null:t?.beyond===0?Math.max(z,t.z+TRAIL_SURFACE_LIFT):z;};
-  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view),haptics:()=>document.getElementById('haptics').checked});
+  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,firstPersonEye:()=>firstPerson.eye,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z),velocity:body.state.coupled?.pilotVelocity}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view),haptics:()=>document.getElementById('haptics').checked});
   const folk=await createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig:characterConfig.walk,height:walkHeight,ground:(x,y)=>ground.height(x,y),hitTest,gondola:gondolaLine,assets,scene,camera,canvas});
   // Cabins run on the folk world's clock, so the cats ride in the cabins drawn.
   const gondola=createGondolaLayer({line:gondolaLine,scene,navigation,clock:()=>folk.api.world.time,panel:document.getElementById('gondola-panel')});
@@ -526,11 +528,12 @@ export async function main() {
   // Read-only inspection hook used for repeatable visual/performance checks.
   const visibilityToggle=document.getElementById('visibility-spotlight');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
-  window.tumbler = { folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,startup,flightRig, scene, camera, renderer, controls, navigation, character, paraSignals, paraPass, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,startup,flightRig, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;
     loading.show();status.textContent='Letting the light settle…';
     paraPass.warm();
+    await firstPerson.prewarm();
     const result=await warmScene({
       prepare(){
         terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();
@@ -552,6 +555,7 @@ export async function main() {
       pending:()=>forest.stats.adopted.transitioning>0,
       finish:()=>finishGpu(renderer.getContext()),
     });
+    firstPerson.finishWarm();
     if(contextLost||stopped)return;
     Object.assign(startup,result,{ready:true});
     // Warm-up costs must not enter play's clock or adaptive-quality samples.
@@ -588,7 +592,7 @@ export async function main() {
     gondola.update();
     navigation.update(Math.min(delta,50)/1000);
     const spotlight=visibilityToggle.checked;
-    if(!flightConfig.modes[navigation.mode])paraSignals.update(null,{},0,0);
+    if(!flightConfig.modes[navigation.mode]){paraSignals.update(null,{},0,0);firstPerson.update({active:false});}
     const treePlay=navigation.mode==='walk'&&['climb','branch','tree-jump'].includes(navigation.state?.mode);
     const treePlayer=navigation.state;treePlayFocus.value.set(treePlayer?.x??0,(treePlayer?.z??0)+.9,-(treePlayer?.y??0),treePlay&&spotlight?1.8:0);
     folk.update(Math.min(delta,50)/1000);
@@ -678,7 +682,7 @@ export async function main() {
     try { contextLost=false;treeShadows.setSun(style.sun.value);cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
     catch(error){stopped=true;loading.fail(error);console.error(error);}
   });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
   // Walk is the default: a ?view= link stays put (dev shortcut); otherwise the
   // village view holds a few seconds, the UI hides, and the camera pans to him

@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import * as T from '../vendor/three.module.min.js';
 import {parseGLB} from '../src3d/glb.js';
 import {createFlightRig} from '../src3d/flight-rig.js';
+import {controlGrip,SOURCE_GRIP} from '../../../shared/geometry/flight/contacts.js';
 
 const read=p=>JSON.parse(readFileSync(new URL(p,import.meta.url)));
 const config=read('../../../shared/activities/flight.json'),player=read('../../../shared/characters/player.json');
@@ -17,7 +18,7 @@ for(const hz of [60,144])for(const mode of Object.keys(config.modes))for(const s
   const view={pilotScale:scale,pilotAttachment:anchor.toArray(),pilotTransform:matrix};
   try{
     rig.update(.1,state,view);
-    const full=wing.indices.findIndex((point,i)=>wing.coupledFit[point]===1&&wing.rest[i*3+1]<1.3);
+    const full=wing.indices.findIndex((point,i)=>wing.coupledFit[point]===1&&!wing.controlFit[point]&&wing.rest[i*3+1]<1.3);
     assert.ok(full>=0,'exercise a real fully fitted harness vertex');
     const rest=new T.Vector3().fromArray(wing.rest,full*3),actual=new T.Vector3(),expected=new T.Vector3();
     let worst=0;
@@ -96,4 +97,21 @@ test('mode, grounded, collapsed and harness transitions invalidate cloth immedia
       assert.equal(counts.paraglider,before+1,'contact and hook transitions do not reuse stale cloth state');
     }
   }finally{rig.dispose();}
+});
+
+test('grip endpoints and brake-line vertices share control travel through pilot fit and suspension transforms',()=>{
+ const rig=createFlightRig(assets,config),anchor=new T.Vector3().fromArray(player.flight_attachment.position_m),transform=new T.Matrix4();
+ try{for(const mode of Object.keys(config.modes))for(const scale of [1,.52])for(const pull of [0,.45,1]){
+  const state={mode,handleLeft:pull,handleRight:1-pull,brakeLeft:pull,brakeRight:1-pull,coupled:{lineSlackM:0}};
+  transform.compose(new T.Vector3(.1,.07,-.13),new T.Quaternion().setFromEuler(new T.Euler(.12,0,.2)),new T.Vector3(1,1,1));
+  rig.update(.01,state,{pilotScale:scale,pilotAttachment:anchor.toArray(),pilotTransform:transform});
+  const w=rig.wings[mode==='parakite'?'parakite':'paraglider'];
+  for(const side of [1,-1]){
+   const grip=controlGrip(state,side),expected=new T.Vector3(...grip).sub(anchor).multiplyScalar(scale).add(anchor).applyMatrix4(transform);
+   assert.ok(rig.getGripWorld(side).distanceTo(expected)<1e-8);
+   const vertex=w.indices.findIndex((point,i)=>w.controlFit[point]===1&&Math.sign(w.rest[i*3])===side);assert.ok(vertex>=0);
+   const rest=new T.Vector3().fromArray(w.rest,vertex*3).add(new T.Vector3(grip[0]-side*SOURCE_GRIP[0],grip[1]-SOURCE_GRIP[1],grip[2]-SOURCE_GRIP[2])).sub(anchor).multiplyScalar(scale).add(anchor).applyMatrix4(transform);
+   assert.ok(new T.Vector3().fromBufferAttribute(w.mesh.geometry.attributes.position,vertex).distanceTo(rest)<2e-6);
+  }
+ }}finally{rig.dispose();}
 });

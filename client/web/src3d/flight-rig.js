@@ -4,6 +4,7 @@
 import * as T from '../vendor/three.module.min.js';
 import {mergePrimitives} from './glb.js';
 import {applyCanopyLighting} from './canopy-light.js';
+import {controlGrip,SOURCE_GRIP} from '../../../shared/geometry/flight/contacts.js';
 
 // One continuous field, evaluated once for every welded rest-space point.
 // A smooth blend through the centre replaces the discontinuous x<0 selector.
@@ -86,6 +87,16 @@ function pilotFitWeights(primitives,cloth){
 // Independent pilot motion carries the complete lower suspension, rather than
 // only the straps that need fitting to the optional small character. Cascades
 // blend back to the upper line ends; the source sail remains in the wing frame.
+function controlFitWeights(primitives,cloth){
+  const weights=new Float32Array(cloth.points.length);let offset=0;
+  for(const p of primitives.filter(p=>p.alphaMode==='OPAQUE')){
+    const count=p.geometry.index?.count??p.geometry.attributes.position.count;
+    if(p.materialName==='brake_fan')for(let i=offset;i<offset+count;i++){
+      const n=cloth.indices[i];weights[n]=Math.max(weights[n],1-T.MathUtils.smoothstep(cloth.points[n].y,1.25,1.72));
+    }
+    offset+=count;
+  }return weights;
+}
 function coupledFitWeights(primitives,cloth){
   const weights=new Float32Array(cloth.points.length);let offset=0;
   for(const p of primitives.filter(p=>p.alphaMode==='OPAQUE')){
@@ -141,7 +152,7 @@ export function createFlightRig(assets,config){
     mesh.castShadow=true;mesh.frustumCulled=false;
     const cloth=clothPoints(mesh.geometry);
     const pilotFit=pilotFitWeights(primitives,cloth),coupledFit=coupledFitWeights(primitives,cloth);
-    wings[name]={mesh,...cloth,pilotFit,coupledFit,...attachmentIndices(cloth,pilotFit,coupledFit),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives),cacheKey:null,floors:[]};group.add(mesh);
+    wings[name]={mesh,...cloth,pilotFit,coupledFit,controlFit:controlFitWeights(primitives,cloth),...attachmentIndices(cloth,pilotFit,coupledFit),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives),cacheKey:null,floors:[]};group.add(mesh);
   }
   const source=assets[config.motor_asset].primitives;
   const cage=mergePrimitives(source.filter(p=>p.materialName!=='propeller'),'opaque');
@@ -150,6 +161,7 @@ export function createFlightRig(assets,config){
   const blade=mergePrimitives(source.filter(p=>p.materialName==='propeller'),'opaque');
   const prop=new T.Mesh(blade.geometry,blade.material);motor.add(prop);
   let clock=0,last=-1,lastMode=null,elapsed=0;
+  const grips=[new T.Vector3(),new T.Vector3()];
   const point=new T.Vector3(),normal=new T.Vector3(),edgeA=new T.Vector3(),edgeB=new T.Vector3(),pilotPivot=new T.Vector3(),pilotPoint=new T.Vector3(),sagDirection=new T.Vector3(),pilotRotation=new T.Quaternion(),pilotEuler=new T.Euler();
   /** Optional presentation input: localAir is the shared air vector rotated
    * into rig axes (+Z forward); groundAt(x,z) returns local floor Y. Without
@@ -163,8 +175,16 @@ export function createFlightRig(assets,config){
   function update(dt,state,presentation={}){
     const harnessed=presentation.harnessed??state.harnessed??true;
     const pilotScale=presentation.pilotScale??1,anchor=presentation.pilotAttachment??[0,0,0];
+    const gripActive=!(presentation.grounded??state.grounded)&&!state.collapsed&&!state.launching&&harnessed;
     const pilotTransform=!state.grounded&&!state.collapsed?presentation.pilotTransform:null;
     pilotPivot.fromArray(anchor);
+    for(let k=0;k<2;k++){
+      const side=k===0?1:-1,g=grips[k].fromArray(gripActive?controlGrip(state,side):[side*SOURCE_GRIP[0],SOURCE_GRIP[1],SOURCE_GRIP[2]]);
+      g.sub(pilotPivot).multiplyScalar(pilotScale).add(pilotPivot);
+      if(pilotTransform)g.applyMatrix4(pilotTransform);
+      else if(!state.grounded&&!state.collapsed)g.sub(pilotPivot).applyEuler(pilotEuler.set(-(state.pilotPitch??0),0,state.pilotRoll??0,'XYZ')).add(pilotPivot);
+      const offset=presentation.pilotOffset??[0,0,0];g.x+=offset[0];g.y+=offset[1];g.z+=offset[2];
+    }
     pilotRotation.setFromEuler(pilotEuler.set(state.grounded||state.collapsed?0:-(state.pilotPitch??0),0,state.grounded||state.collapsed?0:(state.pilotRoll??0),'XYZ'));
     motor.scale.setScalar(pilotScale);
     motor.position.set(anchor[0]*(1-pilotScale),anchor[1]+(.95-anchor[1])*pilotScale,anchor[2]+(-.7-anchor[2])*pilotScale);
@@ -224,8 +244,10 @@ export function createFlightRig(assets,config){
         deform(p.x,p.y,p.z,config.modes[name],state,w.inflation,clock,point);
         point.toArray(deformed,i*3);
       }else point.fromArray(deformed,i*3);
+      const control=gripActive?w.controlFit[i]:0;
+      if(control){const side=p.x>=0?1:-1,g=controlGrip(state,side);point.x+=(g[0]-side*SOURCE_GRIP[0])*control;point.y+=(g[1]-SOURCE_GRIP[1])*control;point.z+=(g[2]-SOURCE_GRIP[2])*control;}
       const fit=(pilotScale-1)*w.pilotFit[i];
-      point.x+=(p.x-anchor[0])*fit;point.y+=(p.y-anchor[1])*fit;point.z+=(p.z-anchor[2])*fit;
+      point.x+=(point.x-anchor[0])*fit;point.y+=(point.y-anchor[1])*fit;point.z+=(point.z-anchor[2])*fit;
       // The pilot, straps and motor rotate about one hip attachment. Lower
       // risers blend back to the unchanged upper suspension endpoints.
       if(pilotTransform){
@@ -278,5 +300,5 @@ export function createFlightRig(assets,config){
       queueUpdate(positions,start,count);queueUpdate(normals,start,count);
     }
   }
-  return {group,wings,motor,prop,update,dispose(){group.traverse(m=>{if(m.isMesh){m.geometry.dispose();m.material.dispose();}});}};
+  return {group,wings,motor,prop,update,getGripWorld(side,out=new T.Vector3()){group.updateWorldMatrix(true,false);return out.copy(grips[side>0?0:1]).applyMatrix4(group.matrixWorld);},dispose(){group.traverse(m=>{if(m.isMesh){m.geometry.dispose();m.material.dispose();}});}};
 }

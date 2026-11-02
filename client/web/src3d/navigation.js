@@ -22,6 +22,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
   const keys=new Set(),blockedActions=new Set(),look=new T.Euler(0,0,0,'YXZ');
   const height=(x,y)=>options.floorHeight?.(x,y)??ground.height(x,y)??0;
+  // Cosmetic moving queries share immutable thermal bases, not wind vectors.
+  // Simulation steps retain the ordinary uncached terrain/evaluator path.
+  const airAnchors=(config.thermals??[]).map(t=>t.xy_m);
+  const renderAir=fixedEnvironmentSampler({maxTerrainSamples:airAnchors.length,terrainAnchors:airAnchors});
   const forward=new T.Vector3(),side=new T.Vector3();
   const target=new T.Vector3(),framingSubject=new T.Vector3(),framingFoot=new T.Vector3();
   const framingHead=character.model?.getObjectByName('head'),framingFeet=['heel.L','heel.R'].map(name=>character.model?.getObjectByName(name)).filter(Boolean);
@@ -334,6 +338,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       character.object.quaternion.copy(rig.quaternion);
       if(!pose.grounded&&!pose.collapsed){character.object.rotateX(-(pose.pilotPitch??0));character.object.rotateZ(pose.pilotRoll??-pose.bank*.25);}
     }
+    if(!coupled)pilotMatrix.compose(character.object.position,character.object.quaternion,unitScale);
     character.object.visible=view==='chase';
     // A collapsed wing falls plainly; a long fall gives one compact rebound, then rests.
     const heavyLanding=characterConfig.landing?.heavy;
@@ -357,7 +362,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       follow(dt,(policy().distance+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
     }else{
       character.object.visible=false;
-      if(coupled)camera.position.copy(new T.Vector3(0,config.landing_clearance_m+.15,0).applyMatrix4(pilotMatrix));
+      if(coupled){const eye=options.firstPersonEye?.();camera.position.copy((eye?new T.Vector3(eye[0]*characterConfig.scale,.65+(eye[1]-.65)*characterConfig.scale,eye[2]*characterConfig.scale):new T.Vector3(0,config.landing_clearance_m+.15,0)).applyMatrix4(pilotMatrix));}
       else camera.position.set(pose.x,pose.z+.15,-pose.y);
       look.set(pitch+pose.pitch*.2,pose.heading-Math.PI/2+yaw,-pose.bank*.08*effects);camera.quaternion.setFromEuler(look);snap=false;
     }
@@ -372,6 +377,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     const lineSagDirection=coupled?new T.Vector3(0,-1,0).transformDirection(new T.Matrix4().copy(flightMatrix).invert()).toArray():undefined;
     rig.userData.flightUpdate?.(dt,{...pose,harnessed:true},{pilotScale:characterConfig.scale,pilotAttachment:attachment?.position_m,pilotOffset,pilotTransform:coupled?pilotTransform:undefined,lineSagDirection});
+    options.firstPersonBody?.({active:!pose.grounded&&!pose.collapsed&&!pose.launching,view,pilotMatrix,pilotScale:characterConfig.scale,state:pose});
   }
   /** Steer, pedal or pole, brake, tuck and hop; a chase camera, or first person on V / Y. */
   function updateRide(dt,pad,x,y){
@@ -402,5 +408,5 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function fixedEnvironmentSampler(options){
     return createFixedAirSampler((x,y,z,terrain)=>sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,terrain),height,options);
   }
-  return {constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,height);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

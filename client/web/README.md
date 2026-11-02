@@ -1,3 +1,23 @@
+# Procedural para first-person body — 2026-11-02
+
+V switches to close paws, sleeves and seated legs in all three airborne para
+modes. The hands and lower brake lines share moving grips; looking down reveals
+feline feet. The supported eye/body fit follows the actual pilot hip, including
+half size. Shapes/materials derive from a shared Cat Ronin anatomy/appearance
+recipe, prewarmed behind readiness and reused across views. The model receives
+ordinary scene lighting and depth occlusion. Accepted sound and scenic/cloud
+quality are retained. [Source, preview and limits](../../docs/reviews/para-body-2026-11-02.md).
+This is a first pass; human acceptance and richer close-apparatus detail remain open.
+
+# Exact wind-query reuse — 2026-11-02
+
+Cosmetic moving air samples reuse the three immutable thermal-base heights while
+retaining current time/weather and moving-position terrain. The paired ecology
+trial saves about 0.4 ms median; this is not a whole-frame FPS claim. Clouds,
+lighting, sound, geometry and render settings are retained. The human accepts
+sound for early passes and requires performance work to preserve the primary
+scenic experience. [Evidence and rejected alternatives](../../docs/reviews/para-performance-2026-11-02.md).
+
 # Player camera tracking — 12 m window, 2026-11-02
 
 Ground follow holds correction for the first **2 m** of actual travel, then
