@@ -5,8 +5,6 @@ village built into redwood trunks, meadows, and a ring of mountains. Walk it,
 fly it (paraglider, parakite, paramotor), ski the cirque or ride the graded
 trails.
 
-**Live:** <https://tumbler.catronin.com>
-
 ## Run it locally
 
 There is no build step and nothing to install. From the repository root:
