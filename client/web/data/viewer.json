@@ -87,7 +87,7 @@
     },
     {
       "path": "client/web/src3d/first-person-flight.js",
-      "sha256": "9cac7b0dcb608d27bd91ec58a1e9f47948d4c9b074e77dc817ccb7aadba5cc89"
+      "sha256": "d67fdfae82297230a6ff337476b2dc07ed5d4e8e668124570c05bf9240d25e2f"
     },
     {
       "path": "client/web/src3d/fixed-air.js",
@@ -475,7 +475,7 @@
     },
     {
       "path": "shared/geometry/first-person/recipe.js",
-      "sha256": "dee82d6cf4e841fec33afaee32996312e4db8bc6a5f419025900b8ac46cfc3c2"
+      "sha256": "72527805a0611444524f5296f740db9f9eac7bf48df901143a9cd2320d5730fa"
     },
     {
       "path": "shared/geometry/flight/bee.glb",
@@ -491,11 +491,11 @@
     },
     {
       "path": "shared/geometry/flight/parafoil.meshopt.glb",
-      "sha256": "c3f39f9720b2282080d5dd15d51106ae0f33068f843c55e9aaa83e25d56bd9e7"
+      "sha256": "786c51fadece05924bdd169696cb5938b1470c8f4e6f28183ef21bd7265a6002"
     },
     {
       "path": "shared/geometry/flight/parakite.meshopt.glb",
-      "sha256": "8229d1b5143c8aa0653895b710476fd631e2b5b6f9370032434d71ea7fe4dd74"
+      "sha256": "71fee5150dc4bc7a349106482b8beb4c55b83987cb4a164328335cd96f9d5c3b"
     },
     {
       "path": "shared/geometry/flight/paramotor.meshopt.glb",
@@ -865,7 +865,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "cc8d7ac",
+  "commit": "44273a5",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

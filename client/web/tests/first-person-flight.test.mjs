@@ -46,3 +46,18 @@ test('a failed shader preparation releases the unattached model and preserves fa
  const body=createFirstPersonFlight(config,{compile:async()=>{throw Error('compile fixture');}});
  await assert.rejects(body.request(design()),/compile fixture/);assert.equal(body.group.children.length,0);assert.equal(body.stats.builds,0);assert.equal(body.stats.status,'failed');body.dispose();
 });
+
+test('garment profile has finite unit normals and each paw shares a grip-relative coat frame',()=>{
+ const recipe=generateFirstPerson(design()),g=recipe.geometries.knit;
+ for(let i=0;i<g.normals.length;i+=3)assert.ok(Math.abs(Math.hypot(...g.normals.slice(i,i+3))-1)<1e-9);
+ assert.ok(g.positions.every(Number.isFinite));assert.ok(g.indices.every(i=>i<g.positions.length/3));
+ for(const pull of [0,.45,1]){
+  const s={mode:'parakite',handleLeft:pull,handleRight:1-pull},grips=[controlGrip(s,1),controlGrip(s,-1)],pose=firstPersonPose(recipe,s,grips);
+  for(const [i,side]of ['left','right'].entries()){
+   const sleeve=pose.parts.find(p=>p.id===side+'_sleeve').surface,ring=sleeve.positions.slice(6*13*3,6*13*3+12*3),centre=[0,1,2].map(k=>ring.filter((v,i)=>i%3===k).reduce((a,b)=>a+b,0)/12);
+   assert.ok(gap(centre,pose.joints[i].elbow)<1e-9,'the continuous garment passes through the solved elbow');
+   const paw=pose.parts.filter(p=>p.material==='coat'&&p.id.startsWith(side)&&!/_foot|_toe/.test(p.id));
+   assert.ok(paw.length>10);for(const part of paw)assert.deepEqual(part.patternOrigin,grips[i]);
+  }
+ }
+});

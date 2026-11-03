@@ -149,19 +149,19 @@
       "packed": "flight/parafoil.meshopt.glb",
       "mode": "float",
       "worst_mm": 0.343,
-      "source_bytes": 1032600,
-      "source_sha256": "f797b9a471ed94253d22d3fddaf8385fcf8f8bfad889188f7056f2590d8678c6",
-      "bytes": 168004,
-      "sha256": "c3f39f9720b2282080d5dd15d51106ae0f33068f843c55e9aaa83e25d56bd9e7"
+      "source_bytes": 1127384,
+      "source_sha256": "1514dc139c5a07b5034a09240015b35cbc83969ce21fd7538fb8445156a3b38f",
+      "bytes": 178372,
+      "sha256": "786c51fadece05924bdd169696cb5938b1470c8f4e6f28183ef21bd7265a6002"
     },
     "flight/parakite.glb": {
       "packed": "flight/parakite.meshopt.glb",
       "mode": "float",
       "worst_mm": 0.328,
-      "source_bytes": 849728,
-      "source_sha256": "86a645a6b4f9c5678adcfc399fd68cc40ef4108c753699d185cf047a8212e4ee",
-      "bytes": 139144,
-      "sha256": "8229d1b5143c8aa0653895b710476fd631e2b5b6f9370032434d71ea7fe4dd74"
+      "source_bytes": 1025164,
+      "source_sha256": "611b797505824f943074196a64a34e955023599271196e9489b143ca4c0e3aa1",
+      "bytes": 158236,
+      "sha256": "71fee5150dc4bc7a349106482b8beb4c55b83987cb4a164328335cd96f9d5c3b"
     },
     "flight/paramotor.glb": {
       "packed": "flight/paramotor.meshopt.glb",
