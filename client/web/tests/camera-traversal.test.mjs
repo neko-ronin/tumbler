@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cameraFixture,read,world,player,policy,spacing,viewYaw,angle} from './helpers/camera-fixture.mjs';
 import {forestSpacing} from '../../../shared/activities/forest-spacing.js';
-import {cameraProfile} from '../../../shared/activities/camera.js';
+import {cameraProfile,cameraMovementProfile} from '../../../shared/activities/camera.js';
 import {HeightGrid,GroundSampler} from '../src3d/heights.js';
 import {createGeologySampler,applyGeologyTerrain} from '../../../shared/geometry/granite/surface.js';
 import {createRiverGranite} from '../../../shared/activities/river-surface.js';
@@ -57,28 +57,32 @@ test('a short backstep shows the face without starting automatic ground recenter
  assert.ok(turn<.08,`short backstep rotates view by ${turn} rad`);
 });
 
-test('ground correction completes at 12 metres, independently of speed and refresh rate',()=>{
+test('ground travel target completes at 12 metres and the damped view settles at every refresh rate',()=>{
  const profile=cameraProfile(policy,'walk',[0,0,0],spacing.meanNearestM),budget=profile.follow_distance_m;
  assert.equal(budget,12);
  for(const speed of [1.6,3.5,9])for(const hz of [30,60,144]){
-  const director=createFollowCamera();let yaw=0,pitch=-.24,distance=0,atQuarter=null;
+  const director=createFollowCamera();let yaw=0,pitch=-.24,distance=0,atQuarter=null,result;
   while(distance<budget){
    const step=Math.min(speed/hz,budget-distance);distance+=step;
-   ({yaw,pitch}=director.step(step/speed,yaw,pitch,Math.PI,true,profile,false,false,step));
+   result=director.step(step/speed,yaw,pitch,Math.PI,true,profile,false,false,step);({yaw,pitch}=result);
    if(atQuarter===null&&distance>=budget*.25)atQuarter=yaw;
   }
-  assert.ok(Math.abs(angle(yaw,Math.PI))<1e-9,`${speed} m/s, ${hz} Hz: not corrected by ${budget} m`);
+  assert.ok(Math.abs(result.distanceEase-1)<1e-10,`${speed} m/s, ${hz} Hz: travel target incomplete`);
+  for(let i=0;i<hz*2;i++)({yaw,pitch}=director.step(1/hz,yaw,pitch,Math.PI,false,profile));
+  assert.ok(Math.abs(angle(yaw,Math.PI))<.001);
   assert.ok(atQuarter<.15,'the first quarter of the distance still exposes his face');
  }
 });
 
-test('the displayed ground camera also finishes within the distance budget, with no trailing time smoother',t=>{
+test('the displayed ground camera eases into its completed travel target',t=>{
  const f=cameraFixture(t);f.start();f.pad.axes[1]=1;
  let distance=0;
  while(distance<12){
   const old={...f.nav.state};f.nav.update(1/60);distance+=Math.hypot(f.nav.state.x-old.x,f.nav.state.y-old.y);
  }
- assert.ok(Math.abs(angle(viewYaw(f.camera),f.nav.state.heading-Math.PI/2))<1e-8);
+ f.pad.axes.fill(0);
+ for(let i=0;i<120;i++)f.nav.update(1/60);
+ assert.ok(Math.abs(angle(viewYaw(f.camera),f.nav.state.heading-Math.PI/2))<.001);
 });
 
 test('forest spacing measures nearest neighbours exactly, excluding non-forest placements',()=>{
@@ -125,22 +129,27 @@ test('pauses do not spend or discard the distance budget, and blocked movement c
   ({yaw,pitch}=d.step(.1,yaw,pitch,Math.PI,true,p,false,false,p.follow_distance_m/10));
   for(let i=0;i<15;i++)({yaw,pitch}=d.step(1/30,yaw,pitch,Math.PI,false,p));
  }
- assert.ok(Math.abs(angle(yaw,Math.PI))<1e-9);
+ for(let i=0;i<60;i++)({yaw,pitch}=d.step(1/30,yaw,pitch,Math.PI,false,p));
+ assert.ok(Math.abs(angle(yaw,Math.PI))<.001);
 });
 
-test('running during the introduction still completes displayed follow by the distance deadline',t=>{
+test('running during the introduction settles smoothly after the travel window',t=>{
  const f=cameraFixture(t);f.start(0,0,Math.PI/2,0);f.pad.axes[1]=1;f.pad.buttons[10].pressed=true;
  let distance=0;
  while(distance<12){const old={...f.nav.state};f.nav.update(1/60);distance+=Math.hypot(f.nav.state.x-old.x,f.nav.state.y-old.y);}
- assert.ok(Math.abs(angle(viewYaw(f.camera),f.nav.state.heading-Math.PI/2))<1e-8);
+ f.pad.axes.fill(0);
+ for(let i=0;i<120;i++)f.nav.update(1/60);
+ assert.ok(Math.abs(angle(viewYaw(f.camera),f.nav.state.heading-Math.PI/2))<.001);
 });
 
-test('heading and pitch stay fixed through the first 2 m, then ease to full correction at 12 m',()=>{
+test('heading and pitch stay fixed for 2 m and ease smoothly toward the completed 12 m target',()=>{
  const p=cameraProfile(policy,'walk',[0,0,0]),d=createFollowCamera();let yaw=0,pitch=.3;
  for(let i=0;i<20;i++)({yaw,pitch}=d.step(.1,yaw,pitch,Math.PI,true,p,false,false,.1));
  assert.ok(Math.abs(yaw)<1e-12);assert.ok(Math.abs(pitch-.3)<1e-12);
  ({yaw,pitch}=d.step(.1,yaw,pitch,Math.PI,true,p,false,false,.1));assert.ok(yaw>0&&yaw<.001);
- ({yaw,pitch}=d.step(1,yaw,pitch,Math.PI,true,p,false,false,9.9));assert.ok(Math.abs(angle(yaw,Math.PI))<1e-9);assert.ok(Math.abs(pitch-p.pitch)<1e-12);
+ const completed=d.step(1,yaw,pitch,Math.PI,true,p,false,false,9.9);({yaw,pitch}=completed);assert.equal(completed.distanceEase,1);
+ for(let i=0;i<120;i++)({yaw,pitch}=d.step(1/60,yaw,pitch,Math.PI,false,p));
+ assert.ok(Math.abs(angle(yaw,Math.PI))<.001);assert.ok(Math.abs(pitch-p.pitch)<.001);
 });
 
 test('follow range uses the same held-and-eased travel window as heading',()=>{
@@ -167,7 +176,7 @@ test('displayed follow range holds its anchor initially and fully returns at the
   if(earlyRange===null&&traveled>=1.9)earlyRange=f.camera.position.distanceTo(focus);
  }
  const focus=new T.Vector3(f.nav.state.x,f.nav.state.z+1.1,-f.nav.state.y);f.camera.updateMatrixWorld();
- assert.ok(earlyRange>7,'range correction waits while the first two metres open a gap');
+ assert.ok(earlyRange>=6.9&&earlyRange<=7+1e-9,'initial range lag opens a bounded gap');
  assert.ok(Math.abs(f.camera.position.distanceTo(focus)-policy.profiles.walk.distance)<1e-8);
  assert.ok(Math.abs(focus.project(f.camera).y+.5)<1e-8,'tracked body anchor stays three quarters down the screen');
 });
@@ -177,4 +186,95 @@ test('lower framing shifts an already off-centre body halfway toward the bottom'
  composeFollowView(camera,aim,0,body);camera.updateMatrixWorld();const before=(1-body.clone().project(camera).y)/2;
  composeFollowView(camera,aim,.5,body);camera.updateMatrixWorld();const after=(1-body.clone().project(camera).y)/2;
  assert.ok(Math.abs(after-(before+1)/2)<1e-10);
+});
+
+test('tree traversal centres the body while ground traversal keeps its lower composition',t=>{
+ const trunk={x:0,y:0,base_z:0,top_z:50,profile:[[0,2],[50,1]]},box={min:[-2,-2,0],max:[2,2,50],kind:'tree',trunk};
+ const f=cameraFixture(t,{hitTest:createCollisionIndex([box])});f.start(2.5,0);
+ Object.assign(f.nav.state,attachClimb({...f.nav.state,z:8},box,player.walk));
+ for(let i=0;i<120;i++)f.nav.update(1/60);
+ f.camera.updateMatrixWorld();
+ const body=new T.Vector3(f.nav.state.x,f.nav.state.z+1.1,-f.nav.state.y).project(f.camera);
+ assert.ok(Math.abs(body.y)<.02,`climbing body NDC y=${body.y}`);
+ for(const mode of ['climb','branch','tree-jump'])assert.equal(policy.profiles[mode].screen_lower_fraction,0);
+ assert.equal(policy.profiles.walk.screen_lower_fraction,.5);
+});
+
+test('running corrects a side view sooner in time than walking, using actual movement speed',t=>{
+ const f=cameraFixture(t);const measure=run=>{
+  f.pad.axes.fill(0);f.pad.buttons[10].pressed=false;f.start();f.pad.axes[0]=1;f.pad.buttons[10].pressed=run;
+  for(let frame=0;frame<120*1.8;frame++)f.nav.update(1/120);
+  return Math.abs(angle(viewYaw(f.camera),f.nav.state.heading-Math.PI/2));
+ };
+ const walk=measure(false),run=measure(true);
+ console.log(JSON.stringify({scenario:'speed-adaptive',walkError:walk,runError:run}));
+ assert.ok(run<.15,`running still trails by ${run} radians after 1.8 s`);
+ assert.ok(walk>run+.4,'walking retains its gentler correction');
+});
+
+
+test('speed changes keep correction monotone and running reversals respect the turn limit',()=>{
+ for(const hz of [30,60,144]){
+  const d=createFollowCamera();let yaw=0,pitch=.2,previousEase=0;
+  for(let frame=0;frame<hz*4;frame++){
+   const speed=frame<hz*.7?9:frame<hz*1.3?3.5:9;
+   const p=cameraMovementProfile(cameraProfile(policy,'walk',[0,0,0]),speed,player.walk);
+   const before=yaw,result=d.step(1/hz,yaw,pitch,Math.PI,true,p,false,false,speed/hz);
+   yaw=result.yaw;pitch=result.pitch;
+   assert.ok(result.distanceEase>=previousEase-1e-12,'slowing down never rewinds easing');
+   assert.ok(Math.abs(angle(yaw,before))<=p.max_turn_rad_s/hz+1e-12,'no fast reversal whip');
+   previousEase=result.distanceEase;
+  }
+  assert.ok(Math.abs(angle(yaw,Math.PI))<.002);
+ }
+ const p=cameraProfile(policy,'walk',[0,0,0]);
+ assert.equal(cameraMovementProfile(p,0,player.walk).follow_distance_m,12);
+ assert.equal(cameraMovementProfile(p,3.5,player.walk).follow_distance_m,12);
+ assert.equal(cameraMovementProfile(p,9,player.walk).follow_distance_m,7.5);
+});
+
+test('range lag remains bounded and tree composition centres an animated body independently of boom lift',()=>{
+ const r=createFollowRange();
+ assert.equal(r.update({x:0,y:0,z:5.4},{x:0,y:0,z:-10},5.4,.2,true,4.6,7),7);
+ for(const aspect of [16/9,1,9/16]){
+  const camera=new T.PerspectiveCamera(62,aspect,.15,100),aim=new T.Vector3(0,2,0),body=new T.Vector3(.1,1.05,.1);
+  camera.position.set(0,4,7);composeFollowView(camera,aim,0,body,1);camera.updateMatrixWorld();
+  const screen=body.clone().project(camera);
+  assert.ok(Math.abs(screen.x)<1e-10&&Math.abs(screen.y)<1e-10);
+ }
+});
+
+test('ground follow spreads acceleration across running starts and reversals',()=>{
+ for(const hz of [30,60,144])for(const heading of [Math.PI/2,Math.PI]){
+  const d=createFollowCamera();let yaw=0,pitch=-.24,previousVelocity=0,peakAcceleration=0,peakVelocity=0;
+  for(let frame=0;frame<hz*3;frame++){
+   const speed=Math.min(9,16*frame/hz),p=cameraMovementProfile(cameraProfile(policy,'walk',[0,0,0]),speed,player.walk);
+   const next=d.step(1/hz,yaw,pitch,heading,true,p,false,false,speed/hz);
+   const velocity=angle(next.yaw,yaw)*hz;
+   peakAcceleration=Math.max(peakAcceleration,Math.abs(velocity-previousVelocity)*hz);
+   peakVelocity=Math.max(peakVelocity,Math.abs(velocity));
+   previousVelocity=velocity;yaw=next.yaw;pitch=next.pitch;
+  }
+  console.log(JSON.stringify({scenario:'follow-acceleration',hz,heading,peakVelocity,peakAcceleration}));
+  assert.ok(peakAcceleration<14,`harsh angular acceleration: ${peakAcceleration} rad/s²`);
+  assert.ok(peakVelocity<3.6,`harsh turn speed: ${peakVelocity} rad/s`);
+  assert.ok(Math.abs(angle(yaw,heading))<.02,'still settles behind a sustained run');
+ }
+});
+
+test('automatic direction changes, stops and run-to-walk transitions retain a smooth response',()=>{
+ for(const hz of [30,60,144]){
+  const d=createFollowCamera();let yaw=0,pitch=-.24,previousVelocity=0,peakAcceleration=0;
+  for(let i=0;i<hz*5;i++){
+   const time=i/hz,speed=time<.9?9:time<1.3?3.5:time<1.7?0:9;
+   const heading=time<.8?Math.PI/2:time<2.4?-Math.PI/2:0;
+   const p=cameraMovementProfile(cameraProfile(policy,'walk',[0,0,0]),speed,player.walk);
+   const next=d.step(1/hz,yaw,pitch,heading,speed>0,p,false,false,speed/hz);
+   const velocity=angle(next.yaw,yaw)*hz;
+   peakAcceleration=Math.max(peakAcceleration,Math.abs(velocity-previousVelocity)*hz);
+   previousVelocity=velocity;yaw=next.yaw;pitch=next.pitch;
+  }
+  assert.ok(peakAcceleration<14,`direction/speed change acceleration ${peakAcceleration} at ${hz} Hz`);
+  assert.ok(Math.abs(yaw)<.02,'sustained final direction still settles');
+ }
 });

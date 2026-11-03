@@ -1,18 +1,39 @@
 /** Browser camera dynamics. Authored taste lives in shared camera.json. */
 const angle=v=>Math.atan2(Math.sin(v),Math.cos(v));
+/** Exact critically damped response for a fixed goal over this frame. The stored
+ * velocity carries across automatic direction/speed changes; manual look owns
+ * the view immediately. A zero response preserves legacy distance policies. */
+function damp(value,velocity,goal,dt,response){
+ if(!(response>0))return [goal,0];
+ const w=2/response,change=value-goal,pull=(velocity+w*change)*dt,decay=Math.exp(-w*dt);
+ return [goal+(change+pull)*decay,(velocity-w*pull)*decay];
+}
 export function createFollowCamera(){
- let quiet=Infinity,commitment=0,direction=null,previousHeading=null,traveled=0,startYaw=null,startPitch=0,distanceMode=null;
- const restart=()=>{commitment=0;direction=null;traveled=0;startYaw=null;};
+ let quiet=Infinity,commitment=0,direction=null,previousHeading=null,holdProgress=0,progress=0,startYaw=null,startPitch=0,distanceMode=null;
+ let yawVelocity=0,pitchVelocity=0,goalYaw=null,goalPitch=0,lastEase=0;
+ const forgetResponse=()=>{yawVelocity=0;pitchVelocity=0;goalYaw=null;};
+ const restart=()=>{commitment=0;direction=null;holdProgress=0;progress=0;startYaw=null;};
+ const present=(dt,yaw,pitch,profile,start=false)=>{
+  const [nextYaw,nextVelocity]=damp(yaw,yawVelocity,yaw+angle(goalYaw-yaw),dt,profile.follow_response_s);
+  const limit=Number.isFinite(profile.max_turn_rad_s)?profile.max_turn_rad_s*dt:Infinity;
+  const turn=Math.max(-limit,Math.min(limit,nextYaw-yaw));
+  yawVelocity=Math.abs(nextYaw-yaw)>limit?(dt>0?turn/dt:0):nextVelocity;
+  [pitch,pitchVelocity]=damp(pitch,pitchVelocity,goalPitch,dt,profile.follow_response_s);
+  return {yaw:yaw+turn,pitch,distanceFollow:true,distanceEase:lastEase,distanceStart:start};
+ };
  return {
-  manual(){quiet=0;restart();},
-  reset(){quiet=Infinity;previousHeading=null;restart();},
+  manual(){quiet=0;restart();forgetResponse();},
+  reset(){quiet=Infinity;previousHeading=null;restart();forgetResponse();},
   step(dt,yaw,pitch,heading,moving,profile,held=false,transport=false,distanceM=0){
    const nextDistanceMode=profile.follow_distance_m>0;
-   if(nextDistanceMode!==distanceMode){restart();distanceMode=nextDistanceMode;}
+   if(nextDistanceMode!==distanceMode){restart();forgetResponse();distanceMode=nextDistanceMode;}
    const travelTurn=previousHeading===null?0:angle(heading-previousHeading);previousHeading=heading;
    dt=Math.max(0,dt);quiet=held?0:quiet+dt;
-   if(held){restart();return {yaw,pitch};}
-   if(!moving){if(!(profile.follow_distance_m>0))restart();return {yaw,pitch};}
+   if(held){restart();forgetResponse();return {yaw,pitch};}
+   if(!moving){
+    if(!nextDistanceMode)restart();
+    return nextDistanceMode&&goalYaw!==null&&profile.follow_response_s>0?present(dt,yaw,pitch,profile):{yaw,pitch};
+   }
    // Commitment is to a travel direction, not to holding any movement key.
    // Reversing or wandering restarts the gentle ground-camera ramp.
    if(direction===null||(((profile.follow_hold_s??0)>0||profile.follow_distance_m>0)&&Math.abs(angle(heading-direction))>.35)){restart();direction=heading;}
@@ -20,13 +41,22 @@ export function createFollowCamera(){
    if(quiet<profile.return_delay_s||!profile.follow_rate)return {yaw,pitch};
    if(profile.follow_distance_m>0){
     const start=startYaw===null;
-    if(start){startYaw=yaw;startPitch=pitch;}
-    traveled+=Math.max(0,distanceM);
+    if(start){startYaw=goalYaw??yaw;startPitch=goalYaw===null?pitch:goalPitch;}
     const hold=Math.min(profile.follow_distance_m*.95,profile.follow_hold_m>0?profile.follow_hold_m:profile.follow_distance_m*(profile.follow_hold_fraction??0));
-    const u=Math.max(0,Math.min(1,(traveled-hold)/(profile.follow_distance_m-hold)));
-    // C3-continuous easing: velocity, acceleration and jerk vanish at both ends.
-    const ease=u*u*u*u*(35+u*(-84+u*(70-20*u)));
-    return {yaw:startYaw+angle(heading-startYaw)*ease,pitch:startPitch+(profile.pitch-startPitch)*ease,distanceFollow:true,distanceEase:ease,distanceStart:start};
+    // Integrate progress rather than dividing all past travel by a changing
+    // speed-dependent window. Accelerating cannot jump the view, and slowing
+    // down cannot unwind correction or reopen the trailing gap.
+    let remaining=Math.max(0,distanceM);
+    if(hold>0&&holdProgress<1){const used=Math.min(remaining,(1-holdProgress)*hold);holdProgress+=used/hold;remaining-=used;}
+    else holdProgress=1;
+    progress=Math.min(1,progress+remaining/(profile.follow_distance_m-hold));
+    const u=progress;
+    // Quintic easing spreads acceleration over a broader part of the window
+    // than the old seventh-degree curve, with zero end velocity/acceleration.
+    lastEase=u*u*u*(10+u*(-15+6*u));
+    goalYaw=startYaw+angle(heading-startYaw)*lastEase;
+    goalPitch=startPitch+(profile.pitch-startPitch)*lastEase;
+    return present(dt,yaw,pitch,profile,start);
    }
    // On a trunk, carry the chosen orbit with its changing surface normal.
    // This removes turn-rate-dependent lag on narrow trunks while the tight
@@ -96,11 +126,16 @@ export function createFollowRange(){
  let anchor=null,current=null;
  return {
   reset(){anchor=null;current=null;},
-  update(eye,focus,wanted,ease,start=false,minimum=0){
+  update(eye,focus,wanted,ease,start=false,minimum=0,maximum=Infinity){
    if(start||anchor===null)anchor={x:eye.x,y:eye.y,z:eye.z};
    if(ease!==undefined){
     const lag=Math.hypot(anchor.x-focus.x,anchor.y-focus.y,anchor.z-focus.z);
-    current=Math.max(minimum,lag+(wanted-lag)*ease);
+    current=lag+(wanted-lag)*ease;
+    // Round the soft far-range limit so opening a gap does not suddenly stop
+    // the boom's radial motion. The near-character bound remains a hard safety.
+    const width=Number.isFinite(maximum)?Math.max(0,Math.min(.75,(maximum-minimum)/2)):0;
+    if(width>0&&current>maximum-width&&current<maximum+width)current=maximum-(maximum+width-current)**2/(4*width);
+    current=Math.max(minimum,Math.min(maximum,current));
    }
    return current??wanted;
   }
@@ -109,8 +144,8 @@ export function createFollowRange(){
 /** Lower the subject by a fraction of its existing distance to the bottom.
  * Measure the animated body after the ordinary aim, preserving the jump aim's
  * natural movement in frame. Half means (old screen Y + bottom) / 2. */
-export function composeFollowView(camera,target,lowerFraction=0,subject=target){
- camera.lookAt(target);
+export function composeFollowView(camera,target,lowerFraction=0,subject=target,centerFraction=0){
+ camera.lookAt(centerFraction?target.clone().lerp(subject,centerFraction):target);
  if(!lowerFraction)return;
  const local=subject.clone().sub(camera.position).applyQuaternion(camera.quaternion.clone().invert());
  const before=Math.atan2(local.y,-local.z),tan=Math.tan(camera.fov*Math.PI/360);

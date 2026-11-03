@@ -3,7 +3,7 @@
  * invented here: areas are explicit human/level-design judgements. */
 export function cameraProfile(data,activity,position,forestSpacingM=0){
  if(data.version!==1)throw new Error(`Unsupported camera policy ${data.version}`);
- const result={follow_distance_m:0,follow_hold_m:0,screen_lower_fraction:0,follow_spacing_fraction:0,follow_hold_fraction:0,follow_hold_s:0,follow_ramp_s:0,max_turn_rad_s:3.5,...(data.profiles[activity]??data.profiles.walk)};
+ const result={follow_distance_m:0,follow_hold_m:0,follow_run_distance_m:0,follow_run_hold_m:0,follow_max_distance_m:0,follow_response_s:0,screen_lower_fraction:0,follow_spacing_fraction:0,follow_hold_fraction:0,follow_hold_s:0,follow_ramp_s:0,max_turn_rad_s:3.5,...(data.profiles[activity]??data.profiles.walk)};
  for(const area of data.areas){
   if(area.activities&&!area.activities.includes(activity))continue;
   const edge=Math.min(...position.flatMap((v,i)=>[v-area.min[i],area.max[i]-v]));
@@ -13,4 +13,14 @@ export function cameraProfile(data,activity,position,forestSpacingM=0){
  }
  if(result.follow_spacing_fraction>0)result.follow_distance_m=result.follow_spacing_fraction*Math.max(0,forestSpacingM);
  return result;
+}
+
+/** Speed selects authored ground follow intent; a held run button against a wall
+ * cannot tighten the view. Other activities and legacy profiles pass through. */
+export function cameraMovementProfile(profile,speed,walk){
+ if(!(profile.follow_run_distance_m>0)||!(walk.run_mps>walk.walk_mps))return profile;
+ const u=Math.max(0,Math.min(1,(speed-walk.walk_mps)/(walk.run_mps-walk.walk_mps))),blend=u*u*(3-2*u);
+ return {...profile,
+  follow_distance_m:profile.follow_distance_m+(profile.follow_run_distance_m-profile.follow_distance_m)*blend,
+  follow_hold_m:profile.follow_hold_m+(profile.follow_run_hold_m-profile.follow_hold_m)*blend};
 }

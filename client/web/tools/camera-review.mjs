@@ -1,6 +1,6 @@
 /** Diagnostic replay in the already loaded game. No extra scene, geometry loads or
  * rendering loop. Import in Playwright/DevTools, call runCameraReview(tumbler,
- * 'forest' | 'climb' | 'backstep'), then capture the next displayed frame.
+ * 'forest' | 'climb' | 'backstep' | 'run-turn'), then capture the next displayed frame.
  * It drives real keyboard events/core movement and measures the animated head.
  * This is a staged regression replay, not an uninterrupted human playthrough. */
 import * as T from '../vendor/three.module.min.js';
@@ -11,7 +11,7 @@ export async function runCameraReview(game,scenario='forest'){
  const {navigation:nav,camera,character}=game,canvas=game.renderer.domElement;
  const held=new Set(),key=(code,down)=>{canvas.dispatchEvent(new KeyboardEvent(down?'keydown':'keyup',{code,bubbles:true}));down?held.add(code):held.delete(code);};
  const heels=['heel.L','heel.R'].map(name=>character.model.getObjectByName(name)).filter(Boolean);
- const head=character.model.getObjectByName('head'),place=new T.Vector3(),screen=new T.Vector3(),direction=new T.Vector3();
+ const head=character.model.getObjectByName('head'),place=new T.Vector3(),screen=new T.Vector3(),direction=new T.Vector3(),body=new T.Vector3();
  const result={scenario,frames:0,minHeadDistance:Infinity,minFloorClearance:Infinity,maxHeadScreenExtent:0,maxFootScreenY:0,modes:[]};
  const modes=new Set();
  const sample=()=>{
@@ -41,7 +41,14 @@ export async function runCameraReview(game,scenario='forest'){
    start(x,y,Math.PI);Object.assign(nav.state,attachClimb({...nav.state,x,y,z},box,playerConfig.walk));
    key('KeyW',true);key('KeyD',true);tick(75);
    result.climbYawError=Math.abs(angle(yaw()-(nav.state.heading-Math.PI/2)));
+   head.getWorldPosition(body);for(const heel of heels)body.addScaledVector(heel.getWorldPosition(place),1/heels.length);body.multiplyScalar(.5);camera.updateMatrixWorld();result.finalBodyScreenY=(1-body.project(camera).y)/2;
+   if(Math.abs(result.finalBodyScreenY-.5)>.02)throw new Error(`Tree body is not centred: ${result.finalBodyScreenY}`);
    if(nav.state.mode!=='climb'||result.climbYawError>.3)throw new Error(`Climb camera loses the trunk: ${JSON.stringify(result)}`);
+  }else if(scenario==='run-turn'){
+   key('KeyD',true);key('ShiftLeft',true);let distance=0;
+   for(let i=0;i<54;i++){const {x,y}=nav.state;tick(1);distance+=Math.hypot(nav.state.x-x,nav.state.y-y);}
+   result.distanceM=distance;result.durationS=1.8;result.runningYawError=Math.abs(angle(yaw()-(nav.state.heading-Math.PI/2)));
+   if(distance<8||result.runningYawError>.15)throw new Error(`Running view trails: ${JSON.stringify(result)}`);
   }else if(scenario==='backstep'){
    const before=yaw();key('KeyS',true);tick(21);key('KeyS',false);result.briefTurnRad=Math.abs(angle(yaw()-before));
    if(result.briefTurnRad>.08)throw new Error(`Backstep recenters: ${result.briefTurnRad}`);

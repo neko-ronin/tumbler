@@ -1,3 +1,8 @@
+# Web client v0.5.5 — 2026-11-03
+
+Accepted speed-adaptive follow-camera polish, centered tree traversal and softer
+ground-camera acceleration. Previous character, scenery and flight work is retained.
+
 # Procedural para first-person body — 2026-11-02
 
 V switches to close paws, sleeves and seated legs in all three airborne para
@@ -18,14 +23,18 @@ lighting, sound, geometry and render settings are retained. The human accepts
 sound for early passes and requires performance work to preserve the primary
 scenic experience. [Evidence and rejected alternatives](../../docs/reviews/para-performance-2026-11-02.md).
 
-# Player camera tracking — 12 m window, 2026-11-02
+# Player camera tracking — speed-adaptive follow, 2026-11-03
 
-Ground follow holds correction for the first **2 m** of actual travel, then
-smoothly completes by **12 m total**. Heading, pitch and trailing distance use
-the same curve. Close-character/terrain clearance takes priority over distance
+Walking holds correction for the first **2 m** of actual travel and eases through
+**12 m total**. Actual speed progressively tightens this to **0.35 m / 7.5 m** at
+full run. A broader quintic curve and 0.38 s critically damped ground response soften
+acceleration and settling. Heading turns are capped at 3.4 rad/s, so a full running reversal can take
+longer. Heading, pitch and trailing distance share monotone travel progress;
+soft trailing range rounds into its 7 m cap. The travel window defines the
+follow target; the displayed view settles gently afterward. Close-character/terrain clearance takes priority over distance
 lag. The on-foot body moves **halfway from its existing screen position toward
-the bottom** (a centred body moves to 75% down). Climbing retains its tight following
-and leaf opening. Mouse/trackpad/arrows/right stick still override with a quiet
+the bottom** (a centred body moves to 75% down). Climb, branch and tree-jump ease the animated body to screen centre. Climbing
+retains its tight following and optional leaf opening. Mouse/trackpad/arrows/right stick still override with a quiet
 delay; first-person and flight framing retain their prior behavior.
 
 Scenery and climbing leaf/branch visibility openings now keep their clear centres
@@ -42,7 +51,9 @@ Quick regression loop (no GLB parsing or renderer):
 It covers real forest terrain, head distance, backsteps, reversals and climbing.
 [12 m easing and lower-framing review](../../docs/reviews/player-camera-framing-2026-11-02.md).
 [Revision, rendered replay commands and limits](../../docs/reviews/player-camera-revision-2026-11-01.md).
-Branch `codex/player-camera`; preview server: `python3.11 client/web/tools/serve.py --port 8074`.
+[November 3 polish and verification](../../docs/reviews/camera-polish-2026-11-03.md).
+Accepted follow-camera polish; preview server:
+`python3.11 client/web/tools/serve.py --port 8074`.
 
 # Seated nap — local candidate, 2026-11-01
 

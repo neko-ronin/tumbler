@@ -8,7 +8,7 @@ import {stepMoves} from '../../../shared/activities/moves.js';
 import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
 import {composeFollowView,createFollowRange,createCameraBoom,createFollowCamera,clearCameraTerrain,clearTerrainBoom,cameraTerrainRadius} from './follow-camera.js';
-import {cameraProfile} from '../../../shared/activities/camera.js';
+import {cameraProfile,cameraMovementProfile} from '../../../shared/activities/camera.js';
 const JUMP_FRAME_M=2,AIM_S=.5,SHOT_S=2.5;
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true,shot=null,preferredFlightMode='paraglider';
@@ -17,7 +17,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const director=createFollowCamera(),boom=createCameraBoom(),range=createFollowRange();
   let movementYaw=null,lastInput=[0,0],terrainLift=0;
   const fallback={version:1,profiles:{climb:{distance:6.9,lift:.6,pitch:-.24,follow_rate:8,return_delay_s:.9},branch:{distance:5.8,lift:.25,pitch:-.3,follow_rate:.65,return_delay_s:2.4,follow_hold_s:.9,follow_ramp_s:2.2,max_turn_rad_s:.55},'tree-jump':{distance:6.9,lift:.6,pitch:-.3,follow_rate:0,return_delay_s:2.4},walk:{distance:5.4,lift:0,pitch:-.24,follow_rate:1.1,return_delay_s:1.8},flight:{distance:12,lift:0,pitch:-.34,follow_rate:1.1,return_delay_s:1.8},ride:{distance:6.5,lift:0,pitch:0,follow_rate:1.1,return_delay_s:1.8}},areas:[]};
-  const policy=()=>cameraProfile(options.cameraPolicy??fallback,mode==='walk'?(state?.mode??'walk'):riding()?'ride':mode==='gondola'?'gondola':'flight',[state?.x??0,state?.y??0,state?.z??0],options.forestSpacingM??0);
+  const policy=()=>cameraMovementProfile(cameraProfile(options.cameraPolicy??fallback,mode==='walk'?(state?.mode??'walk'):riding()?'ride':mode==='gondola'?'gondola':'flight',[state?.x??0,state?.y??0,state?.z??0],options.forestSpacingM??0),mode==='walk'?(state?.speed??0):0,characterConfig.walk);
   const flightPressed=new Set(),flightModes=Object.keys(config.modes);
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
   const keys=new Set(),blockedActions=new Set(),look=new T.Euler(0,0,0,'YXZ');
@@ -32,7 +32,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
   const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
   let pilotMotion=options.pilotMotion??'steady';
-  let treeFraming=0,framedDistance=null,framedLift=0;
+  let treeFraming=0,framedDistance=null,framedLift=0,framedLower=null;
   let presentedGrounded=null,landingClipLeft=0,carried=null;
   function frameMatrix(frame,out){
     flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
@@ -40,7 +40,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
-  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
+  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   function key(e,down){
     // A control may receive focus between press and release. Always retire
     // the held key, while leaving form key presses to the form itself.
@@ -208,7 +208,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     else{const pull=(aimV-w*gap)*dt;aimV=(aimV-w*pull)*decay;aimY=target.y+(pull-gap)*decay;}
     // The jump spring must never leave the aim buried in an uphill floor.
     target.y=Math.max(aimY,height(target.x,-target.z)+.9*characterConfig.scale);
-    if(groundRange)distance=range.update(camera.position,target,distance,rangeEase,rangeStart,Math.min(distance,4.6*characterConfig.scale));
+    const profile=policy();
+    if(groundRange)distance=range.update(camera.position,target,distance,rangeEase,rangeStart,Math.min(distance,4.6*characterConfig.scale),profile.follow_max_distance_m>0?profile.follow_max_distance_m*characterConfig.scale:Infinity);
     const angle=heading-Math.PI/2+yaw;
     chase.set(target.x+Math.sin(angle)*Math.cos(pitch)*distance,target.y-Math.sin(pitch)*distance,target.z+Math.cos(angle)*Math.cos(pitch)*distance);
 
@@ -219,14 +220,16 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const requiredLift=camera.position.y-baseEyeY;
     terrainLift=snap?requiredLift:Math.max(requiredLift,terrainLift*Math.exp(-dt*3));
     camera.position.y=baseEyeY+terrainLift;
-    const lowerFraction=policy().screen_lower_fraction;
-    framingSubject.copy(target);
-    if(lowerFraction&&framingHead&&framingFeet.length){
+    const lowerGoal=profile.screen_lower_fraction;
+    framedLower=snap||framedLower===null?lowerGoal:framedLower+(lowerGoal-framedLower)*(1-Math.exp(-dt*5));
+    const lowerFraction=framedLower;
+    framingSubject.copy(character.object.position).addScaledVector(T.Object3D.DEFAULT_UP,1.1*characterConfig.scale);
+    if(mode==='walk'&&framingHead&&framingFeet.length){
       character.object.updateWorldMatrix(true,true);framingHead.getWorldPosition(framingSubject);
       for(const foot of framingFeet)framingSubject.addScaledVector(foot.getWorldPosition(framingFoot),1/framingFeet.length);
       framingSubject.multiplyScalar(.5);
     }
-    composeFollowView(camera,target,lowerFraction,framingSubject);snap=false;
+    composeFollowView(camera,target,lowerFraction,framingSubject,mode==='walk'?treeFraming:0);snap=false;
     if(shot){
       shot.raw.copy(camera.position);shot.aim.copy(camera.quaternion);shot.t+=dt;
       const u=Math.min(1,shot.t/SHOT_S),k=Math.max(introProgress,u*u*u*(u*(u*6-15)+10));  // smootherstep: no jolt at either end
