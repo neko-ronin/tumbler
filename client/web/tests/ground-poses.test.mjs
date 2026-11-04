@@ -132,18 +132,11 @@ test('climbing clips keep the front paws on the bark across trunk sizes, and the
  cat.update(1/60,'jump',0,{jump:{jumpPhase:'tumble',jumpProgress:.4,jumpStyle:'hop',jumpCount:1}});assert.equal(cat.clip,config.fall_clips.tumble);
  cat.dispose();
 });
-test('the triple jump somersaults forward about his middle, from just before the apex into the drop',()=>{
- const cat=createCharacter(asset(),config),jump=(jumpTier,jumpProgress)=>({jumpPhase:'airborne',jumpStyle:'flip',jumpCount:3,jumpTier,jumpProgress});
- const middle=()=>{cat.object.updateMatrixWorld(true);return new T.Vector3(0,.85,0).applyMatrix4(cat.model.matrix);};
- cat.update(1/60,'jump',0,{jump:jump(2,.635)});const upright=middle();
- cat.update(1/60,'jump',0,{jump:jump(3,.3)});assert.ok(Math.abs(cat.model.rotation.x)<.05,'still upright on the way up');
- cat.update(1/60,'jump',0,{jump:jump(3,.5)});
- assert.ok(cat.model.rotation.x>.05&&cat.model.rotation.x<Math.PI/2,`turning, not yet inverted, at the apex: ${cat.model.rotation.x.toFixed(2)} rad`);
- cat.update(1/60,'jump',0,{jump:jump(3,.635)});
- assert.ok(Math.abs(cat.model.rotation.x-Math.PI)<.05,`upside down early in the drop: ${cat.model.rotation.x.toFixed(2)} rad`);
- assert.ok(middle().distanceTo(upright)<.02,'the somersault turns about his middle, not his soles');
- cat.update(1/60,'jump',0,{jump:jump(3,.85)});assert.ok(Math.abs(cat.model.rotation.x-2*Math.PI)<.05,'upright again before touchdown');
- cat.update(1/60,'jump',0,{jump:jump(2,.635)});assert.ok(Math.abs(cat.model.rotation.x)<.05,'a double jump does not flip');
+test('impact attitude follows shared rotation and triple jumps do not invent a somersault',()=>{
+ const cat=createCharacter(asset(),config);
+ for(const phase of [.3,.5,.635,.85]){cat.update(1/60,'jump',0,{jump:{jumpPhase:'airborne',jumpStyle:'tuck',jumpTier:3,jumpCount:3,jumpProgress:phase}});assert.ok(Math.abs(cat.model.rotation.x)<.05);}
+ cat.update(1/60,'jump',5,{jump:{jumpPhase:'bounce',jumpProgress:.4,jumpCount:4,fallPitch:1.2,fallRoll:.25}});
+ assert.ok(Math.abs(cat.model.rotation.x-1.2)<.05);assert.ok(Math.abs(cat.model.rotation.z-.25)<.05);
  cat.dispose();
 });
 test('he stretches at launch, rounds out at the peak, squats on touchdown and keeps his volume',()=>{

@@ -1,3 +1,19 @@
+# Web client v0.5.6 — Ronin action improvements, 2026-11-03
+
+Click/Q/B now chooses a normal cut from the live blade pose; repeated presses
+redirect smoothly without the numbered combo or backflip. Hold RT/R to charge
+the separate cleave, then release. Attacks work in the air and preserve the
+jump trajectory. R3/Left Ctrl slides with momentum; V changes on-foot view.
+X/E deliberately grabs a tree; touching bark never attaches automatically.
+A/Space pushes off or wall-jumps from a fresh airborne trunk contact. New
+asymmetric slide/wall poses and eye/lid/ear expressions accompany the actions.
+Hard falls rebound and rotate from incoming momentum instead of a fixed tumble.
+
+[Interactive action studies](http://127.0.0.1:8076/client/web/animation-review/),
+[implementation, controls, checks and limits](../../docs/reviews/action-improvements-2026-11-03.md).
+Approved for main integration and publication. Physical-controller feel and
+human animation acceptance remain open.
+
 # Gondola meadow arrival — local candidate, 2026-11-03
 
 The Gondola Weave parakite guide now continues through Valley exit toward the

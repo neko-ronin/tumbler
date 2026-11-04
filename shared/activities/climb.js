@@ -15,9 +15,7 @@ export const climbRadiusAt=(trunk,z)=>trunkRadiusAt({profile:trunk.climb_profile
 const holdRadius=(trunk,z,c)=>climbRadiusAt(trunk,z)+c.hold_m;
 
 /** The climbable trunk within reach of the cat, or null: thick enough
- * (`min_radius_m`) at his height and below the climbable top. Reach is
- * measured to the collider box, since that is what stops him walking: at a
- * diagonal the square box keeps him further from the round bark.
+ * (`min_radius_m`) at his height and below the climbable top. Typed trunks use their round bark; legacy boxes use their bounds.
  */
 export function findTrunk(state,input,world,config){
   const c=config.climb,reach=config.radius_m+.15;let best=null,bestGap=Infinity;
@@ -39,7 +37,7 @@ export function findTrunk(state,input,world,config){
 
 export function attachClimb(state,box,config){
   const t=box.trunk,c=config.climb,angle=Math.atan2(state.y-t.y,state.x-t.x),z=Math.min(state.z,(t.climb_top_z??t.top_z)-c.top_clearance_m);
-  const s={...state,mode:'climb',trunk:t,trunkBox:box,angle,z,climbPhase:'mount',climbTime:0,climbPush:0,
+  const s={...state,sliding:false,mode:'climb',trunk:t,trunkBox:box,angle,z,climbPhase:'mount',climbTime:0,climbPush:0,
     grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vx:0,vy:0,vz:0,speed:0,mountFrom:[state.x,state.y]};
   return mount(s,c);
 }
@@ -79,11 +77,9 @@ export function stepClimb(state,input,dt,config,world){
   const c=config.climb,s={...state},edge=!!input.jump&&!s.jumpHeld;s.jumpHeld=!!input.jump;
   if(!(dt>0))return s;
   s.climbTime+=dt;
-  if(s.climbPhase==='mount'){if(s.climbTime>=c.mount_s)s.climbPhase='grip';return mount(s,c);}
+  if(s.climbPhase==='mount'&&!edge){if(s.climbTime>=c.mount_s)s.climbPhase='grip';return mount(s,c);}
   if(edge){
-    const out=[Math.cos(s.angle),Math.sin(s.angle)];
-    return {...s,...clearOf(s,config),mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'push',jumpTime:0,jumpCount:(s.jumpCount??0)+1,jumpTier:1,
-      vx:out[0]*c.jump_out_mps,vy:out[1]*c.jump_out_mps,vz:c.jump_up_mps,jumpVz:c.jump_up_mps,speed:c.jump_out_mps,heading:s.angle,climbCooldown:.5,climbPhase:undefined,launchReady:false};
+    return pushOffTree(s,input,config);
   }
   const [sx,sy]=input.stick??[0,0],fast=input.run?c.fast_factor:1,top=(s.trunk.climb_top_z??s.trunk.top_z)-c.top_clearance_m;
   const vz=(sy>0?c.up_mps:c.down_mps)*sy*fast,around=c.around_mps*sx*fast;
@@ -107,4 +103,17 @@ export function stepClimb(state,input,dt,config,world){
   s.climbPhase=s.z>=top-1e-9&&vz>=0?'perch':vz||around?'climb':'grip';
   s.launchReady=s.climbPhase==='perch'&&!!s.trunk.launch_mode;
   return s;
+}
+
+/** A deliberate bark push: preserve tangential travel and steer away from the
+ * surface. No target snapping and no automatic reattachment on the return. */
+export function pushOffTree(s,input,config){
+  const c=config.climb,out=[Math.cos(s.angle),Math.sin(s.angle)],tangent=[-out[1],out[0]];
+  const length=Math.hypot(input.x??0,input.y??0),wish=length>.1?[(input.x??0)/length,(input.y??0)/length]:out;
+  const carry=s.mode==='climb'?(s.around??0):(s.vx??0)*tangent[0]+(s.vy??0)*tangent[1];
+  const along=(wish[0]*tangent[0]+wish[1]*tangent[1])*c.jump_out_mps*.75+carry*.5;
+  const vx=out[0]*c.jump_out_mps+tangent[0]*along,vy=out[1]*c.jump_out_mps+tangent[1]*along;
+  return {...s,...clearOf(s,config),sliding:false,mode:'ground',grounded:false,jumpPhase:'airborne',jumpStyle:'wall',jumpTime:0,jumpProgress:0,
+    jumpCount:(s.jumpCount??0)+1,jumpTier:1,jumpHeld:true,jumpBuffer:0,vx,vy,vz:c.jump_up_mps,jumpVz:c.jump_up_mps,
+    speed:Math.hypot(vx,vy),heading:Math.atan2(vy,vx),climbCooldown:.25,wallTree:s.trunkBox,climbPhase:undefined,launchReady:false};
 }

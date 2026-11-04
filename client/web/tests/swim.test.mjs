@@ -60,7 +60,7 @@ test('swimming back to shore walks out at the floor height',()=>{
 
 test('jumping off a trunk at the water lands in the water, swimming',()=>{
  const r=.75,trunk={min:[-r,-r,0],max:[r,r,20],kind:'tree',trunk:{x:0,y:0,base_z:0,top_z:20,profile:[[0,r],[20,r]]}},world=pool({boxes:[trunk]});
- let s=run({x:r+w.radius_m,y:0,z:0,heading:Math.PI,speed:0},{x:-1,y:0},.4,world);assert.equal(s.mode,'climb');
+ let s=run({x:r+w.radius_m,y:0,z:0,heading:Math.PI,speed:0},{x:-1,y:0,grab:true},.4,world);assert.equal(s.mode,'climb');
  s=run(s,{x:0,y:0,stick:[0,1]},1.2,world);
  s=stepMoves(s,{x:0,y:0,stick:[0,0],jump:true},1/60,w,world);
  s=run(s,{x:0,y:0},3,world);assert.equal(s.mode,'swim');

@@ -131,7 +131,7 @@ test('katana layer hands the chest handle to the paw, extends the blade with a c
   cat.dispose();
 });
 
-test('drawn katana runs two-handed with the blade trailing, and strikes chain crescent → rising → cleave', () => {
+test('drawn katana runs two-handed, cuts adapt continuously, and charge has a separate input', () => {
   const cat=character(),cues=[];cat.onCue=name=>cues.push(name);
   const node=name=>{let found;cat.model.traverse(n=>{if(n.name===name&&!found)found=n;});assert.ok(found,name);return found;};
   const at=name=>{cat.object.updateMatrixWorld(true);return node(name).getWorldPosition(new T.Vector3());};
@@ -149,17 +149,22 @@ test('drawn katana runs two-handed with the blade trailing, and strikes chain cr
   cues.length=0;
   assert.equal(cat.attack(),'attack');assert.ok(cat.attacking);
   assert.equal(cat.toggleKatana(),'attack','the blade is not sheathed mid-strike');
-  const clips=new Set();
-  for(let i=0;i<240&&cat.katana==='attack';i++){if(i%6===0)cat.attack();cat.update(1/30,'idle');clips.add(cat.katanaAction.getClip().name);}
-  assert.deepEqual([...clips].filter(n=>n.startsWith('katana_slash')),config.katana.attacks,'held presses chain all three, in order');
-  assert.equal(cat.katana,'drawn','the chain ends back on guard');assert.ok(!cat.attacking);
-  assert.equal(cues.filter(c=>c==='extend_complete').length,0,'the cleave must not replay the finished-extension ring');
-  for(const cue of ['swish','spin','charge','swish_heavy','impact','flick'])assert.ok(cues.includes(cue),`cue ${cue}`);
-  assert.ok(cues.indexOf('impact')>cues.indexOf('swish_heavy'));
-  // One press plays one blow; airborne he cannot start one.
-  cat.attack();for(let i=0;i<120&&cat.katana==='attack';i++)cat.update(1/30,'idle');
+  const first=cat.katanaAction.getClip().name;
+  for(let i=0;i<8;i++)cat.update(1/30,'idle');
+  const wrist=at('paw.R');cat.attack();
+  cat.update(.001,'idle');assert.ok(at('paw.R').distanceTo(wrist)<.025,'a new cut starts at the existing wrist');
+  for(let i=0;i<120&&cat.attacking;i++)cat.update(1/30,'idle');
   assert.equal(cat.katana,'drawn');
-  cat.update(1/30,'jump');assert.equal(cat.attack(),'drawn','no strike from the air');
+  assert.ok(config.katana.attacks.includes(first));
+  assert.ok(!cues.includes('impact')&&!cues.includes('charge'),'normal input cannot reach the charge attack');
+  cat.setCharge(true);for(let i=0;i<40;i++)cat.update(1/30,'idle');
+  assert.equal(cat.katanaAction.getClip().name,config.katana.charge);
+  assert.ok(cat.katanaAction.paused,'held trigger holds the wind-up');assert.ok(!cues.includes('impact'));
+  cat.setCharge(false);for(let i=0;i<120&&cat.attacking;i++)cat.update(1/30,'idle');
+  assert.ok(cues.includes('impact'));assert.equal(cat.katana,'drawn');
+  cat.update(1/30,'jump');assert.equal(cat.attack(),'attack','airborne strikes are accepted');
+  assert.ok(cat.katanaAction.getClip().name.endsWith('_air'));
+  assert.ok(cat.katanaAction.getClip().tracks.every(t=>!t.name.startsWith('root.')&&!t.name.startsWith('thigh.')),'air cuts leave the physical arc and legs alone');
   cat.dispose();
 });
 
@@ -169,9 +174,9 @@ test('a landed blow draws its trail, sparks and shake beside the character, not 
   const before=new T.Box3().setFromObject(cat.object);
   const fx=scene.getObjectByName('katana_fx');assert.ok(fx&&fx.parent===scene,'effects live beside him');
   const ribbon=fx.children.find(c=>c.isMesh&&c.geometry.index);let trail=false,sparks=false,shake=0;
-  cat.attack();
+  cat.setCharge(true);cat.setCharge(false);
   for(let i=0;i<240&&cat.katana==='attack';i++){
-    if(i%6===0)cat.attack();cat.update(1/30,'idle');
+    cat.update(1/30,'idle');
     trail||=ribbon.visible&&ribbon.geometry.drawRange.count>12;shake=Math.max(shake,cat.shake);sparks||=fx.children.some(c=>c.isPoints&&c.visible);
   }
   assert.ok(trail,'the swing leaves a ribbon');assert.ok(sparks,'the cleave throws sparks');assert.ok(shake>.1,'and shakes the view');
@@ -198,4 +203,19 @@ test('walking exposes actual animated paw plant edges for foley and clears them 
   }
   assert.ok(plants>=6&&plants<30,`planted-paw transitions, not a frame timer: ${plants}`);
   cat.update(1/30,'flight',0);assert.deepEqual(cat.footContacts,[]);cat.dispose();
+});
+
+test('charge input survives drawing and jumping, airborne cleaves do not invent a ground impact',()=>{
+ const cat=character(),cues=[];cat.onCue=c=>cues.push(c);cat.update(.01,'idle');
+ cat.attack();cat.setCharge(true);
+ for(let i=0;i<240&&cat.katana!=='attack';i++)cat.update(1/30,'idle');
+ assert.equal(cat.katanaAction.getClip().name,config.katana.charge);
+ assert.equal(cat.charging,true);
+ for(let i=0;i<30;i++)cat.update(1/30,'idle');assert.equal(cat.expression,'determined');
+ cat.update(1/30,'jump',3,{jump:{jumpPhase:'airborne',jumpStyle:'leap',jumpCount:1,jumpProgress:.3}});
+ assert.ok(cat.katanaAction.getClip().name.endsWith('_air'));assert.equal(cat.charging,true);
+ cat.setCharge(false);for(let i=0;i<120;i++)cat.update(1/30,'jump');
+ assert.ok(!cues.includes('impact'),'no ground shock is emitted in mid-air');
+ for(let i=0;i<45;i++)cat.update(1/30,'idle');assert.equal(cat.expression,'relaxed');
+ cat.dispose();
 });

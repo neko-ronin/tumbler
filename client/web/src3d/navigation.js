@@ -4,6 +4,7 @@ import {launchFlight,launchTreeFlight,stepFlight,sampleAir,flightFrame,pilotFram
 import {rideStart,startRide,stepRide} from '../../../shared/activities/ride.js';
 import {flightInput} from './flight-input.js';
 import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal,safeWalkGround} from '../../../shared/activities/walk.js';
+import {findTrunk} from '../../../shared/activities/climb.js';
 import {stepMoves} from '../../../shared/activities/moves.js';
 import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
@@ -13,7 +14,7 @@ const JUMP_FRAME_M=2,AIM_S=.5,SHOT_S=2.5;
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true,shot=null,preferredFlightMode='paraglider';
   let weather='soaring',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0,challengeId='';
-  let queuedBranch=false,actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
+  let queuedGrab=false,queuedSlide=false,queuedBranch=false,actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const director=createFollowCamera(),boom=createCameraBoom(),range=createFollowRange();
   let movementYaw=null,lastInput=[0,0],terrainLift=0;
   const fallback={version:1,profiles:{climb:{distance:6.9,lift:.6,pitch:-.24,follow_rate:8,return_delay_s:.9},branch:{distance:5.8,lift:.25,pitch:-.3,follow_rate:.65,return_delay_s:2.4,follow_hold_s:.9,follow_ramp_s:2.2,max_turn_rad_s:.55},'tree-jump':{distance:6.9,lift:.6,pitch:-.3,follow_rate:0,return_delay_s:2.4},walk:{distance:5.4,lift:0,pitch:-.24,follow_rate:1.1,return_delay_s:1.8},flight:{distance:12,lift:0,pitch:-.34,follow_rate:1.1,return_delay_s:1.8},ride:{distance:6.5,lift:0,pitch:0,follow_rate:1.1,return_delay_s:1.8}},areas:[]};
@@ -40,7 +41,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
-  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
+  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];queuedGrab=false;queuedSlide=false;character.setCharge?.(false);queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   function key(e,down){
     // A control may receive focus between press and release. Always retire
     // the held key, while leaving form key presses to the form itself.
@@ -50,8 +51,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(down&&e.code==='Space')queuedPrimary=true;if(down&&e.code==='KeyE')queuedHarness=true;
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||mode==='gondola'||riding()||config.modes[mode]))toggleView();
     if(down&&!e.repeat&&e.code==='KeyF'&&mode==='walk')character.toggleKatana?.();
+    if(down&&!e.repeat&&e.code==='ControlLeft'&&mode==='walk')queuedSlide=true;
     if(down&&!e.repeat&&e.code==='KeyQ'&&mode==='walk')character.attack?.();
-    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyE'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyE','ControlLeft'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
   const kd=e=>key(e,true),ku=e=>key(e,false);
   window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);window.addEventListener('blur',clear);
   document.addEventListener('visibilitychange',clear);window.addEventListener('gamepaddisconnected',clear);
@@ -139,7 +141,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function alight(x,y,heading){state={x,y,heading};carried=null;mode='gondola';select('walk');}
   /** Called on display refreshes between render frames: a controller A tap
    * shorter than one 30 FPS frame is latched like a keyboard tap. */
-  function poll(){if([...(navigator.getGamepads?.()??[])].find(p=>p?.connected)?.buttons[0]?.pressed)queuedPrimary=true;}
+  function poll(){const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);if(pad?.buttons[0]?.pressed)queuedPrimary=true;if(mode==='walk'&&pad?.buttons[11]?.pressed)queuedSlide=true;}
   function update(dt){
     const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
     if(mode==='gondola'){time+=Math.min(dt,.05);updateCarried(dt,pad);return;}
@@ -155,7 +157,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       actionHeld=primary&&(primaryEdge||actionHeld);
       if(harness&&harnessArmed){harnessArmed=false;primaryEdge=false;
         if(mode==='walk'&&state?.mode==='climb'&&state.launchReady)launchFromTree();
-        else if(mode==='walk'&&hitTest?.branchesNear&&characterConfig.walk.branches&&['climb','branch'].includes(state?.mode))queuedBranch=true;else changeHarness();}
+        else if(mode==='walk'&&hitTest?.branchesNear&&characterConfig.walk.branches&&['climb','branch'].includes(state?.mode))queuedBranch=true;
+        else if(mode==='walk'&&state.mode!=='swim'&&(!state.harnessMode||findTrunk(state,{}, {hitTest},characterConfig.walk)))queuedGrab=true;
+        else changeHarness();}
       if(previous||next){const i=flightModes.indexOf(mode);select(flightModes[(Math.max(0,i)+(next?1:-1)+flightModes.length)%flightModes.length],siteIndex);}
       if(up||down){siteIndex=(siteIndex+(up?-1:1)+config.launches.length)%config.launches.length;if(config.modes[mode])select(mode,siteIndex);}
       if(primaryEdge&&config.modes[mode]&&state.launching){/* A held or repeated launch cannot restart inflation. */}
@@ -165,7 +169,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       else if(primaryEdge&&pad?.buttons[0]?.pressed&&config.modes[mode]&&!state.grounded)select(mode,siteIndex);
       if(changeView&&config.modes[mode])toggleView();
       if(changeView&&mode==='walk')character.toggleKatana?.();
-      if(edge(11)&&mode==='walk')toggleView();
+      if(mode==='walk'){
+        queuedSlide=queuedSlide||edge(11)||keys.has('ControlLeft');
+        character.setCharge?.(!!pad?.buttons[7]?.pressed||keys.has('KeyR'));
+      }
       if(edge(1)&&mode==='walk')character.attack?.();
       if(changeWeather){const names=Object.keys(config.weather),i=names.indexOf(weather);setWeather(names[(i+1)%names.length]);}
     }
@@ -249,13 +256,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const movement=forward.clone().multiplyScalar(y).addScaledVector(side,x);
     const before=state.speed??0,beforeMode=state.mode,fromX=state.x,fromY=state.y;
     const water=options.walkHeight?.waterAt;
-    // He plants his feet to attack: no steering or jumping until the blow ends.
     const busy=character.attacking===true;
-    state=stepMoves(state,{x:busy?0:movement.x,y:busy?0:-movement.z,run:run&&!busy,jump:actionHeld&&!busy,stick:busy?[0,0]:[x,y],pitch,branch:queuedBranch},dt,characterConfig.walk,
+    const planted=character.charging&&state.grounded;
+    state=stepMoves(state,{x:planted?0:movement.x,y:planted?0:-movement.z,run:run&&!planted,jump:actionHeld,stick:[x,y],pitch,branch:queuedBranch,grab:queuedGrab,slide:queuedSlide},dt,characterConfig.walk,
       {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height});
     if(queuedBranch)message=state.mode==='climb'?'No branch within reach · climb or circle toward a limb':'';
     else if(x||y)message='';
-    queuedBranch=false;
+    queuedBranch=false;queuedGrab=false;queuedSlide=false;
     if(state.mode==='branch'&&beforeMode!=='branch')movementYaw=null;
     const climbing=state.mode==='climb',branching=state.mode==='branch',swimming=state.mode==='swim';
     character.object.position.set(state.x,state.z,-state.y);
@@ -269,7 +276,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const jumping=state.jumpPhase&&state.jumpPhase!=='grounded';
     // The gait follows the speed the feet actually have, not the Shift key.
     const gait=gaitFor(state.speed,characterConfig.walk,characterConfig.clips);
-    character.update(dt,climbing?'climb':swimming?'swim':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{climb:climbing?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching?state.z:characterHeight(state.x,state.y),groundHeight:branching?()=>state.z:characterHeight,knock:state.knock,knockSide:state.knockSide});
+    character.update(dt,climbing?'climb':swimming?'swim':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{slide:state.sliding?state:null,climb:climbing?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching?state.z:characterHeight(state.x,state.y),groundHeight:branching?()=>state.z:characterHeight,knock:state.knock,knockSide:state.knockSide});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);
     const profile=policy();let distanceFollow=false,distanceEase=0,distanceStart=false;
     if(view==='chase'){const auto=director.step(dt,yaw,pitch,state.heading-Math.PI/2,state.speed>.15&&!busy,profile,drag,climbing,Math.hypot(state.x-fromX,state.y-fromY));yaw=auto.yaw;pitch=auto.pitch;boom.rotate(auto.transport??0);distanceFollow=auto.distanceFollow??false;distanceEase=auto.distanceEase??0;distanceStart=auto.distanceStart??false;}

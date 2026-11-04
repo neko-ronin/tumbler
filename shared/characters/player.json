@@ -8,7 +8,11 @@
   "forward_axis": "+Z",
   "flight_attachment": {
     "bone": "hips",
-    "position_m": [0, 0.65, 0]
+    "position_m": [
+      0,
+      0.65,
+      0
+    ]
   },
   "modes": [
     "walk",
@@ -58,7 +62,7 @@
       "mount_s": 0.3,
       "top_clearance_m": 0.9,
       "jump_out_mps": 6.6,
-      "jump_up_mps": 4.7
+      "jump_up_mps": 10.5
     },
     "jump": {
       "gravity_mps2": 38,
@@ -77,7 +81,10 @@
       "apex_gravity": 0.45,
       "buffer_s": 0.2,
       "chain_s": 0.25,
-      "chain_mps": [16.6, 20],
+      "chain_mps": [
+        16.6,
+        20
+      ],
       "chain_speed_mps": 3
     },
     "branches": {
@@ -89,6 +96,12 @@
       "leap_up_mps": 12,
       "leap_range_m": 14,
       "gravity_mps2": 24
+    },
+    "slide": {
+      "min_mps": 3,
+      "stop_mps": 1.2,
+      "duration_s": 1.1,
+      "friction_mps2": 5
     }
   },
   "tail_clips": {
@@ -151,7 +164,8 @@
     "leap": "jump_run_leap",
     "tuck": "jump_run_tuck",
     "flip": "jump_run_flip",
-    "push": "jump_push_off"
+    "push": "jump_push_off",
+    "wall": "jump_wall"
   },
   "climb_clips": {
     "mount": "climb_mount",
@@ -211,11 +225,11 @@
     "arm_weight": 6,
     "run": "katana_run",
     "attacks": [
-      "katana_slash_crescent",
-      "katana_slash_rising",
-      "katana_slash_cleave"
+      "katana_cut_forehand",
+      "katana_cut_backhand"
     ],
-    "attack_weight": 40
+    "attack_weight": 40,
+    "charge": "katana_slash_cleave"
   },
   "eyepatch": {
     "worn": "hex",
@@ -225,5 +239,6 @@
       "shield",
       "hex"
     ]
-  }
+  },
+  "slide_clip": "ground_slide"
 }

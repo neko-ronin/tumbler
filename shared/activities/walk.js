@@ -94,6 +94,11 @@ export function stepWalk(state,input,dt,config,height,hitTest){
   const magnitude=Math.hypot(input.x??0,input.y??0),speed=(input.run?config.run_mps:config.walk_mps)*Math.min(1,magnitude);
   const vx=magnitude?(input.x/magnitude)*speed:0,vy=magnitude?(input.y/magnitude)*speed:0;
   const edge=!!input.jump&&!s.jumpHeld;s.jumpHeld=!!input.jump;
+  const slideEdge=!!input.slide&&!s.slideHeld;s.slideHeld=!!input.slide;
+  const slide=config.slide;
+  if(slide&&slideEdge&&s.grounded&&s.jumpPhase==='grounded'&&s.speed>=slide.min_mps){s.sliding=true;s.slideTime=0;}
+  if(s.sliding&&(!s.grounded||edge||s.slideTime>=slide.duration_s||s.speed<slide.stop_mps))s.sliding=false;
+  if(s.sliding)s.slideTime+=duration;
   // A fresh press keeps for buffer_s, so one made just before touchdown still
   // jumps; so does one during the landing crouch. Holding never presses again.
   if(edge)s.jumpBuffer=j.buffer_s;
@@ -104,10 +109,10 @@ export function stepWalk(state,input,dt,config,height,hitTest){
     // double and triple jump; its last link needs chain_speed_mps of ground speed.
     const last=1+j.chain_mps.length,tier=s.chainLeft>0&&(s.jumpTier??1)<last?(s.jumpTier??1)+1:1;
     s.jumpTier=tier===last&&tier>1&&s.speed<j.chain_speed_mps?1:tier;
-    // Standing jumps play; moving ones are athletic: leap, tuck, then the flip.
+    // Standing jumps play; moving ones leap and tuck without a forced flip.
     const moving=Math.max(speed,s.speed??0)>.5;
-    s.jumpStyle=moving?['leap','tuck','flip'][s.jumpTier-1]:s.jumpTier>1?'star':['celebrate','heel_click','star'][s.jumpCount%3];
-    s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;s.jumpBuffer=0;
+    s.jumpStyle=moving?['leap','tuck','tuck'][s.jumpTier-1]:s.jumpTier>1?'star':['celebrate','heel_click','star'][s.jumpCount%3];
+    s.sliding=false;s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;s.jumpBuffer=0;
     if(!(config.accel_mps2<Infinity)){s.vx=vx;s.vy=vy;}
   }
   const heading=s.heading??0;
@@ -140,7 +145,12 @@ export function stepWalk(state,input,dt,config,height,hitTest){
     // then start blocked: step out of it first.
     const inside=flush(s.x,s.y);
     if(inside?.normals){s.x=inside.x;s.y=inside.y;if(s.grounded)s.z=height(s.x,s.y);}
-    if(s.grounded&&s.jumpPhase!=='takeoff'){
+    if(s.sliding){
+      // Friction removes momentum; downhill gravity adds only the slope component.
+      const e=.2,hx=(height(s.x+e,s.y)-height(s.x-e,s.y))/(2*e),hy=(height(s.x,s.y+e)-height(s.x,s.y-e))/(2*e);
+      if(Number.isFinite(hx)&&Number.isFinite(hy)){s.vx-=j.gravity_mps2*hx/(1+hx*hx+hy*hy)*step;s.vy-=j.gravity_mps2*hy/(1+hx*hx+hy*hy)*step;}
+      const v=Math.hypot(s.vx,s.vy),decay=Math.max(0,1-slide.friction_mps2*step/(v||1));s.vx*=decay;s.vy*=decay;
+    }else if(s.grounded&&s.jumpPhase!=='takeoff'){
       // Traction: speed up at accel_mps2, brake (release, reverse) at decel_mps2.
       // Contracts without them keep the original instant response. A tumble
       // ignores input and only brakes.
@@ -151,9 +161,14 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       const amount=Math.min(1,rate*step/(length||1));
       s.vx+=dx*amount;s.vy+=dy*amount;
     }
-    else if(!s.grounded&&magnitude){
+    else if(!s.grounded&&s.jumpPhase!=='bounce'&&magnitude){
       const dx=vx-s.vx,dy=vy-s.vy,length=Math.hypot(dx,dy),amount=Math.min(1,j.air_control_mps2*step/(length||1));
       s.vx+=dx*amount;s.vy+=dy*amount;
+    }
+    if(s.jumpPhase==='bounce'){
+      s.fallPitch=(s.fallPitch??0)+(s.fallSpin??0)*step;s.fallRoll=(s.fallRoll??0)+(s.fallRollRate??0)*step;
+    }else if(s.jumpPhase==='tumble'){
+      const settle=1-Math.exp(-9*step);s.fallPitch=(s.fallPitch??0)*(1-settle);s.fallRoll=(s.fallRoll??0)*(1-settle);
     }
     const oldFloor=height(s.x,s.y);
     let moved=false;
@@ -206,14 +221,23 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       if(Number.isFinite(floor)&&s.z<=floor){
         // A high fall bounces once (tumble_mps, rebound), then tumbles for tumble_s.
         const impact=-s.vz;s.z=floor;s.vz=0;s.jumpTime=0;
-        if(s.jumpPhase==='bounce'){s.grounded=true;s.jumpPhase='tumble';}
-        else if(j.tumble_mps&&impact>j.tumble_mps){s.landingSpeed=impact;s.vz=impact*j.rebound;s.jumpPhase='bounce';}
+        if(s.jumpPhase==='bounce'){
+          s.grounded=true;s.jumpPhase='tumble';s.fallPitch=Math.atan2(Math.sin(s.fallPitch??0),Math.cos(s.fallPitch??0));
+          s.fallRoll=Math.atan2(Math.sin(s.fallRoll??0),Math.cos(s.fallRoll??0));s.fallSpin=s.fallRollRate=0;
+        }
+        else if(j.tumble_mps&&impact>j.tumble_mps){s.landingSpeed=impact;s.vz=impact*j.rebound;s.jumpPhase='bounce';
+          // Impact impulse acting below the body centre: faster incoming travel
+          // produces more rotation; the sign follows the actual contact velocity.
+          const h=s.heading??0,forward=s.vx*Math.cos(h)+s.vy*Math.sin(h),side=-s.vx*Math.sin(h)+s.vy*Math.cos(h);
+          s.fallPitch=0;s.fallRoll=0;s.fallSpin=Math.max(-18,Math.min(18,forward*impact*.035));
+          s.fallRollRate=Math.max(-9,Math.min(9,side*impact*.035));
+          s.vx*=.65;s.vy*=.65;}
         else{s.landingSpeed=impact;s.grounded=true;s.jumpPhase='landing';s.chainLeft=j.chain_s;}
       }
       else s.jumpTime+=step;
     }else if(s.jumpPhase==='landing'||s.jumpPhase==='tumble'){
       s.jumpTime+=step;
-      if(s.jumpTime>=(s.jumpPhase==='tumble'?j.tumble_s:landingTime(s,j))){s.jumpPhase='grounded';s.jumpTime=0;}
+      if(s.jumpTime>=(s.jumpPhase==='tumble'?j.tumble_s:landingTime(s,j))){s.jumpPhase='grounded';s.jumpTime=0;s.fallPitch=s.fallRoll=0;}
     }
   }
   s.groundZ=height(s.x,s.y)??state.groundZ??state.z;

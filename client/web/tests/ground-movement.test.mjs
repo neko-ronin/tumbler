@@ -102,7 +102,7 @@ test('jumping again at touchdown climbs to a double, then a triple that needs hi
   return {s,tiers,peaks,styles};
  };
  const run=chain({x:1,y:0,run:true});
- assert.deepEqual(run.tiers,[1,2,3]);assert.deepEqual(run.styles,['leap','tuck','flip'],'moving jumps are athletic, never the playful poses');
+ assert.deepEqual(run.tiers,[1,2,3]);assert.deepEqual(run.styles,['leap','tuck','tuck'],'moving jumps are athletic, never the playful poses');
  assert.deepEqual(chain({x:.4,y:0}).styles,['leap','tuck','leap']);
  assert.ok(run.peaks[0]<run.peaks[1]&&run.peaks[1]<run.peaks[2],`peaks ${run.peaks.map(p=>p.toFixed(1))}`);
  assert.deepEqual(chain({x:1,y:0}).tiers,[1,2,3],'a full-stick walk is enough: no run button needed');
@@ -343,4 +343,15 @@ test('local launch checks the takeoff corridor, including a raised tread before 
  const state={...launchFlight(flight,'paraglider',{xy_m:[0,0],heading_deg:0,clearance_m:flight.landing_clearance_m},flat),grounded:true,speed:0};
  const raised=x=>x>.15&&x<1?.3:0;
  assert.equal(walk.relaunchGround(state,character.walk,flight,raised),null,'a low endpoint must not conceal a takeoff curb');
+});
+
+test('R3 slides without changing view, RT charges separately from B, and short R3 taps are latched',t=>{
+ const {nav,pad,cat}=fixture(t),calls=[];cat.attack=()=>calls.push('slash');cat.setCharge=held=>{if(held)calls.push('charge');};
+ nav.select('walk');nav.update(1/60);const view=nav.view;
+ pad.axes[1]=-1;pad.buttons[10].pressed=true;for(let i=0;i<45;i++)nav.update(1/60);
+ pad.buttons[11].pressed=true;nav.poll();pad.buttons[11].pressed=false;nav.update(1/60);
+ assert.equal(nav.state.sliding,true);assert.equal(nav.view,view);
+ pad.buttons[7].pressed=true;nav.update(1/60);assert.ok(calls.includes('charge'));assert.ok(!calls.includes('slash'));
+ pad.buttons[1].pressed=true;nav.update(1/60);assert.equal(calls.filter(c=>c==='slash').length,1);
+ nav.update(1/60);assert.equal(calls.filter(c=>c==='slash').length,1,'held B does not become repeated clicks');
 });

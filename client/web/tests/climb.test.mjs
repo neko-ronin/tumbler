@@ -45,21 +45,23 @@ const crownBox={min:[-4,-4,20],max:[4,4,30],kind:'tree'};
 const world=(boxes=[trunkBox(),crownBox])=>({height:()=>0,hitTest:createCollisionIndex(boxes)});
 const run=(s,input,seconds,w,config=walkConfig,each)=>{for(let t=0;t<seconds-1e-9;t+=1/60){s=stepMoves(s,input,1/60,config,w);each?.(s,t+1/60);}return s;};
 const touching=(r=.75)=>({x:-(r+walkConfig.radius_m),y:0,z:0,heading:0,speed:0});
-const climbed=(w=world())=>{let s=run(touching(),{x:1,y:0},.3,w);assert.equal(s.mode,'climb');return run(s,{x:0,y:0,stick:[0,0]},walkConfig.climb.mount_s+.02,w);};
+const climbed=(w=world())=>{let s=run(touching(),{x:1,y:0,grab:true},.3,w);assert.equal(s.mode,'climb');return run(s,{x:0,y:0,stick:[0,0]},walkConfig.climb.mount_s+.02,w);};
 
-test('pushing into a climbable trunk for 0.2 s attaches; brushing past does not',()=>{
- let attachedAt=null;run(touching(),{x:1,y:0},.5,world(),walkConfig,(s,t)=>{if(s.mode==='climb'&&attachedAt===null)attachedAt=t;});
- assert.ok(attachedAt>=.2-1e-9&&attachedAt<=.25,`attached after ${attachedAt} s`);
- let past={x:-(.75+walkConfig.radius_m+.1),y:-3,z:0,heading:Math.PI/2,speed:0}; // 10 cm clear of the box: a brush, not a collision
- run(past,{x:0,y:1},3,world(),walkConfig,s=>assert.notEqual(s.mode,'climb','walking past a trunk does not grab it'));
- run(touching(.25),{x:1,y:0},2,world([trunkBox(.25)]),walkConfig,s=>assert.notEqual(s.mode,'climb','a 0.5 m trunk is too thin'));
+test('pushing or brushing a trunk never attaches; a fresh grab deliberately mounts',()=>{
+ const w=world();let s=run(touching(),{x:1,y:0},.5,w);
+ assert.notEqual(s.mode,'climb');
+ s=stepMoves(s,{grab:true},1/60,walkConfig,w);assert.equal(s.mode,'climb');
+ const thin=run(touching(.25),{x:1,y:0,grab:true},2,world([trunkBox(.25)]));
+ assert.notEqual(thin.mode,'climb','a 0.5 m trunk is too thin');
+ const past=run({x:-1.5,y:-3,z:0,speed:0},{x:0,y:1},3,w);
+ assert.notEqual(past.mode,'climb');
 });
 
 test('a diagonal approach stops at the square collider corner and still climbs, sliding onto the bark without a pop',()=>{
  // Walk in along the diagonal until the box corner stops him, then keep pushing.
  const w=world(),d=Math.SQRT1_2;let s={x:-3*d,y:-3*d,z:0,heading:Math.PI/4,speed:0},prev=s,maxStep=0,mounted=false;
  for(let i=0;i<180;i++){
-  s=stepMoves(s,{x:d,y:d},1/60,walkConfig,w);
+  s=stepMoves(s,{x:d,y:d,grab:i%12===11},1/60,walkConfig,w);
   if(s.mode==='climb'&&prev.mode!=='climb')mounted=true;
   if(prev.mode==='climb'||s.mode==='climb')maxStep=Math.max(maxStep,Math.hypot(s.x-prev.x,s.y-prev.y));
   prev=s;
@@ -68,15 +70,17 @@ test('a diagonal approach stops at the square collider corner and still climbs, 
  assert.ok(maxStep<.1,`slides onto the bark (largest step ${maxStep.toFixed(3)} m)`);
  assert.ok(Math.abs(Math.hypot(s.x,s.y)-(trunkRadiusAt(s.trunk,s.z)+walkConfig.climb.hold_m))<.001,'ends holding the bark');
 });
-test('an off-centre push slides along the trunk and still grabs it',()=>{
+test('an off-centre deliberate grab mounts after the approach',()=>{
  // Aimed 22 degrees off the trunk's centre, as a player rarely aims true.
  const a=22*Math.PI/180;let at=null;
- run({x:-2.47,y:0,z:0,heading:a,speed:0},{x:Math.cos(a),y:Math.sin(a)},1.2,world(),walkConfig,(s,t)=>{if(s.mode==='climb'&&at===null)at=t;});
+ let s={x:-2.47,y:0,z:0,heading:a,speed:0};const w=world();
+ for(let i=0;i<72;i++){s=stepMoves(s,{x:Math.cos(a),y:Math.sin(a),grab:i%10===9},1/60,walkConfig,w);if(s.mode==='climb'&&at===null)at=i/60;}
  assert.ok(at!==null&&at<1.2,`grabbed after ${at} s`);
 });
-test('airborne contact attaches from any direction',()=>{
- const s=run({x:-1.05,y:0,z:1.5,heading:Math.PI/2,speed:0,grounded:false,jumpPhase:'airborne',jumpCount:1,jumpStyle:'hop',vz:0},{x:0,y:1},.3,world());
- assert.equal(s.mode,'climb');
+test('airborne contact needs a new grab press',()=>{
+ const w=world(),start={x:-1.05,y:0,z:3,heading:Math.PI/2,speed:0,grounded:false,jumpPhase:'airborne',jumpCount:1,jumpStyle:'hop',vz:0};
+ let s=stepMoves(start,{},1/60,walkConfig,w);assert.notEqual(s.mode,'climb');
+ s=stepMoves(s,{grab:true},1/60,walkConfig,w);assert.equal(s.mode,'climb');
 });
 
 test('climbing speeds and limits',()=>{
@@ -97,7 +101,7 @@ test('jumping off pushes away from the bark and falls as ground',()=>{
  const out=[s.x-s.trunk.x,s.y-s.trunk.y].map(v=>v/Math.hypot(s.x-s.trunk.x,s.y-s.trunk.y));
  s=stepMoves(s,{x:0,y:0,stick:[0,0],jump:true},1/60,walkConfig,w);
  assert.equal(s.mode,'ground');assert.equal(s.grounded,false);
- assert.equal(s.jumpStyle,'push','a jump off the bark has its own push-off, not the playful skip');
+ assert.equal(s.jumpStyle,'wall','a jump off the bark has its own push-off, not the playful skip');
  assert.ok(s.vx*out[0]+s.vy*out[1]>=walkConfig.climb.jump_out_mps-1e-6,'pushed away from the trunk');
  const from=Math.hypot(s.x-s.trunk.x,s.y-s.trunk.y);
  s=run(s,{x:0,y:0,jump:false},.3,w);assert.ok(Math.hypot(s.x-s.trunk.x,s.y-s.trunk.y)-from>.5,'actually leaves the bark');
@@ -139,22 +143,24 @@ function gameFixture(t){
  nav.cameraPosition=camera.position;
  return {nav,cat,key,trunk:{x:0,y:ahead}};
 }
-test('in the game, holding forward into a trunk climbs it facing the bark; Space jumps off; the harness button is refused',t=>{
+test('in the game E grabs deliberately, W climbs, and Space pushes away',t=>{
  const {nav,cat,key,trunk}=gameFixture(t);nav.select('walk');nav.update(1/60);
  key('keydown','KeyW');for(let i=0;i<18;i++)nav.update(1/60);
- assert.equal(nav.state.mode,'climb','0.3 s of pushing climbs');
+ assert.notEqual(nav.state.mode,'climb','pushing cannot attach');
+ key('keydown','KeyE');nav.update(1/60);key('keyup','KeyE');assert.equal(nav.state.mode,'climb');
  for(let i=0;i<30;i++)nav.update(1/60);
  const facing=new T.Vector3(0,0,1).applyQuaternion(cat.object.quaternion),toward=new T.Vector3(trunk.x-nav.state.x,0,-(trunk.y-nav.state.y)).normalize();
  assert.ok(facing.dot(toward)>.99,'he faces the bark');
  assert.ok(nav.state.z>.5,'forward climbs');
  assert.equal(cat.clip,playerConfig.climb_clips?.up??playerConfig.clips.idle);
  key('keyup','KeyW');key('keydown','KeyE');nav.update(1/60);key('keyup','KeyE');
- assert.equal(nav.state.mode,'climb');assert.match(nav.message,/clear, stable ground/);
+ assert.equal(nav.state.mode,'climb');
  key('keydown','Space');nav.update(1/60);key('keyup','Space');
  assert.equal(nav.state.mode,'ground');assert.equal(nav.state.grounded,false);
 });
 test('the tree he is climbing does not pull the chase camera into him',t=>{
  const {nav,cat,key}=gameFixture(t);nav.select('walk');nav.update(1/60);
+ key('keydown','KeyE');nav.update(1/60);key('keyup','KeyE');
  key('keydown','KeyW');for(let i=0;i<60*6;i++)nav.update(1/60);key('keyup','KeyW');nav.update(1/60);
  assert.equal(nav.state.climbPhase,'perch');
  assert.ok(cat.object.position.distanceTo(nav.cameraPosition)>4,`camera ${cat.object.position.distanceTo(nav.cameraPosition).toFixed(2)} m from him at the perch`);
@@ -170,6 +176,6 @@ test('walking uphill into a trunk on a slope grabs it, though he stands below it
  // Ground rising 0.3 per metre toward +x; the trunk's base sits at its centre's height.
  const r=.75,slope=(x,y)=>.3*x,box={min:[2-r,-r,slope(2)],max:[2+r,r,20],kind:'tree',trunk:{x:2,y:0,base_z:slope(2),top_z:20,profile:[[slope(2),r],[20,r]]}};
  const w2={height:slope,hitTest:createCollisionIndex([box])};let s={x:-1,y:0,z:slope(-1),heading:0,speed:0},grabbed=false;
- for(let i=0;i<120&&!grabbed;i++){s=stepMoves(s,{x:1,y:0},1/60,walkConfig,w2);grabbed=s.mode==='climb';}
+ for(let i=0;i<120&&!grabbed;i++){s=stepMoves(s,{x:1,y:0,grab:i%12===11},1/60,walkConfig,w2);grabbed=s.mode==='climb';}
  assert.ok(grabbed,`stuck ${(box.trunk.base_z-s.z).toFixed(2)} m below the base, touching the trunk`);
 });

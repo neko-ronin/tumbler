@@ -4,8 +4,9 @@ import { buildAssetMeshes } from './glb.js';
 import { installCharacterSurfaces } from './character-surface.js';
 import { trunkRadiusAt } from '../../../shared/activities/climb.js';
 import { gaitFor } from '../../../shared/activities/walk.js';
+import { chooseCut,actionExpression } from '../../../shared/activities/combat.js';
 import { createKatanaFx } from './katana-fx.js';
-const PAW_RADIUS=.05,FOOT_REACH_M=.2,PLANTED_M=.03,BODY_RISE_S=.07,BODY_DROP_S=.006,FLIP_PIVOT_M=.85,FLIP_START=.42,FLIP_END=.85,ROLL_PIVOT_M=.42,ROLL_START=.12,ROLL_END=.78,STRETCH=.1,SQUASH=.16;
+const PAW_RADIUS=.05,FOOT_REACH_M=.2,PLANTED_M=.03,BODY_RISE_S=.07,BODY_DROP_S=.006,FLIP_PIVOT_M=.85,ROLL_PIVOT_M=.42,ROLL_START=.12,ROLL_END=.78,STRETCH=.1,SQUASH=.16;
 
 export function createCharacter(asset, config) {
   const object = new T.Group();
@@ -69,6 +70,8 @@ export function createCharacter(asset, config) {
   shadow.rotation.x=-Math.PI/2;shadow.position.y=.025;object.add(shadow);
   const mixer = new T.AnimationMixer(model);
   const actions = Object.fromEntries(asset.animations.map(clip => [clip.name, mixer.clipAction(clip)]));
+  // New optional actions fall back on older studio models.
+  config={...config,jump_clips:{...config.jump_clips,...(config.jump_clips?.wall&&!actions[config.jump_clips.wall]?{wall:config.jump_clips.push??config.jump_clips.leap??config.jump_clips.hop}:{})},slide_clip:actions[config.slide_clip]?config.slide_clip:null};
   for (const name of Object.values(config.clips)) if (!actions[name]) throw new Error(`Ronin is missing clip ${name}`);
   for (const name of Object.values(config.jump_clips??{})) if (!actions[name]) throw new Error(`Ronin is missing jump clip ${name}`);
   const feet=[],paws={},bodyMeshes=[];model.traverse(node=>{if(node.isMesh&&!node.isSkinnedMesh&&node.geometry.boundingBox||node.isSkinnedMesh&&!/^cat_tail|\.fur\d/.test(node.name))bodyMeshes.push(node);});model.traverse(node=>{if(node.isMesh&&/^foot\./.test(node.parent?.name??''))feet.push(node);if(node.isMesh&&/^paw\./.test(node.parent?.name??''))paws[node.parent.name]=node;});
@@ -106,7 +109,7 @@ export function createCharacter(asset, config) {
   }
   let current = null, clipName = null,lean=0,barkFit=0,swimShot=null,swimShotLeft=0,pitch=0,idleTime=0,pivotClip=null,pivotLeft=0,tailAction=null,tailName=null,tailCategory=null,tailTime=0,tailIndex=0,lastPose=null,landedTime=0,blinkTime=3.7,elapsed=0,eyePoseAction=null,eyePoseTime=0;
   for(const names of Object.values(config.tail_clips??{}))for(const name of names)if(!actions[name])throw new Error(`Ronin is missing tail clip ${name}`);
-  for(const name of [config.landing?.heavy,config.landing?.roll,config.pivot?.left,config.pivot?.right,...(config.idle_sequence??[]).flatMap(step=>[step.clip,step.eye_pose?.clip]),...Object.values(config.climb_clips??{}),...Object.values(config.fall_clips??{}),...Object.values(config.swim_clips??{})])
+  for(const name of [config.landing?.heavy,config.landing?.roll,config.pivot?.left,config.pivot?.right,...(config.idle_sequence??[]).flatMap(step=>[step.clip,step.eye_pose?.clip]),...Object.values(config.climb_clips??{}),...Object.values(config.fall_clips??{}),...Object.values(config.swim_clips??{}),config.slide_clip])
     if(name&&!actions[name])throw new Error(`Ronin is missing clip ${name}`);
   // Idle extras: after `after_s` seconds standing, play the clip once, or keep
   // it (`hold`) until he moves. The latest step that is due wins.
@@ -128,26 +131,61 @@ export function createCharacter(asset, config) {
   // Katana layer: holstered/drawn loops and the draw/sheathe transitions. It is
   // the only layer that moves the katana bones, and while the blade is out it
   // outweighs the body clip on the arm it authors. Cues ride in the clip.
-  // Drawn, a run swaps in the two-handed trailing stance; an attack chain plays
-  // its clips once each and moves his whole body. Both own every bone they author
+  // Drawn, a run swaps in the two-handed trailing stance. A fresh attack
+  // chooses a cut from the live pose. Both own every bone they author
   // (attack_weight): a two-handed grip cannot share an arm with the body's swing.
   // The run stance and attacks are newer than some models (the original Cat
   // Ronin): a model without those clips keeps the four it has and cannot strike.
   const katana=config.katana&&{...config.katana,run:actions[config.katana.run]?config.katana.run:null,attacks:(config.katana.attacks??[]).filter(name=>actions[name])};
-  let katanaState=null,katanaAction=null,cueIndex=0,attackIndex=-1,attackQueued=false,hitStop=0,shake=0;
+  let katanaState=null,katanaAction=null,cueIndex=0,hitStop=0,shake=0,pendingAttack=false,chargeHeld=false,pendingCharge=false,chargeActive=false,bridge=null,lastSpeed=0,bladeSide=0,bladeVelocity=0;
   if(katana)for(const state of ['holstered','draw','drawn','sheathe'])if(!actions[katana[state]])throw new Error(`Ronin is missing katana clip ${katana[state]}`);
   const fx=katana?createKatanaFx(object,model,config.scale):null;
   const grounded=pose=>['idle','stroll','walk','run'].includes(pose);
+  const canAttack=pose=>grounded(pose)||pose==='jump';
+  const expressionNodes=['lid.L','lid_lower.L','ear.L','ear.R','eye.L'].map(n=>model.getObjectByName(n));
+  const expressionBase=new Map(),face={lid:0,lower:0,ear:0,eye:0};let expression='relaxed';
+  const bridgeBones=[];model.traverse(n=>{if(n.isBone)bridgeBones.push(n);});
+  function captureBridge(){bridge={time:0,poses:bridgeBones.map(b=>({b,q:b.quaternion.clone(),p:b.position.clone()}))};}
+  // Airborne sword cuts only own the upper body. The ballistic jump retains
+  // its legs and root; no authored jump may overwrite the physical arc.
+  if(katana){
+    for(const name of [...katana.attacks,katana.charge].filter(Boolean)){
+      if(!actions[name])continue;
+      const source=actions[name].getClip(),upper=source.clone();upper.name=name+'_air';
+      upper.tracks=upper.tracks.filter(t=>!/^(root|hips|thigh\.|shin\.|heel\.)/.test(t.name));
+      actions[upper.name]=mixer.clipAction(upper);
+    }
+  }
+  function startAttack(charged=false){
+    if(!katana||!canAttack(lastPose))return;
+    let name=katana.charge;
+    if(!charged){
+      object.updateWorldMatrix(true,true);
+      const tip=model.getObjectByName('blade.4');
+      const local=tip?model.worldToLocal(tip.getWorldPosition(v())):v();
+      const cut=chooseCut({side:local.x,lateralSpeed:bladeVelocity});
+      name=katana.attacks[cut==='backhand'?1:0]??katana.attacks[0];
+    }
+    if(!name||!actions[name])return;
+    if((lastPose==='jump'||(!charged&&lastSpeed>.5))&&actions[name+'_air'])name+='_air';
+    captureBridge();
+    // Retiring all prior attack weights prevents rapid input accumulating layers.
+    if(katanaState==='attack')katanaAction.stop();
+    playKatana('attack',0,name);chargeActive=charged;
+    if(!charged&&bridge)katanaAction.time=.08;
+  }
   function playKatana(state,fade,clip=katana[state]){
     const next=actions[clip].reset().setEffectiveWeight(state==='holstered'?1:state==='attack'||state==='run'?katana.attack_weight??katana.arm_weight:katana.arm_weight);
     if(['draw','sheathe','attack'].includes(state)){next.setLoop(T.LoopOnce,1);next.clampWhenFinished=true;}
     if(fade)next.fadeIn(fade);next.play();
     if(katanaAction&&katanaAction!==next)fade?katanaAction.fadeOut(fade):katanaAction.stop();
     katanaAction=next;katanaState=state;cueIndex=0;
-    if(state!=='attack'){attackIndex=-1;attackQueued=false;}
+    if(state!=='attack')chargeActive=false;
+    if(['holstered','sheathe'].includes(state)){pendingAttack=false;pendingCharge=false;}
   }
   /** A clip cue: the effects and the hit-stop/shake it calls for, then the client's sound. */
   function cue(name){
+    if(name==='impact'&&!grounded(lastPose))name='swish_heavy';
     fx?.cue(name);
     if(name==='impact'){hitStop=.11;shake=.2;}
     else if(name==='swish_heavy')shake=Math.max(shake,.05);
@@ -157,7 +195,9 @@ export function createCharacter(asset, config) {
   }
   if(katana)playKatana('holstered',0);
   function update(dt, pose, speed = 0, context = {}) {
+    lastSpeed=speed;
     const jump=context.jump;
+    const sliding=context.slide?.sliding&&config.slide_clip;
     // A big drop lands in a deep crouch over the (longer) shared landing phase.
     const heavy=jump?.jumpPhase==='landing'&&config.landing&&jump.landingSpeed>config.landing.heavy_mps;
     // Bounce and tumble after a high fall play their own clips when the contract names them.
@@ -180,7 +220,7 @@ export function createCharacter(asset, config) {
     if(swims&&(pose==='swim')!==(lastPose==='swim')&&lastPose!==null){swimShot=pose==='swim'?swims.enter:swims.exit;swimShotLeft=actions[swimShot].getClip().duration;actions[swimShot].reset();}
     const shot=swimShotLeft>0?swimShot:null;
     // context.bodyClip / context.tailClip audition a named clip on that layer (studio).
-    const name = context.bodyClip??shot??authoredJump??(pivoting?pivotClip:null)??(pose==='idle'?idleExtra():null)??(pose==='climb'?climbClip(context.climb):null)??(pose==='swim'?swimClip(context.swim):null)??config.clips[runOut?gaitFor(speed,config.walk,config.clips):['jump','climb','swim'].includes(pose)?'idle':pose];
+    const name = context.bodyClip??(sliding?config.slide_clip:null)??shot??authoredJump??(pivoting?pivotClip:null)??(pose==='idle'?idleExtra():null)??(pose==='climb'?climbClip(context.climb):null)??(pose==='swim'?swimClip(context.swim):null)??config.clips[runOut?gaitFor(speed,config.walk,config.clips):['jump','climb','swim'].includes(pose)?'idle':pose];
     const action = actions[name];
     if (!action) throw new Error(`Unknown Ronin pose ${pose}`);
     if (action !== current) {
@@ -201,6 +241,9 @@ export function createCharacter(asset, config) {
       const phase=jump.jumpProgress??0;
       const progress=heavy||fall?phase:jump.jumpPhase==='takeoff'?phase/6:jump.jumpPhase==='landing'?5/6+phase/6:1/6+phase*2/3;
       action.paused=true;action.time=action.getClip().duration*progress;action.clampWhenFinished=true;
+    }else if(sliding){
+      const u=Math.min(1,(context.slide.slideTime??0)/(config.walk.slide?.duration_s??1));
+      action.paused=true;action.time=action.getClip().duration*(u<.12?u/.12*.18:u>.82?.75+(u-.82)/.18*.25:.18+(u-.12)/.70*.57);
     }else action.paused=false;
     // A gait clip names the speed at which its planted paws stay put.
     const ground=action.getClip().userData.ground_speed_mps;
@@ -217,11 +260,9 @@ export function createCharacter(asset, config) {
     const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))+(pose==='run'&&katanaState==='run'?.14:0)
       // A dive points his (prone) body along its path: nose down going down.
       :pose==='swim'&&context.swim?.swimPhase==='dive'?Math.max(-1.2,Math.min(1.2,Math.atan2(-(context.swim.vz??0),Math.max(.1,context.swim.speed??0)))):0;
-    // The chain's third jump somersaults forward, starting just before the apex
-    // and upright again early in the drop (air progress FLIP_START..FLIP_END).
-    // ponytail: progress is by vertical speed, so landing on a ledge above the
-    // takeoff can cut the turn short and snap upright; drive it by height if seen.
-    const t=Math.min(1,Math.max(0,((jump?.jumpProgress??0)-FLIP_START)/(FLIP_END-FLIP_START))),flip=jump?.jumpTier===3&&jump.jumpPhase==='airborne'?2*Math.PI*t*t*(3-2*t):0;
+    // Shared contact velocity drives impact rotation; jumps add no fixed flip.
+    const flip=jump?.fallPitch??0;
+    model.rotation.z+=jump?.fallRoll??0;
     // The roll turns him once forward about a low pivot over the landing phase.
     const r=Math.min(1,Math.max(0,((jump?.jumpProgress??0)-ROLL_START)/(ROLL_END-ROLL_START))),rollTurn=roll?2*Math.PI*r*r*(3-2*r):0;
     pitch+=(pitchGoal-pitch)*(1-Math.exp(-dt*10));model.rotation.x=pitch+flip+rollTurn;
@@ -257,24 +298,38 @@ export function createCharacter(asset, config) {
       eyePoseTime=Math.min(eyePose.time_s,eyePoseTime+dt*eyePose.time_s/.35);action.time=eyePoseTime;
     }else if(eyePoseAction){eyePoseAction.paused=false;eyePoseAction=null;blinkTime=3.7;}
     if(!eyePose&&blinkTime<=0&&config.blink_clip){const blink=actions[config.blink_clip];blink.reset().setLoop(T.LoopOnce,1).play();blink.clampWhenFinished=true;blinkTime=3.2+1.7*(.5+.5*Math.sin(elapsed*1.37));}
-    if(katana&&pose==='flight'&&katanaState!=='holstered')playKatana('holstered',.1);
+    if(katana&&(pose==='flight'||pose==='climb'||pose==='swim'||fall)&&katanaState!=='holstered')playKatana('holstered',.1);
     // An attack ends if he leaves the ground (a ledge, the water, a trunk).
-    if(katana&&katanaState==='attack'&&!grounded(pose))playKatana('drawn',.1);
+    if(katana&&katanaState==='attack'&&!canAttack(pose))playKatana('drawn',.1);
+    if(katanaState==='attack'&&(pose==='jump'||(!chargeActive&&speed>.5))&&!katanaAction.getClip().name.endsWith('_air')){
+      const name=katanaAction.getClip().name+'_air';if(actions[name]){const time=katanaAction.time,charged=chargeActive;captureBridge();katanaAction.stop();playKatana('attack',0,name);katanaAction.time=time;chargeActive=charged;cueIndex=(katanaAction.getClip().userData?.events??[]).filter(e=>e.time<=time).length;}
+    }
     if(katana?.run&&['drawn','run'].includes(katanaState)){const stance=pose==='run'?'run':'drawn';if(stance!==katanaState)playKatana(stance,.2);}
     for(const [bone,rotation] of legPose.reverse())bone.quaternion.copy(rotation);legPose.length=0;
     // Hit-stop: on a landed blow the animation all but freezes for a beat; physics does not.
     restoreGesture();
+    for(const [bone,rotation] of expressionBase)bone.quaternion.copy(rotation);expressionBase.clear();
+    if(chargeActive&&chargeHeld&&katanaState==='attack'&&katanaAction.time>=.45){katanaAction.time=.45;katanaAction.paused=true;}
+    else if(katanaAction)katanaAction.paused=false;
     mixer.update(hitStop>0?dt*.06:dt);hitStop-=dt;shake*=Math.exp(-dt*9);
+    if(bridge){
+      bridge.time+=dt;const u=Math.min(1,bridge.time/.13),w=1-u*u*(3-2*u);
+      for(const {b,q,p} of bridge.poses){b.quaternion.slerp(q,w);b.position.lerp(p,w);}
+      if(u>=1)bridge=null;
+    }
     applyGesture();
+    const intent=actionExpression({attack:katanaState==='attack',charge:chargeActive,slide:!!sliding,climb:pose==='climb',jump:pose==='jump',fall:!!fall,landing:jump?.jumpPhase==='landing'&&heavy});
+    expression=intent.name;
+    for(const k of ['lid','lower','ear','eye'])face[k]+=(intent[k]-face[k])*(1-Math.exp(-dt*12));
+    expressionNodes.forEach((bone,i)=>{if(!bone)return;expressionBase.set(bone,bone.quaternion.clone());const angle=eyePose&&i<2?0:i===0?face.lid:i===1?face.lower:i===4?face.eye:face.ear;bone.quaternion.multiply(q().setFromAxisAngle(v().set(1,0,0),angle));});
     if(katana){
       const events=katanaAction.getClip().userData?.events??[];
       while(cueIndex<events.length&&events[cueIndex].time<=katanaAction.time)cue(events[cueIndex++].name);
       const finished=katanaAction.time>=katanaAction.getClip().duration-1e-4;
-      if(finished&&katanaState==='draw')playKatana('drawn',.1);
+      if(finished&&katanaState==='draw'){playKatana('drawn',.1);if(pendingAttack){pendingAttack=false;startAttack(pendingCharge);pendingCharge=false;}}
       else if(finished&&katanaState==='sheathe')playKatana('holstered',.1);
       else if(finished&&katanaState==='attack'){
-        if(attackQueued&&attackIndex+1<katana.attacks.length){attackQueued=false;playKatana('attack',.05,katana.attacks[++attackIndex]);}
-        else playKatana(pose==='run'&&katana.run?'run':'drawn',.15);
+        playKatana(pose==='run'&&katana.run?'run':'drawn',.15);
       }
     }
     // Keep the animated soles above the actual terrain, including slope under
@@ -340,7 +395,7 @@ export function createCharacter(asset, config) {
         // Rolling, any part of him may lead into the ground, not only the soles:
         // his cloth too (sleeves, hakama), measured as the bones pose it. The
         // tail may sweep the ground as he turns over.
-        if(rollTurn)for(const mesh of bodyMeshes){
+        if(rollTurn||flip||jump?.fallRoll)for(const mesh of bodyMeshes){
           if(mesh.isSkinnedMesh)mesh.computeBoundingBox();
           meshBox.copy(mesh.isSkinnedMesh?mesh.boundingBox:mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
           const centre=meshBox.getCenter(new T.Vector3());clear=Math.max(clear,(context.groundHeight?.(centre.x,-centre.z)??context.groundZ)-meshBox.min.y);
@@ -348,6 +403,7 @@ export function createCharacter(asset, config) {
         bodyLift=clear;bodyWorld=null;model.position.y+=clear;
       }
     }
+    if(katana){const tip=model.getObjectByName('blade.4');if(tip){object.updateWorldMatrix(true,true);const next=model.worldToLocal(tip.getWorldPosition(v())).x;bladeVelocity=dt>0?(next-bladeSide)/dt:0;bladeSide=next;}}
     if(fx){object.updateWorldMatrix(true,true);fx.update(dt,katanaState==='attack',katanaState!=='holstered');}
     shadow.visible=pose!=='flight';
     if(shadow.visible){
@@ -367,13 +423,21 @@ export function createCharacter(asset, config) {
     else if(katanaState==='drawn'||katanaState==='run')playKatana('sheathe',.08);
     return katanaState;
   }
-  /** Attack: draws first when holstered; drawn, starts the chain; mid-attack,
-   * queues the next blow of the chain for when this one ends. On the ground only. */
+  /** Each press starts a pose-adaptive cut immediately; never queues a combo. */
   function attack(){
-    if(!katana?.attacks.length||!grounded(lastPose))return katanaState;
-    if(katanaState==='holstered')return toggleKatana();
-    if(katanaState==='drawn'||katanaState==='run'){playKatana('attack',.06,katana.attacks[0]);attackIndex=0;}
-    else if(katanaState==='attack')attackQueued=attackIndex+1<katana.attacks.length;
+    if(!katana?.attacks.length||!canAttack(lastPose)||chargeActive)return katanaState;
+    if(katanaState==='holstered'){pendingCharge=false;pendingAttack=true;return toggleKatana();}
+    if(['drawn','run','attack'].includes(katanaState))startAttack();
+    return katanaState;
+  }
+  /** Separate held charge control. Hold the wind-up, release into the cleave. */
+  function setCharge(held){
+    const edge=held&&!chargeHeld;chargeHeld=held;
+    if(edge&&canAttack(lastPose)&&katana?.charge){
+      if(katanaState==='holstered'){pendingCharge=true;pendingAttack=true;toggleKatana();}
+      else if(katanaState==='draw'){pendingCharge=true;pendingAttack=true;}
+      else if(['drawn','run'].includes(katanaState))startAttack(true);
+    }
     return katanaState;
   }
   /** Where an insect lands: the crown of his head and the tip of his nose, in world space (out: {top, nose}). */
@@ -381,13 +445,15 @@ export function createCharacter(asset, config) {
     model.updateWorldMatrix(true,true);const head=gestureBones.head;if(!head)return out;
     head.localToWorld(out.top.copy(TOP_LOCAL));head.localToWorld(out.nose.copy(NOSE_LOCAL));return out;
   }
-  const api = { object, model, update, toggleKatana, attack, onCue:null, mixer, actions, gesture, anchors,
+  const api = { object, model, update, toggleKatana, attack, setCharge, onCue:null, mixer, actions, gesture, anchors,
     /** Animated planted feet measured before IK, for contact-driven presentation. */
     get footContacts(){return footContacts;},
     /** True while the idle sequence holds a seated pose (he has stood still long enough to sit). */
     get sitting(){return !!config.idle_sequence?.some(step=>step.hold&&step.clip===clipName);},
-    /** True while an attack plays: the client holds his feet still. */
+    /** True while a sword cut or charge plays. */
     get attacking(){return katanaState==='attack';},
+    get charging(){return chargeActive;},
+    get expression(){return expression;},
     /** Camera shake amplitude (m) a landed blow asks for; decays by itself. */
     get shake(){return shake;},
     /** Paws the playing body clip has planted now: [{bone, target}] (from glTF extras.contacts). */
