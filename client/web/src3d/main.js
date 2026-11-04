@@ -335,6 +335,8 @@ export async function main() {
   const rideModes=Object.keys(rideConfig.modes);
   let scenicCourse=null,scenicProgress=null;
   const paraGuide=createParaGuide(document.getElementById('para-guide'),camera);
+  const courseRetry=document.getElementById('course-retry');
+  courseRetry.addEventListener('click',()=>{if(scenicCourse&&flightConfig.modes[navigation.mode])setActivity(navigation.mode);});
   function showStarts(mode){
     const list=rideModes.includes(mode)?rideConfig.starts.filter(s=>s.mode===mode).map(s=>[s.id,s.label]):flightConfig.launches.map((l,i)=>[String(i),l.label]);
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
@@ -640,11 +642,14 @@ export async function main() {
         const bearing=next?Math.atan2(next.position_m[1]-flight.y,next.position_m[0]-flight.x)-flight.heading:0;
         const delta=Math.atan2(Math.sin(bearing),Math.cos(bearing));
         const arrow=Math.abs(delta)<.2?'↑':delta>0?'↖':'↗';
-        readout.textContent+=`\n${scenicCourse.label} · ${next?`${arrow} ${next.label} · ${distance} m`:'Valley reached · keep exploring'}`;
+        const arrivalLabel={exit:'Valley exit · continue to the meadow',approach:scenicCourse.arrival?.label,landed:'Landed · fly again',retry:'Run ended · fly again'}[scenicProgress.phase];
+        readout.textContent+=`\n${scenicCourse.label} · ${arrivalLabel??(next?`${arrow} ${next.label} · ${distance} m`:'Valley reached · keep exploring')}`;
       }
       paraGuide.update(airborne?scenicCourse:null,scenicProgress,flight,document.getElementById('course-guide').checked);
       document.body.dataset.flying=String(airborne);document.body.dataset.pilotView=navigation.view;
     }
+    courseRetry.hidden=!(airborne&&scenicCourse&&['landed','retry'].includes(scenicProgress?.phase)&&document.getElementById('course-guide').checked);
+    if(!courseRetry.hidden)courseRetry.textContent=`Fly ${scenicCourse.label} again ↗`;
     const localWind=air??navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);
     style.wind.value.set(localWind.wx/Math.max(1,flightConfig.wind.speed_mps),-localWind.wy/Math.max(1,flightConfig.wind.speed_mps));
     // Slow, bounded render-scale adaptation. Preserve the user's chosen ceiling.

@@ -1,3 +1,17 @@
+# Gondola meadow arrival — local candidate, 2026-11-03
+
+The Gondola Weave parakite guide now continues through Valley exit toward the
+existing southern meadow. A grounded arrival in its authored zone displays the
+landing result; hard touchdowns remain labelled. **Fly Gondola Weave again**
+restarts the selected course through the normal Launch action, including with
+the main UI hidden. Course guide off hides both the guide and retry control.
+Glider/motor arrivals retain the earlier free-flight guidance for now.
+
+Preview: `python3.11 client/web/tools/serve.py --port 8049`, then open
+`scene.html?course=gondola-weave&mode=parakite`. This remains an unpublished
+candidate; the [survey and limits](../../docs/reviews/gondola-landing-2026-11-03.md)
+record the hard diagnostic touchdown and remaining natural/controller playtest.
+
 # Web client v0.5.5 — 2026-11-03
 
 Accepted speed-adaptive follow-camera polish, centered tree traversal and softer

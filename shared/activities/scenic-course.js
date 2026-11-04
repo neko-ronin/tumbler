@@ -15,5 +15,15 @@ export function stepScenicCourse(course,progress,state,launchXY){
   const bypass=passed&&Math.hypot(p[0]-q[0],p[1]-q[1])<mark.radius_m*3&&Math.abs(p[2]-q[2])<150;
   if(distance>mark.radius_m&&!bypass)break;
  }
- return {index,position:p,complete:index===course.landmarks.length};
+ const complete=index===course.landmarks.length,arrival=course.arrival?.modes.includes(state.mode)?course.arrival:null;
+ let phase=progress?.phase??'route';
+ if(arrival){
+  if(phase==='route'&&complete)phase='exit';
+  if(phase==='exit'&&Math.hypot(state.x-arrival.entry_xy_m[0],state.y-arrival.entry_xy_m[1])<=arrival.entry_radius_m)phase='approach';
+  if(!['landed','retry'].includes(phase)){
+   if(state.collapsed)phase='retry';
+   else if(state.grounded)phase=phase==='approach'&&Math.hypot(state.x-arrival.landing_xy_m[0],state.y-arrival.landing_xy_m[1])<=arrival.landing_radius_m?'landed':'retry';
+  }
+ }
+ return {index,position:p,complete,phase};
 }

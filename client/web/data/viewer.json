@@ -11,7 +11,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "48fbf7fe02ecf31d53ec9fe114992d884a8cea551355154e49bf7fe66b45be74"
+      "sha256": "6c7460583c405f53d8854cbddc08ed7b50003f97e140559438f41890d7d97a1d"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -175,7 +175,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "4a58e2e81c4560341bca8993f17f2af8a978a09b8e478d2a1d61f3a6d1a05b83"
+      "sha256": "92ab6952c372e9f2a23c8f0a9af6f3e3b51d4fede02dc0d2c4768781fa505210"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -191,7 +191,7 @@
     },
     {
       "path": "client/web/src3d/para-guide.js",
-      "sha256": "ea564f4d7f82cd4e764fbc0c9413c5f102c8a8a09eece707817401cbe96f64fd"
+      "sha256": "89821a7128f4c995b156df79b6be99a553f7aa78056aeca89a2cd4799fba4ac9"
     },
     {
       "path": "client/web/src3d/para-pass.js",
@@ -367,11 +367,11 @@
     },
     {
       "path": "shared/activities/scenic-course.js",
-      "sha256": "6148575ba45af848eec7d985c82d051bdf2f6d0d932dde2f1e3eaf3647ac6827"
+      "sha256": "4f8f0c406d7129a8b35e58c3ea4e1dd3987f33b8f1915f7343458159e8da65d9"
     },
     {
       "path": "shared/activities/speedflying.json",
-      "sha256": "7995869c63404bcd8cb77d3c0ed8ada5e710ac3e8151c49788f9c98218b67261"
+      "sha256": "b5dfd15468ba95d11c4676303a135dae3c5cc2f27b435843870a1b7a4cb95d66"
     },
     {
       "path": "shared/activities/swim.js",
@@ -865,7 +865,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "d62a265",
+  "commit": "6c8af78",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

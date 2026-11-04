@@ -1748,6 +1748,22 @@
           840
         ]
       ],
+      "arrival": {
+        "modes": [
+          "parakite"
+        ],
+        "entry_xy_m": [
+          -125,
+          840
+        ],
+        "entry_radius_m": 60,
+        "landing_xy_m": [
+          -64,
+          -1713
+        ],
+        "landing_radius_m": 200,
+        "label": "Southern meadow landing"
+      },
       "landmarks": [
         {
           "id": "gondola-weave-0",
