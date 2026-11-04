@@ -33,36 +33,67 @@ export function allocateTreeLods(trees,budgets=TREE_BUDGETS) {
   return {result,used};
 }
 
-/** Reserve outgoing geometry too. An exhausted budget completes the handoff
- * immediately; it cannot submit an unbudgeted second dense tree for a fade. */
-export function treeTransitionDraws(allocation,budgets,now) {
-  // A dense hero often fills more than half of LOD 0's entire budget. Admit
-  // its replacement at LOD 1 while the departing hero fades, then promote it.
-  // Otherwise the outgoing-cost check below forces an immediate visible cut.
-  const heroes=allocation.result.filter(({tree,lod})=>
-    (tree.previous===0&&lod!==0)||(tree.from===0&&tree.previous===lod&&now-tree.changedAt<TREE_FADE_MS));
-  let reserved=0;
-  for(const {tree:outgoing}of heroes){
-    const cost=outgoing.costs[0];
-    if(allocation.used[0]+reserved+cost>budgets[0]){
-      const arrivals=allocation.result.filter(({tree,lod})=>lod===0&&tree.previous!==0).reverse();
-      for(const entry of arrivals){
-        let fallback=1;while(fallback<3&&allocation.used[fallback]+entry.tree.costs[fallback]>budgets[fallback])fallback++;
-        allocation.used[0]-=entry.tree.costs[0];allocation.used[fallback]+=entry.tree.costs[fallback];entry.lod=fallback;
-        if(allocation.used[0]+reserved+cost<=budgets[0])break;
-      }
-    }
-    if(allocation.used[0]+reserved+cost<=budgets[0])reserved+=cost;
+/** A quality reduction changes the destination budget immediately, but cannot
+ * revoke geometry already participating in a fade. This temporary ceiling only
+ * retains existing residents; it never exceeds their former allocation. */
+export function treeTransitionBudgets(trees,requested,now) {
+  const resident=[0,0,0];
+  for(const tree of trees){
+    if(tree.previous>=0&&tree.previous<3)resident[tree.previous]+=tree.costs[tree.previous];
+    if(tree.from>=0&&tree.from<3&&tree.from!==tree.previous&&now-tree.changedAt<TREE_FADE_MS)resident[tree.from]+=tree.costs[tree.from];
   }
-  const used=[...allocation.used],draws=[];let transitioning=0;
-  for(const {tree,lod}of allocation.result){
-    if(tree.previous!==lod){tree.from=tree.previous;tree.changedAt=now;}tree.previous=lod;
-    let amount=1;const from=tree.from,elapsed=(now-tree.changedAt)/TREE_FADE_MS;
-    if(from>=0&&from!==lod&&elapsed<1&&(from===3||used[from]+tree.costs[from]<=budgets[from])){
-      amount=elapsed*elapsed*(3-2*elapsed);transitioning++;used[from]+=tree.costs[from];
-      draws.push({tree,lod:from,lo:amount,hi:1});
+  return requested.map((budget,lod)=>Math.max(budget,resident[lod]));
+}
+
+/** Schedule handoffs against geometry already on screen. Outgoing geometry
+ * owns its reservation until its fade finishes, at every LOD. New arrivals wait
+ * in a cheaper representation; a full middle budget cannot force a hard cut.
+ * Finish an in-flight handoff before reconsidering its target: restarting from
+ * the nominal LOD would throw away the coverage that was actually displayed. */
+export function treeTransitionDraws(allocation,budgets,now) {
+  const used=[0,0,0,0],draws=[];
+  const entries=allocation.result;
+  for(const entry of entries)entry.wanted=entry.lod;
+  const fits=(tree,lod)=>lod===3||used[lod]+tree.costs[lod]<=budgets[lod];
+  const reserve=(tree,lod)=>{used[lod]+=tree.costs[lod];};
+  // Existing residents and both sides of active fades reserve first. A newly
+  // visible tree must not evict a visible neighbour halfway through a fade.
+  for(const entry of entries){
+    const tree=entry.tree;
+    if(tree.previous<0)continue;
+    if(tree.from>=0&&tree.from!==tree.previous&&now-tree.changedAt>=TREE_FADE_MS)tree.from=-1;
+    reserve(tree,tree.previous);
+    if(tree.from>=0&&tree.from!==tree.previous)reserve(tree,tree.from);
+  }
+  for(const entry of entries){
+    const tree=entry.tree;
+    if(tree.previous<0){let lod=entry.wanted;while(!fits(tree,lod))lod++;tree.previous=lod;tree.from=-1;reserve(tree,lod);}
+  }
+  // Release scarce stages before admitting promotions. LOD 3 is a complete
+  // source-baked tree and provides a bounded waiting stage even at saturation.
+  const order=entries.filter(({tree,wanted})=>wanted!==tree.previous&&!(tree.from>=0&&tree.from!==tree.previous))
+    .sort((a,b)=>Number(b.wanted>b.tree.previous)-Number(a.wanted>a.tree.previous));
+  for(const entry of order){
+    const tree=entry.tree,old=tree.previous;
+    if((tree.from>=0&&tree.from!==old)||entry.wanted===old)continue;
+    let next=entry.wanted;
+    while(next<3&&!fits(tree,next))next++;
+    if(next===old)continue;
+    // Do not demote a resident merely because its requested promotion must wait.
+    if(entry.wanted<old&&next>=old)continue;
+    tree.from=old;tree.previous=next;tree.changedAt=now;reserve(tree,next);
+  }
+  let transitioning=0,pending=false;
+  for(const entry of entries){
+    const tree=entry.tree,lod=tree.previous;
+    pending ||= lod!==entry.wanted;
+    entry.lod=lod;
+    let amount=1;
+    if(tree.from>=0&&tree.from!==lod){
+      const t=Math.max(0,Math.min(1,(now-tree.changedAt)/TREE_FADE_MS));amount=t*t*(3-2*t);transitioning++;
+      draws.push({tree,lod:tree.from,lo:amount,hi:1});
     }
     draws.push({tree,lod,lo:0,hi:amount});
   }
-  return {used,draws,transitioning};
+  return {used,draws,transitioning,pending};
 }

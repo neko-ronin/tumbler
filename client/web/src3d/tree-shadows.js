@@ -3,30 +3,50 @@
  * shadow pass in material.onBeforeRender, including the first warm-up frame.
  */
 import * as T from '../vendor/three.module.min.js';
-// The renderer's own sun lookup lights everything outside its frustum, so a
-// receiver at the map's rim goes from unshadowed to fully shadowed in one pixel
-// and a descent shows the forest's shadows popping in. Fade the lookup out over
-// the outer EDGE_FADE of the map instead; the baked ground decals fade out by
-// the same amount (forest.js), so the hand-over is a cross-fade.
+// Visible shadow coverage follows the live player focus, not the discretely
+// refreshed cache. Keep the former 520 m lighting footprint, with spare cached
+// texels around it so a cache recenter cannot move the coarse/detail blend.
 export const SHADOW_EDGE_FADE=.14;
+export const SCENERY_SHADOW_SPAN=640;
+export const SCENERY_SHADOW_RESOLUTION=2560;
+export const SHADOW_COVERAGE_SPAN=520;
 {
   const chunk=T.ShaderChunk.shadowmap_pars_fragment,start=chunk.indexOf('float getShadow('),mark='return mix( 1.0, shadow, shadowIntensity );',end=chunk.indexOf(mark,start);
   if(start<0||end<0)throw new Error('three.js shadow chunk changed; update the shadow edge fade');
-  T.ShaderChunk.shadowmap_pars_fragment=chunk.slice(0,end)+`vec2 rim=min(shadowCoord.xy,1.-shadowCoord.xy);shadow=mix(1.,shadow,smoothstep(0.,${SHADOW_EDGE_FADE.toFixed(3)},min(rim.x,rim.y)));\n\t`+chunk.slice(end);
+  T.ShaderChunk.shadowmap_pars_fragment=chunk.slice(0,end)+`
+#ifdef TUMBLER_TREE_SHADOW
+ shadow=mix(1.,shadow,sceneryShadowCoverage(shadowCoord.xy));
+#else
+ vec2 rim=min(shadowCoord.xy,1.-shadowCoord.xy);shadow=mix(1.,shadow,smoothstep(0.,${SHADOW_EDGE_FADE.toFixed(3)},min(rim.x,rim.y)));
+#endif
+ `+chunk.slice(end);
 }
-export const treeShadow={map:{value:null},matrix:{value:new T.Matrix4()},texel:{value:new T.Vector2(1/2048,1/2048)},bias:{value:0},normalBias:{value:0},ready:{value:0}};
+export const treeShadow={map:{value:null},matrix:{value:new T.Matrix4()},texel:{value:new T.Vector2(1/2048,1/2048)},bias:{value:0},normalBias:{value:0},ready:{value:0},focus:{value:new T.Vector4()},coverageScale:{value:1}};
 let light=null;
-export function bindTreeSunShadow(sun){light=sun;updateTreeSunShadow();}
+export function bindTreeSunShadow(sun){light=sun;treeShadow.focus.value.w=0;updateTreeSunShadow();}
+export function setTreeShadowFocus(point){treeShadow.focus.value.set(point.x,point.y,point.z,1);}
+
 export function updateTreeSunShadow(){
  const shadow=light?.shadow;
  if(!shadow?.map){treeShadow.ready.value=0;return;}
  treeShadow.map.value=shadow.map.texture;treeShadow.matrix.value=shadow.matrix;
  treeShadow.texel.value.set(1/shadow.map.width,1/shadow.map.height);
  treeShadow.bias.value=shadow.bias;treeShadow.normalBias.value=shadow.normalBias;treeShadow.ready.value=1;
+ treeShadow.coverageScale.value=(shadow.camera.right-shadow.camera.left)/SHADOW_COVERAGE_SPAN;
 }
-export function treeShadowUniforms(){return {uTreeSunMap:treeShadow.map,uTreeSunMatrix:treeShadow.matrix,uTreeSunTexel:treeShadow.texel,uTreeSunBias:treeShadow.bias,uTreeSunNormalBias:treeShadow.normalBias,uTreeSunReady:treeShadow.ready};}
+export function treeShadowUniforms(){return {uTreeShadowFocus:treeShadow.focus,uTreeShadowCoverageScale:treeShadow.coverageScale,uTreeSunMap:treeShadow.map,uTreeSunMatrix:treeShadow.matrix,uTreeSunTexel:treeShadow.texel,uTreeSunBias:treeShadow.bias,uTreeSunNormalBias:treeShadow.normalBias,uTreeSunReady:treeShadow.ready};}
 export const TREE_SHADOW_GLSL=`
+#define TUMBLER_TREE_SHADOW
+uniform vec4 uTreeShadowFocus;uniform float uTreeShadowCoverageScale;
 uniform sampler2D uTreeSunMap;uniform mat4 uTreeSunMatrix;uniform vec2 uTreeSunTexel;uniform float uTreeSunBias,uTreeSunNormalBias,uTreeSunReady;
+float sceneryShadowCoverage(vec2 uv){
+ if(uTreeShadowFocus.w>.5){
+  vec4 focus=uTreeSunMatrix*vec4(uTreeShadowFocus.xyz,1.);
+  uv=(uv-focus.xy/focus.w)*uTreeShadowCoverageScale+.5;
+ }
+ vec2 rim=min(uv,1.-uv);
+ return smoothstep(0.,${SHADOW_EDGE_FADE.toFixed(3)},min(rim.x,rim.y));
+}
 float scenerySunLight(vec3 world,vec3 N){
  if(uTreeSunReady<.5)return 1.;
  vec4 q=uTreeSunMatrix*vec4(world+N*uTreeSunNormalBias,1.);vec3 uv=q.xyz/q.w;
@@ -45,7 +65,6 @@ float scenerySunLight(vec3 world,vec3 N){
   float depth=dot(texture2D(uTreeSunMap,coordinate),unpack);
   visible+=wx*wy*step(uv.z+dot(slope,coordinate-uv.xy)+uTreeSunBias,depth);
  }
- float edge=min(min(uv.x,uv.y),min(1.-uv.x,1.-uv.y));
- return mix(1.,visible/9.,smoothstep(0.,${SHADOW_EDGE_FADE.toFixed(3)},edge));
+ return mix(1.,visible/9.,sceneryShadowCoverage(uv.xy));
 }
 `;

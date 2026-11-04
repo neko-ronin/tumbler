@@ -20,7 +20,7 @@ import { buildPlacements, buildForest } from './placements.js';
 import { buildTreeGroundShadows } from './forest.js';
 import {instanceMatrix} from './world.js';
 import {setTreeLighting} from './tree-surface.js';
-import {bindTreeSunShadow} from './tree-shadows.js';
+import {bindTreeSunShadow,setTreeShadowFocus,SCENERY_SHADOW_SPAN,SCENERY_SHADOW_RESOLUTION} from './tree-shadows.js';
 import {buildForestField,forestField} from './forest-field.js';
 import {buildForestFloor} from './forest-floor.js';
 import {buildAdoptedRedwoods,releaseCrownSources} from './redwood-rendering.js';
@@ -404,8 +404,8 @@ export async function main() {
 
   const sun = new T.DirectionalLight('#ffe3a3', 2.1);
   sun.castShadow = true;
-  Object.assign(sun.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 1, far: 1800 });
-  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -SCENERY_SHADOW_SPAN/2, right: SCENERY_SHADOW_SPAN/2, top: SCENERY_SHADOW_SPAN/2, bottom: -SCENERY_SHADOW_SPAN/2, near: 1, far: 1800 });
+  sun.shadow.mapSize.set(SCENERY_SHADOW_RESOLUTION, SCENERY_SHADOW_RESOLUTION);
   sun.shadow.bias = -.00015; sun.shadow.normalBias = .7;
   scene.add(sun, sun.target);bindTreeSunShadow(sun);
   const hemisphere = new T.HemisphereLight('#afd7e3', '#7a8452', 2.0); scene.add(hemisphere);
@@ -416,13 +416,14 @@ export async function main() {
   const shadowFocus=new T.Vector3(Infinity,Infinity,Infinity);
   function updateShadow(force = false) {
     const target = controls.target;
+    setTreeShadowFocus(target);
     const now=performance.now();
-    if (!force && target.distanceToSquared(shadowCentre)<80*80 &&
+    if (!force && target.distanceToSquared(shadowCentre)<40*40 &&
       ((shadowRevision===forest.stats.shadowRevision&&target.distanceToSquared(shadowFocus)<4*4)||now-lastShadowTime<350))return;
     lastShadowTime=now;shadowFocus.copy(target);
     // Static world shadows retain their light-space texel phase on recenter.
     // A forty-metre world-axis step changes that phase and makes edges jump.
-    shadowCentre.copy(snappedShadowAnchor(target,style.sun.value,520,2048));
+    shadowCentre.copy(snappedShadowAnchor(target,style.sun.value,SCENERY_SHADOW_SPAN,SCENERY_SHADOW_RESOLUTION));
     forest.update(camera,shadowCentre);shadowRevision=forest.stats.shadowRevision;
     sun.target.position.copy(shadowCentre);
     sun.position.copy(shadowCentre).addScaledVector(style.sun.value, 900);

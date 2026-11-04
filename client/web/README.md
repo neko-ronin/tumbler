@@ -1,3 +1,18 @@
+# Forest continuity — v0.5.7, approved for main, 2026-11-03
+
+Tree-detail transitions reserve outgoing geometry at every level and finish
+before retargeting. Saturated budgets and adaptive reductions now drain through
+fades. Scenery shadows and coarse decals share a continuously moving footprint,
+independent of cached-map recentering; spare cache coverage retains texel detail.
+Recorded walks/runs/climbs and a natural tree acquisition verify the repaired
+paths. [Evidence, reproduction, memory cost and limits](../../docs/reviews/forest-pop-2026-11-03.md).
+The human requests main integration and publication. Release verification is recorded in [the integration receipt](../../docs/reviews/forest-release-2026-11-03.md).
+The [v0.5.6 continuation](../../docs/reviews/forest-sustained-2026-11-03.md)
+adds deliberate-grab replay and a 900-second continuity check across three sun
+presets and adaptive/full quality. It detects no cuts, coverage gaps or budget
+overruns. Clean matched controls retain the median 30 FPS cap; higher candidate
+tail costs and sustained moving-view performance remain explicit limits.
+
 # Web client v0.5.6 — Ronin action improvements, 2026-11-03
 
 Click/Q/B now chooses a normal cut from the live blade pose; repeated presses

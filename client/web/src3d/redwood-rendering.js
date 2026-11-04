@@ -12,7 +12,7 @@ import {bakeCards} from './tree-impostors.js';
 import {paletteOverride} from '../../../shared/geometry/tree-design/forest-palette.js';
 import {fitCrown} from '../../../shared/geometry/tree-design/fit-crown.js';
 import {fitForestCrown} from '../../../shared/geometry/tree-design/forest-sprays.js';
-import {TREE_BUDGETS,projectedTreePixels,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality} from './tree-budget.js';
+import {TREE_BUDGETS,projectedTreePixels,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality,treeTransitionBudgets} from './tree-budget.js';
 
 const triangles=g=>(g.index?.count??g.attributes.position.count)/3;
 const lightKey=()=>style.sun.value.toArray().map(v=>v.toFixed(4)).join(',')+','+treeLightingKey();
@@ -138,7 +138,7 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     }
     for(const pool of distant.values())for(const lod of [2,3])pool.meshes[lod].boundingSphere.copy(pool.bounds);
   }
-  stats.tiles=batches.length;stats.drawBatches=beautyMeshes.length;let lastKey='',lastShadowKey='',bakedLight=lightKey(),fading=false;
+  stats.tiles=batches.length;stats.drawBatches=beautyMeshes.length;let requestedBudgets=[...stats.budgets];let lastKey='',lastShadowKey='',bakedLight=lightKey(),fading=false;
   const frustum=new T.Frustum(),matrix=new T.Matrix4(),lastPosition=new T.Vector3(Infinity,Infinity,Infinity),lastDirection=new T.Vector3(),direction=new T.Vector3();
   function update(camera,anchor=camera.position){
     const shadowKey=[anchor.x,anchor.y,anchor.z].map(v=>Math.round(v/4)).join(',');
@@ -153,14 +153,17 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     if(!fading&&key===lastKey&&lastPosition.distanceToSquared(camera.position)<.25&&direction.dot(lastDirection)>.9999)return;
     const start=performance.now();lastKey=key;lastPosition.copy(camera.position);lastDirection.copy(direction);
     camera.updateMatrixWorld();frustum.setFromProjectionMatrix(matrix.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
-    const visible=[];
+    const visible=[],selected=new Set();
     for(const b of batches){if(!frustum.intersectsSphere(b.bounds))continue;
       for(const item of b.items)if(frustum.intersectsBox(item.visibleBox)){
         item.clearance=item.box.distanceToPoint(camera.position);
-        item.pixels=projectedTreePixels(item.height,camera.position.distanceTo(item.bound.center),camera.fov,size.y);item.priority=item.pixels+800/(1+item.clearance);visible.push(item);
+        item.pixels=projectedTreePixels(item.height,camera.position.distanceTo(item.bound.center),camera.fov,size.y);item.priority=item.pixels+800/(1+item.clearance);visible.push(item);selected.add(item);
       }}
-    const allocation=allocateTreeLods(visible,stats.budgets),transitions=treeTransitionDraws(allocation,stats.budgets,performance.now());
-    stats.trianglesByLod=transitions.used;stats.lodCounts=[0,0,0,0];stats.transitioning=transitions.transitioning;fading=stats.transitioning>0;
+    for(const item of records)if(!selected.has(item)){item.previous=-1;item.from=-1;}
+    const now=performance.now();stats.selectionTime=now;
+    stats.budgets=treeTransitionBudgets(visible,requestedBudgets,now);
+    const allocation=allocateTreeLods(visible,requestedBudgets),transitions=treeTransitionDraws(allocation,stats.budgets,now);
+    stats.trianglesByLod=transitions.used;stats.lodCounts=[0,0,0,0];stats.transitioning=transitions.transitioning;fading=stats.transitioning>0||transitions.pending;
     for(const {lod}of allocation.result)stats.lodCounts[lod]++;
     const counts=new Map(beautyMeshes.map(mesh=>[mesh,0]));
     for(const {tree:item,lod,lo,hi}of transitions.draws){
@@ -171,7 +174,7 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     stats.near=stats.lodCounts[0];stats.mid=stats.lodCounts[1]+stats.lodCounts[2];stats.far=stats.lodCounts[3];stats.culled=records.length-visible.length;stats.selectionMs=performance.now()-start;
   }
   const rebake=kit=>{const next=kit.bake();kit.target.dispose();kit.target=next.target;kit.material.map=next.target.texture;kit.material.needsUpdate=true;next.geometry.dispose();next.material.dispose();next.material.studioMaskMaterial?.dispose();};
-  return {group,stats,update,setQuality(quality){stats.budgets=options.budgets??treeBudgetsForQuality(quality);stats.quality=quality;lastKey='';},invalidateShadows(){stats.shadowRevision++;lastKey='';lastShadowKey='';},
+  return {group,stats,update,setQuality(quality){requestedBudgets=options.budgets??treeBudgetsForQuality(quality);stats.quality=quality;lastKey='';},invalidateShadows(){stats.shadowRevision++;lastKey='';lastShadowKey='';},
     rebuildImpostors(direction){
       const key=lightKey();if(direction&&key===bakedLight)return;
       for(const kit of kits)rebake(kit);

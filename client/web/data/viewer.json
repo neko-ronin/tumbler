@@ -127,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/forest.js",
-      "sha256": "ac9a4a24b09c53feb8c209362f5623361db6898f3ece3c96abb43021040e75a2"
+      "sha256": "31c1c66c6a8ea3cbb2629cd516c0715ca3567c91585b3bd1a273e7d6adaab277"
     },
     {
       "path": "client/web/src3d/frame-pacing.js",
@@ -175,7 +175,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "50cb42f0c1d9d389c40d865f5b6fec8373a1297328b46ce829db01d8bf43c0d3"
+      "sha256": "f965f986a4a4b9dd822ae8ee6e33ea07e11e2fd45b6fb2552a9c25b4a95d7387"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -215,7 +215,7 @@
     },
     {
       "path": "client/web/src3d/redwood-rendering.js",
-      "sha256": "d12492a5c4a227b331ba72b148207e11795a7d7258ca01a8e5d8423ecea19482"
+      "sha256": "10d6862339b9324b06b99c5804d6d74bad9c14e8c5da2cce7347ea23ca75ff50"
     },
     {
       "path": "client/web/src3d/river-granite.js",
@@ -247,7 +247,7 @@
     },
     {
       "path": "client/web/src3d/tree-budget.js",
-      "sha256": "fb1f8614df7daefc0068f482ce303b2493600171bdf06251577b4b2aeba6929b"
+      "sha256": "c92397248b5a05c532aa1c424d9fc112eb6dba8c067d4237d95b3f6816c38d4b"
     },
     {
       "path": "client/web/src3d/tree-cards.js",
@@ -267,7 +267,7 @@
     },
     {
       "path": "client/web/src3d/tree-shadows.js",
-      "sha256": "58bc3fb92dbcbcc0a83a22510a1950d96bb7ec2a9723f3e8e8ccfdcc3ce0d373"
+      "sha256": "47c22cac8faa217235608e98221e5d37d271f46b666518729034b4584a2d1d36"
     },
     {
       "path": "client/web/src3d/tree-surface.js",
@@ -275,7 +275,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "7b89ed9f94a540eb64eca82c976ffeb28c9176699ba34902826037b0d13fb597"
+      "sha256": "bb4637f9d13ef13884a7096eabde5ad749e432ccffb65c5e54373491697ccf28"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -869,7 +869,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "bd70cd0",
+  "commit": "9a13c7b",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
