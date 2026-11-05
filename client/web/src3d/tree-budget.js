@@ -1,6 +1,6 @@
 /** Pure browser presentation budgets. Every visible tree retains coverage one;
  * complete geometry costs, including both sides of a fade, reserve the budget.
- * Far impostors are never subject to a population/distance cutoff. */
+ * Far spatial trees are never subject to a population/distance cutoff. */
 export const TREE_BUDGETS=[800000,1050000,550000];
 export const TREE_FADE_MS=380;
 export function treeBudgetsForQuality(quality=1) {
@@ -20,7 +20,8 @@ export function preferredTreeLod(pixels, previous=-1) {
 export function allocateTreeLods(trees,budgets=TREE_BUDGETS) {
   const remaining=[...budgets],used=[0,0,0,0],result=[];
   const priority=tree=>tree.priority*(tree.previous===0?1.15:tree.previous===1?1.05:1);
-  const ordered=[...trees].sort((a,b)=>priority(b)-priority(a)||a.id-b.id);
+  const ordered=[...trees].sort((a,b)=>Number(b.clearance<14)-Number(a.clearance<14)||
+    (a.clearance<14&&b.clearance<14?a.clearance-b.clearance:0)||priority(b)-priority(a)||a.id-b.id);
   for(const tree of ordered){
     let lod=preferredTreeLod(tree.pixels,tree.previous);
     // A camera inside/just above a crown always gets spatial geometry. LOD 1
@@ -69,8 +70,8 @@ export function treeTransitionDraws(allocation,budgets,now) {
     const tree=entry.tree;
     if(tree.previous<0){let lod=entry.wanted;while(!fits(tree,lod))lod++;tree.previous=lod;tree.from=-1;reserve(tree,lod);}
   }
-  // Release scarce stages before admitting promotions. LOD 3 is a complete
-  // source-baked tree and provides a bounded waiting stage even at saturation.
+  // Release scarce stages before admitting promotions. LOD 3 retains the same
+  // spatial tree as LOD 2, so saturation cannot substitute a whole-tree plane.
   const order=entries.filter(({tree,wanted})=>wanted!==tree.previous&&!(tree.from>=0&&tree.from!==tree.previous))
     .sort((a,b)=>Number(b.wanted>b.tree.previous)-Number(a.wanted>a.tree.previous));
   for(const entry of order){

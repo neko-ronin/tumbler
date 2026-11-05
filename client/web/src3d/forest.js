@@ -148,7 +148,7 @@ function bakeImpostor(asset,renderer){
 /** Vertex clustering keeps the source's branches, gaps and material colours in
  * the middle distance. The cell size grows only until the per-species budget is
  * met; a broad crown hull is reserved for invisible shadow proxies. */
-export function clusteredTreeGeometry(source, maxTriangles=8000, {minCell=.25}={}) {
+export function clusteredTreeGeometry(source, maxTriangles=8000, {minCell=.25,lockBelow=-Infinity}={}) {
   const position=source.attributes.position,normal=source.attributes.normal,color=source.attributes.color;
   const height=source.boundingBox.max.y-source.boundingBox.min.y;
   let cell=Math.max(minCell,height*.008),result;
@@ -158,7 +158,7 @@ export function clusteredTreeGeometry(source, maxTriangles=8000, {minCell=.25}={
       const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
       // Bark and foliage cannot collapse into one another at a branch joint.
       const leafy=color.getY(i)>color.getX(i)*1.1;
-      const key=`${Math.floor(x/cell)},${Math.floor(y/cell)},${Math.floor(z/cell)},${+leafy}`;
+      const key=y<=lockBelow?`root:${x},${y},${z}`:`${Math.floor(x/cell)},${Math.floor(y/cell)},${Math.floor(z/cell)},${+leafy}`;
       let v=clusters.get(key);
       if(v===undefined){v=vertices.length;clusters.set(key,v);vertices.push({p:[0,0,0],n:[0,0,0],c:[0,0,0,0],count:0});}
       remap[i]=v;const entry=vertices[v];entry.count++;

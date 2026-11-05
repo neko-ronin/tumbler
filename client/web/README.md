@@ -1,3 +1,29 @@
+# Tree LOD correction — v0.5.8, approved for main, 2026-11-04
+
+Tree assets/rendering and all LOD work follow the repository's
+[preservation and verification workflow](../../docs/lod/WORKFLOW.md).
+Its [catalog](../../docs/lod/CATALOG.md) indexes current and set-aside algorithms,
+models, textures and restore routes; future changes retain the evidence and
+revisit conditions alongside a verified portable snapshot.
+
+The human reopens forest visual acceptance after hovering rectangles, obvious
+model changes and misplaced/coarse trees. A non-unit render scale corrupted
+tree atlas viewports; the GPU regression now stays pixel-identical across
+scales 0.7, 1, 1.125 and 2. The browser candidate keeps a fixed spatial crown
+and grounded wood through the final budget stages, with nearby camera/character
+priority. Shared tree sources, placements and activity rules retain their bytes.
+The [investigation, alternatives, reproduction and limits](../../docs/reviews/forest-lod-2026-11-04.md)
+own this candidate's verification. Preview:
+`python3.11 client/web/tools/serve.py --port 8084`.
+The human requests main integration on 2026-11-04. Publication and live checks
+are recorded in the [release receipt](../../docs/reviews/forest-lod-release-2026-11-04.md).
+The human accepts the running candidate's visual result on 2026-11-04 as what
+they hoped for and envisioned. Moving-performance and broader-device acceptance
+remain separate from that visual approval.
+Future LOD changes use `node tools/check_lod.cjs` and the sequential
+`--gpu --prove` gate. [Cross-object failure modes and regression evidence](../../docs/reviews/lod-regression-gates-2026-11-04.md)
+record the contracts, eight source profiles and explicit remaining coverage gaps.
+
 # Forest continuity — v0.5.7, approved for main, 2026-11-03
 
 Tree-detail transitions reserve outgoing geometry at every level and finish

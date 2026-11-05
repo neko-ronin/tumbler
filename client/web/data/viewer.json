@@ -127,7 +127,7 @@
     },
     {
       "path": "client/web/src3d/forest.js",
-      "sha256": "31c1c66c6a8ea3cbb2629cd516c0715ca3567c91585b3bd1a273e7d6adaab277"
+      "sha256": "fe9d98587991a085ddf5cdb3e205220c8a863888362a06aed352298656b1d7b8"
     },
     {
       "path": "client/web/src3d/frame-pacing.js",
@@ -215,7 +215,7 @@
     },
     {
       "path": "client/web/src3d/redwood-rendering.js",
-      "sha256": "10d6862339b9324b06b99c5804d6d74bad9c14e8c5da2cce7347ea23ca75ff50"
+      "sha256": "c2e41e84072311b40842bc6d449f0967478a6b3eb12c794f3e358c48eba63aa6"
     },
     {
       "path": "client/web/src3d/river-granite.js",
@@ -247,15 +247,19 @@
     },
     {
       "path": "client/web/src3d/tree-budget.js",
-      "sha256": "c92397248b5a05c532aa1c424d9fc112eb6dba8c067d4237d95b3f6816c38d4b"
+      "sha256": "2291190807630d83cc301ca222d0293c5f3ff38f47008dc995ab6247b0e3e7eb"
+    },
+    {
+      "path": "client/web/src3d/tree-capture.js",
+      "sha256": "6e236802098e16b570257cbf9ef36b3e53c8314b14550c492a50e894928fa179"
     },
     {
       "path": "client/web/src3d/tree-cards.js",
-      "sha256": "910a7f3eb55bff33d0237d8220d3ae1ef8ca9e8a2966ce7b8d7ee8293d84f3d1"
+      "sha256": "2c14c7d9423d47cbf1fe0c9ef36328b65f6b7a8733fdafb4100e9b2756ceb537"
     },
     {
       "path": "client/web/src3d/tree-impostors.js",
-      "sha256": "b92db53b71b4fe415e135e0b9c2faf976842d349d6b773497e6a4e302b7c3ae2"
+      "sha256": "7af90b9aabcb57845364b4f46fd9c9f55bf8c506b3249668315b74afa276e454"
     },
     {
       "path": "client/web/src3d/tree-lighting.js",
@@ -270,12 +274,16 @@
       "sha256": "47c22cac8faa217235608e98221e5d37d271f46b666518729034b4584a2d1d36"
     },
     {
+      "path": "client/web/src3d/tree-slices.js",
+      "sha256": "d6cbfc45c32ab10610f9e0c721a24013aeb8eddb4178709093888f4b7162828b"
+    },
+    {
       "path": "client/web/src3d/tree-surface.js",
-      "sha256": "5108f17dc43ffe3e0c3faba25cd0fd2cfd78de29dd1d95df7f9172050cba7057"
+      "sha256": "0173b8ca1b54bf238f5242085edf63944bd7c1812d4e00aa711115754d43fb2b"
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "bb4637f9d13ef13884a7096eabde5ad749e432ccffb65c5e54373491697ccf28"
+      "sha256": "2300e71d55eeb01ce9a8f5c1db9655107c93261e74e27df840d4e76bcd7af37a"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -869,7 +877,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "9a13c7b",
+  "commit": "936301e",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

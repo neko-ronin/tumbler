@@ -11,7 +11,7 @@ export function setTreeLighting({sun='#fff1d3',fill='#dcebf3',ground='#7d8064',i
   for(const [key,hex]of Object.entries({sun,fill,ground})){const color=new T.Color(hex),base=referenceLight[key],scale=key==='sun'?intensity/2.3:ambient/2.1;treeLighting[key].value.set(color.r/base.r,color.g/base.g,color.b/base.b).multiplyScalar(scale);}
 }
 export const treeLightingKey=()=>Object.values(treeLighting).flatMap(u=>u.value.toArray().map(v=>v.toFixed(4))).join(',');
-export function createTreeSurface(recipe,{sun,shadowShader=null,interval='studyInterval',sprayMap=null,palette=['#294b37','#3f6a47','#648658'].map(c=>new T.Color(c).toArray()),inspection=false,mask=false}={}) {
+export function createTreeSurface(recipe,{sun,shadowShader=null,interval='studyInterval',sprayMap=null,palette=['#294b37','#3f6a47','#648658'].map(c=>new T.Color(c).toArray()),inspection=false,mask=false,capture=false}={}) {
   const material=new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,fog:!inspection&&!mask,alphaToCoverage:Boolean(sprayMap)});
   if(inspection||mask)material.toneMapped=false;
   material.userData.treeRedBark=recipe.leafProfile==='redwood';
@@ -19,7 +19,7 @@ export function createTreeSurface(recipe,{sun,shadowShader=null,interval='studyI
   material.onBeforeCompile=shader=>{
     shadowShader?.(shader);Object.assign(shader.uniforms,forestUniforms());
     if(sprayMap){shader.uniforms.uTreeSprayMap={value:sprayMap};shader.uniforms.uTreePalette={value:palette.map(rgb=>new T.Vector3(...rgb))};shader.uniforms.uTreeCutoff={value:recipe.sprayCutoff??(recipe.leafProfile==="redwood"?.37:.3)};}
-    Object.assign(shader.uniforms,{uVisibilityFeather:visibilityFeather,uTreePlayFocus:inspection||mask?{value:new T.Vector4()}:treePlayFocus,uTreeRedBark:{value:+material.userData.treeRedBark},uTreeSun:sun,uTreeSunTint:treeLighting.sun,uTreeSkyTint:treeLighting.fill,uTreeGroundTint:treeLighting.ground,uTreeBands:{value:recipe.toonBands},uTreeRim:{value:recipe.rimStrength},
+    Object.assign(shader.uniforms,{uVisibilityFeather:visibilityFeather,uTreePlayFocus:inspection||mask||capture?{value:new T.Vector4()}:treePlayFocus,uTreeRedBark:{value:+material.userData.treeRedBark},uTreeSun:sun,uTreeSunTint:treeLighting.sun,uTreeSkyTint:treeLighting.fill,uTreeGroundTint:treeLighting.ground,uTreeBands:{value:recipe.toonBands},uTreeRim:{value:recipe.rimStrength},
       uTreeOcclusion:{value:recipe.canopyShade},uTreeTransmission:{value:recipe.transmission*Math.exp((.4-recipe.leafThickness)*1.4)}});
     shader.vertexShader=`attribute float leafKind,canopyAO;attribute vec2 ${interval};varying float vTreeLeaf,vTreeAO;varying vec2 vTreeInterval,vTreeUV;varying vec3 vTreeNormal,vTreeWorld,vTreeLocal;\n`+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
@@ -71,10 +71,11 @@ export function createTreeSurface(recipe,{sun,shadowShader=null,interval='studyI
         rim*uTreeRim*.08*uTreeSunTint)*mix(.60,1.,sunlight);
       if(vTreeLeaf<.5)outgoingLight=treeWoodLight(diffuseColor.rgb,vTreeLocal,vTreeWorld,N,L,uTreeSunTint,uTreeSkyTint,uTreeGroundTint,sunlight*${shadowShader?'forestCanopyLight(vTreeWorld)':'1.'},ao);
       ${mask?'outgoingLight=vec3(0.);':inspection?'outgoingLight=vTreeLeaf>.5?vec3(0.,1.,0.):vec3(1.,0.,0.);':''}
+      ${capture?'outgoingLight*=diffuseColor.a;':''}
       #include <opaque_fragment>
     `);
   };
-  material.customProgramCacheKey=()=> `tree-surface-v7-${interval}-${Boolean(shadowShader)}-${Boolean(sprayMap)}-${inspection}-${mask}`;
-  if(!mask)material.studioMaskMaterial=createTreeSurface(recipe,{sun,shadowShader,interval,sprayMap,palette,mask:true});
+  material.customProgramCacheKey=()=> `tree-surface-v8-${interval}-${Boolean(shadowShader)}-${Boolean(sprayMap)}-${inspection}-${mask}-${capture}`;
+  if(!mask)material.studioMaskMaterial=createTreeSurface(recipe,{sun,shadowShader,interval,sprayMap,palette,mask:true,capture});
   return material;
 }

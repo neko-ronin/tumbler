@@ -5,6 +5,7 @@ import * as T from '../vendor/three.module.min.js';
 import {style,sunShadowShader} from './style.js';
 import {TREE_ATLAS_GLSL,treeAtlasMaxMip} from './tree-atlas.js';
 import {updateTreeSunShadow} from './tree-shadows.js';
+import {treeCaptureRect} from './tree-capture.js';
 
 export function bakeCards(renderer, geometry, material, representation, settings) {
   const views = representation === 'multiview' ? settings.views : representation === 'crossed' ? 2 : 1;
@@ -32,7 +33,7 @@ export function bakeCards(renderer, geometry, material, representation, settings
       camera.position.copy(centre).add(top ? new T.Vector3(0, size.y + width + 10, 0) : new T.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(size.y + width + 10));
       camera.lookAt(centre); camera.updateProjectionMatrix();
       const x = i % columns * resolution, y = Math.floor(i / columns) * resolution;
-      renderer.setViewport(x, y, resolution, resolution); renderer.setScissor(x, y, resolution, resolution); renderer.render(scene, camera);
+      treeCaptureRect(renderer,x,y,resolution,resolution);renderer.render(scene, camera);
     }
   } finally {
     style.cloudGroundReady.value=cloudReady;style.actorShadowReady.value=actorReady;renderer.setRenderTarget(previous.target); renderer.setViewport(previous.viewport); renderer.setScissor(previous.scissor);

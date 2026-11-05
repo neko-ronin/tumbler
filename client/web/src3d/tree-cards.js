@@ -5,6 +5,7 @@ import * as T from '../vendor/three.module.min.js';
 import {style,sunShadowShader} from './style.js';
 import {TREE_ATLAS_GLSL,treeAtlasMaxMip} from './tree-atlas.js';
 import {updateTreeSunShadow} from './tree-shadows.js';
+import {treeCaptureRect} from './tree-capture.js';
 import {treeLighting} from './tree-surface.js';
 import {TREE_WOOD_GLSL} from './tree-lighting.js';
 import {FOREST_FIELD_GLSL,forestUniforms} from './forest-field.js';
@@ -43,7 +44,7 @@ export function bakeBoughCards(renderer, source, sourceMaterial, representation,
         const dir=top?new T.Vector3(0,below?-1:1,0):new T.Vector3(Math.sin(yaw),0,Math.cos(yaw));
         camera.up.set(0,top?0:1,top?(below?1:-1):0);camera.position.copy(centre).addScaledVector(dir,distance);camera.lookAt(centre);camera.updateMatrixWorld();
         const tile=c*views+v,x=tile%columns*resolution,y=Math.floor(tile/columns)*resolution;
-        renderer.setViewport(x,y,resolution,resolution);renderer.setScissor(x,y,resolution,resolution);
+        treeCaptureRect(renderer,x,y,resolution,resolution);
         renderer.clear(true,true,false);renderer.render(scene,camera);
       }
     });

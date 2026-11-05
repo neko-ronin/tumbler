@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import * as T from '../vendor/three.module.min.js';
 import {parseGLB,makeMaterialFor,mergePrimitives} from '../src3d/glb.js';
 import {buildRedwoodSprays,rasterSprayAtlas} from '../../../shared/geometry/tree-design/redwood-sprays.js';
-import {CROWN_SPREAD,fittedTreeGeometry,buildAdoptedRedwoods,retainedVillagePrimitive,releaseCrownSources} from '../src3d/redwood-rendering.js';
+import {CROWN_SPREAD,browserTreeStages,fittedTreeGeometry,buildAdoptedRedwoods,retainedVillagePrimitive,releaseCrownSources} from '../src3d/redwood-rendering.js';
 import {TREE_BUDGETS,preferredTreeLod,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality} from '../src3d/tree-budget.js';
 import {setTreeLighting} from '../src3d/tree-surface.js';
 import {style} from '../src3d/style.js';
@@ -18,6 +18,7 @@ const bounds=primitives=>{const box=new T.Box3();for(const p of primitives)box.u
 test('adoption binds the approved studio revision and recorded neutral silhouette sources',()=>{
   assert.equal(plan.source.studioRevision,2349);
   assert.deepEqual(plan.stages.map(s=>s.representation),['mesh','mesh','lattice','multiview']);
+  assert.deepEqual(browserTreeStages(plan.stages,'giant').map(s=>s.representation),['mesh','mesh','slices','slices']);
   for(const [path,hash]of Object.entries(plan.silhouette.sourceSHA256)){
     assert.equal(createHash('sha256').update(readFileSync(new URL('shared/geometry/'+path,root))).digest('hex'),hash,path);
   }
@@ -139,7 +140,7 @@ test('adaptive tree quality reduces submitted geometry while retaining a full-de
 
 const renderer={capabilities:{maxTextureSize:8192},autoClear:true,getRenderTarget:()=>null,getClearColor:c=>c.set(0),getClearAlpha:()=>1,
   getViewport:v=>v.set(0,0,1200,800),getScissor:v=>v.set(0,0,1200,800),getScissorTest:()=>false,getSize:v=>v.set(1200,800),
-  setRenderTarget(){},setClearColor(){},setScissor(){},setViewport(){},setScissorTest(){},clear(){},render(){}};
+  setRenderTarget(){},setClearColor(){},setScissor(){},setViewport(){},setScissorTest(){},clear(){},render(){},initRenderTarget(){}};
 
 test('distant batching reduces submissions while retaining every selected transform, fade interval and shadow caster',()=>{
  const path='redwood/giant_redwood.glb',assets={[path]:read(path),...crowns};
@@ -172,13 +173,25 @@ test('the real four-stage path uses stable original shadow topology and updates 
   const records=Array.from({length:25},(_,id)=>({id:String(id),asset:path,position_m:[(id%5)*18-36,Math.floor(id/5)*18,0],yaw_deg:id*23,scale:[1,1,1]}));
   const forest=buildAdoptedRedwoods({instances:records},assets,renderer,plan),camera=new T.PerspectiveCamera(62,1.5,.1,5000);
   camera.position.set(0,80,80);camera.lookAt(0,65,-40);camera.updateMatrixWorld();forest.update(camera,new T.Vector3(0,0,0));
-  const costs=forest.stats.costsByAsset[path];assert.ok(costs[0]>costs[1]*4&&costs[1]>costs[2]*4&&costs[3]===2);
+  const costs=forest.stats.costsByAsset[path];assert.ok(costs[0]>costs[1]*4&&costs[1]>costs[2]*4&&costs[3]===costs[2]);
+  const spatial=forest.group.children.filter(m=>/studio_lod[23]_/.test(m.name));
+  assert(spatial.every(m=>m.material===spatial[0].material),'budget handoffs share the same captured foliage and light');
+  assert(spatial.every(m=>m.geometry.attributes.position===spatial[0].geometry.attributes.position),'final budget stages cannot change a tree shape or pivot');
+  const full=forest.group.children.find(m=>m.name.includes('studio_lod1_')).geometry,far=spatial[0].geometry;
+  const base=g=>{const p=g.attributes.position,low=g.boundingBox.min.y,result=new Set();for(const id of g.index?.array??Array.from({length:p.count},(_,i)=>i))if(p.getY(id)<=low+.001)result.add([p.getX(id),p.getY(id),p.getZ(id)].join(','));return result;};
+  assert.deepEqual(base(far),base(full),'wood reduction retains every original ground-level vertex exactly');
+  const capture=forest.stats.capturesByAsset[path][2];
+  assert.equal(capture.capturedTriangles+capture.retainedWoodTriangles,capture.sourceTriangles,'all fine branches and needles participate in the distant source capture');
   const proxy=forest.group.children.find(m=>m.name.includes('core_shadow'));
   assert.ok(proxy.castShadow);assert.ok(proxy.geometry.attributes.position.count/3<costs[0]/10,'dense leaf mesh never enters depth pass');
   const revision=forest.stats.shadowRevision,first=forest.stats.lodCounts.reduce((a,b)=>a+b,0);assert.ok(first>0);
   camera.lookAt(0,80,400);camera.updateMatrixWorld();forest.update(camera,new T.Vector3(0,0,0));
   assert.ok(forest.stats.culled>0,'rotation culls trees without requiring translation');
   assert.equal(forest.stats.shadowRevision,revision,'beauty culling does not remove ground-shadow casters');
+  camera.position.set(0,80,1500);camera.lookAt(0,70,0);camera.updateMatrixWorld();forest.update(camera,camera.position);
+  assert.equal(forest.stats.lodCounts[1],0,'the distant view needs no middle mesh before the character approaches');
+  forest.update(camera,new T.Vector3(0,0,0));
+  assert.ok(forest.stats.lodCounts[1]>0,'character approach refreshes nearby detail even while the camera holds still');
   assert.ok(forest.group.children.filter(m=>m.name.includes('lod')).every(m=>!m.castShadow));
   assert.ok(forest.group.children.every(m=>m.visible===(m.count>0)),'empty beauty and shadow allocations stay out of render processing');
   forest.dispose();
