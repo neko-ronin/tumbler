@@ -6,7 +6,7 @@ import { trunkRadiusAt } from '../../../shared/activities/climb.js';
 import { gaitFor } from '../../../shared/activities/walk.js';
 import { chooseCut,actionExpression } from '../../../shared/activities/combat.js';
 import { createKatanaFx } from './katana-fx.js';
-const PAW_RADIUS=.05,FOOT_REACH_M=.2,PLANTED_M=.03,BODY_RISE_S=.07,BODY_DROP_S=.006,FLIP_PIVOT_M=.85,ROLL_PIVOT_M=.42,ROLL_START=.12,ROLL_END=.78,STRETCH=.1,SQUASH=.16;
+const PAW_RADIUS=.05,FOOT_REACH_M=.2,PLANTED_M=.03,BODY_RISE_S=.07,BODY_DROP_S=.006,FLIP_PIVOT_M=.85,FLIP_START=.42,FLIP_END=.85,ROLL_PIVOT_M=.42,ROLL_START=.12,ROLL_END=.78,STRETCH=.1,SQUASH=.16;
 
 export function createCharacter(asset, config) {
   const object = new T.Group();
@@ -260,8 +260,13 @@ export function createCharacter(asset, config) {
     const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))+(pose==='run'&&katanaState==='run'?.14:0)
       // A dive points his (prone) body along its path: nose down going down.
       :pose==='swim'&&context.swim?.swimPhase==='dive'?Math.max(-1.2,Math.min(1.2,Math.atan2(-(context.swim.vz??0),Math.max(.1,context.swim.speed??0)))):0;
-    // Shared contact velocity drives impact rotation; jumps add no fixed flip.
-    const flip=jump?.fallPitch??0;
+    // The moving triple somersaults forward from just before the apex until
+    // early in the drop. It is a presentation of the core's `flip` jump style;
+    // a contract without that clip keeps the authored tuck untouched.
+    const t=Math.min(1,Math.max(0,((jump?.jumpProgress??0)-FLIP_START)/(FLIP_END-FLIP_START)));
+    const somersault=config.jump_clips?.flip&&jump?.jumpStyle==='flip'&&jump.jumpPhase==='airborne'?2*Math.PI*t*t*(3-2*t):0;
+    // Shared contact velocity still drives impact rotation; both share the pivot.
+    const flip=(jump?.fallPitch??0)+somersault;
     model.rotation.z+=jump?.fallRoll??0;
     // The roll turns him once forward about a low pivot over the landing phase.
     const r=Math.min(1,Math.max(0,((jump?.jumpProgress??0)-ROLL_START)/(ROLL_END-ROLL_START))),rollTurn=roll?2*Math.PI*r*r*(3-2*r):0;

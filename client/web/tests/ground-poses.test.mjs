@@ -132,9 +132,14 @@ test('climbing clips keep the front paws on the bark across trunk sizes, and the
  cat.update(1/60,'jump',0,{jump:{jumpPhase:'tumble',jumpProgress:.4,jumpStyle:'hop',jumpCount:1}});assert.equal(cat.clip,config.fall_clips.tumble);
  cat.dispose();
 });
-test('impact attitude follows shared rotation and triple jumps do not invent a somersault',()=>{
- const cat=createCharacter(asset(),config);
- for(const phase of [.3,.5,.635,.85]){cat.update(1/60,'jump',0,{jump:{jumpPhase:'airborne',jumpStyle:'tuck',jumpTier:3,jumpCount:3,jumpProgress:phase}});assert.ok(Math.abs(cat.model.rotation.x)<.05);}
+test('the moving triple somersaults, and impact attitude still follows shared rotation',()=>{
+ const cat=createCharacter(asset(),config),turn=(phase,style='flip')=>{cat.update(1/60,'jump',0,{jump:{jumpPhase:'airborne',jumpStyle:style,jumpTier:3,jumpCount:3,jumpProgress:phase}});return cat.model.rotation.x;};
+ assert.ok(Math.abs(turn(.3))<.05,'the turn waits until just before the apex');
+ const start=turn(.5),inverted=turn(.635),upright=turn(.85);
+ assert.ok(start>.1&&start<Math.PI,'it starts turning after 0.42');
+ assert.ok(Math.abs(inverted-Math.PI)<.05,'he is inverted at the midpoint of the turn');
+ assert.ok(Math.abs(upright-2*Math.PI)<.05,'and upright again by 0.85');
+ assert.ok(Math.abs(turn(.635,'tuck'))<.05,'a contract that plays a tuck does not somersault');
  cat.update(1/60,'jump',5,{jump:{jumpPhase:'bounce',jumpProgress:.4,jumpCount:4,fallPitch:1.2,fallRoll:.25}});
  assert.ok(Math.abs(cat.model.rotation.x-1.2)<.05);assert.ok(Math.abs(cat.model.rotation.z-.25)<.05);
  cat.dispose();

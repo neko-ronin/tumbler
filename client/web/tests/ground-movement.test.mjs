@@ -102,7 +102,7 @@ test('jumping again at touchdown climbs to a double, then a triple that needs hi
   return {s,tiers,peaks,styles};
  };
  const run=chain({x:1,y:0,run:true});
- assert.deepEqual(run.tiers,[1,2,3]);assert.deepEqual(run.styles,['leap','tuck','tuck'],'moving jumps are athletic, never the playful poses');
+ assert.deepEqual(run.tiers,[1,2,3]);assert.deepEqual(run.styles,['leap','tuck','flip'],'moving jumps are athletic, never the playful poses');
  assert.deepEqual(chain({x:.4,y:0}).styles,['leap','tuck','leap']);
  assert.ok(run.peaks[0]<run.peaks[1]&&run.peaks[1]<run.peaks[2],`peaks ${run.peaks.map(p=>p.toFixed(1))}`);
  assert.deepEqual(chain({x:1,y:0}).tiers,[1,2,3],'a full-stick walk is enough: no run button needed');

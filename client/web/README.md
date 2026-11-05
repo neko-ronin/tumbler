@@ -1,3 +1,12 @@
+# Triple-jump somersault restored — v0.5.9, 2026-11-04
+
+The moving triple jump plays its authored `flip` clip again and somersaults
+forward from just before the apex into the early drop. The core publishes the
+`flip` jump style for the third link; the browser presents the turn and keeps
+impact-driven fall rotation separate. Contracts without a `flip` clip keep
+their tuck. The 2026-11-03 removal and this restoration are recorded in
+[AIR-AND-PARA](../../docs/design/AIR-AND-PARA.md).
+
 # Tree LOD correction — v0.5.8, approved for main, 2026-11-04
 
 Tree assets/rendering and all LOD work follow the repository's

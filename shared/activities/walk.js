@@ -109,9 +109,9 @@ export function stepWalk(state,input,dt,config,height,hitTest){
     // double and triple jump; its last link needs chain_speed_mps of ground speed.
     const last=1+j.chain_mps.length,tier=s.chainLeft>0&&(s.jumpTier??1)<last?(s.jumpTier??1)+1:1;
     s.jumpTier=tier===last&&tier>1&&s.speed<j.chain_speed_mps?1:tier;
-    // Standing jumps play; moving ones leap and tuck without a forced flip.
+    // Standing jumps play; moving ones are athletic: leap, tuck, then the flip.
     const moving=Math.max(speed,s.speed??0)>.5;
-    s.jumpStyle=moving?['leap','tuck','tuck'][s.jumpTier-1]:s.jumpTier>1?'star':['celebrate','heel_click','star'][s.jumpCount%3];
+    s.jumpStyle=moving?['leap','tuck','flip'][s.jumpTier-1]:s.jumpTier>1?'star':['celebrate','heel_click','star'][s.jumpCount%3];
     s.sliding=false;s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;s.jumpBuffer=0;
     if(!(config.accel_mps2<Infinity)){s.vx=vx;s.vy=vy;}
   }
