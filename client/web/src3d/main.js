@@ -277,7 +277,7 @@ export async function main() {
   // Full/half Cat Ronin (button, C, or ?cat=half): presentation and camera only;
   // speeds, jumps and collision stay full size. A start for a shrink/grow mechanic.
   const catSize=document.getElementById('cat-size'),HALF_CAT=.52;
-  const toggleCatSize=()=>{characterConfig.scale=characterConfig.scale===1?HALF_CAT:1;const half=characterConfig.scale!==1;catSize.textContent=half?'Cat: half size':'Cat: full size';catSize.setAttribute('aria-pressed',String(half));};
+  const toggleCatSize=()=>{characterConfig.scale=characterConfig.scale===1?HALF_CAT:1;character.setScale(characterConfig.scale);const half=characterConfig.scale!==1;catSize.textContent=half?'Cat: half size':'Cat: full size';catSize.setAttribute('aria-pressed',String(half));};
   catSize.addEventListener('click',toggleCatSize);
   window.addEventListener('keydown',e=>{if(e.code==='KeyC'&&!e.repeat&&!e.metaKey&&!e.ctrlKey&&!/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))toggleCatSize();});
   if(new URLSearchParams(location.search).get('cat')==='half')toggleCatSize();

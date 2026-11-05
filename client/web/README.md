@@ -1,3 +1,11 @@
+# Cat size toggle restored — v0.5.10, 2026-11-04
+
+Full/half Cat Ronin works again through the button, `C`, and `?cat=half`. The
+combat work had cloned the character contract inside `createCharacter`, so the
+toggle resized the camera but left the body full size. Presentation scale now
+passes through an explicit character method; movement, jumps and collision stay
+full size as before.
+
 # Triple-jump somersault restored — v0.5.9, 2026-11-04
 
 The moving triple jump plays its authored `flip` clip again and somersaults

@@ -35,6 +35,22 @@ test('Ronin retains bone-parented meshes and playable clips animate actual geome
   cat.dispose();
 });
 
+test('presentation scale switches full to half and survives the next update', () => {
+  const cat = character();
+  cat.update(.2, 'idle');cat.object.updateMatrixWorld(true);
+  const full = cat.model.scale.x;
+  assert.equal(full, 1);
+  cat.setScale(.52);
+  assert.equal(cat.model.scale.x, .52);
+  assert.ok(Math.abs(cat.model.position.y + config.sole_y_m * .52) < 1e-9);
+  cat.update(.2, 'idle');cat.object.updateMatrixWorld(true);
+  assert.equal(cat.model.scale.x, .52, 'an update must not put the presentation back to full size');
+  assert.equal(config.scale, 1, 'the caller\'s shared character contract is not mutated');
+  cat.setScale(1);
+  assert.equal(cat.model.scale.x, 1);
+  cat.dispose();
+});
+
 test('walking normalizes diagonals, respects analogue input, blocks contact and preserves prior state', () => {
   const origin = { x:0, y:0, z:0, heading:0, speed:0 }, flat=()=>0;
   // Traction ramps speed, so compare settled velocities rather than one step.

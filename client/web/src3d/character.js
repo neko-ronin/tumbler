@@ -194,6 +194,12 @@ export function createCharacter(asset, config) {
     api.onCue?.(name==='hum'&&katanaState==='draw'?'extend_complete':name);
   }
   if(katana)playKatana('holstered',0);
+  /** Presentation size only: movement, jumps and collision stay the shared full size. */
+  function setScale(value) {
+    config.scale = value;
+    model.scale.setScalar(value);
+    model.position.y = -config.sole_y_m * value;
+  }
   function update(dt, pose, speed = 0, context = {}) {
     lastSpeed=speed;
     const jump=context.jump;
@@ -450,7 +456,7 @@ export function createCharacter(asset, config) {
     model.updateWorldMatrix(true,true);const head=gestureBones.head;if(!head)return out;
     head.localToWorld(out.top.copy(TOP_LOCAL));head.localToWorld(out.nose.copy(NOSE_LOCAL));return out;
   }
-  const api = { object, model, update, toggleKatana, attack, setCharge, onCue:null, mixer, actions, gesture, anchors,
+  const api = { object, model, update, setScale, toggleKatana, attack, setCharge, onCue:null, mixer, actions, gesture, anchors,
     /** Animated planted feet measured before IK, for contact-driven presentation. */
     get footContacts(){return footContacts;},
     /** True while the idle sequence holds a seated pose (he has stood still long enough to sit). */
