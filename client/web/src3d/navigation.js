@@ -10,19 +10,37 @@ import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
 import {composeFollowView,createFollowRange,createCameraBoom,createFollowCamera,clearCameraTerrain,clearTerrainBoom,cameraTerrainRadius} from './follow-camera.js';
 import {cameraProfile,cameraMovementProfile} from '../../../shared/activities/camera.js';
-const JUMP_FRAME_M=2,AIM_S=.5,SHOT_S=2.5;
+const JUMP_FRAME_M=2,AIM_S=.5;
+/** The orbit→walk introduction is one continuous shot, this many seconds long.
+ * 3.0 s is a product number the human can veto; see
+ * docs/reviews/intro-jitter-cadence-2026-11-05.md for the measurements. */
+export const SHOT_S=3;
+// The opening shot eases harder late than early. The subject spends most of the
+// move below the frame and sweeps in over the last third, so a symmetric
+// smootherstep puts its peak screen speed exactly where it is visible. Warping
+// the clock front-weights the part nobody can see while keeping zero velocity
+// and acceleration at both ends.
+/** Clock warp for the opening shot: front-weighted but C2 at both ends. */
+export const introShotEase=u=>{const w=u**.8;return w*w*w*(w*(w*6-15)+10);};
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true,shot=null,preferredFlightMode='paraglider';
   let weather='soaring',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0,challengeId='';
   let queuedGrab=false,queuedSlide=false,queuedBranch=false,actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const director=createFollowCamera(),boom=createCameraBoom(),range=createFollowRange();
   let movementYaw=null,lastInput=[0,0],terrainLift=0;
+  // Shift is a toggle on foot, not a held modifier; the left stick's own travel
+  // ramps the pace to a full run without it. `clear()` retires both.
+  let runToggled=false,runStick=0;
   const fallback={version:1,profiles:{climb:{distance:6.9,lift:.6,pitch:-.24,follow_rate:8,return_delay_s:.9},branch:{distance:5.8,lift:.25,pitch:-.3,follow_rate:.65,return_delay_s:2.4,follow_hold_s:.9,follow_ramp_s:2.2,max_turn_rad_s:.55},'tree-jump':{distance:6.9,lift:.6,pitch:-.3,follow_rate:0,return_delay_s:2.4},walk:{distance:5.4,lift:0,pitch:-.24,follow_rate:1.1,return_delay_s:1.8},flight:{distance:12,lift:0,pitch:-.34,follow_rate:1.1,return_delay_s:1.8},ride:{distance:6.5,lift:0,pitch:0,follow_rate:1.1,return_delay_s:1.8}},areas:[]};
   const policy=()=>cameraMovementProfile(cameraProfile(options.cameraPolicy??fallback,mode==='walk'?(state?.mode??'walk'):riding()?'ride':mode==='gondola'?'gondola':'flight',[state?.x??0,state?.y??0,state?.z??0],options.forestSpacingM??0),mode==='walk'?(state?.speed??0):0,characterConfig.walk);
   const flightPressed=new Set(),flightModes=Object.keys(config.modes);
   const pressed=new Set(),riding=()=>ride.config.modes[mode]!==undefined,chase=new T.Vector3();
   const keys=new Set(),blockedActions=new Set(),look=new T.Euler(0,0,0,'YXZ');
   const height=(x,y)=>options.floorHeight?.(x,y)??ground.height(x,y)??0;
+  // Away from the look-around, the orbit target trails the camera at the floor,
+  // so the scenery shadow and meadow focus follow the view. Both the walk frame
+  // and the arrival preview read it.
+  const orbitAtCamera=()=>{orbit.target.copy(camera.position);orbit.target.y=height(camera.position.x,-camera.position.z);};
   // Cosmetic moving queries share immutable thermal bases, not wind vectors.
   // Simulation steps retain the ordinary uncached terrain/evaluator path.
   const airAnchors=(config.thermals??[]).map(t=>t.xy_m);
@@ -41,7 +59,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
-  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];queuedGrab=false;queuedSlide=false;character.setCharge?.(false);queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
+  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];runToggled=false;runStick=0;queuedGrab=false;queuedSlide=false;character.setCharge?.(false);queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   function key(e,down){
     // A control may receive focus between press and release. Always retire
     // the held key, while leaving form key presses to the form itself.
@@ -52,23 +70,27 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||mode==='gondola'||riding()||config.modes[mode]))toggleView();
     if(down&&!e.repeat&&e.code==='KeyF'&&mode==='walk')character.toggleKatana?.();
     if(down&&!e.repeat&&e.code==='ControlLeft'&&mode==='walk')queuedSlide=true;
+    if(down&&!e.repeat&&(e.code==='ShiftLeft'||e.code==='ShiftRight')&&mode==='walk')runToggled=!runToggled;
     if(down&&!e.repeat&&e.code==='KeyQ'&&mode==='walk')character.attack?.();
     if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyE','ControlLeft'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
   const kd=e=>key(e,true),ku=e=>key(e,false);
   window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);window.addEventListener('blur',clear);
   document.addEventListener('visibilitychange',clear);window.addEventListener('gamepaddisconnected',clear);
+  // An authored shot yields the moment the player takes the camera, so a drag,
+  // a scroll or the stick never fights the interpolation.
+  const manual=()=>{shot=null;director.manual();};
   // On foot, a click that does not drag the view is an attack.
   let press=null;
   const down=e=>{if(mode==='orbit')return;drag=true;press={x:e.clientX,y:e.clientY,t:e.timeStamp};canvas.focus();canvas.setPointerCapture(e.pointerId);};
   const up=e=>{drag=false;if(press&&mode==='walk'&&e.button===0&&e.timeStamp-press.t<300&&Math.hypot(e.clientX-press.x,e.clientY-press.y)<6)character.attack?.();press=null;};
-  const move=e=>{if(mode==='orbit'||(!drag&&document.pointerLockElement!==canvas))return;if(e.movementX||e.movementY){director.manual();if(movementYaw!==null)movementYaw-=e.movementX*.003;}yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
+  const move=e=>{if(mode==='orbit'||(!drag&&document.pointerLockElement!==canvas))return;if(e.movementX||e.movementY){manual();if(movementYaw!==null)movementYaw-=e.movementX*.003;}yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
   const cancel=()=>{drag=false;press=null;};
   canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('lostpointercapture',cancel);
-  const wheel=e=>{if(mode==='orbit'||e.ctrlKey)return;const unit=e.deltaMode===1?16:e.deltaMode===2?canvas.clientHeight||800:1;const dx=e.deltaX*unit*.003,dy=e.deltaY*unit*.003;if(dx||dy){director.manual();yaw-=dx;if(movementYaw!==null)movementYaw-=dx;pitch=Math.max(-1.35,Math.min(1.35,pitch-dy));}e.preventDefault();};
+  const wheel=e=>{if(mode==='orbit'||e.ctrlKey)return;const unit=e.deltaMode===1?16:e.deltaMode===2?canvas.clientHeight||800:1;const dx=e.deltaX*unit*.003,dy=e.deltaY*unit*.003;if(dx||dy){manual();yaw-=dx;if(movementYaw!==null)movementYaw-=dx;pitch=Math.max(-1.35,Math.min(1.35,pitch-dy));}e.preventDefault();};
   canvas.addEventListener('wheel',wheel,{passive:false});
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointermove',move);
   const dead=v=>Math.abs(v??0)<.14?0:Math.sign(v)*(Math.abs(v)-.14)/.86;
-  function toggleView(){director.manual();movementYaw=null;shot=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';snap=true;}
+  function toggleView(){manual();movementYaw=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';snap=true;}
   function select(next,site='0'){
     if(config.modes[mode])preferredFlightMode=mode;
     if(next==='walk'&&config.modes[mode]){changeHarness();return;}
@@ -91,7 +113,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(next==='walk'){
       const x=previous?.x??camera.position.x,y=previous?.y??-camera.position.z;
       state={x,y,z:height(x,y),heading:previous?.heading??yaw+Math.PI/2,speed:0};
-      pitch=-.24;character.object.rotation.set(0,state.heading+Math.PI/2,0);updateWalk(0,0,0,false);return;
+      pitch=-.24;character.object.rotation.set(0,state.heading+Math.PI/2,0);updateWalk(0,0,0);return;
     }
     if(riding()){
       state=startRide(ride.config,rideStart(ride.config,site,worldmap,ride.snowAt),ride.height);yaw=0;pitch=0;snap=true;hop=false;
@@ -100,6 +122,31 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     siteIndex=Number(site)||0;state=startFlightChallenge(launchFlight(config,next,config.launches[siteIndex],height,weather),challengeId,config);yaw=0;pitch=-.34;
     options.onFlightChange?.(next,siteIndex,weather);
     updateFlightPresentation(0);
+  }
+  /** Hold the walk view the intro shot lands on while `warm` runs, then put the
+   * world back. `select('walk')` already builds that state — the same spawn,
+   * heading, body rotation, pitch and field of view the transition produces —
+   * so the warm sees the real arrival rather than a second copy of the chase
+   * camera math. The preview owns no shot of its own, and everything it moves
+   * — camera, field of view, orbit target and mode — is restored exactly, so
+   * the authored shot still starts from the bookmark byte for byte.
+   * Called by the automatic intro while the journal is still up; a ?view= or
+   * ?course= link starts where it is told and does not pay for it. */
+  async function warmArrival(warm){
+    const from={position:camera.position.clone(),quaternion:camera.quaternion.clone(),fov:camera.fov,target:orbit.target.clone(),yaw,pitch,snap,mode,
+      rig:rig.visible,ride:ride.rig.visible,body:character.object.visible};
+    select('walk');shot=null;
+    // The first real walk frame ends by trailing the orbit target with the
+    // camera; the scenery shadow and meadow focus read it, so warm that too.
+    orbitAtCamera();
+    try{return await warm();}
+    finally{
+      shot=null;clear();mode=from.mode;state=null;
+      camera.position.copy(from.position);camera.quaternion.copy(from.quaternion);camera.fov=from.fov;camera.updateProjectionMatrix();
+      orbit.enabled=from.mode==='orbit';orbit.target.copy(from.target);
+      rig.visible=from.rig;ride.rig.visible=from.ride;character.object.visible=from.body;
+      yaw=from.yaw;pitch=from.pitch;snap=from.snap;
+    }
   }
   const walkHeight=(x,y)=>options.walkHeight?.(x,y)??(options.walkHeight?null:ground.height(x,y));
   const launchHeight=(x,y)=>safeWalkGround(x,y,characterConfig.walk,walkHeight,hitTest,{dropOffs:true});
@@ -113,7 +160,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     parkedWing=foot?{...state,pressure:0,engine:0,throttle:0,harnessed:false,launching:false}:null;
     state=foot??hooked;mode=foot?'walk':hooked.mode;accumulator=0;previousFlight=null;actionArmed=false;harnessArmed=false;actionHeld=false;message='';snap=true;view='chase';
     orbit.enabled=false;rig.visible=true;character.object.visible=true;
-    if(foot){yaw=state.heading-Math.PI/2;pitch=-.24;character.object.rotation.set(0,state.heading+Math.PI/2,0);camera.fov=62;camera.updateProjectionMatrix();updateWalk(0,0,0,false);}
+    if(foot){yaw=state.heading-Math.PI/2;pitch=-.24;character.object.rotation.set(0,state.heading+Math.PI/2,0);camera.fov=62;camera.updateProjectionMatrix();updateWalk(0,0,0);}
     else{yaw=0;pitch=-.34;updateFlightPresentation(0);}
     options.onFlightChange?.(mode,siteIndex,weather);return true;
   }
@@ -132,7 +179,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   /** Ride something the core moves (a gondola cabin): {x, y, z, heading} of the floor he stands on, every frame. */
   function carry(pose){
     if(mode!=='gondola'){
-      clear();message='';parkedWing=null;mode='gondola';orbit.enabled=false;rig.visible=false;ride.rig.visible=false;
+      clear();shot=null;message='';parkedWing=null;mode='gondola';orbit.enabled=false;rig.visible=false;ride.rig.visible=false;
       character.object.visible=true;camera.fov=62;camera.updateProjectionMatrix();snap=true;yaw=0;pitch=-.12;
     }
     carried=pose;state={x:pose.x,y:pose.y,z:pose.z,heading:pose.heading,speed:0};
@@ -179,7 +226,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(mode==='orbit'){time+=Math.min(dt,.05);orbit.update();return;}
     const lx=dead(pad?.axes[0]),ly=dead(pad?.axes[1]),rx=dead(pad?.axes[2]),ry=dead(pad?.axes[3]);
     const manualX=rx+Number(keys.has('ArrowRight'))-Number(keys.has('ArrowLeft')),manualY=ry+Number(keys.has('ArrowDown'))-Number(keys.has('ArrowUp'));
-    if(manualX||manualY){director.manual();if(movementYaw!==null)movementYaw-=manualX*dt*1.6;}
+    if(manualX||manualY){manual();if(movementYaw!==null)movementYaw-=manualX*dt*1.6;}
     yaw-=manualX*dt*1.6;
     pitch=Math.max(-1.35,Math.min(1.35,pitch-(ry+Number(keys.has('ArrowDown'))-Number(keys.has('ArrowUp')))*dt*1.4));
     const x=Number(keys.has('KeyD'))-Number(keys.has('KeyA'))+lx;
@@ -188,7 +235,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(riding()){time+=Math.min(dt,.05);updateRide(dt,pad,x,y);return;}
     if(mode==='walk'){
       time+=Math.min(dt,.05);
-      updateWalk(dt,x,y,keys.has('ShiftLeft')||keys.has('ShiftRight')||(pad?.buttons[10]?.pressed??false));
+      runStick=Math.min(1,Math.hypot(lx,ly));
+      updateWalk(dt,x,y);
     }else{
       const input=flightInput(pad,keys);
       accumulator+=Math.min(dt,.05);
@@ -200,7 +248,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
         if(strength>.025)Promise.resolve(pad.vibrationActuator.playEffect('dual-rumble',{duration:110,strongMagnitude:strength*.4,weakMagnitude:strength})).catch(()=>{});
       }
     }
-    orbit.target.copy(camera.position);orbit.target.y=height(camera.position.x,-camera.position.z);
+    orbitAtCamera();
   }
   function follow(dt,distance,heading,lift=0,presentation={}){
     const {direct=false,introProgress=0,rangeEase,rangeStart=false,groundRange=false}=presentation;
@@ -239,14 +287,14 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     composeFollowView(camera,target,lowerFraction,framingSubject,mode==='walk'?treeFraming:0);snap=false;
     if(shot){
       shot.raw.copy(camera.position);shot.aim.copy(camera.quaternion);shot.t+=dt;
-      const u=Math.min(1,shot.t/SHOT_S),k=Math.max(introProgress,u*u*u*(u*(u*6-15)+10));  // smootherstep: no jolt at either end
+      const u=Math.min(1,shot.t/SHOT_S),k=Math.max(introProgress,introShotEase(u));
       camera.position.lerpVectors(shot.from,shot.raw,k);camera.quaternion.slerpQuaternions(shot.q,shot.aim,k);
       camera.fov=shot.fov+(62-shot.fov)*k;camera.updateProjectionMatrix();
       clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));
       if(k>=1)shot=null;
     }
   }
-  function updateWalk(dt,x,y,run){
+  function updateWalk(dt,x,y){
     // Latch the movement basis during a held direction so automatic camera
     // rotation cannot turn a straight run into a spiral. Manual look still steers it.
     if(movementYaw===null||Math.hypot(x-lastInput[0],y-lastInput[1])>.15||(!x&&!y))movementYaw=yaw;
@@ -258,7 +306,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const water=options.walkHeight?.waterAt;
     const busy=character.attacking===true;
     const planted=character.charging&&state.grounded;
-    state=stepMoves(state,{x:planted?0:movement.x,y:planted?0:-movement.z,run:run&&!planted,jump:actionHeld,stick:[x,y],pitch,branch:queuedBranch,grab:queuedGrab,slide:queuedSlide},dt,characterConfig.walk,
+    state=stepMoves(state,{x:planted?0:movement.x,y:planted?0:-movement.z,run:runToggled&&!planted,run_amount:planted?0:runToggled?1:runStick,jump:actionHeld,stick:[x,y],pitch,branch:queuedBranch,grab:queuedGrab,slide:queuedSlide},dt,characterConfig.walk,
       {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height});
     if(queuedBranch)message=state.mode==='climb'?'No branch within reach · climb or circle toward a limb':'';
     else if(x||y)message='';
@@ -418,5 +466,5 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function fixedEnvironmentSampler(options){
     return createFixedAirSampler((x,y,z,terrain)=>sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,terrain),height,options);
   }
-  return {constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

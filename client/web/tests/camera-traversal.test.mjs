@@ -27,7 +27,7 @@ test('dense-forest running keeps a useful chase distance from the head, includin
  for(let site=0;site<6;site++){
   const tree=trees[Math.floor(site*trees.length/6)], [x,y]=tree.position_m;
   for(let direction=0;direction<8;direction++){
-   f.pad.axes.fill(0);f.start(x+7,y+7,direction*Math.PI/4);f.pad.axes[1]=-1;f.pad.buttons[10].pressed=true;
+   f.pad.axes.fill(0);f.start(x+7,y+7,direction*Math.PI/4);f.pad.axes[1]=-1;
    for(let i=0;i<90;i++){
     f.nav.update(1/30);const s=f.nav.state;
     const gap=Math.hypot(f.camera.position.x-s.x,f.camera.position.y-s.z-1.65*player.scale,f.camera.position.z+s.y);
@@ -112,7 +112,7 @@ test('tight climb follow tracks a small trunk without lag growing with angular s
 test('running during the walk introduction never brings the camera into the head',t=>{
  const height=forestGround(),f=cameraFixture(t,{height,walkHeight:createWalkHeight(world,height)});let closest=Infinity;
  for(let turn=0;turn<8;turn++){
-  f.pad.axes.fill(0);f.start(1723.3673,927.1585,turn*Math.PI/4,0);f.pad.axes[1]=-1;f.pad.buttons[10].pressed=true;
+  f.pad.axes.fill(0);f.start(1723.3673,927.1585,turn*Math.PI/4,0);f.pad.axes[1]=-1;
   for(let i=0;i<90;i++){
    f.nav.update(1/30);const s=f.nav.state;
    closest=Math.min(closest,Math.hypot(f.camera.position.x-s.x,f.camera.position.y-s.z-1.65*player.scale,f.camera.position.z+s.y));
@@ -134,7 +134,7 @@ test('pauses do not spend or discard the distance budget, and blocked movement c
 });
 
 test('running during the introduction settles smoothly after the travel window',t=>{
- const f=cameraFixture(t);f.start(0,0,Math.PI/2,0);f.pad.axes[1]=1;f.pad.buttons[10].pressed=true;
+ const f=cameraFixture(t);f.start(0,0,Math.PI/2,0);f.pad.axes[1]=1;
  let distance=0;
  while(distance<12){const old={...f.nav.state};f.nav.update(1/60);distance+=Math.hypot(f.nav.state.x-old.x,f.nav.state.y-old.y);}
  f.pad.axes.fill(0);
@@ -202,7 +202,7 @@ test('tree traversal centres the body while ground traversal keeps its lower com
 
 test('running corrects a side view sooner in time than walking, using actual movement speed',t=>{
  const f=cameraFixture(t);const measure=run=>{
-  f.pad.axes.fill(0);f.pad.buttons[10].pressed=false;f.start();f.pad.axes[0]=1;f.pad.buttons[10].pressed=run;
+  f.pad.axes.fill(0);f.start();f.pad.axes[0]=run?1:.5;
   for(let frame=0;frame<120*1.8;frame++)f.nav.update(1/120);
   return Math.abs(angle(viewYaw(f.camera),f.nav.state.heading-Math.PI/2));
  };

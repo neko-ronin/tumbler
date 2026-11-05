@@ -91,7 +91,12 @@ export function stepWalk(state,input,dt,config,height,hitTest){
   if(!(dt>0)||!Number.isFinite(dt))return {...state};
   const j=rules(config),s={...state},duration=Math.min(dt,.05);
   s.grounded??=true;s.jumpPhase??='grounded';s.jumpTime??=0;s.jumpCount??=0;s.vz??=0;s.vx??=0;s.vy??=0;
-  const magnitude=Math.hypot(input.x??0,input.y??0),speed=(input.run?config.run_mps:config.walk_mps)*Math.min(1,magnitude);
+  const magnitude=Math.hypot(input.x??0,input.y??0);
+  // `run` is a held or toggled modifier. `run_amount` lets an analog client ask
+  // for any pace from walk_mps (0) to run_mps (1), so a stick ramps continuously
+  // to a full run; it never reaches the climb, swim or branch rules.
+  const runAmount=Math.max(0,Math.min(1,input.run_amount??(input.run?1:0)));
+  const speed=(config.walk_mps+(config.run_mps-config.walk_mps)*runAmount)*Math.min(1,magnitude);
   const vx=magnitude?(input.x/magnitude)*speed:0,vy=magnitude?(input.y/magnitude)*speed:0;
   const edge=!!input.jump&&!s.jumpHeld;s.jumpHeld=!!input.jump;
   const slideEdge=!!input.slide&&!s.slideHeld;s.slideHeld=!!input.slide;

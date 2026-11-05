@@ -1,3 +1,46 @@
+# Shift toggles a run; the stick ramps to it — 2026-11-05
+
+On foot, `Shift` is now a toggle: one press runs, another walks. It is no longer
+a modifier to hold, and the controller's **L3 no longer runs at all**. The left
+stick's own travel is the pace — it ramps continuously from a slow walk up to a
+full `run_mps` at full deflection, with no button needed.
+
+The shared rule gained `run_amount` (0..1): the pace between `walk_mps` and
+`run_mps`. Speed still comes from `shared/activities/walk.js`, never the client.
+`run` remains the boolean the swim, climb and branch rules read, now fed by the
+toggle — so fast climbing and the water dive follow the toggled state instead of
+a held key.
+
+Checks: new core and navigation tests cover the toggle, L3 doing nothing, and
+half/full stick speeds; the forest camera-traversal and swim tests moved to the
+stick and the toggle. `node --test client/web/tests/*.test.mjs`: **721/721**.
+
+# Opening pan: the jitter is first-use work, measured — 2026-11-05
+
+The opening pan (village → Cat Ronin) was diagnosed and three fixes landed. The
+authored path was never wrong — median 0.250 m / 0.271° per frame, min terrain
+clearance 3.30 m, no clamp — so the stutter was GPU work arriving inside the
+shot.
+
+- The loading screen now warms **the view the shot lands on** as well as the one
+  it starts from: `navigation.warmArrival()` runs the real `select('walk')`
+  state, with Cat Ronin visible and the actor shadow map drawing, then restores
+  the orbit camera exactly. The frame that used to stall on the walk switch went
+  from **752 ms and +26 programs / +122 geometries to 414 ms and +0 / +0**.
+- The pan starts on a **settled frame cadence**, not a 3 s clock: a 3 s floor, an
+  8 s ceiling, and a full 24-interval window that must show the pacer holding
+  either its target rate or one slower rate. `metrics.intro` reports the verdict
+  it reached.
+- The shot is **exempt from the adaptive resolution governor** (it may not resize
+  mid-move), yields the camera to a drag/wheel/look instead of interpolating over
+  it, and is retimed 2.5 s → 3.0 s with a front-weighted clock, cutting peak
+  subject motion from 34.0 to 27.1 px/frame at the same arrival pose.
+
+One fault remains and is recorded rather than papered over: a second cold burst
+of ~21 character-material programs, ~2 s into the move, at the moment he is
+largest in frame. Numbers and the next probe are in
+[`docs/reviews/intro-jitter-integrated-2026-11-05.md`](../../docs/reviews/intro-jitter-integrated-2026-11-05.md).
+
 # Cat size toggle restored — v0.5.10, 2026-11-04
 
 Full/half Cat Ronin works again through the button, `C`, and `?cat=half`. The

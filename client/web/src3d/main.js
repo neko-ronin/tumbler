@@ -31,8 +31,9 @@ import { parseGLB, applyImageBytes, mergePrimitives } from './glb.js';
 import { makeSky, style } from './style.js';
 import { createCloudPass } from './clouds.js';
 import {createActorShadows,snappedShadowAnchor} from './actor-shadow.js';
-import { createResolutionGovernor } from './flight-quality.js';
+import { createResolutionGovernor, createQualityGate } from './flight-quality.js';
 import {createFramePacer,WEB_FPS,WEB_FRAME_MS} from './frame-pacing.js';
+import {createIntroGate,INTRO_MIN_DWELL_S,INTRO_MAX_WAIT_S} from './intro-gate.js';
 import { createFlightRig } from './flight-rig.js';
 import { createNavigation } from './navigation.js';
 import { createCharacter } from './character.js';
@@ -97,6 +98,7 @@ export async function main() {
   const renderTarget=document.getElementById('render-target'),renderTargetLabel=document.getElementById('render-target-label');
   let pixelRatio = 1,qualityScale=1;
   const resolutionGovernor=createResolutionGovernor({frameBudgetMs:WEB_FRAME_MS});
+  const qualityGate=createQualityGate(resolutionGovernor);
   const framePacer=createFramePacer();
   function resize() {
     const { width, height } = canvas.getBoundingClientRect();
@@ -342,7 +344,7 @@ export async function main() {
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
-  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / stick: walk · Shift / L3: run · Space / A: jump or wall push · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: grab tree / reharness · Drag / right stick: look',
+  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / stick: walk · Shift: toggle run · push the stick fully to run · Space / A: jump or wall push · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: grab tree / reharness · Drag / right stick: look',
     parakite:'A/D steer · W dive / S flare · Drag to look · Launch to restart',
     ski:'A/D carve · W pole · S snowplough · Shift tuck · Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
     bike:'A/D steer · W pedal · S brake · Shift crouch · Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
@@ -523,13 +525,13 @@ export async function main() {
   const meadowFocus=meadowViewFocus(camera,ground,undefined,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
 
   let frame = 0, contextLost = false, stopped = false, lastFrame = 0, lastStamp = 0;
-  let presenting=false;
-  let elapsed = 0,lastReadout=0,lastQuality=0;
+  let presenting=false,introGate=null;
+  let elapsed = 0,lastReadout=0;
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
   const startup={ready:false,frames:0};
   // Read-only inspection hook used for repeatable visual/performance checks.
-  const visibilityToggle=document.getElementById('visibility-spotlight');
+  const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
   window.tumbler = { folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,startup,flightRig, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
@@ -537,7 +539,12 @@ export async function main() {
     loading.show();status.textContent='Letting the light settle…';
     paraPass.warm();
     await firstPerson.prewarm();
-    const result=await warmScene({
+    // The opening is one continuous move: the village it starts from, then the
+    // walk view it lands on. Both are warmed behind the journal, because the
+    // shot path itself is smooth and the jitter measured inside it is first-use
+    // work — Cat Ronin's programs, geometry and actor shadow map are made while
+    // the camera is still looking at the village.
+    const warmOptions={
       prepare(){
         terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();
         meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
@@ -557,12 +564,26 @@ export async function main() {
       signature:()=>JSON.stringify([renderer.info.memory,renderer.info.programs.length,forest.stats.adopted.lodCounts,meadow.stats.tiles,forestFloor.stats.plants]),
       pending:()=>forest.stats.adopted.transitioning>0,
       finish:()=>finishGpu(renderer.getContext()),
-    });
+    };
+    const warmView=()=>warmScene(warmOptions);
+    const result=await warmView();
+    // Only the automatic intro pans down to him; a ?view= or ?course= link is a
+    // developer shortcut that starts where it is told, so it keeps the cheaper
+    // single-view startup.
+    let arrival=null;
+    if(!viewParam&&!requestedCourse){
+      arrival=await navigation.warmArrival(warmView);
+      // The preview pointed the scenery shadow focus at the arrival, as the
+      // first walk frame will. Put it back on the bookmark and pay that rebuild
+      // here rather than after the reveal.
+      updateShadow(true);
+      await nextPaint();warmOptions.prepare();warmOptions.render();await warmOptions.finish();
+    }
     firstPerson.finishWarm();
     if(contextLost||stopped)return;
-    Object.assign(startup,result,{ready:true});
+    Object.assign(startup,result,{ready:true,warm:{orbit:result.frames,arrival:arrival?.frames??0}});
     // Warm-up costs must not enter play's clock or adaptive-quality samples.
-    samples.length=0;lastFrame=0;lastQuality=performance.now();
+    samples.length=0;lastFrame=0;qualityGate.reset(performance.now());
     status.textContent='Ready for the mountains.';updateStamp();
     presenting=true;loading.reveal();resume();
   }
@@ -654,10 +675,23 @@ export async function main() {
     const localWind=air??navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);
     style.wind.value.set(localWind.wx/Math.max(1,flightConfig.wind.speed_mps),-localWind.wy/Math.max(1,flightConfig.wind.speed_mps));
     // Slow, bounded render-scale adaptation. Preserve the user's chosen ceiling.
-    if(time-lastQuality>3000&&samples.length>=120){
-      lastQuality=time;const ordered=[...samples].sort((a,b)=>a-b),p95=ordered[Math.floor(ordered.length*.95)];
-      const next=resolutionGovernor.sample(p95,time,document.getElementById('adaptive').checked);
-      if(Math.abs(next-qualityScale)>.001){qualityScale=next;adoptedForest.setQuality(qualityScale);samples.length=0;renderer.setPixelRatio(pixelRatio*qualityScale);renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);}
+    // The opening shot is held out: its frames are not steady play, and a resize
+    // mid-move is a visible hitch, so the gate also restarts the sample window.
+    const next=qualityGate.decide(time,samples,adaptiveToggle.checked,navigation.shotActive);
+    if(next!==null&&Math.abs(next-qualityScale)>.001){qualityScale=next;adoptedForest.setQuality(qualityScale);samples.length=0;renderer.setPixelRatio(pixelRatio*qualityScale);renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);}
+    // The opening pan starts when the cadence is steady, not on a clock. The
+    // gate reads the same accepted intervals the governor and stamp use, and it
+    // is dropped rather than fired late if the establishing view was left
+    // behind, so it can never interrupt whatever the player is looking at now.
+    if(introGate){
+      if(navigation.mode==='orbit'&&document.body.dataset.view==='village'){
+        const go=introGate.step(time,samples)==='go';
+        metrics.intro=introGate.last;
+        if(go){
+          introGate.last.releasedMs=time;introGate=null;
+          document.body.dataset.ui='hidden';setActivity('walk');canvas.focus();
+        }
+      } else introGate=null;
     }
     sky.position.copy(camera.position);
     const start = performance.now();
@@ -681,6 +715,9 @@ export async function main() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else resume(); });
   canvas.addEventListener('webglcontextlost', e => {
     e.preventDefault(); contextLost = true; cancelAnimationFrame(frame); frame = 0;
+    // The shot's clock is frozen while the context is gone; restart it cleanly
+    // instead of resuming an interpolation whose frames nobody saw.
+    navigation.cancelShot();
     presenting=false;startup.ready=false;loading.show('The light slipped away. Preparing it again…');
     status.textContent = 'Graphics paused — recovering…';
   });
@@ -691,10 +728,12 @@ export async function main() {
   window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
   // Walk is the default: a ?view= link stays put (dev shortcut); otherwise the
-  // village view holds a few seconds, the UI hides, and the camera pans to him
-  // (navigation owns that shot, like any switch from looking around to walking).
-  if(!viewParam&&!requestedCourse)setTimeout(()=>{
-    if(navigation.mode!=='orbit'||document.body.dataset.view!=='village')return;
-    document.body.dataset.ui='hidden';setActivity('walk');canvas.focus();
-  },3000);
+  // village view holds until its cadence has settled, then the UI hides and the
+  // camera pans to him (navigation owns that shot, like any switch from looking
+  // around to walking). animate() steps the gate, so the transition has one
+  // owner and no timer can race the frame loop.
+  if(!viewParam&&!requestedCourse){
+    introGate=createIntroGate({minDwellS:INTRO_MIN_DWELL_S,maxWaitS:INTRO_MAX_WAIT_S,startMs:performance.now()});
+    window.tumbler.intro=introGate;
+  }
 }

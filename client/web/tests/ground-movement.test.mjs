@@ -34,6 +34,19 @@ test('arrow keys look around on foot while WASD remains locomotion',t=>{
  key('keydown','KeyW');for(let i=0;i<30;i++)nav.update(1/60);key('keyup','KeyW');
  assert.ok(Math.hypot(nav.state.x-position.x,nav.state.y-position.y)>.1,'WASD still moves the player');
 });
+test('Shift toggles running on foot, L3 does nothing, and the stick ramps to a full run',t=>{
+ const {nav,pad,key}=fixture(t);nav.select('walk');nav.update(1/60);
+ const w=character.walk,settle=frames=>{for(let i=0;i<frames;i++)nav.update(1/60);return nav.state.speed;};
+ key('keydown','KeyW');assert.ok(Math.abs(settle(120)-w.walk_mps)<1e-9,'W alone still walks');
+ key('keydown','ShiftLeft');key('keyup','ShiftLeft');assert.ok(Math.abs(settle(120)-w.run_mps)<1e-9,'one Shift tap toggles a full run');
+ key('keydown','ShiftLeft');key('keyup','ShiftLeft');assert.ok(Math.abs(settle(120)-w.walk_mps)<1e-9,'a second tap returns to a walk');
+ key('keyup','KeyW');
+ pad.buttons[10].pressed=true;assert.ok(settle(120)<1e-9,'L3 no longer runs');
+ pad.buttons[10].pressed=false;
+ pad.axes[0]=.5;const half=settle(120);
+ assert.ok(half>0&&half<w.walk_mps,`half a stick is a walk or slower (${half})`);
+ pad.axes[0]=1;assert.ok(Math.abs(settle(180)-w.run_mps)<1e-9,'a full stick reaches a full run without Shift');
+});
 test('controller A jumps on foot without restarting at a ridge, and holding it cannot jump again',t=>{
  const {nav,pad}=fixture(t);nav.select('walk');nav.update(1/60);const before={...nav.state};
  pad.buttons[0].pressed=true;for(let i=0;i<180;i++)nav.update(1/60);
@@ -153,6 +166,13 @@ test('the gait follows ground speed: stroll, then walk, then run; contracts with
  const w=character.walk,slots=character.clips;
  assert.deepEqual([.5,w.stroll_mps-.01,w.stroll_mps,w.walk_mps,w.walk_mps*1.2,w.run_mps].map(v=>walk.gaitFor(v,w,slots)),['stroll','stroll','walk','walk','run','run']);
  assert.equal(walk.gaitFor(.5,w,{...slots,stroll:undefined}),'walk');
+});
+test('run_amount ramps ground speed continuously from a walk to a full run',()=>{
+ const w=character.walk,settle=input=>{let s=origin();for(let i=0;i<180;i++)s=walk.stepWalk(s,input,1/60,w,flat);return s;};
+ assert.equal(settle({x:1,y:0}).speed,w.walk_mps);
+ assert.equal(settle({x:1,y:0,run:true}).speed,w.run_mps);
+ assert.equal(settle({x:1,y:0,run_amount:1}).speed,w.run_mps);
+ assert.equal(settle({x:1,y:0,run_amount:.5}).speed,w.walk_mps+(w.run_mps-w.walk_mps)*.5,'a fraction asks for a pace between the two');
 });
 const fall=(z,config)=>{
  let s={x:0,y:0,z,heading:0,speed:0,grounded:false,jumpPhase:'airborne',jumpCount:1,jumpStyle:'hop',vz:0};
@@ -284,7 +304,10 @@ test('looking around to walking is one shot: the view turns toward him on the wa
  const {nav,camera,cat}=fixture(t);camera.position.set(30,20,40);camera.lookAt(60,0,0);
  nav.select('walk');
  const moves=[],turns=[],last=camera.position.clone(),facing=camera.quaternion.clone();
- for(let i=0;i<90;i++){nav.update(1/30);moves.push(camera.position.distanceTo(last));turns.push(camera.quaternion.angleTo(facing));last.copy(camera.position);facing.copy(camera.quaternion);}
+ // The shot is 3.0 s at the 1/30 s cadence, so 90 frames cover it; the 91st
+ // retires it, because 90 additions of 1/30 s land just short of 3.0 s.
+ for(let i=0;i<91;i++){nav.update(1/30);moves.push(camera.position.distanceTo(last));turns.push(camera.quaternion.angleTo(facing));last.copy(camera.position);facing.copy(camera.quaternion);}
+ assert.equal(nav.shotActive,false,'the shot completed inside this window');
  const sum=a=>a.reduce((s,v)=>s+v,0);
  // slerpQuaternions(start, camera.quaternion) aliases its target: the view held its start angle, then snapped on the last frame.
  assert.ok(Math.max(...turns)<.1*sum(turns),`one frame turned ${(100*Math.max(...turns)/sum(turns)).toFixed(0)}% of the way`);
@@ -348,7 +371,7 @@ test('local launch checks the takeoff corridor, including a raised tread before 
 test('R3 slides without changing view, RT charges separately from B, and short R3 taps are latched',t=>{
  const {nav,pad,cat}=fixture(t),calls=[];cat.attack=()=>calls.push('slash');cat.setCharge=held=>{if(held)calls.push('charge');};
  nav.select('walk');nav.update(1/60);const view=nav.view;
- pad.axes[1]=-1;pad.buttons[10].pressed=true;for(let i=0;i<45;i++)nav.update(1/60);
+ pad.axes[1]=-1;for(let i=0;i<45;i++)nav.update(1/60);
  pad.buttons[11].pressed=true;nav.poll();pad.buttons[11].pressed=false;nav.update(1/60);
  assert.equal(nav.state.sliding,true);assert.equal(nav.view,view);
  pad.buttons[7].pressed=true;nav.update(1/60);assert.ok(calls.includes('charge'));assert.ok(!calls.includes('slash'));

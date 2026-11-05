@@ -11,7 +11,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "2ac2a7ab1e0da0f9a58a70c8d60694c90613dff2198fc0c465b4d4e9e7324f2d"
+      "sha256": "c72732f916a215e39e39433a6ffc6fa2d3413392902bdc0547e4c28f47996911"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -103,7 +103,7 @@
     },
     {
       "path": "client/web/src3d/flight-quality.js",
-      "sha256": "81ca0057df501f8ac9317ab696803b6339473c0f066a0187fc399b36a6f46a2e"
+      "sha256": "cb832cec0a15a093f5ce1465e134b382d2f9461e45f51845d9759284537b0b2f"
     },
     {
       "path": "client/web/src3d/flight-rig.js",
@@ -166,6 +166,10 @@
       "sha256": "4f7055b5037e05996211ebac302adf01ae412c099378a938d0370b4b86b96eb0"
     },
     {
+      "path": "client/web/src3d/intro-gate.js",
+      "sha256": "4e47b2c3583f10c944405470df73b31f9ef5d998022b7cd0711189a329157de4"
+    },
+    {
       "path": "client/web/src3d/katana-fx.js",
       "sha256": "67f88facf59c1ef97a09187e11f4cbec35f4721a4176502025e13ff4b7bf6c28"
     },
@@ -175,7 +179,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "ae087c65b71aa890dcb33e0fe32471cb8a3d93b6e47ffa497b3106c04417c59c"
+      "sha256": "7645ee5fa364b4c7aeb0d0c1745c9c8bbf238647ce0a80b0f918d59165ad438c"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -183,7 +187,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "acf05d588df5365a10df19c10ba870a308cdc08e393e0d05e32f50b244bd0815"
+      "sha256": "6c32f94d2ef04e9762f11861190438a5d9169be2cb8fb282f2ad5547835f03a5"
     },
     {
       "path": "client/web/src3d/para-audio.js",
@@ -391,7 +395,7 @@
     },
     {
       "path": "shared/activities/walk.js",
-      "sha256": "be4788e4d4ab68e2c8d5404a9483b1ea2f1ea5e62a8c86845b9db33fd10aff6f"
+      "sha256": "bea98cd80e09243025139a73c29cfe80f50732c9935bada94eefc41bd7d3cd44"
     },
     {
       "path": "shared/characters/appearance.js",
@@ -877,7 +881,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "5a604b7",
+  "commit": "94c8fcc",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

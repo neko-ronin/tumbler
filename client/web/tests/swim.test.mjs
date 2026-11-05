@@ -111,10 +111,10 @@ test('in the game, walking into the pool swims: the clip follows tread, paddle a
  key('keyup',forward);tick(60*3);assert.equal(nav.state.swimPhase,'tread');assert.equal(cat.clip,clips.tread);
  key('keydown','KeyE');tick(1);key('keyup','KeyE');assert.equal(nav.state.mode,'swim');assert.match(nav.message,/clear, stable ground/);
  assert.equal(nav.underwater,false,'treading keeps the camera above the surface');
- key('keydown',forward);key('keydown','ShiftLeft');tick(60*2);
+ key('keydown',forward);key('keydown','ShiftLeft');key('keyup','ShiftLeft');tick(60*2);
  assert.equal(nav.state.swimPhase,'dive');assert.equal(cat.clip,clips.dive);
  tick(60*2);assert.equal(nav.underwater,true,'a deep dive takes the camera under');
- key('keyup','ShiftLeft');key('keyup',forward);tick(60*6);assert.equal(nav.underwater,false,'surfacing restores the view');
+ key('keydown','ShiftLeft');key('keyup','ShiftLeft');key('keyup',forward);tick(60*6);assert.equal(nav.underwater,false,'toggling the dive off restores the view');
 });
 
 test('a high fall into deep water goes in, whatever the frame rate',()=>{
