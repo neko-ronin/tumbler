@@ -25,7 +25,7 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
         let panner=null;if(spatial){panner=context.createPanner();panner.panningModel='HRTF';panner.distanceModel='inverse';panner.refDistance=10;panner.maxDistance=260;level.connect(panner).connect(windWaterBus);}else level.connect(windWaterBus);
         source.start();return {source,filter,level,panner};}
       const tone=context.createOscillator(),toneLevel=context.createGain();tone.type='sine';tone.frequency.value=700;toneLevel.gain.value=0;tone.connect(toneLevel).connect(context.destination);tone.start();vario={tone,level:toneLevel};
-      wind=noise(550,.08);water=noise(1400,.3,true);paraVoice=createParaVoice(context);
+      wind=noise(550,.08);water=noise(1400,.3,true);paraVoice=createParaVoice(context,context.destination,windWaterBus);
       const oscillator=context.createOscillator();oscillator.type='sawtooth';oscillator.frequency.value=85;const level=context.createGain();level.gain.value=0;const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=350;oscillator.connect(filter).connect(level).connect(context.destination);oscillator.start();motor={oscillator,level};
     }
     await (enabled?context.resume():context.suspend());return enabled;
@@ -53,7 +53,10 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     vario.level.gain.setTargetAtTime(pulse?.014:climb<-3?.008:0,t,.025);
     let passPan=0;
     if(presentation?.feature){const p=presentation.feature.point,e=camera.matrixWorld.elements,dx=p[0]-position.x,dy=p[2]-position.y,dz=-p[1]-position.z;passPan=(dx*e[0]+dy*e[1]+dz*e[2])/Math.max(1,Math.hypot(dx,dy,dz));}
-    paraVoice.update(presentation,t,passPan);
+    // Which ear faces the relative wind, and how much the head faces into it.
+    let windPan=0,facing=1;
+    if(presentation?.active){const v=presentation.velocity,e=camera.matrixWorld.elements,vx=v[0],vy=v[2],vz=-v[1],n=Math.max(1,Math.hypot(vx,vy,vz));windPan=(vx*e[0]+vy*e[1]+vz*e[2])/n;facing=Math.max(0,-(vx*e[8]+vy*e[9]+vz*e[10])/n);}
+    paraVoice.update(presentation,t,passPan,{view:navigation.view,windPan,facing});
     const throttle=navigation.mode==='paramotor'&&!navigation.state?.grounded?(navigation.state.engine??navigation.state.throttle):0;
     // Up to three of the closest bumblebees, each its own HRTF-placed voice; the rest of the meadow is silent.
     const bees=nearby?nearby('bee',26,beeVoices.length):[];

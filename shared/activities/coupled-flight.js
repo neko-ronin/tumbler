@@ -63,6 +63,22 @@ export function coupledPolar(mode,c){
   return {area,cl,cd0:cd*(1-c.induced_share),induced:cd*c.induced_share/(cl*cl)};
 }
 
+/** Ram-air state the wing's structure depends on: dynamic pressure reaches the
+ * cells only while the intakes face the flow, and it needs line tension to hold
+ * a shape. A reduced first-order fill, not a pressure or fabric simulation.
+ * Full flight returns exactly 1, so the fitted trim polar is unchanged.
+ */
+export function cellPressureTarget(speed,trim,alpha,load,stall,rules){
+  const ram=clamp(speed/(trim*(rules.cell_full_speed_ratio??.42)),0,1);
+  const mouth=clamp((alpha-(rules.tuck_alpha_rad??-.03))/(rules.tuck_band_rad??.06),0,1);
+  return ram*ram*mouth*mouth*(3-2*mouth)*clamp(load/.35,0,1)*(1-stall*.6);
+}
+/** Lift retained at a cell pressure. A wing is stiff until well under half pressure. */
+export function cellLiftFactor(pressure,rules){
+  const t=clamp((pressure-.15)/.55,0,1),floor=rules.deflated_lift??.35;
+  return floor+(1-floor)*t*t*(3-2*t);
+}
+
 export function initializeCoupled(s,config,air){
   const c=config.coupled,m=config.modes[s.mode];
   const pilotPosition=[s.x,s.y,s.z-config.landing_clearance_m+c.harness_height_m];
@@ -73,7 +89,7 @@ export function initializeCoupled(s,config,air){
   const relative=sub(velocity,airVector(air)),drag=.5*RHO*c.pilot_drag_area_m2*length(relative);
   const up=unit(add(relative.map(v=>v*drag),[0,0,c.pilot_mass_kg*G]));
   const out={pilotPosition,wingPosition:add(pilotPosition,up,lineLength),pilotVelocity:[...velocity],wingVelocity:[...velocity],
-    lineLength,massKg:c.pilot_mass_kg+c.wing_mass_kg,tensionN:0,lineSlackM:0,initialEngineWorkJ:s.engineWorkJ??0,engineWorkJ:0,dragLossJ:0,catchLossJ:0,constraintLossJ:0,windWorkJ:0,numericalJ:0,maxProjectionM:0};
+    lineLength,massKg:c.pilot_mass_kg+c.wing_mass_kg,cellPressure:s.pressure??1,tensionN:0,lineSlackM:0,initialEngineWorkJ:s.engineWorkJ??0,engineWorkJ:0,dragLossJ:0,catchLossJ:0,constraintLossJ:0,windWorkJ:0,numericalJ:0,maxProjectionM:0};
   out.energyJ=out.initialEnergyJ=coupledEnergy(out,c);return out;
 }
 
@@ -200,7 +216,11 @@ export function stepCoupled(s,dt,config,sample){
     const basis=wingBasis(s.heading,s.pitch,s.bank);
     const alpha=Math.atan2(-dot(relative,basis.up),dot(relative,basis.forward));
     stall=clamp((Math.abs(alpha)-rules.stall_alpha_rad)/.3,0,1);
-    const cl=clamp(polar.cl+rules.lift_slope*(alpha-rules.trim_alpha_rad),-rules.max_cl,rules.max_cl)*(1-stall*.8);
+    // Pressure lags the flow: a tuck or stall outlasts the input that caused it.
+    const fed=cellPressureTarget(speed,m.trim_mps,alpha,s.load??1,stall,rules);
+    c.cellPressure+=(fed-c.cellPressure)*(1-Math.exp(-h/(fed>c.cellPressure?rules.cell_fill_s??.45:rules.cell_vent_s??.22)));
+    const rigid=cellLiftFactor(c.cellPressure,rules);
+    const cl=clamp(polar.cl+rules.lift_slope*(alpha-rules.trim_alpha_rad),-rules.max_cl,rules.max_cl)*(1-stall*.8)*rigid;
     const liftUnit=coupledLiftDirection(relative,basis.left);
     liftDot=dot(liftUnit,relative);
     const q=RHO*speed*speed/2;
@@ -248,7 +268,7 @@ export function stepCoupled(s,dt,config,sample){
   s.distance+=Math.hypot(x-s.x,y-s.y);s.x=x;s.y=y;s.z=z+config.landing_clearance_m-rules.harness_height_m;
   s.speed=Math.hypot(relative[0],relative[1]);s.vz=s.vertical=s.vario=c.pilotVelocity[2];s.vx=c.pilotVelocity[0];s.vy=c.pilotVelocity[1];
   s.groundSpeed=Math.hypot(s.vx,s.vy);s.load=tension/(rules.pilot_mass_kg*G);s.stall=stall;s.groundEffect=0;
-  s.pressure=clamp(s.load,0,1)*(1-stall*.6);s.thrustN=thrust;s.engineWorkJ=(c.initialEngineWorkJ??0)+c.engineWorkJ;
+  s.pressure=c.cellPressure;s.thrustN=thrust;s.engineWorkJ=(c.initialEngineWorkJ??0)+c.engineWorkJ;
   s.pilotPitch=Math.atan2(dot(pilot.up,basis.forward),dot(pilot.up,basis.up));
   s.pilotRoll=Math.atan2(dot(pilot.up,basis.left),dot(pilot.up,basis.up));
   s.figure=c.lineSlackM>.02?'Lines slack':stall>.2?'Low energy · ease handles':s.engine>.1&&s.vario>.2?'Powered climb':

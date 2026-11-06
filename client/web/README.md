@@ -1,3 +1,12 @@
+# Faster parakite and first-person para pass — local candidate, 2026-11-05
+
+The parakite trims at 24 m/s on a smaller wing. Cell pressure is now a lagging
+state that tucks and refills. First person gains its own apparatus, a chest
+instrument, head motion, air streaks and new wind, flutter and line voices.
+Preview: `python3.11 client/web/tools/serve.py --port 8046`, open
+`scene.html?course=gondola-weave&mode=parakite`, press V.
+[Decisions, measurements and limits](../../docs/design/AIR-AND-PARA.md).
+
 # Shift toggles a run; the stick ramps to it — 2026-11-05
 
 On foot, `Shift` is now a toggle: one press runs, another walks. It is no longer

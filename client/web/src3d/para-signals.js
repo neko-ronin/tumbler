@@ -13,7 +13,7 @@ export function paraKinematics(state,air={}){
  return {active:true,measured,velocity,groundSpeed:length(velocity),airSpeed:length(velocity.map((v,i)=>v-wind[i])),load:clamp(state.load??1,0,4),pressure:clamp(state.pressure??1)};
 }
 export function paraTargets(sample,strength=1,view='first',mode='parakite'){
- const amount=clamp(strength),speed=clamp((sample.airSpeed-8)/22),rush=sample.proximityRush??(clamp(sample.groundSpeed/30)*clamp(1-sample.distance/65));
+ const amount=clamp(strength),speed=clamp((sample.airSpeed-8)/(mode==='parakite'?34:22)),rush=sample.proximityRush??(clamp(sample.groundSpeed/30)*clamp(1-sample.distance/65));
  const profile=mode==='parakite'?1:mode==='paraglider'?.8:.9;
  return {fov:62+(view==='first'?18:12)*clamp(speed*.75+rush*.25)*amount*profile,
   smear:sample.active?clamp(speed*.4+rush*.6)*amount*profile:0,
@@ -56,7 +56,7 @@ export function createParaSignals({height,hitTest,gondola,clock=()=>0}={}){
   const alpha=1-Math.exp(-step/.24),oldLoad=load;speed+=(raw.airSpeed-speed)*alpha;load+=(raw.load-load)*alpha;
   sample={...raw,airSpeed:speed,load,distance:nearest.distance,feature:nearest.point?{kind:nearest.kind,point:nearest.point}:null,loadChange:step>0?clamp(Math.abs(load-oldLoad)/step,0,4):0};
   const targetRush=paraTargets(sample,strength,view,state.mode).rush;
-  rush=reset?targetRush:rush+(targetRush-rush)*(1-Math.exp(-step/.12));sample.proximityRush=rush;
+  rush=reset?targetRush:rush+(targetRush-rush)*(1-Math.exp(-step/.12));sample.proximityRush=rush;sample.view=view;
   Object.assign(sample,paraTargets(sample,strength,view,state.mode));
   lastMode=state.mode;previousDistance=state.distance??0;return sample;
  },get sample(){return sample;}};

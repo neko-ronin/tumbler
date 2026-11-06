@@ -41,3 +41,18 @@ test('reading presentation at every step leaves all three modes and their energy
   assert.deepEqual(b,a,mode);
  }
 });
+test('inside-the-harness voices grow with airspeed, sit back in chase and follow the wind to one ear',()=>{
+ const at=(airSpeed,o)=>paraAudioTargets({active:true,airSpeed,rush:0,pressure:1,load:1,loadChange:0},0,o);
+ const slow=at(12,{view:'first'}),fast=at(40,{view:'first'}),chase=at(40,{view:'chase'});
+ for(const k of ['helmet','buffet','flutter','hum'])assert.ok(fast[k]>slow[k],k);
+ for(const k of ['helmet','buffet','flutter','hum'])assert.ok(chase[k]<fast[k],k);
+ assert.ok(fast.humHz[0]>slow.humHz[0],'Aeolian line tone rises with speed');assert.ok(fast.helmet<=.15&&fast.buffet<=.16&&fast.flutter<=.09&&fast.hum<=.018);
+ assert.ok(at(40,{view:'first',facing:0}).helmetHz<at(40,{view:'first',facing:1}).helmetHz,'facing away darkens the wind');assert.equal(at(40,{windPan:-.5}).windPan,-.5);
+ const soft=paraAudioTargets({active:true,airSpeed:30,rush:0,pressure:.4,load:1,loadChange:0}),firm=paraAudioTargets({active:true,airSpeed:30,rush:0,pressure:1,load:1,loadChange:0});
+ assert.ok(soft.flutter>firm.flutter,'a soft wing flaps louder');assert.equal(paraAudioTargets(null).helmet,0);
+});
+test('the parakite has reserve speed sensation above its faster trim; other wings keep their scale',()=>{
+ const k=airSpeed=>({active:true,airSpeed,groundSpeed:airSpeed,distance:500});
+ assert.ok(paraTargets(k(26),1,'first','parakite').smear<paraTargets(k(40),1,'first','parakite').smear);
+ assert.ok(paraTargets(k(30),1,'first','paraglider').smear>paraTargets(k(30),1,'first','parakite').smear);
+});

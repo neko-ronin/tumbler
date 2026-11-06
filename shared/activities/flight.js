@@ -330,14 +330,17 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
     // Neutral is the best-glide flag. Forward stick releases both handles;
     // weight shift releases the outside one, changing whole-wing incidence.
     const neutral=.45+control*(control>0?.55:.45);
-    const targetLeft=clamp(neutral+(input.brakeLeft||0)*.55-Math.max(0,steer)*.4);
-    const targetRight=clamp(neutral+(input.brakeRight||0)*.55-Math.max(0,-steer)*.4);
+    // turn_release: how much outside handle a full turn gives up. Less keeps a
+    // fast wing's speed, and so its turn radius and sink, from running away.
+    const giveUp=mode.turn_release??.4;
+    const targetLeft=clamp(neutral+(input.brakeLeft||0)*.55-Math.max(0,steer)*giveUp);
+    const targetRight=clamp(neutral+(input.brakeRight||0)*.55-Math.max(0,-steer)*giveUp);
     // One actual handle state drives both incidence and flight response.
     // At full release no outside travel remains: weight shift still rolls,
     // without secretly pulling the inside handle for the player.
     s.handleLeft=approach(s.handleLeft??.45,targetLeft,5,dt);
     s.handleRight=approach(s.handleRight??.45,targetRight,5,dt);
-    turn=clamp(steer*.5+(s.handleRight-s.handleLeft)*1.5,-1,1);
+    turn=clamp(steer*Math.max(.5,1-giveUp*1.5)+(s.handleRight-s.handleLeft)*1.5,-1,1);
     release=clamp((.45-(s.handleLeft+s.handleRight)*.5)/.45);
     left=clamp((s.handleLeft-.45)/.55);right=clamp((s.handleRight-.45)/.55);
     s.brakeLeft=left;s.brakeRight=right;
@@ -362,7 +365,7 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   const bankLimit=mode.max_bank_rad+(mode.maneuver_bank_rad-mode.max_bank_rad)*s.maneuver;
   const targetBank=turn*bankLimit+(s.mode==='paramotor'?s.engine*.045:0)+clamp(air.turbulence*.035,-.12,.12);
   s.rollRate=(s.rollRate+(targetBank-s.bank)*12*dt)*Math.exp(-(5.8+(mode.roll_damping-5.8)*s.maneuver)*dt);
-  if(config.coupled)s.rollRate=clamp(s.rollRate,-config.coupled.max_roll_rate_rps,config.coupled.max_roll_rate_rps);
+  if(config.coupled){const limit=mode.max_roll_rate_rps??config.coupled.max_roll_rate_rps;s.rollRate=clamp(s.rollRate,-limit,limit);}
   s.bank=clamp(s.bank+s.rollRate*dt,-mode.maneuver_bank_rad,mode.maneuver_bank_rad);
   if(Math.abs(turn)>.45&&Math.sign(turn)!==Math.sign(s.turnMemory||turn))s.reversals=(s.reversals??0)+1;
   if(Math.abs(turn)>.45)s.turnMemory=turn;
@@ -425,6 +428,8 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   const dx=(Math.cos(s.heading)*s.speed+air.wx)*dt,dy=(Math.sin(s.heading)*s.speed+air.wy)*dt;
   s.x+=dx;s.y+=dy;s.z+=s.vertical*dt+exchange+engineHeight;s.groundSpeed=Math.hypot(dx,dy)/dt;s.distance+=Math.hypot(dx,dy);
   }
+  // Which half lost pressure last: fades as the cells refill. Presentation only.
+  s.tuckSide=(s.tuckSide??0)*Math.exp(-dt/.6);
   const beforeClamp=[s.x,s.y,s.z];
   s.x=clamp(s.x,-config.world_limit_m,config.world_limit_m);s.y=clamp(s.y,-config.world_limit_m,config.world_limit_m);
   s.z=Math.min(config.ceiling_m,s.z);
@@ -449,6 +454,8 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
       if(!state.canopyBrush){
         s.rollRate=clamp((s.rollRate??0)+wing.side*(c.tip_brush_roll_rps??0),-1,1);
         s.pressure=Math.max(.45,(s.pressure??1)-(c.tip_brush_pressure??0));
+        if(s.coupled)s.coupled.cellPressure=s.pressure;
+        s.tuckSide=wing.side;
       }
       s.canopyBrush=true;
     }

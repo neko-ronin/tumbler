@@ -21,7 +21,7 @@ test('assisted turns pull the inside brake on conventional wings and release the
   assert.equal(Math.sign(s.bank),turn);
   assert.equal(Math.sign(s.heading),-turn);
   if(mode==='parakite'){
-   assert.ok(s['handle'+outside]<.1,'raise outside handle');
+   assert.ok(s['handle'+outside]<=.45-config.modes.parakite.turn_release+.01,'raise outside handle');
    assert.equal(s['handle'+inside],.45,'keep inside handle at best glide');
    assert.equal(s.brakeLeft+s.brakeRight,0,'no hidden inside braking');
   }else{

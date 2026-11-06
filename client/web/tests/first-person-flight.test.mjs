@@ -32,7 +32,7 @@ test('lazy requests reuse one model, reject stale design output and dispose pend
  const a=createFirstPersonFlight(config);assert.equal(a.stats.builds,0);
  const old=a.request(design()),newest=a.setDesign(APPEARANCE_PRESETS[2].recipe);await Promise.all([old,newest]);assert.equal(a.stats.builds,1);assert.equal(a.ready,true);
  await a.setDesign(APPEARANCE_PRESETS[2].recipe);assert.equal(a.stats.builds,1);
- a.update({active:true,view:'first',pilotMatrix:new T.Matrix4(),state:{mode:'parakite'},grips:[new T.Vector3(.4,1.25,.45),new T.Vector3(-.4,1.25,.45)]});assert.equal(a.group.visible,true);assert.ok(a.stats.triangles<24000);
+ a.update({active:true,view:'first',pilotMatrix:new T.Matrix4(),state:{mode:'parakite'},grips:[new T.Vector3(.4,1.25,.45),new T.Vector3(-.4,1.25,.45)]});assert.equal(a.group.visible,true);assert.ok(a.stats.triangles<25500);
  a.update({active:false});assert.equal(a.group.visible,false);a.dispose();assert.equal(a.group.children.length,0);
  const pending=createFirstPersonFlight(config),request=pending.request(design());pending.dispose();await request;assert.equal(pending.group.children.length,0);assert.equal(pending.stats.builds,0);
 });
@@ -60,4 +60,17 @@ test('garment profile has finite unit normals and each paw shares a grip-relativ
    assert.ok(paw.length>10);for(const part of paw)assert.deepEqual(part.patternOrigin,grips[i]);
   }
  }
+});
+test('close apparatus exists only in first person and meets the rig at its real load points',()=>{
+ const recipe=generateFirstPerson(design()),s={mode:'parakite',speed:26},grips=[controlGrip(s,1),controlGrip(s,-1)],pose=firstPersonPose(recipe,s,grips,1);
+ const chase=firstPersonPose(recipe,s,grips,1,{body:false});assert.equal(chase.parts.filter(p=>['strap','metal'].includes(p.material)).length,0);assert.equal(chase.instrument,null);
+ assert.ok(pose.parts.every(p=>[...p.position,...p.scale,...p.quaternion].every(Number.isFinite)));
+ for(const p of pose.parts.filter(p=>['strap','metal'].includes(p.material)))assert.ok(Math.abs(Math.hypot(...p.quaternion)-1)<1e-9,p.id);
+ // A strap's flat face and length follow the requested frame, not a sphere's arbitrary roll.
+ const riser=pose.parts.find(p=>p.id==='left_riser_0_upper'),q=new T.Quaternion(...riser.quaternion),along=new T.Vector3(0,1,0).applyQuaternion(q),maillon=pose.parts.find(p=>p.id==='left_riser_0_maillon');
+ assert.ok(gap(new T.Vector3(...riser.position).addScaledVector(along,riser.scale[1]).toArray(),[.35,1.72,.19])<1e-9,'the riser ends at the rig maillon');assert.ok(gap(maillon.position,[.35,1.72,.19])<1e-9);
+ const small=firstPersonPose(recipe,s,grips,1,{pilotScale:.5}).parts.find(p=>p.id==='left_riser_0_maillon').position;
+ assert.ok(gap([.65+0,0,0].map((_,i)=>[0,.65,0][i]+(small[i]-[0,.65,0][i])*.5),[.35,1.72,.19])<1e-9,'a small pilot keeps the world-sized riser top');
+ assert.ok(pose.instrument.width>0);assert.equal(pose.parts.filter(p=>p.id==='instrument_body').length,1);
+ const still=firstPersonPose(recipe,s,grips,0).parts.map(p=>p.id);assert.deepEqual(pose.parts.map(p=>p.id),still,'instance layout is stable');
 });

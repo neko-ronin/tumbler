@@ -29,7 +29,7 @@ test('inflation stays put and a capped still-air flat run honestly aborts when t
 
 test('dry ledges and sufficient headwind still permit capped assisted launches in every mode',()=>{
  const ledge=x=>x<12?0:-10;
- const windy={...still,wind:{speed_mps:15,gust_mps:0},weather:{soaring:{...still.weather.soaring,wind_scale:1}}};
+ const windy={...still,wind:{speed_mps:24,gust_mps:0},weather:{soaring:{...still.weather.soaring,wind_scale:1}}};
  for(const mode of Object.keys(config.modes))for(const kind of ['ledge','headwind']){
   const rules=kind==='ledge'?still:windy,height=kind==='ledge'?ledge:flat,bearing=kind==='ledge'?270:90;
   const footing=(x,y)=>safeWalkGround(x,y,walk,height,null,{dropOffs:true});

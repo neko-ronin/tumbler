@@ -4,6 +4,7 @@ import * as T from '../vendor/three.module.min.js';
 import {toonMaterial,style} from './style.js';
 import {resolveFirstPersonDesign,generateFirstPerson,firstPersonPose} from '../../../shared/geometry/first-person/recipe.js';
 import {controlGrip} from '../../../shared/geometry/flight/contacts.js';
+const tint=new T.Color();
 const pause=()=>new Promise(resolve=>setTimeout(resolve,0));
 export function createFirstPersonFlight(config,{compile=async()=>{}}={}){
  const group=new T.Group();group.name='procedural_first_person';group.visible=false;group.matrixAutoUpdate=false;
@@ -11,7 +12,7 @@ export function createFirstPersonFlight(config,{compile=async()=>{}}={}){
  let selected=resolveFirstPersonDesign(config);
  let model=null,requested=null,sequence=0,disposed=false,pending=null,warming=false,lastActive=false,lastView='chase';
  const stats={builds:0,updates:0,parts:0,triangles:0,lastBuildMs:0,lastUpdateMs:0,status:'unrequested'};
- function release(m){if(!m)return;group.remove(m.root);for(const mesh of m.meshes){mesh.material.dispose();mesh.dispose?.();}for(const geometry of m.geometries)geometry.dispose();}
+ function release(m){if(!m)return;group.remove(m.root);if(m.screen){m.screen.geometry.dispose();m.screen.material.dispose();m.screenMap.dispose();}for(const mesh of m.meshes){mesh.material.dispose();mesh.dispose?.();}for(const geometry of m.geometries)geometry.dispose();}
  function material(channel,source,layer=0){
   const color=new T.Color(source.base).multiply(new T.Color(source.tint)),m=toonMaterial({color},{}),original=m.onBeforeCompile;
   m.onBeforeCompile=shader=>{original(shader);shader.uniforms.uCloseFlow=flow;shader.uniforms.uCloseTime=style.time;shader.uniforms.uClosePlaid={value:source.pattern==='plaid'?1:0};
@@ -26,8 +27,30 @@ export function createFirstPersonFlight(config,{compile=async()=>{}}={}){
     ${channel==='coat'?`vec3 p=vCloseCoat;float stripe=sin(p.y*57.+p.z*22.+sin(p.x*31.+p.z*17.)*1.3);float dorsal=smoothstep(-.20,-.10,p.z);diffuseColor.rgb*=mix(1.,mix(.76,1.03,smoothstep(-.45,.35,stripe)),dorsal);`:''}
     ${layer?`vec2 fibre=vCloseUv*vec2(115.,76.),cell=floor(fibre),at=fract(fibre)-.5;float hair=fract(sin(dot(cell,vec2(127.1,311.7)))*43758.5453);at.x+=(hair-.5)*.3;float strand=length(at/vec2(${(.25-layer*.08).toFixed(3)},.65)),aa=max(.08,fwidth(strand));if((1.-smoothstep(1.-aa,1.+aa,strand))*step(${(layer*.6).toFixed(3)},hair)<.35)discard;`:''}
     ${channel==='knit'?`diffuseColor.rgb*=mix(1.,mix(.45,1.,mod(floor(vCloseUv.x*12.)+floor(vCloseUv.y*12.),2.)),uClosePlaid);`:''}
+    ${channel==='strap'?`vec2 weave=vCloseUv*vec2(26.,190.);float near=1.-smoothstep(.5,1.5,length(fwidth(weave)));float herringbone=abs(fract(weave.x*.5+abs(fract(weave.y*.125)-.5))-.5);float selvedge=smoothstep(.0,.09,vCloseUv.x)*smoothstep(.0,.09,1.-vCloseUv.x);diffuseColor.rgb*=mix(.62,1.,selvedge)*(1.-near*.26*herringbone);`:''}
     ${channel==='knit'||channel==='cloth'?`vec2 rib=vCloseUv*vec2(${channel==='knit'?'95.,72.':'85.,115.'});float detail=1.-smoothstep(.5,1.5,length(fwidth(rib)));diffuseColor.rgb*=1.-detail*.10*(.5+.5*sin(rib.x*6.283));`:''}`);
-  };m.customProgramCacheKey=()=>`fp-v2:${channel}:${layer}`;return m;
+  };m.customProgramCacheKey=()=>`fp-v3:${channel}:${layer}`;return m;
+ }
+ // A real pilot's instrument, not a HUD: world-lit surroundings, hidden in chase.
+ // Skipped without a DOM, where only the geometry is under test.
+ function instrumentScreen(pose,parent){
+  if(!pose||!globalThis.document)return {};
+  const canvas=document.createElement('canvas');canvas.width=256;canvas.height=170;
+  const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;map.anisotropy=4;
+  const screen=new T.Mesh(new T.PlaneGeometry(pose.width,pose.height),new T.MeshBasicMaterial({map,toneMapped:false,fog:false}));
+  screen.name='fp_instrument_screen';screen.frustumCulled=false;parent.add(screen);
+  return {screen,screenCanvas:canvas,screenMap:map,screenAt:-1};
+ }
+ function drawInstrument(m,state,velocity){
+  const now=style.time.value;if(!m.screen||Math.abs(now-m.screenAt)<.2)return;m.screenAt=now;
+  const g=m.screenCanvas.getContext('2d'),w=m.screenCanvas.width,h=m.screenCanvas.height,vario=state.vario??0,v=velocity??[0,0,0];
+  g.fillStyle='#b9c4a4';g.fillRect(0,0,w,h);g.fillStyle='#14190f';g.textBaseline='alphabetic';g.textAlign='right';
+  g.font='700 92px ui-monospace,Menlo,monospace';g.fillText(String(Math.round(Math.hypot(v[0],v[1],v[2])*3.6)),w-58,92);
+  g.font='700 22px ui-monospace,Menlo,monospace';g.fillText('km/h',w-6,92);
+  g.font='700 42px ui-monospace,Menlo,monospace';g.textAlign='left';g.fillText((vario>=0?'+':'')+vario.toFixed(1),8,152);
+  g.font='700 20px ui-monospace,Menlo,monospace';g.textAlign='right';g.fillText(Math.round(state.z)+' m',w-6,152);
+  const bar=Math.max(-1,Math.min(1,vario/8))*44;g.fillRect(w-112,110-Math.max(0,bar)*.3,6,Math.max(2,Math.abs(bar)*.3));
+  m.screenMap.needsUpdate=true;
  }
  async function request(design){
   if(design.key===requested)return pending;
@@ -48,12 +71,18 @@ export function createFirstPersonFlight(config,{compile=async()=>{}}={}){
       const source=recipe.geometries.knit,joined=new T.BufferGeometry(),vertices=source.positions.length/3;
       joined.setAttribute('position',new T.Float32BufferAttribute(new Float32Array(count*vertices*3),3).setUsage(T.DynamicDrawUsage));joined.setAttribute('normal',new T.Float32BufferAttribute(new Float32Array(count*vertices*3),3).setUsage(T.DynamicDrawUsage));joined.setAttribute('uv',new T.Float32BufferAttribute(Array.from({length:count},()=>source.uv).flat(),2));joined.setIndex(Array.from({length:count},(_,i)=>source.indices.map(n=>n+i*vertices)).flat());
       geometries.push(joined);mesh=new T.Mesh(joined,material(channel,recipe.materials[channel],layer));
-     }else mesh=new T.InstancedMesh(geometry,material(channel,source,layer),count);
+     }else{
+      const own=recipe.geometries[channel]?makeGeometry(recipe.geometries[channel]):geometry;if(own!==geometry)geometries.push(own);
+      mesh=new T.InstancedMesh(own,material(channel,source,layer),count);
+      // Apparatus shares two draws; each part keeps its own colour.
+      initial.parts.filter(p=>p.material===channel).forEach((p,i)=>{if(p.tint)mesh.setColorAt(i,tint.set(p.tint));});
+      if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
+     }
      mesh.name=`fp_${channel}_${layer}`;mesh.frustumCulled=false;mesh.castShadow=false;mesh.receiveShadow=true;if(mesh.isInstancedMesh)mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);(channel==='webbing'?gear:body).add(mesh);meshes.push(mesh);channels[channel].push(mesh);
     }
    }
    geometry.setAttribute('closeOrigin',new T.InstancedBufferAttribute(new Float32Array(initial.parts.filter(p=>p.material==='coat').length*3),3).setUsage(T.DynamicDrawUsage));
-   const next={recipe,geometry,geometries,root,body,gear,channels,meshes};
+   const next={recipe,geometry,geometries,root,body,gear,channels,meshes,...instrumentScreen(initial.instrument,body)};
    fill(initial,next);try{await compile(root);}catch(error){release(next);if(token===sequence)stats.status='failed';throw error;}
    if(token!==sequence||disposed){release(next);return;}
    release(model);model=next;group.add(root);stats.builds++;stats.parts=initial.parts.length;stats.triangles=meshes.reduce((s,m)=>s+(m.count??1)*m.geometry.index.count/3,0);stats.lastBuildMs=performance.now()-start;stats.status='ready';
@@ -77,7 +106,8 @@ export function createFirstPersonFlight(config,{compile=async()=>{}}={}){
   // Scale about the real hip: the small-character option cannot move its pickup.
   group.matrix.copy(pilotMatrix);matrix.makeTranslation(hip.x*(1-pilotScale),hip.y*(1-pilotScale),hip.z*(1-pilotScale));group.matrix.multiply(matrix).scale(scale.setScalar(pilotScale));group.matrixWorldNeedsUpdate=true;group.updateMatrixWorld(true);inverse.copy(group.matrixWorld).invert();
   const local=grips.map(p=>position.copy(p).applyMatrix4(inverse).toArray());
-  fill(firstPersonPose(model.recipe,state,local,style.time.value,{body:view==='first'}));
+  const pose=firstPersonPose(model.recipe,state,local,style.time.value,{body:view==='first',pilotScale});fill(pose);
+  if(model.screen&&pose.instrument){model.screen.position.fromArray(pose.instrument.position);model.screen.quaternion.fromArray(pose.instrument.quaternion);drawInstrument(model,state,velocity);}
   const v=velocity??[0,0,0];flow.value.set((air?.wx??0)-v[0],(air?.lift??0)-v[2],-((air?.wy??0)-v[1]));rotation.setFromRotationMatrix(pilotMatrix).invert();flow.value.applyQuaternion(rotation).multiplyScalar(1/35).clampLength(0,1);
   stats.updates++;stats.lastUpdateMs=performance.now()-start;
  }

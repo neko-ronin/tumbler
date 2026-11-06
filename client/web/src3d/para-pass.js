@@ -6,10 +6,10 @@ export function createParaPass(renderer,camera){
  const supported=renderer.extensions.has('EXT_color_buffer_float');
  const target=new T.WebGLRenderTarget(1,1,{depthBuffer:false,type:T.HalfFloatType});target.texture.colorSpace=T.LinearSRGBColorSpace;
  const size=new T.Vector2(),focus=new T.Vector3(),axis=new T.Vector3(),direction=new T.Vector3();
- const uniforms={uColor:{value:target.texture},uDepth:{value:null},uRange:{value:new T.Vector2(camera.near,camera.far)},uFocus:{value:new T.Vector2(.5,.5)},uSmear:{value:0},uLens:{value:0},uAspect:{value:1},uPixel:{value:new T.Vector2(1,1)}};
+ const uniforms={uColor:{value:target.texture},uDepth:{value:null},uRange:{value:new T.Vector2(camera.near,camera.far)},uFocus:{value:new T.Vector2(.5,.5)},uSmear:{value:0},uLens:{value:0},uLoad:{value:0},uAspect:{value:1},uPixel:{value:new T.Vector2(1,1)}};
  const material=new T.ShaderMaterial({depthTest:false,depthWrite:false,uniforms,
   vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
-  fragmentShader:`uniform sampler2D uColor,uDepth;uniform vec2 uRange,uFocus,uPixel;uniform float uSmear,uLens,uAspect;varying vec2 vUv;
+  fragmentShader:`uniform sampler2D uColor,uDepth;uniform vec2 uRange,uFocus,uPixel;uniform float uSmear,uLens,uAspect,uLoad;varying vec2 vUv;
    float metres(vec2 p){float d=texture2D(uDepth,p).r;return uRange.x*uRange.y/(uRange.y-d*(uRange.y-uRange.x));}
    void main(){
     vec2 delta=vUv-uFocus;float radius=length(delta*vec2(uAspect,1.));
@@ -25,7 +25,7 @@ export function createParaPass(renderer,camera){
      }
      color/=total;
     }
-    color*=1.-edge*.035*uSmear;
+    color*=1.-edge*(.035*uSmear+.2*uLoad);
     gl_FragColor=vec4(color,1.);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -38,7 +38,7 @@ export function createParaPass(renderer,camera){
   warm(){if(!supported)return;this.prepare();renderer.compile(scene,quadCamera);warmed=true;},
   render(depth,sample){
    this.prepare();uniforms.uDepth.value=depth;uniforms.uRange.value.set(camera.near,camera.far);uniforms.uAspect.value=camera.aspect;uniforms.uPixel.value.set(1/size.x,1/size.y);
-   uniforms.uSmear.value=sample.smear;uniforms.uLens.value=sample.lens;
+   uniforms.uSmear.value=sample.smear;uniforms.uLens.value=sample.lens;uniforms.uLoad.value=sample.view==='first'?Math.max(0,Math.min(1,((sample.load??1)-1.7)/1.8)):0;
    axis.set(...[sample.velocity[0],sample.velocity[2],-sample.velocity[1]]).normalize();camera.getWorldDirection(direction);
    if(axis.dot(direction)>.3){focus.copy(camera.position).addScaledVector(axis,500).project(camera);uniforms.uFocus.value.set(Math.max(.25,Math.min(.75,focus.x*.5+.5)),Math.max(.25,Math.min(.75,focus.y*.5+.5)));}else uniforms.uFocus.value.set(.5,.5);
    renderer.setRenderTarget(null);renderer.render(scene,quadCamera);

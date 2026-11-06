@@ -9,6 +9,7 @@ import {stepMoves} from '../../../shared/activities/moves.js';
 import {playTape} from '../../../shared/activities/balance.js';
 import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
+import {createFirstPersonHead} from './first-person-head.js';
 import {composeFollowView,createFollowRange,createCameraBoom,createFollowCamera,clearCameraTerrain,clearTerrainBoom,cameraTerrainRadius} from './follow-camera.js';
 import {cameraProfile,cameraMovementProfile} from '../../../shared/activities/camera.js';
 const JUMP_FRAME_M=2,AIM_S=.5;
@@ -49,6 +50,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const forward=new T.Vector3(),side=new T.Vector3();
   const target=new T.Vector3(),framingSubject=new T.Vector3(),framingFoot=new T.Vector3();
   const framingHead=character.model?.getObjectByName('head'),framingFeet=['heel.L','heel.R'].map(name=>character.model?.getObjectByName(name)).filter(Boolean);
+  const firstPersonHead=createFirstPersonHead();
   const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
   const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
   let pilotMotion=options.pilotMotion??'steady';
@@ -91,7 +93,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   canvas.addEventListener('wheel',wheel,{passive:false});
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointermove',move);
   const dead=v=>Math.abs(v??0)<.14?0:Math.sign(v)*(Math.abs(v)-.14)/.86;
-  function toggleView(){manual();movementYaw=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';snap=true;}
+  function toggleView(){manual();movementYaw=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';
+    // The chase framing looks down at the pilot; a pilot looks along the flight path.
+    if(view==='first'&&config.modes[mode])pitch=-.2;snap=true;}
   function select(next,site='0'){
     if(config.modes[mode])preferredFlightMode=mode;
     if(next==='walk'&&config.modes[mode]){changeHarness();return;}
@@ -426,9 +430,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       follow(dt,(policy().distance+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
     }else{
       character.object.visible=false;
-      if(coupled){const eye=options.firstPersonEye?.();camera.position.copy((eye?new T.Vector3(eye[0]*characterConfig.scale,.65+(eye[1]-.65)*characterConfig.scale,eye[2]*characterConfig.scale):new T.Vector3(0,config.landing_clearance_m+.15,0)).applyMatrix4(pilotMatrix));}
+      const head=firstPersonHead.update(pose,dt,effects,snap);
+      if(coupled){const eye=options.firstPersonEye?.();camera.position.copy((eye?new T.Vector3(eye[0]*characterConfig.scale,.65+(eye[1]-.65)*characterConfig.scale-head.sink,eye[2]*characterConfig.scale+head.sink*.4):new T.Vector3(0,config.landing_clearance_m+.15,0)).applyMatrix4(pilotMatrix));}
       else camera.position.set(pose.x,pose.z+.15,-pose.y);
-      look.set(pitch+pose.pitch*.2,pose.heading-Math.PI/2+yaw,-pose.bank*.08*effects);camera.quaternion.setFromEuler(look);snap=false;
+      look.set(pitch+pose.pitch*.2+head.pitch,pose.heading-Math.PI/2+yaw+head.yaw,head.roll);camera.quaternion.setFromEuler(look);snap=false;
     }
     const presentation=options.flightPresentation?.(pose,view,dt,effects);
     const desired=presentation?.fov??(62+Math.min(18,Math.max(0,pose.speed-12)*.8)*effects);
@@ -440,7 +445,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       if(hips)pilotOffset=rig.worldToLocal(hips.getWorldPosition(new T.Vector3())).sub(new T.Vector3().fromArray(attachment.position_m)).toArray();
     }
     const lineSagDirection=coupled?new T.Vector3(0,-1,0).transformDirection(new T.Matrix4().copy(flightMatrix).invert()).toArray():undefined;
-    rig.userData.flightUpdate?.(dt,{...pose,harnessed:true},{pilotScale:characterConfig.scale,pilotAttachment:attachment?.position_m,pilotOffset,pilotTransform:coupled?pilotTransform:undefined,lineSagDirection});
+    rig.userData.flightUpdate?.(dt,{...pose,harnessed:true},{pilotScale:characterConfig.scale,pilotAttachment:attachment?.position_m,pilotOffset,pilotTransform:coupled?pilotTransform:undefined,lineSagDirection,closeView:view==='first'&&coupled});
     options.firstPersonBody?.({active:!pose.grounded&&!pose.collapsed&&!pose.launching,view,pilotMatrix,pilotScale:characterConfig.scale,state:pose});
   }
   /** Steer, pedal or pole, brake, tuck and hop; a chase camera, or first person on V / Y. */

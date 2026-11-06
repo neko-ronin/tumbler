@@ -17,7 +17,8 @@ function deform(x,y,z,mode,state,inflation,clock,out){
   const handle=T.MathUtils.lerp(state.handleRight??.45,state.handleLeft??.45,across);
   const weight=T.MathUtils.smoothstep(y,1.3,3.6);
   const trailing=T.MathUtils.smoothstep(-z/depth,-.05,.45);
-  const pull=brake*trailing*.52;
+  // A brake draws its line fan hardest outboard, so the tip section deflects first.
+  const pull=brake*trailing*.52*(.72+.28*Math.abs(span));
   const chord=depth*(1-.42*Math.min(1,span*span));
   const t=T.MathUtils.clamp(.52-(z+span*span*depth*.23)/chord,0,1);
   const centre=mode.canopy_height_m-mode.arc_m*span*span+chord*.055*Math.sin(Math.PI*t);
@@ -29,18 +30,30 @@ function deform(x,y,z,mode,state,inflation,clock,out){
   const incidence=state.mode==='parakite'?(handle-.45)*(z-aRow)*.16:0;
   const ripple=Math.sin(x*13+z*7+clock*15)*.004*(1+Math.abs(state.turbulence??0))*(1-pressure*.5);
   const flex=span*span*(Math.abs(bank)*.12+(1-pressure)*.35);
-  const py=y+weight*(ripple-pull-flex+incidence+(y-centre)*(pressure-1)*.45*skin-(state.rollRate??0)*span*.08);
+  const trim=mode.trim_mps??1,dynamic=Math.min(2.5,((state.speed??0)/trim)**2);
+  const tail=trailing*trailing*skin;
+  // Trailing-edge flutter grows with dynamic pressure and runs spanwise. Under
+  // the 15 Hz limit of the 30 Hz cloth tick, so it cannot alias into a shimmer.
+  const flutter=tail*(.004+.009*dynamic)*Math.sin(x*5.3+z*3.1-clock*47)*(1+.6*Math.sin(x*1.7+clock*9));
+  // Load opens the arc: taut lines pull the tips out and flatten the wing.
+  const load=T.MathUtils.clamp((state.load??1)-1,-1,2),opened=(mode.arc_m??0)*span*span*load*.07;
+  // Lost cell pressure folds the nose first, on the half that lost it. tuckSide
+  // is positive for the right half (-X); zero folds both, as a frontal does.
+  const low=T.MathUtils.clamp((.82-pressure)/.82,0,1),side=state.tuckSide??0;
+  const front=1-T.MathUtils.smoothstep(t,.04,.58),share=T.MathUtils.clamp(1-side*span,0,1);
+  const fold=low*front*share*chord*(.62+.18*Math.sin(x*3.4+clock*11));
+  const py=y+weight*(ripple-pull-flex+incidence+flutter+opened-fold+(y-centre)*(pressure-1)*.45*skin-(state.rollRate??0)*span*.08);
   // Parakite speed comes from the same handle/riser movement above; the
   // shared accelerator readout is its release fraction, not a speedbar.
   const speedbar=state.mode==='parakite'?0:(state.accelerator??0);
-  const pz=z+weight*(speedbar*(y-3)*.1+pull*.22);
+  const pz=z+weight*(speedbar*(y-3)*.1+pull*.22-fold*.45);
   const drop=1-inflation;
   // Reduced cloth shape: lower the centre first, lose cell volume, and let
   // broad folds settle aft. Common coordinates keep ribs and cascades attached.
   const sag=drop*drop*(3-2*drop);
-  const fold=Math.sin(x*2.3+z*2.1)*Math.sin(x*.7-z*1.4);
-  const clothY=.055+.16*fold*fold+(y-centre)*.025;
-  out.set(x+weight*sag*.13*Math.sin(x*2+z),
+  const crumple=Math.sin(x*2.3+z*2.1)*Math.sin(x*.7-z*1.4);
+  const clothY=.055+.16*crumple*crumple+(y-centre)*.025;
+  out.set(x*(1+weight*load*.012)+weight*sag*.13*Math.sin(x*2+z),
     T.MathUtils.lerp(py,clothY,weight*sag),
     pz-weight*sag*(3.4+.25*Math.cos(x*.8)));
   return out;
@@ -141,6 +154,21 @@ function releasedDrawIndex(primitives){
   }
   return new T.BufferAttribute(Uint32Array.from(indices),1);
 }
+// Seen from the pilot's own eye the rig's chase-weight straps and tubes would fill
+// the view, and the first-person apparatus draws them finer. Same data, shorter draw.
+function closeDrawIndex(primitives,cloth){
+  let offset=0;const indices=[];
+  for(const primitive of primitives.filter(p=>p.alphaMode==='OPAQUE')){
+    const count=primitive.geometry.index?.count??primitive.geometry.attributes.position.count;
+    const near=/^(harness|webbing_risers|maillons|brake_fan)$/.test(primitive.materialName);
+    for(let i=0;i<count;i+=3){
+      const low=[0,1,2].every(k=>cloth.points[cloth.indices[offset+i+k]].y<1.85);
+      if(!near||!low)indices.push(offset+i,offset+i+1,offset+i+2);
+    }
+    offset+=count;
+  }
+  return new T.BufferAttribute(Uint32Array.from(indices),1);
+}
 export function createFlightRig(assets,config){
   const group=new T.Group();group.name='player_parafoil';group.rotation.order='YXZ';group.visible=false;
   const wings={};
@@ -152,7 +180,7 @@ export function createFlightRig(assets,config){
     mesh.castShadow=true;mesh.frustumCulled=false;
     const cloth=clothPoints(mesh.geometry);
     const pilotFit=pilotFitWeights(primitives,cloth),coupledFit=coupledFitWeights(primitives,cloth);
-    wings[name]={mesh,...cloth,pilotFit,coupledFit,controlFit:controlFitWeights(primitives,cloth),...attachmentIndices(cloth,pilotFit,coupledFit),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives),cacheKey:null,floors:[]};group.add(mesh);
+    wings[name]={mesh,...cloth,pilotFit,coupledFit,controlFit:controlFitWeights(primitives,cloth),...attachmentIndices(cloth,pilotFit,coupledFit),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives),closeIndex:closeDrawIndex(primitives,cloth),cacheKey:null,floors:[]};group.add(mesh);
   }
   const source=assets[config.motor_asset].primitives;
   const cage=mergePrimitives(source.filter(p=>p.materialName!=='propeller'),'opaque');
@@ -194,10 +222,10 @@ export function createFlightRig(assets,config){
     clock+=dt;motor.visible=state.mode==='paramotor'&&harnessed;
     elapsed+=dt;
     prop.rotation.z+=dt*(12+(state.engine??0)*150);
-    const name=state.mode==='parakite'?'parakite':'paraglider';
+    const name=state.mode==='parakite'?'parakite':'paraglider',grounded0=presentation.grounded??state.grounded??false;
     for(const [key,w] of Object.entries(wings)){
       w.mesh.visible=key===name;
-      const index=harnessed?w.attachedIndex:w.releasedIndex;
+      const index=!harnessed?w.releasedIndex:presentation.closeView&&!grounded0?w.closeIndex:w.attachedIndex;
       if(w.mesh.geometry.index!==index)w.mesh.geometry.setIndex(index);
     }
     const w=wings[name],{mesh,points,indices,moved,deformed}=w,positions=mesh.geometry.attributes.position;

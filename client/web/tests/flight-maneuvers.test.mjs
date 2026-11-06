@@ -56,7 +56,7 @@ test('legacy unpowered steps lose reduced energy through mixed maneuvers, pumpin
 
 test('legacy ground proximity reduces loss but never adds lift; canopy clearance, slope and bank gate it',()=>{
  for(const name of Object.keys(config.modes)){
-  const s={...legacyStart(name),z:2.1},near=legacyRun(s,{},.05),high=legacyRun({...s,z:100}, {},.05);
+  const s={...legacyStart(name),z:config.landing_clearance_m+.05},near=legacyRun(s,{},.05),high=legacyRun({...s,z:100}, {},.05);
   assert.ok(near.groundEffect>0&&near.groundEffect<1,name);assert.equal(high.groundEffect,0);
   assert.ok(near.vertical>high.vertical);assert.ok(near.vertical<0);
   const off={...legacy,modes:{...legacy.modes,[name]:{...legacy.modes[name],ground_drag_relief:0}}};

@@ -510,9 +510,11 @@ export function pilotInput(world,cat,s,air){
   // Round out: from flare*3 down, work the brakes to sink no faster than agl/τ, easing off when the wing
   // balloons and adding when it drops, as a pilot does by feel. A height-only flare balloons fast wings.
   // Full brake (a stall) only in the last metre and a half.
-  if(landing&&(agl<flare*3||air.flare!==undefined)){
-    const want=-Math.max(g.touchdown_mps,agl/g.roundout_s);
-    air.flare=clamp((air.flare??0)+(want-(s.vario??0))*g.flare_gain,0,agl<1.5?1:.8);brake=air.flare;
+  // Read the ground a moment ahead: at parakite speed, rising ground arrives faster than the sink does.
+  const ahead=s.z-world.ground(s.x+(s.vx??0)*1.2,s.y+(s.vy??0)*1.2),clear=Number.isFinite(ahead)?Math.min(agl,ahead):agl;
+  if(landing&&(clear<flare*3||air.flare!==undefined)){
+    const want=-Math.max(g.touchdown_mps,clear/g.roundout_s);
+    air.flare=clamp((air.flare??0)+(want-(s.vario??0))*g.flare_gain,0,clear<1.5?1:.8);brake=air.flare;
     if(agl<flare)turn=0;
   }
   const throttle=s.mode==='paramotor'?(air.avoiding?1:final?-1:agl<220?1:agl>320?-1:0):0;
