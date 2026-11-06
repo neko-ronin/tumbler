@@ -1,4 +1,4 @@
-# Faster parakite and first-person para pass — local candidate, 2026-11-05
+# Faster parakite and first-person para pass — released, 2026-11-05
 
 The parakite trims at 24 m/s on a smaller wing. Cell pressure is now a lagging
 state that tucks and refills. First person gains its own apparatus, a chest
