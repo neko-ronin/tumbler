@@ -4,6 +4,7 @@
   "models": "shared/geometry/cat-folk/models.json",
   "walk": {"cadence": 1.25, "personal_m": 1.1, "arrive_m": 2.2, "stuck_s": 4, "give_up_s": 30, "near_m": 260},
   "flight": {"max_air_s": 420, "final_agl_m": 70, "flare_agl_m": 3.5, "roundout_s": 3.5, "touchdown_mps": 0.7, "flare_gain": 0.15, "cruise_agl_m": 900, "landing_offset_m": 60},
+  "play": {"near_m": 700, "start_m": 6, "sprint": 2.2, "tag_m": 1.3, "swap_s": 1.5, "flee_m": 12, "jink_m": 3.5},
   "needs": {
     "energy": {"decay_per_min": 0.035},
     "social": {"decay_per_min": 0.05},
@@ -23,6 +24,7 @@
     "play": {"place": "green", "clip": "play", "seconds": [20, 40], "effects": {"fun": 0.55, "energy": -0.15}, "verb": "play", "skill": "play"},
     "wander": {"place": "green", "clip": "idle", "seconds": [8, 20], "effects": {"fun": 0.15, "social": 0.05}, "verb": "wander"},
     "gondola": {"place": "gondola", "clip": "gaze", "seconds": [30, 60], "effects": {"fun": 0.5, "energy": 0.1, "social": 0.1}, "verb": "ride the gondola for the view"},
+    "chase": {"place": "player", "clip": "run", "seconds": [30, 60], "effects": {"fun": 0.6, "thrill": 0.45, "energy": -0.2}, "verb": "play chase"},
     "fly": {"place": "launch", "clip": "harness", "seconds": [0, 0], "effects": {"thrill": 0.9, "fun": 0.4, "energy": -0.2}, "verb": "fly", "skill": "fly"}
   },
   "folk": [

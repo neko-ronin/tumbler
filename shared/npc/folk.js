@@ -15,9 +15,11 @@
  * 'auto' lets the brain resume when the agent's plan runs out. Every decision
  * and outcome is an event in cat.events and world.onEvent, the agent's memory.
  */
-import {stepWalk,reharnessWalk,relaunchGround,relaunchRefusal,unharnessFlight,safeWalkGround} from '../activities/walk.js';
+import {reharnessWalk,relaunchGround,relaunchRefusal,unharnessFlight,safeWalkGround} from '../activities/walk.js';
 import {launchFlight,stepFlight,sampleAir,canopySegment,canopyTouches} from '../activities/flight.js';
 import {boardGondola,rideAt} from '../activities/gondola.js';
+import {stepGround} from '../activities/moves.js';
+import {DOWN} from '../activities/balance.js';
 
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -42,7 +44,7 @@ function mulberry(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5>>>0;let t=a;t=M
 const hashSeed=text=>[...text].reduce((h,c)=>Math.imul(h^c.charCodeAt(0),16777619),2166136261);
 
 /** Places every cat can name, derived from data the core already owns. */
-export function createFolkWorld({config,worldmap,placement,flight,walk,height,ground=height,hitTest=null,gondola=null,onEvent=null}){
+export function createFolkWorld({config,worldmap,placement,flight,walk,height,ground=height,hitTest=null,gondola=null,balance=null,onEvent=null}){
   if(config.version!==1)throw new Error(`Unsupported folk version: ${config.version}`);
   const homes={};
   for(const i of placement.instances)for(const tag of i.tags??[])homes[tag]=i.position_m.slice(0,2);
@@ -50,7 +52,9 @@ export function createFolkWorld({config,worldmap,placement,flight,walk,height,gr
   if(used.some(h=>!h))throw new Error('folk.json names a home that placement.json does not have');
   const green=[used.reduce((s,h)=>s+h[0],0)/used.length,used.reduce((s,h)=>s+h[1],0)/used.length];
   const river=(worldmap.water?.bodies??[]).find(b=>b.kind==='river');
-  return {config,worldmap,flight,walk,height,ground,hitTest,gondola,onEvent,homes,green,river,time:0,focus:null,cats:[]};
+  // `player` is the client's player on foot ({x, y, speed}) or null: the one the cats play with.
+  // `balance` (balance.js: {config, surfaceAt}) lets a cat slip and tumble on the same ground he does.
+  return {config,worldmap,flight,walk,height,ground,hitTest,gondola,balance,onEvent,homes,green,river,time:0,focus:null,player:null,cats:[]};
 }
 
 /** The nearest dry bank point of the river to p, standing back from the water's edge. */
@@ -181,6 +185,7 @@ function landingField(world,cat){
 function placePoint(world,cat,place){
   if(Array.isArray(place))return place;
   if(place==='here')return [cat.body.state.x,cat.body.state.y];
+  if(place==='player')return world.player?[world.player.x,world.player.y]:null;
   const other=world.cats.find(c=>c.id===place);
   if(other)return [other.body.state.x,other.body.state.y];
   if(place==='green')return [world.green[0]+(cat.random()-.5)*40,world.green[1]+(cat.random()-.5)*40];
@@ -195,6 +200,8 @@ function available(world,cat,id){
   if(id==='fly'&&(!cat.flightPlan||!world.flight.modes[cat.flightPlan.mode]))return false;
   if(id==='visit')return world.cats.length>1;
   if(id==='gondola')return !!world.gondola;
+  // Play with the player only when they are on foot and near enough to reach.
+  if(a.place==='player')return !!world.player&&cat.body.mode==='walk'&&dist([cat.body.state.x,cat.body.state.y],[world.player.x,world.player.y])<=world.config.play.near_m;
   return !!(a.place==='here'||a.place==='friend'||cat.places[a.place]||a.place==='green');
 }
 function score(world,cat,id){
@@ -227,6 +234,7 @@ function planFor(world,cat,id,options={}){
     const launch=site&&site!==cat.flightPlan?.site?launchPlace(world,{...cat,flightPlan:{site}}):cat.places.launch;
     return [...liftTo(world,cat,launch),{kind:'go',to:launch,pace:'run',label:'launch'},{kind:'fly',mode,site,effects:a.effects,activity:id},{kind:'go',to:'home',pace:'walk'}];
   }
+  if(a.place==='player')return [{kind:'go',to:'player',pace:'sprint',within:world.config.play.start_m},{kind:'chase',seconds,effects:a.effects,activity:id}];
   if(id==='gondola'){
     const [low,high]=world.gondola.stations;
     return [{kind:'go',to:low.xy_m,pace:'walk',within:world.gondola.config.board_m*.6},{kind:'gondola',from:0,to:1},
@@ -359,7 +367,8 @@ function walkTo(world,cat,step,dt){
   }
   const detour=stuck>cfg.stuck_s?(Math.floor(stuck/3)%2?1:-1)*1.2:0;
   // Each cat walks at its own stride's ground speed, so the paws stay planted at any pace.
-  const pace=PACES.includes(step.pace)?step.pace:'walk',speed=cat.gaits[pace]*cfg.cadence*cat.pace*(cat.needs.energy<.15?.7:1);
+  // A sprint is the run gait played fast (play.sprint), for games only.
+  const sprint=step.pace==='sprint',pace=sprint?'run':PACES.includes(step.pace)?step.pace:'walk',speed=cat.gaits[pace]*cfg.cadence*cat.pace*(sprint?world.config.play.sprint:1)*(cat.needs.energy<.15?.7:1);
   const angle=Math.atan2(target[1]-s.y,target[0]-s.x)+detour;
   let ux=Math.cos(angle),uy=Math.sin(angle);
   // Personal space: lean away from any cat on foot within personal_m, and keep right, so two meeting head-on pass.
@@ -371,12 +380,43 @@ function walkTo(world,cat,step,dt){
   const um=Math.hypot(ux,uy);if(um>1e-6){ux/=um;uy/=um;}
   if(isNear(world,here)){
     const run=speed>world.walk.walk_mps,mag=clamp(speed/(run?world.walk.run_mps:world.walk.walk_mps));
-    cat.body.state=stepWalk(s,{x:ux*mag,y:uy*mag,run},dt,world.walk,world.height,world.hitTest);
+    cat.body.state=stepGround(s,{x:ux*mag,y:uy*mag,run},dt,world.walk,groundOf(world));
   }else{
     // ponytail: kinematic far walk ignores colliders; nobody can see it, and it keeps 8 cats cheap.
     const travel=Math.min(speed*dt,d),x=s.x+ux*travel,y=s.y+uy*travel,z=world.height(x,y);
     cat.body.state=Number.isFinite(z)?{...s,x,y,z,heading:Math.atan2(uy,ux),speed,vx:ux*speed,vy:uy*speed}:{...s,speed:0};
   }
+  return false;
+}
+
+const groundOf=world=>({height:world.height,hitTest:world.hitTest,balance:world.balance});
+
+/** Chase with the player: the cat is "it" first and runs them down; a tag (within tag_m)
+ * swaps who is it, and the cat flees, jinking when they get close, and waits, taunting,
+ * once it is flee_m clear. Its body is the player's own: stepGround, so it can slip and
+ * tumble on the same slope. */
+function chase(world,cat,step,dt){
+  const p=world.player,cfg=world.config.play,s=cat.body.state;
+  if(!p){cat.plan=[];emit(world,cat,'plan_cancelled',{why:'the player left'});return true;}
+  step.t=(step.t??0)+dt;step.it??=true;step.swap=Math.max(0,(step.swap??0)-dt);
+  for(const [k,v] of Object.entries(step.effects??{}))cat.needs[k]=clamp(cat.needs[k]+v*dt/Math.max(1,step.seconds));
+  const dx=p.x-s.x,dy=p.y-s.y,d=Math.hypot(dx,dy);
+  if(step.swap===0&&d<cfg.tag_m&&!DOWN.has(s.balance?.phase)){
+    step.it=!step.it;step.swap=cfg.swap_s;step.tags=(step.tags??0)+1;
+    emit(world,cat,'tag',{it:step.it?cat.id:'player'});say(world,cat,step.it?'You got me! My turn!':'Tag! You\'re it!');
+  }
+  if(step.t>=step.seconds){emit(world,cat,'done',{activity:step.activity,tags:step.tags??0});return true;}
+  let angle=Math.atan2(dy,dx),mag=0;
+  if(step.it)mag=1;
+  else if(d<cfg.flee_m){
+    // Away, with a jink to one side when they are close: a cat turns faster than a runner.
+    angle+=Math.PI;if(d<cfg.jink_m)angle+=(Math.sin(world.time*1.3+cat.index*2.1)>0?1:-1)*1.1;mag=1;
+  }
+  const speed=cat.gaits.run*world.config.walk.cadence*cat.pace*cfg.sprint;
+  mag*=clamp(speed/world.walk.run_mps);
+  cat.body.state=stepGround(s,{x:Math.cos(angle)*mag,y:Math.sin(angle)*mag,run:true},dt,world.walk,groundOf(world));
+  // Waiting, it watches them.
+  if(!mag&&!DOWN.has(cat.body.state.balance?.phase))cat.body.state={...cat.body.state,heading:Math.atan2(dy,dx)};
   return false;
 }
 
@@ -543,6 +583,8 @@ function clipFor(world,cat){
   if(b.mode==='flight')return s.launching&&s.launchStage==='running'?'run':s.grounded?'idle':'harness';
   if(b.mode==='gondola')return 'gaze';
   const step=cat.step;
+  // Down on a slope (balance.js) it plays its pounce-and-roll: the client turns it over.
+  if(DOWN.has(s.balance?.phase))return 'play';
   if(step?.kind==='do'&&!(s.speed>.2))return step.clip;
   const speed=s.speed??0,cadence=world.config.walk.cadence;
   if(speed<.15)return 'idle';
@@ -572,6 +614,7 @@ export function stepFolk(world,dt,focus=null){
     if(step?.kind==='go')done=walkTo(world,cat,step,dt);
     else if(step?.kind==='fly')done=fly(world,cat,step,dt);
     else if(step?.kind==='gondola')done=rideGondola(world,cat,step);
+    else if(step?.kind==='chase')done=chase(world,cat,step,dt);
     else if(step?.kind==='do'){cat.body.state={...cat.body.state,speed:0};done=perform(world,cat,step,dt);}
     else if(!step){cat.body.state={...cat.body.state,speed:0};cat.body.face=null;}
     if(done){

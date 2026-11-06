@@ -146,6 +146,15 @@ export function createCuePlayer(context,destination=context.destination,chargeBu
       level.gain.setValueAtTime(0,t);level.gain.linearRampToValueAtTime(.11,t+.35);level.gain.exponentialRampToValueAtTime(.0001,t+.62);
       track(tone);nodes.push(filter,level);tone.connect(filter).connect(level).connect(out);tone.start(t);tone.stop(t+.65);
     }
+    // Things answering a blow (shared/play/reactions.json names the sound).
+    else if(name==='rustle'){burst(.35,'bandpass',3200,1.2,.35,1800,.05);burst(.22,'highpass',6500,.7,.12,4000,.02,.06);}
+    else if(name==='puff')burst(.32,'lowpass',1300,.7,.45,250,.02);
+    else if(name==='splat'){burst(.12,'lowpass',900,.7,.7,200);ring(.15,140,.3,'sine',60);}
+    else if(name==='thunk'){burst(.06,'lowpass',700,.7,.6);ring(.18,110,.5,'sine',70);}
+    else if(name==='tok'){burst(.03,'bandpass',2500,3,.4);ring(.09,900,.35,'triangle',600);}
+    else if(name==='chime'){ring(2.4,660,.14);ring(2,660*2.76,.06);ring(1.4,660*5.4,.03);ring(2.6,661.5,.08);}
+    else if(name==='boing'){ring(.45,170,.32,'triangle',430);ring(.3,85,.2,'sine',60);}
+    else if(name==='pop'){burst(.04,'highpass',3000,.7,.3);ring(.08,600,.4,'sine',1500);}
 
   }
 }

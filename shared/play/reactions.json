@@ -1,0 +1,267 @@
+{
+ "version": 1,
+ "about": "Reaction table v0: object kind x player action -> reaction. A reaction is presentation the core names (an animation, a sound, a particle kind, a physics nudge); each client draws it its own way. No health, no damage, nothing collected. Adding a whackable thing is a row here.",
+ "actions": {
+  "swing": {
+   "about": "A katana blow lands: anything within reach_m of the blade's pivot, inside arc_deg of where he faces.",
+   "reach_m": 2.2,
+   "arc_deg": 150
+  },
+  "bump": {
+   "about": "His body runs, tumbles or rolls into it faster than min_mps.",
+   "min_mps": 1.5
+  }
+ },
+ "kinds": {
+  "tall_grass": {
+   "label": "tall grass",
+   "radius_m": 0.5,
+   "height_m": 1.1,
+   "reactions": {
+    "swing": {
+     "anim": "cut",
+     "sound": "rustle",
+     "particles": {
+      "kind": "blades",
+      "count": 14,
+      "colour": "#7ea24a"
+     },
+     "respawn_s": 20
+    },
+    "bump": {
+     "anim": "sway",
+     "sound": "rustle",
+     "amplitude_deg": 35,
+     "hz": 1.4,
+     "damping_per_s": 2.5
+    }
+   }
+  },
+  "fern": {
+   "label": "fern",
+   "radius_m": 0.6,
+   "height_m": 0.8,
+   "reactions": {
+    "swing": {
+     "anim": "cut",
+     "sound": "rustle",
+     "particles": {
+      "kind": "leaves",
+      "count": 10,
+      "colour": "#4f7a32"
+     },
+     "respawn_s": 25
+    },
+    "bump": {
+     "anim": "sway",
+     "sound": "rustle",
+     "amplitude_deg": 25,
+     "hz": 1.1,
+     "damping_per_s": 2
+    }
+   }
+  },
+  "dandelion": {
+   "label": "dandelion clock",
+   "radius_m": 0.25,
+   "height_m": 1.2,
+   "reactions": {
+    "swing": {
+     "anim": "burst",
+     "sound": "puff",
+     "particles": {
+      "kind": "seeds",
+      "count": 30,
+      "colour": "#f4f1e6"
+     },
+     "respawn_s": 30
+    },
+    "bump": {
+     "anim": "burst",
+     "sound": "puff",
+     "particles": {
+      "kind": "seeds",
+      "count": 20,
+      "colour": "#f4f1e6"
+     },
+     "respawn_s": 30
+    }
+   }
+  },
+  "melon": {
+   "label": "melon",
+   "radius_m": 0.45,
+   "height_m": 0.7,
+   "reactions": {
+    "swing": {
+     "anim": "split",
+     "sound": "splat",
+     "particles": {
+      "kind": "juice",
+      "count": 16,
+      "colour": "#e2566a"
+     },
+     "impulse_mps": 2.5,
+     "up_mps": 3,
+     "respawn_s": 40
+    },
+    "bump": {
+     "anim": "fly",
+     "sound": "thunk",
+     "impulse_mps": 3,
+     "up_mps": 1,
+     "spin_dps": 360
+    }
+   }
+  },
+  "pine_cone": {
+   "label": "pine cone",
+   "radius_m": 0.15,
+   "height_m": 0.26,
+   "reactions": {
+    "swing": {
+     "anim": "fly",
+     "sound": "tok",
+     "impulse_mps": 9,
+     "up_mps": 6,
+     "spin_dps": 900
+    },
+    "bump": {
+     "anim": "fly",
+     "sound": "tok",
+     "impulse_mps": 3,
+     "up_mps": 1.5,
+     "spin_dps": 400
+    }
+   }
+  },
+  "mushroom": {
+   "label": "mushroom",
+   "radius_m": 0.32,
+   "height_m": 0.95,
+   "reactions": {
+    "swing": {
+     "anim": "fly",
+     "sound": "pop",
+     "particles": {
+      "kind": "spores",
+      "count": 12,
+      "colour": "#d8c79a"
+     },
+     "impulse_mps": 4,
+     "up_mps": 5,
+     "spin_dps": 720,
+     "respawn_s": 30
+    },
+    "bump": {
+     "anim": "squash",
+     "sound": "pop",
+     "particles": {
+      "kind": "spores",
+      "count": 8,
+      "colour": "#d8c79a"
+     }
+    }
+   }
+  },
+  "straw_target": {
+   "label": "straw target",
+   "radius_m": 0.5,
+   "height_m": 1.5,
+   "reactions": {
+    "swing": {
+     "anim": "wobble",
+     "sound": "thunk",
+     "particles": {
+      "kind": "straw",
+      "count": 12,
+      "colour": "#d9b45a"
+     },
+     "amplitude_deg": 14,
+     "hz": 2.2,
+     "damping_per_s": 2.5
+    },
+    "bump": {
+     "anim": "wobble",
+     "sound": "thunk",
+     "amplitude_deg": 6,
+     "hz": 2.2,
+     "damping_per_s": 3
+    }
+   }
+  },
+  "scarecrow": {
+   "label": "scarecrow",
+   "radius_m": 0.6,
+   "height_m": 1.9,
+   "reactions": {
+    "swing": {
+     "anim": "spin",
+     "sound": "boing",
+     "particles": {
+      "kind": "straw",
+      "count": 8,
+      "colour": "#d9b45a"
+     },
+     "spin_dps": 900,
+     "damping_per_s": 0.7
+    },
+    "bump": {
+     "anim": "wobble",
+     "sound": "boing",
+     "amplitude_deg": 10,
+     "hz": 1.6,
+     "damping_per_s": 2
+    }
+   }
+  },
+  "hanging_bell": {
+   "label": "hanging bell",
+   "radius_m": 0.5,
+   "height_m": 2.2,
+   "reactions": {
+    "swing": {
+     "anim": "swing",
+     "sound": "chime",
+     "amplitude_deg": 50,
+     "hz": 0.7,
+     "damping_per_s": 0.35
+    },
+    "bump": {
+     "anim": "swing",
+     "sound": "chime",
+     "amplitude_deg": 15,
+     "hz": 0.7,
+     "damping_per_s": 0.5
+    }
+   }
+  },
+  "snow_pile": {
+   "label": "snow pile",
+   "radius_m": 0.7,
+   "height_m": 0.6,
+   "reactions": {
+    "swing": {
+     "anim": "burst",
+     "sound": "puff",
+     "particles": {
+      "kind": "snow",
+      "count": 30,
+      "colour": "#f6fbff"
+     },
+     "respawn_s": 25
+    },
+    "bump": {
+     "anim": "burst",
+     "sound": "puff",
+     "particles": {
+      "kind": "snow",
+      "count": 24,
+      "colour": "#f6fbff"
+     },
+     "respawn_s": 25
+    }
+   }
+  }
+ }
+}

@@ -16,6 +16,24 @@ const RULES={
   butterfly:{reach:2.4,approach:2.8,leave:8,cooldown:60,settle:1.4},
 };
 const ease=t=>t*t*(3-2*t),clamp01=t=>Math.max(0,Math.min(1,t));
+
+/** Fleeing: a player on the move inside `radius` m scares an insect off its wander; it
+ * keeps away (`hold` s) and then drifts back to it over about `calm` s. Someone still or
+ * sitting scares nothing, so the visits above still find him. Animation only. */
+export const FLEE={bee:{radius:2.5,speed:2.5,max:5,hold:1,calm:4},butterfly:{radius:3.5,speed:3,max:7,hold:1.5,calm:3}};
+/** Advance one insect's flee offset `o` (o[k..k+3] = dx, dy, dz in world x, y north, z
+ * up, and seconds of alarm left) for an insect whose own path puts it at [x, y, z]. `from`
+ * is the scarer's [x, y, z] or null. Returns true while it is scared. */
+export function fleeStep(o,k,x,y,z,from,dt,rule){
+  const ax=x+o[k]-(from?.[0]??0),ay=y+o[k+1]-(from?.[1]??0),az=z+o[k+2]-(from?.[2]??0),d=Math.hypot(ax,ay,az);
+  const scared=!!from&&d<rule.radius;
+  if(scared){
+    const h=Math.hypot(ax,ay)||1,step=rule.speed*dt;
+    o[k]+=ax/h*step;o[k+1]+=ay/h*step;o[k+2]+=step*.5;o[k+3]=rule.hold;
+    const r=Math.hypot(o[k],o[k+1],o[k+2]);if(r>rule.max)for(let j=0;j<3;j++)o[k+j]*=rule.max/r;
+  }else if((o[k+3]=Math.max(0,o[k+3]-dt))===0){const decay=Math.exp(-dt*3/rule.calm);for(let j=0;j<3;j++)o[k+j]*=decay;}
+  return scared;
+}
 const turn=(from,to,k)=>from+Math.atan2(Math.sin(to-from),Math.cos(to-from))*k;
 
 /** @param {'bee'|'butterfly'} kind */

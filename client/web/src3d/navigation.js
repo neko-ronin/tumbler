@@ -6,6 +6,7 @@ import {flightInput} from './flight-input.js';
 import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal,safeWalkGround} from '../../../shared/activities/walk.js';
 import {findTrunk} from '../../../shared/activities/climb.js';
 import {stepMoves} from '../../../shared/activities/moves.js';
+import {playTape} from '../../../shared/activities/balance.js';
 import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
 import {composeFollowView,createFollowRange,createCameraBoom,createFollowCamera,clearCameraTerrain,clearTerrainBoom,cameraTerrainRadius} from './follow-camera.js';
@@ -52,7 +53,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
   let pilotMotion=options.pilotMotion??'steady';
   let treeFraming=0,framedDistance=null,framedLift=0,framedLower=null;
-  let presentedGrounded=null,landingClipLeft=0,carried=null;
+  let presentedGrounded=null,landingClipLeft=0,carried=null,tuckHeld=false,tape=null;
   function frameMatrix(frame,out){
     flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
     flightUp.set(frame.up[0],frame.up[2],-frame.up[1]);
@@ -72,7 +73,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(down&&!e.repeat&&e.code==='ControlLeft'&&mode==='walk')queuedSlide=true;
     if(down&&!e.repeat&&(e.code==='ShiftLeft'||e.code==='ShiftRight')&&mode==='walk')runToggled=!runToggled;
     if(down&&!e.repeat&&e.code==='KeyQ'&&mode==='walk')character.attack?.();
-    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyE','ControlLeft'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyZ','KeyF','KeyE','ControlLeft'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
   const kd=e=>key(e,true),ku=e=>key(e,false);
   window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);window.addEventListener('blur',clear);
   document.addEventListener('visibilitychange',clear);window.addEventListener('gamepaddisconnected',clear);
@@ -235,6 +236,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(riding()){time+=Math.min(dt,.05);updateRide(dt,pad,x,y);return;}
     if(mode==='walk'){
       time+=Math.min(dt,.05);
+      tuckHeld=keys.has('KeyZ')||(pad?.buttons[4]?.pressed??false);
       runStick=Math.min(1,Math.hypot(lx,ly));
       updateWalk(dt,x,y);
     }else{
@@ -306,8 +308,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const water=options.walkHeight?.waterAt;
     const busy=character.attacking===true;
     const planted=character.charging&&state.grounded;
-    state=stepMoves(state,{x:planted?0:movement.x,y:planted?0:-movement.z,run:runToggled&&!planted,run_amount:planted?0:runToggled?1:runStick,jump:actionHeld,stick:[x,y],pitch,branch:queuedBranch,grab:queuedGrab,slide:queuedSlide},dt,characterConfig.walk,
-      {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height});
+    const input={x:planted?0:movement.x,y:planted?0:-movement.z,run:runToggled&&!planted,run_amount:planted?0:runToggled?1:runStick,jump:actionHeld,tuck:tuckHeld,stick:[x,y],pitch,branch:queuedBranch,grab:queuedGrab,slide:queuedSlide};
+    if(tape&&dt>0)tape.frames.push([1,input,Math.round(dt*1e4)/1e4]);
+    state=stepMoves(state,input,dt,characterConfig.walk,
+      {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height,balance:options.balance});
     if(queuedBranch)message=state.mode==='climb'?'No branch within reach · climb or circle toward a limb':'';
     else if(x||y)message='';
     queuedBranch=false;queuedGrab=false;queuedSlide=false;
@@ -322,9 +326,11 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       character.object.quaternion.slerp(goal,1-Math.exp(-dt*14));
     }
     const jumping=state.jumpPhase&&state.jumpPhase!=='grounded';
+    const bal=state.balance,down=bal&&bal.phase!=='steady'&&bal.phase!=='stumble';
+    if(bal){const p=options.balance.config.phases;bal.progress=bal.phase==='trip'?bal.t/p.trip_s:bal.phase==='recover'?bal.t/p.recover_s:0;}
     // The gait follows the speed the feet actually have, not the Shift key.
     const gait=gaitFor(state.speed,characterConfig.walk,characterConfig.clips);
-    character.update(dt,climbing?'climb':swimming?'swim':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{slide:state.sliding?state:null,climb:climbing?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching?state.z:characterHeight(state.x,state.y),groundHeight:branching?()=>state.z:characterHeight,knock:state.knock,knockSide:state.knockSide});
+    character.update(dt,climbing?'climb':swimming?'swim':down?'balance':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{balance:bal,slide:state.sliding?state:null,climb:climbing?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching?state.z:characterHeight(state.x,state.y),groundHeight:branching?()=>state.z:characterHeight,knock:state.knock,knockSide:state.knockSide});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);
     const profile=policy();let distanceFollow=false,distanceEase=0,distanceStart=false;
     if(view==='chase'){const auto=director.step(dt,yaw,pitch,state.heading-Math.PI/2,state.speed>.15&&!busy,profile,drag,climbing,Math.hypot(state.x-fromX,state.y-fromY));yaw=auto.yaw;pitch=auto.pitch;boom.rotate(auto.transport??0);distanceFollow=auto.distanceFollow??false;distanceEase=auto.distanceEase??0;distanceStart=auto.distanceStart??false;}
@@ -466,5 +472,23 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function fixedEnvironmentSampler(options){
     return createFixedAirSampler((x,y,z,terrain)=>sampleAir(config,worldmap.wind.direction_deg,{x,y,z,weather},time,terrain),height,options);
   }
-  return {constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  /** Stand him at [x, y] facing `heading` (rad, from east), the chase camera behind him. */
+  function placeOnFoot(x,y,heading){
+    if(mode!=='walk')select('walk');
+    state={x,y,z:height(x,y),heading,speed:0};yaw=Math.atan2(-Math.cos(heading),Math.sin(heading));pitch=-.3;snap=true;
+    character.object.rotation.set(0,heading+Math.PI/2,0);updateWalk(0,0,0);
+  }
+  /** Input tapes (balance.js playTape): record what walking is fed, frame by frame, then replay
+   * it from the same start against the same rules. Identical inputs on consecutive frames merge. */
+  function recordTape(){tape={start:{...state,balance:undefined},frames:[]};}
+  function stopTape(){
+    const t=tape;tape=null;if(!t)return null;
+    const frames=[];for(const f of t.frames){const last=frames.at(-1);if(last&&last[2]===f[2]&&JSON.stringify(last[1])===JSON.stringify(f[1]))last[0]++;else frames.push(f);}
+    return {...t,frames,end:{x:state.x,y:state.y,phase:state.balance?.phase??'steady'}};
+  }
+  function replayTape(t){
+    const world={height:walkHeight,hitTest,waterAt:options.walkHeight?.waterAt,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height,balance:options.balance};
+    return playTape(t,{...t.start},(s,input,h)=>stepMoves(s,input,h,characterConfig.walk,world));
+  }
+  return {placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,worldmap.wind.direction_deg,state,time,height):null;},dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

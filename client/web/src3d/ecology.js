@@ -4,7 +4,7 @@ import {mergePrimitives} from './glb.js';
 import {buildStylizedForest} from './forest.js';
 import {buildRockLod,isRock} from './rock-lod.js';
 import {style} from './style.js';
-import {createVisit} from './insect-visits.js';
+import {createVisit,FLEE,fleeStep} from './insect-visits.js';
 import {createSchool,stepSchool} from '../../../shared/ecology/aquatic.js';
 export function buildEcology(habitats,meadowData,assets,ground,cover,renderer,sampleAir){
   const group=new T.Group();group.name='living_habitats';
@@ -20,7 +20,7 @@ export function buildEcology(habitats,meadowData,assets,ground,cover,renderer,sa
   const plantRecords=habitats.plantings.map(p=>({...p,scale:[p.scale,p.scale,p.scale]}));
   const bankForest=buildStylizedForest({instances:plantRecords},assets,renderer,{filter:r=>!isRock(r),name:'bank_plantings',tileM:128,enterM:85,leaveM:110});group.add(bankForest.group);
   const rocks=buildRockLod(plantRecords.filter(isRock),assets);group.add(rocks.group);
-  const meadowMeshes=meadowData.species.map(species=>{const mesh=make(species.asset,Math.ceil(species.per_hectare*3.24));return {species:{...species,ids:new Int32Array(mesh.instanceMatrix.count)},mesh};});
+  const meadowMeshes=meadowData.species.map(species=>{const mesh=make(species.asset,Math.ceil(species.per_hectare*3.24));return {species:{...species,ids:new Int32Array(mesh.instanceMatrix.count),flee:new Float32Array(mesh.instanceMatrix.count*4)},mesh};});
   // Encounters with the player: one bee and one butterfly at a time borrow the ordinary flight (see insect-visits.js).
   const visits={bee:createVisit('bee'),butterfly:createVisit('butterfly')};let player=null,lastVisitTime=0;
   const wingTints=['#f08a24','#f2d649','#7aa6e8','#f4f1e6','#d8553f'];
@@ -163,6 +163,9 @@ float band(float z,float lo,float hi){return smoothstep(lo-.0025,lo+.0025,z)*(1.
           if(!cover.contains(px,py))continue;
           const floor=ground.height(px,py);if(floor===null||camera.position.y>floor+70)continue;
           z=floor+species.height_m[0]+(.5+.5*Math.sin(time*(butterfly?.35:1)+i))* (species.height_m[1]-species.height_m[0])+bob;
+          // Scared off its wander by a player on the move; back to it once calm (insect-visits.js).
+          const rule=FLEE[species.kind];
+          if(rule){const o=species.flee;fleeStep(o,i*4,px,py,z,watcher.active&&watcher.moving?[watcher.top.x,-watcher.top.z,watcher.top.y-.6]:null,dt,rule);px+=o[i*4];py+=o[i*4+1];z+=o[i*4+2];}
           if(visit&&visit.claim(i,px,z,-py,watcher))guest=visit.v;
         }
         let roll=Math.sin(time*1.7+i*2.1)*.4,pitch=Math.sin(time*2.3+i)*.3-.1,calm=0,wings=1;

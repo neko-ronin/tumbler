@@ -15,6 +15,31 @@ limits: [S4 receipt](../../docs/reviews/s4-tree-activities-2026-10-31.md). Imple
 
 ---
 
+# S1, a slope and a friend — local branch for review, 2026-10-31
+
+Tumble Hill (button, or key 4) puts Cat Ronin on foot at the top of a named hillside below the
+northern snowfield: snow, then bare granite, then a long meadow, about 280 m with no trees in the
+fall line. A shared balance budget (`shared/activities/balance.js`, `balance.json`) is spent by
+slope, surface and speed. Step onto the steep snow, or run down too fast, and he stumbles, trips,
+tumbles head over heels, sprawls into a slide and gets up, or rolls on where no one could stand.
+Z / LB tucks into a roll (not R, the katana charge, nor G, the gondola) on any slope over 0.18 grade, and the roll cannot fail. Ten kinds of
+props answer a katana blow or a body rolling into them (`shared/play/reactions.json`): tall grass,
+ferns, dandelion clocks, melons, pine cones, toadstools, a straw target, a scarecrow, a hanging
+bell and snow piles. Bees and butterflies flee a player on the move and drift back once calm. A
+cat near the player on foot (pip is the likely one) may pick **chase** from its fun and thrill
+needs: it sprints over, tags you, flees with jinks and waits until you tag it back. It walks on
+the same rules as the player, so it can tumble too.
+
+Measured in local Chromium with the pane in a background window (about 2 fps, so wall-clock frame
+intervals mean nothing; these are CPU timings): `navigation.update`, the walk and balance step plus
+the character pose, costs 0.1–0.2 ms a frame (p95 0.2 ms), the same standing still and tumbling.
+Tumble Hill's props add 47 draws and 1.6k triangles while on screen and 0.002 ms of update. Checks:
+web 568/568 and shared `node --test` 19/19 (`shared/tests/*.test.mjs`, also run by
+`shared/tests/test_play.py`). Rough edges, limits and what S2 should know are in
+[the S1 notes](../../docs/design/S1-SLOPE-AND-FRIEND.md). Not merged; nothing published.
+
+---
+
 # Northern basin redesign — approved for release, 2026-10-27
 
 The human approves the natural/cohesive basin redesign for main and release. It restores the open grass habitat, reshapes the

@@ -6,6 +6,9 @@ import { trunkRadiusAt } from '../../../shared/activities/climb.js';
 import { gaitFor } from '../../../shared/activities/walk.js';
 import { chooseCut,actionExpression } from '../../../shared/activities/combat.js';
 import { createKatanaFx } from './katana-fx.js';
+import { createTumbleBody, createGauge } from './tumble-body.js';
+// fall_tumble (author_moves.py) keys the hips' pitch at frames 2, 10, 18: 20°, 360°, 720°, tucked between.
+const TUMBLE_FRAMES=20,tumbleFrame=spin=>{const a=20+(((spin*180/Math.PI-20)%360)+360)%360;return a<=360?2+(a-20)/340*8:10+(a-360)/360*8;};
 const PAW_RADIUS=.05,FOOT_REACH_M=.2,PLANTED_M=.03,BODY_RISE_S=.07,BODY_DROP_S=.006,FLIP_PIVOT_M=.85,FLIP_START=.42,FLIP_END=.85,ROLL_PIVOT_M=.42,ROLL_START=.12,ROLL_END=.78,STRETCH=.1,SQUASH=.16;
 
 export function createCharacter(asset, config) {
@@ -76,6 +79,11 @@ export function createCharacter(asset, config) {
   for (const name of Object.values(config.jump_clips??{})) if (!actions[name]) throw new Error(`Ronin is missing jump clip ${name}`);
   const feet=[],paws={},bodyMeshes=[];model.traverse(node=>{if(node.isMesh&&!node.isSkinnedMesh&&node.geometry.boundingBox||node.isSkinnedMesh&&!/^cat_tail|\.fur\d/.test(node.name))bodyMeshes.push(node);});model.traverse(node=>{if(node.isMesh&&/^foot\./.test(node.parent?.name??''))feet.push(node);if(node.isMesh&&/^paw\./.test(node.parent?.name??''))paws[node.parent.name]=node;});
   const footBox=new T.Box3(),meshBox=new T.Box3();let lastJump=0,bodyLift=0,bodyWorld=null,footContacts=[];
+  // S0 spike (throwaway, docs/design/S0-TUMBLE-SPIKE.md): 's1' scrubs the clips as S1 built
+  // them, 's0' lays a spring body over them while he is down. ?tumble=s0, or api.spike.mode.
+  // ponytail: radius is balance.json's body_radius_m, copied; pass it in if the spike survives.
+  const tumbleBody=createTumbleBody(model,{radius:.45}),gauge=createGauge(model);
+  const spike={mode:new URLSearchParams(globalThis.location?.search??'').get('tumble')==='s0'?'s0':'s1',trace:null,body:tumbleBody};
   // Legs for foot planting: hip (thigh), knee (shin), ankle (heel) and the foot meshes.
   const legs=['L','R'].map(side=>({thigh:model.getObjectByName('thigh.'+side),shin:model.getObjectByName('shin.'+side),heel:model.getObjectByName('heel.'+side),
     meshes:feet.filter(mesh=>mesh.parent.name==='foot.'+side)})).filter(leg=>leg.thigh&&leg.shin&&leg.heel&&leg.meshes.length);
@@ -201,6 +209,7 @@ export function createCharacter(asset, config) {
     model.position.y = -config.sole_y_m * value;
   }
   function update(dt, pose, speed = 0, context = {}) {
+    tumbleBody.restore();
     lastSpeed=speed;
     const jump=context.jump;
     const sliding=context.slide?.sliding&&config.slide_clip;
@@ -226,7 +235,13 @@ export function createCharacter(asset, config) {
     if(swims&&(pose==='swim')!==(lastPose==='swim')&&lastPose!==null){swimShot=pose==='swim'?swims.enter:swims.exit;swimShotLeft=actions[swimShot].getClip().duration;actions[swimShot].reset();}
     const shot=swimShotLeft>0?swimShot:null;
     // context.bodyClip / context.tailClip audition a named clip on that layer (studio).
-    const name = context.bodyClip??(sliding?config.slide_clip:null)??shot??authoredJump??(pivoting?pivotClip:null)??(pose==='idle'?idleExtra():null)??(pose==='climb'?climbClip(context.climb):null)??(pose==='swim'?swimClip(context.swim):null)??config.clips[runOut?gaitFor(speed,config.walk,config.clips):['jump','climb','swim'].includes(pose)?'idle':pose];
+    // Down on the slope (shared/activities/balance.js): authored clips scrubbed by the
+    // core's own phase progress and spin, never played on a clock. The tumble clip
+    // turns the hips about a tuck, so the spin rate is the slope's, not the clip's.
+    const bal=context.balance,down=pose==='balance'&&bal;
+    const balanceClip=!down?null:bal.phase==='trip'?config.fall_clips?.bounce:['tumble','roll'].includes(bal.phase)?config.fall_clips?.tumble
+      :bal.phase==='slide'?(config.idle_sequence??[]).find(step=>step.hold)?.clip:config.landing?.heavy;
+    const name = context.bodyClip??balanceClip??(sliding?config.slide_clip:null)??shot??authoredJump??(pivoting?pivotClip:null)??(pose==='idle'?idleExtra():null)??(pose==='climb'?climbClip(context.climb):null)??(pose==='swim'?swimClip(context.swim):null)??config.clips[runOut?gaitFor(speed,config.walk,config.clips):['jump','climb','swim'].includes(pose)?'idle':pose];
     const action = actions[name];
     if (!action) throw new Error(`Unknown Ronin pose ${pose}`);
     if (action !== current) {
@@ -247,6 +262,10 @@ export function createCharacter(asset, config) {
       const phase=jump.jumpProgress??0;
       const progress=heavy||fall?phase:jump.jumpPhase==='takeoff'?phase/6:jump.jumpPhase==='landing'?5/6+phase/6:1/6+phase*2/3;
       action.paused=true;action.time=action.getClip().duration*progress;action.clampWhenFinished=true;
+    }else if(balanceClip&&!context.bodyClip){
+      const d=action.getClip().duration;action.paused=true;action.clampWhenFinished=true;
+      // S0 holds the tuck upright (frame 10, hips at 360°) and turns the whole body itself.
+      action.time=['tumble','roll'].includes(bal.phase)?d*(spike.mode==='s0'?10:tumbleFrame(bal.spin))/TUMBLE_FRAMES:bal.phase==='slide'?d:d*Math.min(1,bal.progress??0);
     }else if(sliding){
       const u=Math.min(1,(context.slide.slideTime??0)/(config.walk.slide?.duration_s??1));
       action.paused=true;action.time=action.getClip().duration*(u<.12?u/.12*.18:u>.82?.75+(u-.82)/.18*.25:.18+(u-.12)/.70*.57);
@@ -260,11 +279,14 @@ export function createCharacter(asset, config) {
     // to 0.25 rad, and he rights himself as the knock fades.
     const knocked=Math.min(.25,(context.knock??0)*.15)*(context.knockSide??0);
     const leanGoal=['stroll','walk','run'].includes(pose)?Math.max(-.3,Math.min(.3,Math.atan(speed*(context.turnRate??0)/9.81)+knocked)):0;
-    lean+=(leanGoal-lean)*(1-Math.exp(-dt*8));model.rotation.z=-lean;
+    // A stumble wobbles; a tumble flails a little sideways as it goes over.
+    const wobble=bal?.phase==='stumble'?Math.sin(elapsed*9)*.22:down&&bal.phase==='tumble'?Math.sin(bal.spin*.5)*.45:0;
+    lean+=(leanGoal+wobble-lean)*(1-Math.exp(-dt*8));model.rotation.z=-lean;
     // Starts and stops: pitch into acceleration (forward), back against braking.
     // Running with the blade drawn, he leans his whole body into it.
-    const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))+(pose==='run'&&katanaState==='run'?.14:0)
+    const pitchGoal=['idle','stroll','walk','run'].includes(pose)?Math.max(-.18,Math.min(.22,.7*Math.atan((context.accel??0)/9.81)))+(bal?.phase==='stumble'?.18:0)+(pose==='run'&&katanaState==='run'?.14:0)
       // A dive points his (prone) body along its path: nose down going down.
+      :down?(bal.phase==='trip'?1.1*Math.min(1,bal.progress??0)**2:bal.phase==='slide'?-.35:bal.phase==='recover'?.5*(1-(bal.progress??0)):0)
       :pose==='swim'&&context.swim?.swimPhase==='dive'?Math.max(-1.2,Math.min(1.2,Math.atan2(-(context.swim.vz??0),Math.max(.1,context.swim.speed??0)))):0;
     // The moving triple somersaults forward from just before the apex until
     // early in the drop. It is a presentation of the core's `flip` jump style;
@@ -414,6 +436,9 @@ export function createCharacter(asset, config) {
         bodyLift=clear;bodyWorld=null;model.position.y+=clear;
       }
     }
+    // S0 spike: blends in over S1's pose (clearance included), so its first frames start from it.
+    if(spike.mode==='s0'&&pose!=='flight'&&context.groundHeight&&tumbleBody.update(dt,down?bal:null,{object,ground:context.groundHeight}))bodyWorld=null;
+    if(spike.trace&&context.groundHeight)spike.trace.push({t:elapsed,phase:bal?.phase??pose,mode:spike.mode,...gauge(object,context.groundHeight,dt)});
     if(katana){const tip=model.getObjectByName('blade.4');if(tip){object.updateWorldMatrix(true,true);const next=model.worldToLocal(tip.getWorldPosition(v())).x;bladeVelocity=dt>0?(next-bladeSide)/dt:0;bladeSide=next;}}
     if(fx){object.updateWorldMatrix(true,true);fx.update(dt,katanaState==='attack',katanaState!=='holstered');}
     shadow.visible=pose!=='flight';
@@ -456,7 +481,7 @@ export function createCharacter(asset, config) {
     model.updateWorldMatrix(true,true);const head=gestureBones.head;if(!head)return out;
     head.localToWorld(out.top.copy(TOP_LOCAL));head.localToWorld(out.nose.copy(NOSE_LOCAL));return out;
   }
-  const api = { object, model, update, setScale, toggleKatana, attack, setCharge, onCue:null, mixer, actions, gesture, anchors,
+  const api = { object, model, update, setScale, spike, toggleKatana, attack, setCharge, onCue:null, mixer, actions, gesture, anchors,
     /** Animated planted feet measured before IK, for contact-driven presentation. */
     get footContacts(){return footContacts;},
     /** True while the idle sequence holds a seated pose (he has stood still long enough to sit). */

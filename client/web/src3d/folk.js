@@ -9,6 +9,8 @@ import {parseGLB,buildAssetMeshes} from './glb.js';
 import {createFlightRig} from './flight-rig.js';
 import {flightFrame,pilotFrame} from '../../../shared/activities/flight.js';
 import {createFolkWorld,createFolk,stepFolk,observe,command,setController,suggest,VERBS} from '../../../shared/npc/folk.js';
+import {DOWN} from '../../../shared/activities/balance.js';
+import {createTumbleBody} from './tumble-body.js';
 
 const FADE_S=.3,LABEL_M=45,MAX_RIGS=3,DRAW_M=700;
 
@@ -26,7 +28,7 @@ function puppet(asset,model){
   for(const name of model.clips)if(!actions[name])throw new Error(`${model.id} is missing clip ${name}`);
   actions.blink.play();
   let current=null,name=null;
-  return {object,mixer,actions,
+  return {object,root,mixer,actions,body:null,
     play(next,speed){
       if(next!==name){
         const action=actions[next]??actions.idle;action.reset().play();
@@ -41,12 +43,12 @@ function puppet(asset,model){
     dispose(){root.traverse(n=>{if(n.isMesh){n.geometry.dispose();n.material.dispose();}});}};
 }
 
-export async function createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig,height,ground,hitTest,gondola=null,assets,scene,camera,canvas}){
+export async function createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig,height,ground,hitTest,gondola=null,balance=null,assets,scene,camera,canvas}){
   const config=await fetchData('shared/npc/folk.json');
   const models=await fetchData(config.models);
   const bytes=await Promise.all(models.models.map(m=>fetchData(`shared/geometry/${m.cinematic?.asset??m.asset}`,false)));
   const events=[];
-  const world=createFolkWorld({config,worldmap,placement,flight:flightConfig,walk:walkConfig,height,ground,hitTest,gondola,
+  const world=createFolkWorld({config,worldmap,placement,flight:flightConfig,walk:walkConfig,height,ground,hitTest,gondola,balance,
     onEvent:e=>{events.push(e);if(events.length>256)events.shift();}});
   const cats=createFolk(world,models,{seed:Math.floor(Math.random()*1e9),aloft:true});
   const byModel=Object.fromEntries(models.models.map(m=>[m.id,m]));
@@ -70,8 +72,10 @@ export async function createFolkLayer({fetchData,worldmap,placement,flightConfig
   }
   function releaseRig(cat){const rig=flying.get(cat.id);if(!rig)return;rig.owner=null;rig.group.visible=false;flying.delete(cat.id);}
 
-  function update(dt){
+  /** `player` is the player's state on foot ({x, y, speed}) or null; the cats play with it. */
+  function update(dt,player=null){
     if(!(dt>0))return;
+    world.player=player&&{x:player.x,y:player.y,speed:player.speed??0};
     stepFolk(world,dt,[camera.position.x,-camera.position.z]);
     for(const cat of cats){
       const p=puppets.get(cat.id),s=cat.body.state,model=byModel[cat.id];
@@ -93,11 +97,23 @@ export async function createFolkLayer({fetchData,worldmap,placement,flightConfig
         const face=cat.body.face&&cats.find(c=>c.id===cat.body.face);
         const heading=face?Math.atan2(face.body.state.y-s.y,face.body.state.x-s.x):s.heading??0;
         const goal=new T.Quaternion().setFromAxisAngle(up,heading+Math.PI/2);
-        p.object.quaternion.slerp(goal,1-Math.exp(-dt*8));
+        // Tumbling or rolling down a slope (balance.js), it turns over about its middle.
+        // S0 spike (tumble-body.js): with api.tumbleMode 's0' the spring body turns it instead.
+        const b=s.balance,over=api.tumbleMode!=='s0'&&b&&['tumble','roll'].includes(b.phase)?b.spin:0;
+        if(over){p.object.quaternion.copy(goal).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),over));p.object.position.y+=model.hip_m*(1-Math.cos(over));}
+        else p.object.quaternion.slerp(goal,1-Math.exp(-dt*8));
       }
       // Skinned meshes are never frustum-culled (glb.js); a far cat is a speck, so skip its draw and its mixer.
       p.object.visible=camera.position.distanceTo(p.object.position)<DRAW_M;
-      if(p.object.visible){p.play(cat.body.clip,cat.body.clipSpeed);p.mixer.update(dt);}
+      if(p.object.visible){
+        p.body?.restore();p.play(cat.body.clip,cat.body.clipSpeed);p.mixer.update(dt);
+        if(api.tumbleMode==='s0'&&cat.body.mode!=='flight'){
+          // ponytail: radius scales balance.json's body_radius_m (0.45) by hip height; Ronin's hips are ~0.5 m.
+          p.body??=createTumbleBody(p.root,{radius:.45*model.hip_m/.5});
+          const b=s.balance,ph=balance?.config.phases,down=b&&DOWN.has(b.phase);
+          p.body.update(dt,down?{...b,progress:b.phase==='trip'?b.t/ph.trip_s:b.phase==='recover'?b.t/ph.recover_s:0}:null,{object:p.object,ground:height});
+        }
+      }
       const label=labels.get(cat.id),distance=camera.position.distanceTo(p.object.position);
       if(distance<LABEL_M||cat.said&&distance<LABEL_M*2){
         v.copy(p.object.position).setY(p.object.position.y+(cat.height_m??1.4)+.25).project(camera);
@@ -108,7 +124,7 @@ export async function createFolkLayer({fetchData,worldmap,placement,flightConfig
   }
 
   const find=id=>{const cat=cats.find(c=>c.id===id);if(!cat)throw new Error(`No cat ${id}; try ${cats.map(c=>c.id).join(', ')}`);return cat;};
-  const api={world,cats,events,verbs:VERBS,
+  const api={world,cats,events,verbs:VERBS,tumbleMode:new URLSearchParams(globalThis.location?.search??'').get('tumble')==='s0'?'s0':'s1',
     list:()=>cats.map(c=>({id:c.id,name:c.name,doing:c.activity,mode:c.body.mode,controller:c.controller})),
     observe:id=>observe(world,find(id)),command:(id,cmd)=>command(world,find(id),cmd),
     setController:(id,controller)=>setController(world,find(id),controller),suggest:id=>suggest(world,find(id)),

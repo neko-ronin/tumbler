@@ -11,7 +11,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "c72732f916a215e39e39433a6ffc6fa2d3413392902bdc0547e4c28f47996911"
+      "sha256": "7aaf5491aff930d33bcc63b664330846e20ac13df2ee1a301f0595fd7f6aaf61"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -31,7 +31,7 @@
     },
     {
       "path": "client/web/src3d/audio.js",
-      "sha256": "051f7e37bde995e3cac069bcda72698fcb1884f417e1c81120cfb2cfd8184330"
+      "sha256": "16d4ec41cf156b3766bdb8856a80aa27ba48f7f8059b6a4cc03e7e2fdf4c8dcd"
     },
     {
       "path": "client/web/src3d/canopy-light.js",
@@ -47,7 +47,7 @@
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "86e2593c96237a0c215165ae0bb49ff215f100321119ddc38bba5d80d6b25a19"
+      "sha256": "1a5e0a28b9ed6d7c2e8c660a060c17058c990b7771d107660af243569aee78f3"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -83,7 +83,7 @@
     },
     {
       "path": "client/web/src3d/ecology.js",
-      "sha256": "e9a6f27a8efddab49ff886149a2646847bfd3a3086fa1970c04ca484d572486e"
+      "sha256": "5069308c0445756cc963669d2584adff7e458a27cf7ef2926a1e2461e1613bd7"
     },
     {
       "path": "client/web/src3d/first-person-flight.js",
@@ -111,7 +111,7 @@
     },
     {
       "path": "client/web/src3d/folk.js",
-      "sha256": "7f5158326045d0a9588fa588058c0ae50f4d623179ff4082d9c1a10921884f4f"
+      "sha256": "99762424f9dfbd78288081f928c97bd1a1e85bd5196f4e808aaffe67b575a07b"
     },
     {
       "path": "client/web/src3d/follow-camera.js",
@@ -163,7 +163,7 @@
     },
     {
       "path": "client/web/src3d/insect-visits.js",
-      "sha256": "4f7055b5037e05996211ebac302adf01ae412c099378a938d0370b4b86b96eb0"
+      "sha256": "889b645ce0d24d25c2b7e09928e2758a904d2b0a3e63fa756a7c0c09f74abe25"
     },
     {
       "path": "client/web/src3d/intro-gate.js",
@@ -179,7 +179,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "7645ee5fa364b4c7aeb0d0c1745c9c8bbf238647ce0a80b0f918d59165ad438c"
+      "sha256": "5fdd11e15d77fc29321aa4f4e32547ff8dd3f5c254570997ce7e429e1cb01f30"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -187,7 +187,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "6c32f94d2ef04e9762f11861190438a5d9169be2cb8fb282f2ad5547835f03a5"
+      "sha256": "e748f3fba5ff6d2281157ce3170a30d1450405b505b5ed9ef02f4d6e747f6b2d"
     },
     {
       "path": "client/web/src3d/para-audio.js",
@@ -208,6 +208,10 @@
     {
       "path": "client/web/src3d/placements.js",
       "sha256": "59d264e58a78c2f7faa368cecacf63bfa3283dfc6f17daf6ec638d478a59e162"
+    },
+    {
+      "path": "client/web/src3d/play-props.js",
+      "sha256": "5a430a06b90922202a24594809e442e5b17a14396b5155d66809689316531d21"
     },
     {
       "path": "client/web/src3d/player-visibility.js",
@@ -286,6 +290,10 @@
       "sha256": "0173b8ca1b54bf238f5242085edf63944bd7c1812d4e00aa711115754d43fb2b"
     },
     {
+      "path": "client/web/src3d/tumble-body.js",
+      "sha256": "7c6e7f93e749da0506692723af5243488b24b039a6b0b2de389b19bb01cf9634"
+    },
+    {
       "path": "client/web/src3d/version.js",
       "sha256": "5da07673d968bf36f5486333c08e34dec1cd214767a91db72768eba4f31b6239"
     },
@@ -312,6 +320,14 @@
     {
       "path": "client/web/vendor/three.module.min.js",
       "sha256": "e2b5ee6bccd38fd6d8a2428546b83c5f2426d84b152ef82be8055556e3b40eb6"
+    },
+    {
+      "path": "shared/activities/balance.js",
+      "sha256": "1f5aa9f99d0f56b50757bb883175af5096873c99a89502880729b2eb9ef81696"
+    },
+    {
+      "path": "shared/activities/balance.json",
+      "sha256": "ea834371fa71fa202650711ab1b16b71ee9a77b49cdf0af6602b3e596c220db5"
     },
     {
       "path": "shared/activities/branches.js",
@@ -367,7 +383,7 @@
     },
     {
       "path": "shared/activities/moves.js",
-      "sha256": "55ff7df6696b7d8e79091e1383f9b3a1ea65e55277f7e2aaa179463f001688b1"
+      "sha256": "b3f20d148491ac692e20b9cb8f53568daf2b0cbf2bb407630652563b41eb2983"
     },
     {
       "path": "shared/activities/ride.js",
@@ -771,11 +787,23 @@
     },
     {
       "path": "shared/npc/folk.js",
-      "sha256": "1453856d1bb1f2e4ad6ff6c96bcbe0a7d16262fc1b0bd486ae0e4a2a5ca21b09"
+      "sha256": "c1a8b162caf976c26364501e875de4d7f185063645c3c2b3b0494a459fb55d87"
     },
     {
       "path": "shared/npc/folk.json",
-      "sha256": "090c5fffed096f50643ac0d8a4c6b1bfeb7d0708008af3590c7c6749ea84ac96"
+      "sha256": "1021eab028975eb2da0771b386d0ed1f06fc5b8e38015f1e2c3ee9ec047a2832"
+    },
+    {
+      "path": "shared/play/reactions.js",
+      "sha256": "bbfc29b0da0d8495b9261561e0e8489c96b3b21222bb7467bdb2372051025258"
+    },
+    {
+      "path": "shared/play/reactions.json",
+      "sha256": "ce5a3a18b7eae7f0b6afabc553920fa7b4ff80040e4addbd7c93c2fbde0568f9"
+    },
+    {
+      "path": "shared/play/tumble-hill.json",
+      "sha256": "2787042e167af021fc2fa6cf39b5d631baefb55c5483c3390e4ad7312ad5e34b"
     },
     {
       "path": "shared/world/out/forest_floor.json",
@@ -881,7 +909,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "94c8fcc",
+  "commit": "fe65d33",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

@@ -42,6 +42,7 @@ import { createGondolaLayer } from './gondola.js';
 import { buildGondola, deckFloor } from '../../../shared/activities/gondola.js';
 import { buildEcology } from './ecology.js';
 import { createVisitorWatch } from './insect-visits.js';
+import { createPlayProps } from './play-props.js';
 import { buildTethers, buildTrails, TRAIL_SURFACE_LIFT } from './details.js';
 import { createSoundscape, treeSpots } from './audio.js';
 import {createFoleyEvents} from './character-foley.js';
@@ -269,8 +270,15 @@ export async function main() {
   // Match the existing presentation lift of the rendered tread. Its authored
   // profile remains the shared physical floor; this offset only clears pixels.
   const characterHeight=(x,y)=>{const z=walkHeight.floorHeight(x,y),t=walkHeight.trailAt(x,y);return z===null?null:t?.beyond===0?Math.max(z,t.z+TRAIL_SURFACE_LIFT):z;};
-  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,firstPersonEye:()=>firstPerson.eye,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z),velocity:body.state.coupled?.pilotVelocity}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view),haptics:()=>document.getElementById('haptics').checked});
-  const folk=await createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig:characterConfig.walk,height:walkHeight,ground:(x,y)=>ground.height(x,y),hitTest,gondola:gondolaLine,assets,scene,camera,canvas});
+  // Balance (shared/activities/balance.js) reads the ground he stands on as the client draws
+  // it: snow from the core's stamp, grass where blades are drawn or forest litter lies,
+  // granite everywhere else that is bare. ponytail: the grass/bare split is this client's
+  // reading of the cover stamp; move it into the core once a second client needs it.
+  const balanceConfig=await fetchData('shared/activities/balance.json');checkVersion(balanceConfig,1,'balance rules');
+  const [tumbleHill,reactionTable]=await Promise.all([fetchData('shared/play/tumble-hill.json'),fetchData('shared/play/reactions.json')]);
+  const balanceSurface=(x,y)=>snowAt(x,y)>.03?'snow':closeMeadow.contains(x,y)||forestSoil.sample(x,y)>.48||surfaceAt(x,y)==='trail'?'grass':'granite';
+  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,balance:{config:balanceConfig,surfaceAt:balanceSurface},firstPersonEye:()=>firstPerson.eye,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z),velocity:body.state.coupled?.pilotVelocity}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view),haptics:()=>document.getElementById('haptics').checked});
+  const folk=await createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig:characterConfig.walk,height:walkHeight,ground:(x,y)=>ground.height(x,y),hitTest,gondola:gondolaLine,balance:{config:balanceConfig,surfaceAt:balanceSurface},assets,scene,camera,canvas});
   // Cabins run on the folk world's clock, so the cats ride in the cabins drawn.
   const gondola=createGondolaLayer({line:gondolaLine,scene,navigation,clock:()=>folk.api.world.time,panel:document.getElementById('gondola-panel')});
   // After the last fetchData, so each loaded file is checked against the bytes used.
@@ -301,7 +309,10 @@ export async function main() {
   };
   const soundscape=createSoundscape(habitats,treeSpots(placement.instances),chargeBytes),cameraShake=new T.Vector3();
   const visitors=createVisitorWatch({ecology,character,navigation,camera,focusEl:document.getElementById('focus')});
-  character.onCue=name=>soundscape.cue(name);
+  // Tumble Hill: its props answer a katana blow (on the blade's swish) and a body running,
+  // tumbling or rolling into them (shared/play/reactions.json).
+  const play=createPlayProps({hill:tumbleHill,table:reactionTable,height:characterHeight,scene,cue:name=>soundscape.cue(name)});
+  character.onCue=name=>{soundscape.cue(name);if(['swish','swish_heavy','spin','impact'].includes(name)&&navigation.mode==='walk')play.swing([navigation.state.x,navigation.state.y],navigation.state.heading??0);};
   const foleyEvents=createFoleyEvents(name=>soundscape.cue(name));
   // Interpret existing physical/stamped facts; never infer a material from color.
   // Unclassified bare ground uses a restrained earth/grit texture, not a new world tag.
@@ -344,7 +355,7 @@ export async function main() {
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
-  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / stick: walk · Shift: toggle run · push the stick fully to run · Space / A: jump or wall push · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: grab tree / reharness · Drag / right stick: look',
+  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',walk:'WASD / stick: walk · Shift: toggle run · push the stick fully to run · Space / A: jump or wall push · Z / LB: tuck and roll down a slope · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: grab tree / reharness · Drag / right stick: look',
     parakite:'A/D steer · W dive / S flare · Drag to look · Launch to restart',
     ski:'A/D carve · W pole · S snowplough · Shift tuck · Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
     bike:'A/D steer · W pedal · S brake · Shift crouch · Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
@@ -501,7 +512,23 @@ export async function main() {
     if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
     if ((e.code==='KeyH'||e.key==='Escape')&&!e.repeat&&!e.metaKey&&!e.ctrlKey) document.body.dataset.ui = document.body.dataset.ui==='hidden' ? '' : 'hidden';
     if (['1','2','3'].includes(e.key)) setView(['home','river','valley'][Number(e.key)-1]);
+    if (e.key==='4') toTumbleHill();
+    if (e.code==='KeyT'&&navigation.mode!=='gondola'&&!e.repeat&&!e.metaKey&&!e.ctrlKey) setTumbleMode(character.spike.mode==='s0'?'s1':'s0');
   });
+  // S0 spike (throwaway, docs/design/S0-TUMBLE-SPIKE.md): T switches how a body looks while it
+  // is down, S1's scrubbed clips or S0's spring body, for him and the cats alike. ?tumble=s0 starts on S0.
+  const tumbleLabel=document.createElement('div');tumbleLabel.className='tumble-label';
+  Object.assign(tumbleLabel.style,{position:'fixed',left:'50%',top:'8px',transform:'translateX(-50%)',font:'12px/1.4 system-ui,sans-serif',color:'#fff',background:'#0008',padding:'2px 8px',borderRadius:'4px',zIndex:20,pointerEvents:'none'});
+  document.body.append(tumbleLabel);
+  function setTumbleMode(mode){character.spike.mode=mode;folk.api.tumbleMode=mode;tumbleLabel.textContent=`Tumble: ${mode==='s0'?'S0 spring body':'S1 scrubbed clips'} · T switches`;}
+  setTumbleMode(character.spike.mode);
+  // On foot at the top of Tumble Hill, facing down it (shared/play/tumble-hill.json).
+  function toTumbleHill(){
+    if(navigation.mode!=='walk')setActivity('walk');
+    navigation.placeOnFoot(...tumbleHill.top_xy_m,tumbleHill.facing_deg*Math.PI/180);
+    document.querySelectorAll('button[data-view]').forEach(b=>b.setAttribute('aria-pressed','false'));canvas.focus();updateShadow(true);
+  }
+  document.getElementById('tumble-hill').addEventListener('click',toTumbleHill);
   // Cat links: Cat Ronin drops you into walk mode; the folk get an orbit look-in.
   const catNav=document.getElementById('cats');
   for(const cat of folk.api.list()){const b=document.createElement('button');b.dataset.cat=cat.id;b.textContent=cat.name;catNav.append(b);}
@@ -533,7 +560,7 @@ export async function main() {
   // Read-only inspection hook used for repeatable visual/performance checks.
   const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
-  window.tumbler = { folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,startup,flightRig, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,startup,flightRig, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;
     loading.show();status.textContent='Letting the light settle…';
@@ -615,17 +642,18 @@ export async function main() {
     camera.position.sub(cameraShake);
     gondola.update();
     navigation.update(Math.min(delta,50)/1000);
+    const onFoot=navigation.mode==='walk'&&navigation.state?.mode!=='climb'&&navigation.state?.mode!=='swim'?navigation.state:null;
     const spotlight=visibilityToggle.checked;
     if(!flightConfig.modes[navigation.mode]){paraSignals.update(null,{},0,0);firstPerson.update({active:false});}
     const treePlay=navigation.mode==='walk'&&['climb','branch','tree-jump'].includes(navigation.state?.mode);
     const treePlayer=navigation.state;treePlayFocus.value.set(treePlayer?.x??0,(treePlayer?.z??0)+.9,-(treePlayer?.y??0),treePlay&&spotlight?1.8:0);
-    folk.update(Math.min(delta,50)/1000);
+    folk.update(Math.min(delta,50)/1000,onFoot);
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
     if(navigation.mode!=='orbit'&&navigation.view==='chase')navigation.constrainCamera();
     playerVisibility.update(character.object.position.clone().add(new T.Vector3(0,1.1*characterConfig.scale,0)),spotlight&&navigation.mode!=='orbit'&&navigation.view==='chase',characterConfig.scale,treePlay);
     applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
-    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit),paraSignals.sample);updateFoley(Math.min(delta,50)/1000);
+    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);play.update(Math.min(delta,50)/1000,camera,[...(onFoot?[onFoot]:[]),...folk.api.world.cats.filter(c=>c.body.mode==='walk').map(c=>({...c.body.state,radius:.25}))]);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit),paraSignals.sample);updateFoley(Math.min(delta,50)/1000);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "units": "SI; x east, y north; grade is rise over run (tan of the slope angle)",
+  "model": "A balance budget (0-1) that the ground's demand spends. load = speed_weight*speed/speed_ref_mps + slope_weight*grade/hold_grade; above 1 it drains at drain_per_s*(load-1), below 1 it refills at regen_per_s*(1-load). Low budget stumbles, an empty one trips, a trip on a slope or at speed tumbles, a tumble slows into a slide, a slide stops into a recovery, and a recovery stands up, or rolls on where no one could stand. A tuck rolls on purpose and cannot fail.",
+  "gravity_mps2": 9.81,
+  "step_s": 0.016666666666666666,
+  "budget": {
+    "speed_ref_mps": 9,
+    "speed_weight": 0.5,
+    "slope_weight": 1,
+    "drain_per_s": 1.2,
+    "regen_per_s": 0.6,
+    "stumble_below": 0.5,
+    "steady_above": 0.7,
+    "trip_below": 0.12,
+    "stumble_control": 0.6
+  },
+  "phases": {
+    "trip_s": 0.4,
+    "tumble_grade": 0.25,
+    "tumble_mps": 5,
+    "tumble_min_s": 0.8,
+    "tumble_max_s": 3,
+    "slide_below_mps": 3,
+    "rest_mps": 0.4,
+    "slide_max_s": 4,
+    "recover_s": 0.7,
+    "recover_budget": 0.75,
+    "body_radius_m": 0.45
+  },
+  "roll": {
+    "min_grade": 0.18,
+    "min_mps": 2.5,
+    "steer_mps2": 4,
+    "min_s": 0.6,
+    "exit_mps": 1.2,
+    "exit_budget": 0.9
+  },
+  "surfaces": {
+    "grass": {"hold_grade": 0.8, "tumble_drag_per_s": 0.9, "slide_friction": 0.55, "roll_drag_per_s": 0.6},
+    "granite": {"hold_grade": 0.6, "tumble_drag_per_s": 0.7, "slide_friction": 0.4, "roll_drag_per_s": 0.45},
+    "snow": {"hold_grade": 0.42, "tumble_drag_per_s": 0.5, "slide_friction": 0.12, "roll_drag_per_s": 0.35}
+  }
+}
