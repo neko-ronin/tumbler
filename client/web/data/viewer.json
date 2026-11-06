@@ -115,7 +115,7 @@
     },
     {
       "path": "client/web/src3d/folk.js",
-      "sha256": "99762424f9dfbd78288081f928c97bd1a1e85bd5196f4e808aaffe67b575a07b"
+      "sha256": "4a920adeac046a7584b3e815c033e4dabfd5e1978289cb458690b176949f1cb6"
     },
     {
       "path": "client/web/src3d/follow-camera.js",
@@ -303,7 +303,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "5da07673d968bf36f5486333c08e34dec1cd214767a91db72768eba4f31b6239"
+      "sha256": "85a6ab76f78499f23b085f6a340fc7b1146ddc18659bdb41ee15e7dd18cd7fa5"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -795,11 +795,15 @@
     },
     {
       "path": "shared/npc/folk.js",
-      "sha256": "4a93bb16928a082b5c8322e641b27925c05b475e079783b9bba7a85c5c422df7"
+      "sha256": "2d0ff4130b58be503680ba42919119b302e64aaab18a3149397680ed20209f69"
     },
     {
       "path": "shared/npc/folk.json",
-      "sha256": "1021eab028975eb2da0771b386d0ed1f06fc5b8e38015f1e2c3ee9ec047a2832"
+      "sha256": "a52b3e8a135cc52610ec79fa78bd06465a1bbb41834b690ce2411326e1cc577b"
+    },
+    {
+      "path": "shared/npc/mind.js",
+      "sha256": "5f3ebd25214f223f5a3676145e1c98ee56d44051c6838f821a78327283225de3"
     },
     {
       "path": "shared/play/reactions.js",
@@ -917,7 +921,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "47fe5b2",
+  "commit": "3085d1a",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

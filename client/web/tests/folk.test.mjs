@@ -65,6 +65,24 @@ test('gaits play near their natural pace, so paws do not slide',()=>{
   assert.ok(worst<=2.2,`playback ratio ${worst.toFixed(2)} exceeds the client's 2.2× cap`);
 });
 
+// body.face outlived the chat that set it, so a cat leaving a visit walked away still facing its friend.
+test('a walking cat faces the way it moves, also after a chat',()=>{
+  const w=world();let moving=0,backwards=0,left=0;const chatted=new Set();
+  for(let t=0;t<900;t+=.1){
+    const before=w.cats.map(c=>[c.body.state.x,c.body.state.y]);
+    stepFolk(w,.1);
+    w.cats.forEach((c,i)=>{
+      if(c.step?.clip==='chat')chatted.add(c.id);
+      const dx=c.body.state.x-before[i][0],dy=c.body.state.y-before[i][1];
+      if(c.body.mode!=='walk'||c.step?.kind!=='go'||Math.hypot(dx,dy)<.02)return;
+      moving++;if(chatted.delete(c.id))left++;
+      if(Math.cos(c.body.facing-Math.atan2(dy,dx))<0)backwards++;
+    });
+  }
+  assert.ok(moving>1000&&left>0,`walked ${moving} ticks, ${left} walks out of a chat`);
+  assert.ok(backwards/moving<.005,`${backwards}/${moving} moving ticks drawn backwards`);
+});
+
 test('cats meeting head-on step around each other',()=>{
   const w=world(),[a,b]=w.cats.filter(c=>['saffi','tobu'].includes(c.id));
   for(const c of [a,b])setController(w,c,'agent');

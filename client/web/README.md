@@ -1,3 +1,19 @@
+# Cats that notice, and no more walking backwards — v0.6.0, 2026-11-05
+
+Cats no longer walk backwards. A stale `body.face` left over from a chat kept
+turning the drawn body away from its heading, on 27–36% of moving ticks in the
+regression test; it is now cleared every tick and the core publishes
+`body.facing` and `body.look` for the client to draw.
+
+Each cat also has a mind without any model behind it (`shared/npc/mind.js`):
+temperament, mood, memory, senses, reflexes and its own lines. Smart objects
+(`addThing`, `setThing`) tell cats what they can do with a thing. `setDecider` is
+the single seam for a classifier or LLM, falling back to the built-in brain on a
+refusal, error or timeout; `features` and `see` feed such models and `decision`
+events record training data. Reaction rates are first guesses, still to be
+playtested. [Details](../../shared/npc/README.md).
+`node --test client/web/tests/*.test.mjs`: **742/742**.
+
 # Faster parakite and first-person para pass — released, 2026-11-05
 
 The parakite trims at 24 m/s on a smaller wing. Cell pressure is now a lagging

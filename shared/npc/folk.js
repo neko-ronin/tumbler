@@ -20,6 +20,9 @@ import {launchFlight,stepFlight,sampleAir,canopySegment,canopyTouches} from '../
 import {boardGondola,rideAt} from '../activities/gondola.js';
 import {stepGround} from '../activities/moves.js';
 import {DOWN} from '../activities/balance.js';
+import {createMind,perceive,moodOf,feel,remember,features,describe,lineFor,FEATURES} from './mind.js';
+
+export {FEATURES};
 
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -31,9 +34,11 @@ const EVENT_RING=64;
 
 /** The verbs an agent may send. Arguments marked ? are optional. */
 export const VERBS=Object.freeze({
-  go_to:{args:{place:'home|garden|green|view|river|launch|<cat id>?',x:'number?',y:'number?',pace:'stroll|walk|run?'},about:'Walk to a named place, another cat, or a point.'},
+  go_to:{args:{place:'home|garden|green|view|river|launch|player|<cat id>|<thing id>?',x:'number?',y:'number?',pace:'stroll|walk|run?'},about:'Walk to a named place, another cat, or a point.'},
   do:{args:{activity:'<activity id from folk.json>'},about:'Plan and carry out an activity: walk to its place, then do it.'},
   fly:{args:{mode:'paraglider|parakite|paramotor?',site:'home|<flight launch id>?'},about:'Walk to a launch, fly the shared flight rules, land and walk home.'},
+  use:{args:{thing:'<thing id>',action:'<action the thing affords>'},about:'Walk to a placed thing and use it.'},
+  look_at:{args:{at:'<cat id|thing id|player>?',seconds:'number?'},about:'Turn the head toward someone or something, without changing the plan. No at: look ahead.'},
   say:{args:{text:'string, 1-140 chars'},about:'Speak. Cats within 25 m receive a heard event.'},
   follow:{args:{id:'<cat id>',seconds:'number?'},about:'Walk beside another cat for a while.'},
   wait:{args:{seconds:'number'},about:'Stand where you are.'},
@@ -54,7 +59,7 @@ export function createFolkWorld({config,worldmap,placement,flight,walk,height,gr
   const river=(worldmap.water?.bodies??[]).find(b=>b.kind==='river');
   // `player` is the client's player on foot ({x, y, speed}) or null: the one the cats play with.
   // `balance` (balance.js: {config, surfaceAt}) lets a cat slip and tumble on the same ground he does.
-  return {config,worldmap,flight,walk,height,ground,hitTest,gondola,balance,onEvent,homes,green,river,time:0,focus:null,player:null,cats:[]};
+  return {config,worldmap,flight,walk,height,ground,hitTest,gondola,balance,onEvent,homes,green,river,time:0,focus:null,player:null,cats:[],things:Object.create(null),decider:null};
 }
 
 /** The nearest dry bank point of the river to p, standing back from the water's edge. */
@@ -76,7 +81,21 @@ function emit(world,cat,event,data={}){
   const entry={t:Math.round(world.time*10)/10,cat:cat.id,event,...data};
   cat.events.push(entry);if(cat.events.length>EVENT_RING)cat.events.shift();
   world.onEvent?.(entry);
+  // How it felt, and what the cat says about it: the same stream an agent reads.
+  if(cat.mind){
+    const felt=event==='landed'&&data.impact?world.config.mind.felt.impact:world.config.mind.felt[event];
+    if(felt)feel(cat,felt);
+    const situation={landed:'landed',path_failed:'blocked'}[event];
+    if(situation&&!data.quiet)bark(world,cat,situation);
+  }
   return entry;
+}
+
+/** Say one of the cat's own lines, unless it spoke a moment ago. */
+function bark(world,cat,situation,name=''){
+  const m=cat.mind;if(world.time-m.lastBark<world.config.mind.bark_gap_s)return false;
+  const line=lineFor(cat,situation,name);if(!line)return false;
+  m.lastBark=world.time;say(world,cat,line);return true;
 }
 
 /** Standable ground outside whatever stands at `centre`: the nearest point along
@@ -109,7 +128,9 @@ export function createFolk(world,models,{seed=1,aloft=false}={}){
         gondola:world.gondola?.stations[0].xy_m.slice()??null},
       needs:Object.fromEntries(NEEDS.map(k=>[k,.45+.4*random()])),
       body:{mode:'walk',state:{x:spot[0],y:spot[1],z,heading:toGreen+Math.PI,speed:0,grounded:true,jumpPhase:'grounded'},clip:'idle',clipSpeed:0,face:null},
-      controller:'auto',plan:[],step:null,activity:null,last:null,events:[],random,index,said:null};
+      controller:'auto',decider:null,deciding:null,plan:[],step:null,activity:null,last:null,events:[],random,index,said:null,lines:f.lines??{},used:{},
+      // Its own stream, so a new line or reflex never disturbs the choices and flights that use `random`.
+      mind:createMind(f.temperament,mulberry(seed+hashSeed(f.id)+1),index*world.config.mind.think_s/config.folk.length)};
     cat.places.launch=launchPlace(world,cat);
     if(cat.flightPlan)cat.places.landing=landingField(world,cat);
     return cat;
@@ -188,12 +209,47 @@ function placePoint(world,cat,place){
   if(place==='player')return world.player?[world.player.x,world.player.y]:null;
   const other=world.cats.find(c=>c.id===place);
   if(other)return [other.body.state.x,other.body.state.y];
+  if(world.things[place])return world.things[place].xy_m;
   if(place==='green')return [world.green[0]+(cat.random()-.5)*40,world.green[1]+(cat.random()-.5)*40];
-  return cat.places[place]??null;
+  return typeof place==='string'&&Object.hasOwn(cat.places,place)?cat.places[place]:null;  // Names come from agents.
 }
+
+// ── Things: placed items that say what they afford, and the cats work the rest out
+/** Place an interactive item. `affords` maps an action to {clip, seconds, effects, requires?, sets?, skill?}:
+ * the brain scores it like any activity, `requires` gates it on the thing's state and `sets` changes that
+ * state when the use is done. A cat only chooses what it has seen, unless the thing is a `landmark`. */
+export function addThing(world,{id,kind,name=kind,xy_m,z_m=null,reach_m=1.5,capacity=1,landmark=false,state={},affords={}}){
+  if(typeof id!=='string'||!id||!Array.isArray(xy_m)||!xy_m.every(Number.isFinite))throw new Error('A thing needs an id and xy_m');
+  if(world.things[id]||world.cats.some(c=>c.id===id)||world.config.activities[id])throw new Error(`The name ${id} is taken`);
+  for(const [action,a] of Object.entries(affords))if(!a.clip||!a.seconds)throw new Error(`${id}.${action} needs a clip and seconds`);
+  return world.things[id]={id,kind,name,xy_m,z_m:z_m??world.height(...xy_m),reach_m,capacity,landmark,state,affords};
+}
+
+/** Change a thing's state (from the game or a cat); every cat that can see it gets a thing_changed event. */
+export function setThing(world,id,patch,by=null){
+  const t=world.things[id];if(!t)throw new Error(`No thing ${id}`);
+  Object.assign(t.state,patch);
+  for(const cat of world.cats)if(cat.mind.seen.some(e=>e.id===id))emit(world,cat,'thing_changed',{thing:id,state:{...t.state},by});
+  world.onThingChanged?.(t,by);
+  return t;
+}
+
+const useId=(thing,action)=>`use:${thing}:${action}`;
+const thingOf=(world,id)=>{const [,thing,action]=id.split(':'),t=world.things[thing];return t&&Object.hasOwn(t.affords,action)?{t,action,a:t.affords[action]}:null;};
+const usersOf=(world,thing)=>world.cats.filter(c=>c.step?.thing===thing||c.plan.some(p=>p.thing===thing)).length;
+/** What an activity id means: the catalogue's own, or one a thing affords. */
+const activityOf=(world,id)=>id.startsWith('use:')?thingOf(world,id)?.a:world.config.activities[id];
+function allIds(world){return [...Object.keys(world.config.activities),...Object.values(world.things).flatMap(t=>Object.keys(t.affords).map(a=>useId(t.id,a)))];}
 
 // ── Choosing
 function available(world,cat,id){
+  if(id.startsWith('use:')){
+    const u=thingOf(world,id);if(!u||cat.body.mode!=='walk')return false;
+    if(u.a.skill&&!cat.skills.includes(u.a.skill))return false;
+    if(!u.t.landmark&&!cat.mind.known[u.t.id])return false;
+    if(Object.entries(u.a.requires??{}).some(([k,v])=>u.t.state[k]!==v))return false;
+    return usersOf(world,u.t.id)<u.t.capacity;
+  }
   const a=world.config.activities[id];
   if(!a||['wave','stretch'].includes(id))return false;
   if(a.skill&&!cat.skills.includes(a.skill))return false;
@@ -205,18 +261,21 @@ function available(world,cat,id){
   return !!(a.place==='here'||a.place==='friend'||cat.places[a.place]||a.place==='green');
 }
 function score(world,cat,id){
-  const a=world.config.activities[id];let s=0;
+  const a=activityOf(world,id);let s=0;
   for(const [need,gain] of Object.entries(a.effects))
     s+=gain>0?gain*(1-cat.needs[need])*(cat.traits[need]??1):gain*.5*(1-cat.needs[need]);
   if(cat.needs.energy<.2)s+=id==='nap'?1:-.3;
-  const p=a.place==='friend'||a.place==='here'?null:placePoint(world,cat,a.place);
+  const thing=id.startsWith('use:')?id.split(':')[1]:null;
+  const p=thing?world.things[thing].xy_m:a.place==='friend'||a.place==='here'?null:placePoint(world,cat,a.place);
   if(p)s-=dist(p,[cat.body.state.x,cat.body.state.y])/2500*.2;
   if(cat.last===id)s-=.25;
+  // A curious cat tries what it has not tried yet.
+  if(thing&&!cat.used[id])s+=cat.mind.temperament.curiosity*world.config.mind.novelty;
   return s+cat.random()*.08;
 }
 /** Pick an activity and plan it. Exported for agents that want the brain's opinion. */
 export function suggest(world,cat){
-  return Object.keys(world.config.activities).filter(id=>available(world,cat,id))
+  return allIds(world).filter(id=>available(world,cat,id))
     .map(id=>({activity:id,score:Math.round(score(world,cat,id)*1000)/1000})).sort((a,b)=>b.score-a.score);
 }
 
@@ -224,10 +283,15 @@ function friendFor(world,cat){
   const others=world.cats.filter(c=>c!==cat&&c.body.mode==='walk'&&c.activity!=='fly');
   if(!others.length)return null;
   const here=[cat.body.state.x,cat.body.state.y];
-  return others.map(c=>({c,s:-dist(here,[c.body.state.x,c.body.state.y])/800+cat.random()*.6})).sort((a,b)=>b.s-a.s)[0].c;
+  // Near, and liked: a cat goes back to the friends it has got on with.
+  return others.map(c=>({c,s:-dist(here,[c.body.state.x,c.body.state.y])/800+(cat.mind.known[c.id]?.affinity??0)*.5+cat.random()*.6})).sort((a,b)=>b.s-a.s)[0].c;
 }
 
 function planFor(world,cat,id,options={}){
+  if(id.startsWith('use:')){
+    const {t,action,a}=thingOf(world,id),[lo,hi]=a.seconds;
+    return [{kind:'go',to:t.id,pace:'walk',within:t.reach_m},{kind:'use',thing:t.id,action,clip:a.clip,seconds:lo+(hi-lo)*cat.random(),effects:a.effects??{},sets:a.sets??null,face:t.id,activity:id}];
+  }
   const a=world.config.activities[id],[lo,hi]=a.seconds,seconds=lo+(hi-lo)*cat.random();
   if(id==='fly'){
     const mode=options.mode??cat.flightPlan?.mode,site=options.site??cat.flightPlan?.site;
@@ -248,6 +312,8 @@ function planFor(world,cat,id,options={}){
   const steps=[];
   if(a.place!=='here')steps.push({kind:'go',to:a.place==='green'?placePoint(world,cat,'green'):a.place,pace:a.place==='home'&&cat.needs.energy<.25?'stroll':'walk'});
   steps.push({kind:'do',clip:a.clip,seconds,effects:a.effects,activity:id});
+  // Nobody springs straight up from a nap.
+  if(id==='nap')steps.push({kind:'do',clip:'stretch',seconds:world.config.activities.stretch.seconds[0],effects:world.config.activities.stretch.effects,activity:'stretch'});
   return steps;
 }
 
@@ -264,11 +330,45 @@ function begin(world,cat,plan,activity,source){
   emit(world,cat,'plan',{activity,source,steps:plan.map(s=>s.kind+(s.to?':'+(Array.isArray(s.to)?s.to.map(Math.round).join(','):s.to):s.clip?':'+s.clip:''))});
 }
 
+/** Carry out a choice. Every decision is logged with what it was decided on, so the stream
+ * doubles as labelled data for training a classifier to imitate (or improve on) the brain. */
+function commit(world,cat,activity,source,options,vector){
+  const plan=planFor(world,cat,activity);if(!plan)return false;
+  emit(world,cat,'decision',{chosen:activity,source,options:options.slice(0,5),features:vector});
+  begin(world,cat,plan,activity,source);cat.last=activity;
+  return true;
+}
+
+function decideByBrain(world,cat,options=suggest(world,cat),vector=features(world,cat)){
+  for(const {activity} of options)if(commit(world,cat,activity,'brain',options,vector))return;
+}
+
 function decide(world,cat){
-  for(const {activity} of suggest(world,cat)){
-    const plan=planFor(world,cat,activity);
-    if(plan){begin(world,cat,plan,activity,'brain');cat.last=activity;return;}
-  }
+  const decider=cat.decider??world.decider;
+  if(!decider)return decideByBrain(world,cat);
+  const options=suggest(world,cat),vector=features(world,cat);
+  const accept=choice=>{
+    const activity=typeof choice==='string'?choice:choice?.activity;
+    if(options.some(o=>o.activity===activity)&&commit(world,cat,activity,'decider',options,vector))return;
+    emit(world,cat,'decider_refused',{choice:typeof activity==='string'?activity.slice(0,64):null});
+    decideByBrain(world,cat,options,vector);
+  };
+  const failed=error=>{emit(world,cat,'decider_failed',{error:String(error?.message??error).slice(0,200)});decideByBrain(world,cat,options,vector);};
+  let answer;
+  try{answer=decider({cat:cat.id,features:vector,feature_names:FEATURES,options,observation:observe(world,cat)});}catch(error){return failed(error);}
+  if(typeof answer?.then!=='function')return accept(answer);
+  // A model may take a while: the cat stands thinking, and a late answer is dropped once anything else has moved it on.
+  const ticket=cat.deciding={until:world.time+world.config.mind.decider_timeout_s};
+  const settled=handle=>value=>{if(cat.deciding!==ticket)return;cat.deciding=null;if(!cat.step&&!cat.plan.length&&cat.controller==='auto')handle(value);};
+  answer.then(settled(accept),settled(failed));
+}
+
+/** A model chooses for this cat (or, with cat null, for all) when its plan runs out: `decider(view)`
+ * returns an activity id from view.options, or a promise of one. Refusals, errors and timeouts fall
+ * back to the brain, so a bad model call never leaves a cat stuck. Pass null to hand back. */
+export function setDecider(world,cat,decider){
+  if(decider!==null&&typeof decider!=='function')throw new Error('A decider is a function or null');
+  if(cat){cat.decider=decider;cat.deciding=null;}else world.decider=decider;
 }
 
 // ── Agent surface
@@ -282,8 +382,9 @@ export function setController(world,cat,controller){
 export function command(world,cat,cmd){
   const fail=error=>{emit(world,cat,'command_refused',{verb:cmd?.verb,error});return {ok:false,error};};
   if(!cmd||typeof cmd!=='object'||!Object.hasOwn(VERBS,cmd.verb))return fail(`verb must be one of ${Object.keys(VERBS).join(', ')}`);
-  if(cat.body.mode==='flight'&&cmd.verb!=='say')return fail('cannot change plans while flying; wait for the landed event');
-  if(cat.body.mode==='gondola'&&cmd.verb!=='say')return fail('cannot change plans in a gondola cabin; wait for the rode_gondola event');
+  const free=['say','look_at'].includes(cmd.verb);
+  if(cat.body.mode==='flight'&&!free)return fail('cannot change plans while flying; wait for the landed event');
+  if(cat.body.mode==='gondola'&&!free)return fail('cannot change plans in a gondola cabin; wait for the rode_gondola event');
   const pace=cmd.pace??'walk';if(!PACES.includes(pace))return fail('pace must be stroll, walk or run');
   let plan;
   switch(cmd.verb){
@@ -294,7 +395,7 @@ export function command(world,cat,cmd){
       plan=[{kind:'go',to,pace}];break;
     }
     case 'do':
-      if(!world.config.activities[cmd.activity])return fail(`unknown activity ${cmd.activity}`);
+      if(typeof cmd.activity!=='string'||!Object.hasOwn(world.config.activities,cmd.activity))return fail(`unknown activity ${cmd.activity}`);
       if(!['wave','stretch'].includes(cmd.activity)&&!available(world,cat,cmd.activity))return fail(`${cat.id} cannot ${cmd.activity} (skill or place missing)`);
       plan=planFor(world,cat,cmd.activity);if(!plan)return fail('no one to visit');break;
     case 'fly':{
@@ -304,6 +405,18 @@ export function command(world,cat,cmd){
       if(cmd.site&&cmd.site!=='home'&&!world.flight.launches.some(l=>l.id===cmd.site))return fail(`unknown launch ${cmd.site}`);
       plan=planFor(world,cat,'fly',{mode,site:cmd.site});break;
     }
+    case 'use':{
+      const id=useId(cmd.thing,cmd.action);
+      if(typeof cmd.thing!=='string'||!world.things[cmd.thing]||typeof cmd.action!=='string'||!thingOf(world,id))return fail(`no thing ${cmd.thing} affording ${cmd.action}`);
+      // An agent may send a cat to something it has heard about but not yet seen.
+      remember(cat,cmd.thing,'thing',world.time);
+      if(!available(world,cat,id))return fail(`${cat.id} cannot use ${cmd.thing} now (busy, skill or state)`);
+      begin(world,cat,planFor(world,cat,id),id,'agent');return {ok:true};
+    }
+    case 'look_at':
+      if(cmd.at!==undefined&&!placePoint(world,cat,cmd.at))return fail(`nothing called ${cmd.at} to look at`);
+      cat.mind.attend=cmd.at===undefined?null:{id:cmd.at,until:world.time+clamp(cmd.seconds??5,.5,60),told:true};
+      return {ok:true};
     case 'say':
       if(typeof cmd.text!=='string'||!cmd.text.trim()||cmd.text.length>140)return fail('text must be 1-140 characters');
       say(world,cat,cmd.text.trim());return {ok:true};
@@ -316,7 +429,7 @@ export function command(world,cat,cmd){
       plan=[{kind:'do',clip:'idle',seconds:Math.min(600,cmd.seconds),effects:{}}];break;
     case 'stop':plan=[];break;
   }
-  begin(world,cat,plan,cmd.verb==='do'?cmd.activity:cmd.verb,'agent');
+  begin(world,cat,plan,cmd.verb==='do'?cmd.activity:cmd.verb==='stop'?null:cmd.verb,'agent');
   return {ok:true};
 }
 
@@ -324,12 +437,30 @@ function say(world,cat,text){
   cat.said={text,until:world.time+5};
   emit(world,cat,'said',{text});
   const here=[cat.body.state.x,cat.body.state.y];
-  for(const other of world.cats)if(other!==cat&&dist(here,[other.body.state.x,other.body.state.y])<25)emit(world,other,'heard',{from:cat.id,text});
+  for(const other of world.cats)if(other!==cat&&dist(here,[other.body.state.x,other.body.state.y])<world.config.mind.hearing_m)hear(world,other,cat.id,text);
+}
+
+function hear(world,cat,from,text){
+  emit(world,cat,'heard',{from,text});
+  // Whoever speaks gets a look, unless someone has told the cat where to look.
+  if(!cat.mind.attend?.told)cat.mind.attend={id:from,until:world.time+world.config.mind.heard_look_s};
+}
+
+/** The player speaks: cats in earshot hear it, turn, and the ones who like company answer. */
+export function playerSay(world,text){
+  if(!world.player||typeof text!=='string'||!text.trim())return 0;
+  const clean=text.trim().slice(0,140),here=[world.player.x,world.player.y];let heard=0;
+  for(const cat of world.cats)if(dist(here,[cat.body.state.x,cat.body.state.y])<world.config.mind.hearing_m){
+    heard++;hear(world,cat,'player',clean);
+    remember(cat,'player','player',world.time,{meeting:true,affinity:world.config.mind.bond.greet});
+    if(cat.controller==='auto'&&cat.body.mode==='walk'&&cat.mind.temperament.warmth>=world.config.mind.answer_warmth)bark(world,cat,'greet');
+  }
+  return heard;
 }
 
 /** A plain-JSON view of one cat for an agent: self, needs, plan, places, neighbours, recent events. */
 export function observe(world,cat){
-  const s=cat.body.state,here=[s.x,s.y],round=v=>Math.round(v*10)/10;
+  const s=cat.body.state,here=[s.x,s.y],round=v=>Math.round(v*10)/10||0;
   const air=cat.body.mode==='flight'?{agl_m:round(s.z-world.ground(s.x,s.y)),speed_mps:round(s.speed),vario_mps:round(s.vario??0)}:null;
   return {
     id:cat.id,name:cat.name,bio:cat.bio,time_s:round(world.time),controller:cat.controller,
@@ -339,8 +470,15 @@ export function observe(world,cat){
     places:Object.fromEntries(Object.entries(cat.places).filter(([,p])=>p).map(([k,p])=>[k,{xy:p.map(Math.round),distance_m:Math.round(dist(here,p))}])),
     nearby:world.cats.filter(c=>c!==cat).map(c=>({id:c.id,name:c.name,distance_m:Math.round(dist(here,[c.body.state.x,c.body.state.y])),doing:c.activity,mode:c.body.mode}))
       .sort((a,b)=>a.distance_m-b.distance_m).slice(0,5),
-    can:{verbs:Object.keys(VERBS),activities:Object.keys(world.config.activities).filter(id=>available(world,cat,id))},
-    events:cat.events.slice(-12),
+    can:{verbs:Object.keys(VERBS),activities:allIds(world).filter(id=>available(world,cat,id))},
+    mood:moodOf(cat),temperament:cat.mind.temperament,
+    // What it senses (range, field of view, line of sight) and its eye, for a renderer or a vision model.
+    senses:cat.mind.seen,eye:{position:[round(s.x),round(s.y),round(s.z+(cat.height_m??1.4)*.9)],heading_deg:Math.round(((cat.body.facing??s.heading??0)*180/Math.PI+360)%360),fov_deg:world.config.mind.fov_deg},
+    looking_at:cat.mind.attend?.id??null,
+    memory:cat.mind.known,
+    things:Object.values(world.things).filter(t=>t.landmark||cat.mind.known[t.id]).map(t=>({id:t.id,kind:t.kind,name:t.name,xy:t.xy_m,state:t.state,actions:Object.keys(t.affords)})),
+    situation:describe(world,cat),
+    events:cat.events.slice(-12).map(({features:_,...e})=>e),
   };
 }
 
@@ -348,7 +486,7 @@ export function observe(world,cat){
 function walkTo(world,cat,step,dt){
   const cfg=world.config.walk,s=cat.body.state;
   const target=placePoint(world,cat,step.to);
-  if(!target){emit(world,cat,'path_failed',{reason:'unknown place',to:step.to});return true;}
+  if(!target){emit(world,cat,'path_failed',{reason:'unknown place',to:step.to,quiet:!!step.reflex});return true;}
   // A friend who has left to fly cannot be caught on foot; chasing reads as a blocked path after give_up_s.
   const other=world.cats.find(c=>c.id===step.to);
   if(other&&(other.activity==='fly'||other.body.mode==='flight')){cat.plan=[];emit(world,cat,'plan_cancelled',{why:`${other.id} went flying`});return true;}
@@ -359,8 +497,8 @@ function walkTo(world,cat,step,dt){
   // Stuck: no 0.5 m of progress for stuck_s → try a detour either side; give up after give_up_s.
   if(step.best===undefined||d<step.best-.5){step.best=d;step.since=step.t;}
   const stuck=step.t-step.since;
-  if(stuck>cfg.give_up_s){
-    emit(world,cat,'path_failed',{reason:'blocked',distance_m:Math.round(d)});
+  if(stuck>(step.patience??cfg.give_up_s)){
+    emit(world,cat,'path_failed',{reason:'blocked',distance_m:Math.round(d),quiet:!!step.reflex});
     // Never take off from wherever the walk got stuck.
     if(cat.plan[0]?.kind==='fly'){cat.plan=[];emit(world,cat,'plan_cancelled',{why:'could not reach the launch'});}
     return true;
@@ -368,7 +506,9 @@ function walkTo(world,cat,step,dt){
   const detour=stuck>cfg.stuck_s?(Math.floor(stuck/3)%2?1:-1)*1.2:0;
   // Each cat walks at its own stride's ground speed, so the paws stay planted at any pace.
   // A sprint is the run gait played fast (play.sprint), for games only.
-  const sprint=step.pace==='sprint',pace=sprint?'run':PACES.includes(step.pace)?step.pace:'walk',speed=cat.gaits[pace]*cfg.cadence*cat.pace*(sprint?world.config.play.sprint:1)*(cat.needs.energy<.15?.7:1);
+  const sprint=step.pace==='sprint',pace=sprint?'run':PACES.includes(step.pace)?step.pace:'walk',speed=cat.gaits[pace]*cfg.cadence*cat.pace*(sprint?world.config.play.sprint:1)*(cat.needs.energy<.15?.7:1)
+    // Mood shows in the walk: keyed-up cats step out, low ones drag a little.
+    *(1+world.config.mind.mood_pace*(moodOf(cat).arousal*2-1));
   const angle=Math.atan2(target[1]-s.y,target[0]-s.x)+detour;
   let ux=Math.cos(angle),uy=Math.sin(angle);
   // Personal space: lean away from any cat on foot within personal_m, and keep right, so two meeting head-on pass.
@@ -403,7 +543,7 @@ function chase(world,cat,step,dt){
   const dx=p.x-s.x,dy=p.y-s.y,d=Math.hypot(dx,dy);
   if(step.swap===0&&d<cfg.tag_m&&!DOWN.has(s.balance?.phase)){
     step.it=!step.it;step.swap=cfg.swap_s;step.tags=(step.tags??0)+1;
-    emit(world,cat,'tag',{it:step.it?cat.id:'player'});say(world,cat,step.it?'You got me! My turn!':'Tag! You\'re it!');
+    emit(world,cat,'tag',{it:step.it?cat.id:'player'});remember(cat,'player','player',world.time,{affinity:world.config.mind.bond.tag});say(world,cat,step.it?'You got me! My turn!':'Tag! You\'re it!');
   }
   if(step.t>=step.seconds){emit(world,cat,'done',{activity:step.activity,tags:step.tags??0});return true;}
   let angle=Math.atan2(dy,dx),mag=0;
@@ -576,7 +716,21 @@ function perform(world,cat,step,dt){
   step.t=(step.t??0)+dt;
   for(const [k,v] of Object.entries(step.effects??{}))cat.needs[k]=clamp(cat.needs[k]+v*dt/Math.max(1,step.seconds));
   cat.body.face=step.face??null;
-  if(step.t>=step.seconds){emit(world,cat,'done',{activity:step.activity??step.clip});return true;}
+  // Talk through a chat, taking turns: the visitor speaks first, and the one visited half a beat later.
+  if(step.clip==='chat'&&step.face){
+    const gap=world.config.mind.chat_line_s,partner=world.cats.find(c=>c.id===step.face);
+    step.nextLine??=step.with?1:1+gap/2;
+    if(step.t>=step.nextLine){step.nextLine+=gap;const line=lineFor(cat,'chat',partner?.name??'');if(line)say(world,cat,line);}
+  }
+  if(step.t>=step.seconds){
+    if(step.clip==='chat'&&step.face)remember(cat,step.face,'cat',world.time,{meeting:true,affinity:world.config.mind.bond.chat});
+    if(step.kind==='use'){
+      cat.used[step.activity]=(cat.used[step.activity]??0)+1;
+      emit(world,cat,'used',{thing:step.thing,action:step.action});
+      if(step.sets&&world.things[step.thing])setThing(world,step.thing,step.sets,cat.id);
+    }
+    emit(world,cat,'done',{activity:step.activity??step.clip});return true;
+  }
   return false;
 }
 
@@ -587,11 +741,110 @@ function clipFor(world,cat){
   const step=cat.step;
   // Down on a slope (balance.js) it plays its pounce-and-roll: the client turns it over.
   if(DOWN.has(s.balance?.phase))return 'play';
-  if(step?.kind==='do'&&!(s.speed>.2))return step.clip;
+  if((step?.kind==='do'||step?.kind==='use')&&!(s.speed>.2))return step.clip;
   const speed=s.speed??0,cadence=world.config.walk.cadence;
   if(speed<.15)return 'idle';
   // The gait whose natural pace is nearest, by ratio: the client scales playback by what is left over.
   return PACES.reduce((a,b)=>Math.abs(Math.log(speed/(cat.gaits[b]*cadence)))<Math.abs(Math.log(speed/(cat.gaits[a]*cadence)))?b:a);
+}
+
+// ── Awareness and reflexes: personality with no model attached
+/** Interrupt the plan for a moment; the step in hand carries on afterwards. */
+function react(world,cat,step,kind){
+  if(cat.step)cat.plan.unshift(cat.step);
+  cat.step={...step,reflex:kind};cat.mind.lastReflex=world.time;
+  emit(world,cat,'reflex',{kind,to:step.face??(typeof step.to==='string'?step.to:null)});
+}
+
+const waveAt=(world,id)=>{const a=world.config.activities.wave;return {kind:'do',clip:a.clip,seconds:a.seconds[0],effects:a.effects,face:id,activity:'wave'};};
+
+/** May this cat be interrupted now? Not mid-chat, in the air, tumbling, or on its way to play. */
+function interruptible(cat){
+  const s=cat.step;
+  return cat.controller==='auto'&&cat.body.mode==='walk'&&!DOWN.has(cat.body.state.balance?.phase)&&!s?.reflex&&!s?.face&&s?.kind!=='use'&&s?.kind!=='chase'&&s?.to!=='player'&&(s?.kind==='go'||s?.kind==='do');
+}
+
+/** Temperament decides what a cat does about who it notices: a warm one waves, a shy one
+ * backs off when crowded, a curious one comes over; a cold or busy one just looks. */
+function reflexes(world,cat){
+  const cfg=world.config.mind,m=cat.mind,t=m.temperament,now=world.time;
+  if(!interruptible(cat)||now-m.lastReflex<cfg.reflex_gap_s)return;
+  const player=m.seen.find(e=>e.kind==='player'),s=cat.body.state;
+  if(player){
+    const again=now-(m.greeted.player??-Infinity)>cfg.greet_again_s;
+    if(player.distance_m<cfg.shy_m&&t.boldness<cfg.shy_boldness){
+      const away=Math.atan2(s.y-world.player.y,s.x-world.player.x);
+      react(world,cat,{kind:'go',to:[s.x+Math.cos(away)*cfg.back_off_m,s.y+Math.sin(away)*cfg.back_off_m],pace:'walk',within:.8,patience:2},'back_off');
+      bark(world,cat,'shy');return;
+    }
+    if(player.distance_m<cfg.greet_m&&again){
+      m.greeted.player=now;remember(cat,'player','player',now,{meeting:true,affinity:cfg.bond.greet});
+      if(m.random()<t.warmth*.6+t.boldness*.4){react(world,cat,waveAt(world,'player'),'greet');bark(world,cat,'greet');}
+      return;
+    }
+    // Curiosity brings a cat over from further off, but only when nothing presses, and once per greeting.
+    if(player.distance_m<cfg.approach_m&&again&&cat.step?.kind==='go'&&cat.activity!=='fly'&&m.random()<t.curiosity*cfg.approach_chance){
+      m.greeted.player=now;
+      cat.plan.unshift(waveAt(world,'player'));
+      react(world,cat,{kind:'go',to:'player',pace:'walk',within:cfg.greet_m*.5,patience:5},'approach');
+      return;
+    }
+  }
+  // Passing someone it knows: a wave and a word, more often the warmer it is and the better they get on.
+  const other=m.seen.find(e=>e.kind==='cat'&&e.mode==='walk'&&e.distance_m<cfg.pass_m&&now-(m.greeted[e.id]??-Infinity)>cfg.pass_again_s);
+  if(other){
+    m.greeted[other.id]=now;const bond=remember(cat,other.id,'cat',now,{affinity:cfg.bond.pass});
+    if(m.random()<t.warmth*.7+bond.affinity*.3){react(world,cat,waveAt(world,other.id),'pass');bark(world,cat,'pass',other.name);}
+  }
+}
+
+/** Who gets its attention: salience by nearness and what they are, shaded by temperament. A shy cat
+ * looks away sooner, and a good share of the time a cat just looks where it is going. */
+function attention(world,cat){
+  const cfg=world.config.mind,m=cat.mind,t=m.temperament;
+  if(m.attend&&world.time<m.attend.until)return;
+  if(m.attend?.told||world.time>=m.nextAttention){
+    const weight={player:1+t.curiosity+t.boldness,cat:.8+t.warmth,thing:.2+t.curiosity};
+    const pool=m.seen.map(e=>({e,w:weight[e.kind]/(2+e.distance_m)}));
+    const total=pool.reduce((a,b)=>a+b.w,0);
+    let pick=m.random()*(total+cfg.look_ahead),chosen=null;
+    for(const {e,w} of pool){pick-=w;if(pick<=0){chosen=e;break;}}
+    const [lo,hi]=cfg.attention_s,hold=(lo+(hi-lo)*m.random())*(.5+t.boldness*.5);
+    m.attend=chosen?{id:chosen.id,until:world.time+hold}:null;m.nextAttention=world.time+hold;
+  }else if(m.attend)m.attend=null;
+}
+
+/** Four times a second or so: sense, remember, attend, react. */
+function think(world,cat){
+  const m=cat.mind,was=new Set(m.seen.map(e=>e.id));
+  m.nextThink=world.time+world.config.mind.think_s;
+  const near=isNear(world,[cat.body.state.x,cat.body.state.y]);
+  m.seen=perceive(world,cat,near);
+  const now=new Set(m.seen.map(e=>e.id));
+  for(const e of m.seen){
+    const first=!m.known[e.id];
+    remember(cat,e.id,e.kind,world.time);
+    if(!was.has(e.id)&&(e.kind!=='cat'||e.distance_m<world.config.mind.pass_m*2))emit(world,cat,'noticed',{id:e.id,kind:e.kind,distance_m:Math.round(e.distance_m),first});
+  }
+  for(const id of was)if(!now.has(id)&&id==='player')emit(world,cat,'lost_sight',{id});
+  m.affect*=Math.exp(-world.config.mind.affect_decay_per_min*world.config.mind.think_s/60);
+  attention(world,cat);
+  reflexes(world,cat);
+}
+
+/** Where the head is turned, for any renderer: {x, y, z} of who it attends to, or null. */
+function lookOf(world,cat){
+  const id=cat.mind.attend?.id;if(!id||['flight','gondola'].includes(cat.body.mode)||id===cat.body.face)return null;
+  const p=placePoint(world,cat,id);if(!p)return null;
+  const other=world.cats.find(c=>c.id===id);
+  const z=id==='player'?(world.player.z??world.height(...p))+1.3:other?other.body.state.z+(other.height_m??1.4)*.9:world.things[id]?.z_m+.6;
+  return Number.isFinite(z)?{x:p[0],y:p[1],z}:null;
+}
+
+/** The way the cat's body points, for any renderer: at whoever it is attending to, else along its heading. */
+function facingOf(world,cat){
+  const s=cat.body.state,p=cat.body.face?placePoint(world,cat,cat.body.face):null;
+  return p?Math.atan2(p[1]-s.y,p[0]-s.x):s.heading??0;
 }
 
 /** Advance every cat by dt seconds. `focus` is the camera's [x, y], for the far-walk shortcut. */
@@ -602,7 +855,9 @@ export function stepFolk(world,dt,focus=null){
   for(const cat of world.cats){
     for(const k of NEEDS)cat.needs[k]=clamp(cat.needs[k]-decay[k].decay_per_min*dt/60*(.5+.5*(cat.traits[k]??1)));
     settle(world,cat);
-    if(!cat.step&&!cat.plan.length&&cat.controller==='auto')decide(world,cat);
+    if(world.time>=cat.mind.nextThink)think(world,cat);
+    if(cat.deciding&&world.time>=cat.deciding.until){cat.deciding=null;emit(world,cat,'decider_failed',{error:'timed out'});decideByBrain(world,cat);}
+    if(!cat.step&&!cat.plan.length&&cat.controller==='auto'&&!cat.deciding)decide(world,cat);
     if(!cat.step&&cat.plan.length){
       cat.step={...cat.plan.shift()};
       if(cat.step.with){const f=world.cats.find(c=>c.id===cat.step.with);
@@ -612,17 +867,20 @@ export function stepFolk(world,dt,focus=null){
         }}
     }
     const step=cat.step;
+    cat.body.face=null;  // Only a step still attending to someone keeps facing them; it says so again below.
     let done=false;
     if(step?.kind==='go')done=walkTo(world,cat,step,dt);
     else if(step?.kind==='fly')done=fly(world,cat,step,dt);
     else if(step?.kind==='gondola')done=rideGondola(world,cat,step);
     else if(step?.kind==='chase')done=chase(world,cat,step,dt);
-    else if(step?.kind==='do'){cat.body.state={...cat.body.state,speed:0};done=perform(world,cat,step,dt);}
-    else if(!step){cat.body.state={...cat.body.state,speed:0};cat.body.face=null;}
+    else if(step?.kind==='do'||step?.kind==='use'){cat.body.state={...cat.body.state,speed:0};done=perform(world,cat,step,dt);}
+    else if(!step)cat.body.state={...cat.body.state,speed:0};
     if(done){
       cat.step=null;
       if(!cat.plan.length){emit(world,cat,cat.controller==='agent'?'awaiting_command':'plan_done',{activity:cat.activity});cat.activity=null;}
     }
+    cat.body.facing=facingOf(world,cat);
+    cat.body.look=lookOf(world,cat);
     cat.body.clip=clipFor(world,cat);
     cat.body.clipSpeed=cat.body.state.speed??0;
     if(cat.said&&world.time>cat.said.until)cat.said=null;
