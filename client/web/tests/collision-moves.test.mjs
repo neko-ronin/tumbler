@@ -72,7 +72,7 @@ test('pushing head-on into a flared trunk still climbs it',()=>{
  // Wider at the foot than at the chest, as every placed tree is: the flare is what stops him.
  const t=trunkShape({id:'9:trunk',x:3,y:0,base_z:0,scale:1,profile:[[0,1.2],[1,.9],[20,.6]],top_h:20});
  const world={height:flat,hitTest:createCollisionIndex([t])};let s=start();
- for(let i=0;i<90&&s.mode!=='climb';i++)s=stepMoves(s,{x:1,y:0,stick:[0,1],grab:i%12===11},1/60,walk,world);
+ for(let i=0;i<90&&s.mode!=='climb';i++)s=stepMoves(s,{x:1,y:0,stick:[0,1]},1/60,walk,world);
  assert.equal(s.mode,'climb');
 });
 

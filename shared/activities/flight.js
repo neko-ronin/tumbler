@@ -138,16 +138,55 @@ function stepGroundLaunch(s,input,dt,time,config,bearing,height,hitTest,launchHe
 
 /** Continuous advected air field: height shear, thermals with return sink,
  * signed orographic lift and lee rotor. No frame-dependent random impulses.
+ *
+ * `wind` is either the bearing the air comes from, as a number, or the
+ * `worldmap.json:wind` record itself. The record is the richer input and the
+ * one the browser passes: besides the bearing it carries the valley's own
+ * **diurnal** breeze, applied when the record also names the `phase` of the day
+ * the air is being sampled in. A bare number is the old, phase-less call and
+ * produces exactly the field it always did — which is why every existing test
+ * and non-browser caller is unchanged by the diurnal model arriving.
+ *
+ * The phase rides on the air record rather than on the flight state on purpose.
+ * A flight state is the aircraft's own authoritative record — the thing a test
+ * compares the client's copy against byte for byte — and the time of day is a
+ * property of the world the aircraft is in, not of the aircraft. The caller that
+ * knows the clock derives one record (`{...worldmap.wind, phase}`) and hands it
+ * to both the flight step and the scenery sampler, so the wing and the rotors
+ * cannot be flying different weather.
+ *
+ * The diurnal term is a separate mechanism from the synoptic flow, so it is
+ * not height-sheared and it scales with the weather's `thermal_scale` rather
+ * than its `wind_scale`: it is the sun heating the valley, and calm air has
+ * little of it. `bearing` and `steady` in the result are the mean flow without
+ * gust, lateral or turbulence, for anything that responds slowly — a generator
+ * rotor, a cloud — so those do not hunt with the gust cycle. `bearing` is kept
+ * even though nothing in this world yaws: it is the honest direction of the mean
+ * flow, and it is how a caller states that the diurnal term is anti-parallel
+ * rather than assuming it.
  */
-export function sampleAir(config,windBearing,state,time,height) {
+export function sampleAir(config,wind,state,time,height) {
   const weather=config.weather?.[state.weather??'soaring']??{wind_scale:1,gust_scale:1,thermal_scale:1,turbulence_mps:.35};
-  const bearing=windBearing*Math.PI/180,ux=-Math.sin(bearing),uy=-Math.cos(bearing);
+  const record=typeof wind==='number'?null:wind;
+  const bearingDeg=record?record.direction_deg:wind;
+  const bearing=bearingDeg*Math.PI/180,ux=-Math.sin(bearing),uy=-Math.cos(bearing);
   const ground=height(state.x,state.y),agl=Math.max(0,state.z-ground);
-  const wind=config.wind.speed_mps*weather.wind_scale;
+  const flow=config.wind.speed_mps*weather.wind_scale;
   const shear=.65+.35*clamp(Math.log1p(agl/8)/Math.log(51));
-  const advX=state.x-ux*wind*time,advY=state.y-uy*wind*time;
+  const advX=state.x-ux*flow*time,advY=state.y-uy*flow*time;
   const gust=config.wind.gust_mps*weather.gust_scale*wave(advX,advY,state.z,time*.35);
-  const speed=Math.max(0,wind*shear+gust);
+  const speed=Math.max(0,flow*shear+gust);
+  // The valley's afternoon breeze. Its axis is a world fact (`wind.diurnal`),
+  // its strength a phase of the day, and its sign is always up-valley: the
+  // night drainage is a shallow surface flow and is deliberately not modelled
+  // here, because nothing that rides hundreds of metres up is turned by it.
+  const heat=record?.diurnal?.phases?.[record.phase]??0;
+  let dx=0,dy=0;
+  if(heat){
+    const axis=record.diurnal.axis_bearing_deg*Math.PI/180,k=heat*record.diurnal.peak_mps*weather.thermal_scale;
+    dx=-Math.sin(axis)*k;dy=-Math.cos(axis)*k;
+  }
+  const vx=ux*speed+dx,vy=uy*speed+dy,windSpeed=Math.hypot(vx,vy),inv=windSpeed?1/windSpeed:0;
   const gx=(height(state.x+12,state.y)-height(state.x-12,state.y))/24;
   const gy=(height(state.x,state.y+12)-height(state.x,state.y-12))/24;
   const slope=ux*gx+uy*gy;
@@ -160,16 +199,18 @@ export function sampleAir(config,windBearing,state,time,height) {
     const base=height(...thermal.xy_m),rise=Math.max(0,state.z-base);
     const top=clamp((thermal.top_m-state.z)/150);
     const radius=thermal.radius_m*(.65+.35*clamp(rise/800));
-    const drift=rise*.16*clamp(wind/4.2,0,2);
+    const drift=rise*.16*clamp(flow/4.2,0,2);
     const r=Math.hypot(state.x-thermal.xy_m[0]-ux*drift,state.y-thermal.xy_m[1]-uy*drift)/radius;
     thermalLift+=thermal.lift_mps*(Math.exp(-2*r*r)-.17*Math.exp(-.45*r*r))*top*weather.thermal_scale;
   }
   const intensity=weather.turbulence_mps*(.35+.65*terrainFade)+lee*speed*.22*weather.gust_scale;
   const lateral=wave(advY,advX,state.z+47,time+13)*intensity;
   const turbulence=wave(advX+73,advY-28,state.z,time+31)*intensity;
-  return {wx:ux*speed-uy*lateral,wy:uy*speed+ux*lateral,
+  const sx=ux*flow*shear+dx,sy=uy*flow*shear+dy,steady=Math.hypot(sx,sy);
+  return {wx:vx-inv*vy*lateral,wy:vy+inv*vx*lateral,
     lift:ridge+thermalLift-lee*speed*.18+turbulence,
-    agl,gust,turbulence,intensity,lee,ridge,thermal:thermalLift,windSpeed:speed};
+    agl,gust,turbulence,intensity,lee,ridge,thermal:thermalLift,windSpeed,
+    steady,bearing:steady>1e-6?(Math.atan2(-sx,-sy)*180/Math.PI+360)%360:((bearingDeg%360)+360)%360};
 }
 
 /** Shared rigid rig frame in core axes. Local +X is pilot-left, +Y up,

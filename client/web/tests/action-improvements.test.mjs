@@ -30,16 +30,15 @@ test('slide retains momentum, ignores a reverse stick, loses energy, and require
  }
 });
 
-test('wall jumps require a fresh press, steer tangentially, and never regrab automatically',()=>{
+test('wall jumps require a fresh press, steer tangentially, and a held jump cannot add another',()=>{
  const box={type:'trunk',min:[-.75,-.75,0],max:[.75,.75,30],trunk:{x:0,y:0,base_z:0,top_z:30,profile:[[0,.75],[30,.5]]}},world={height:flat,hitTest:createCollisionIndex([box])};
  let start={x:-1.08,y:0,z:7,grounded:false,jumpPhase:'airborne',jumpHeld:false,vz:-1,vx:1,vy:0,speed:1,heading:0};
- const untouched=stepMoves(start,{},1/60,c,world);assert.notEqual(untouched.mode,'climb');
  const s=stepMoves(start,{jump:true,x:0,y:1},1/60,c,world);
  assert.equal(s.jumpStyle,'wall');assert.ok(s.vx<0&&s.vy>0&&s.vz>0);assert.equal(s.mode,'ground');
  const held=stepMoves(s,{jump:true},1/60,c,world);assert.ok(held.vz<s.vz,'holding jump cannot add another impulse');
+ // The bark is now proximity's to judge: coming back to it takes hold without a press.
  let returned={...s,x:-1.08,y:0,z:7,climbCooldown:0,jumpHeld:false,vz:-1,vx:0,vy:0};
- returned=stepMoves(returned,{},1/60,c,world);assert.notEqual(returned.mode,'climb');
- returned=stepMoves(returned,{grab:true},1/60,c,world);assert.equal(returned.mode,'climb','a fresh grab still works');
+ returned=stepMoves(returned,{},1/60,c,world);assert.equal(returned.mode,'climb','airborne contact takes hold again');
 });
 
 test('cut choice responds to the live side and travel, without an attack sequence',()=>{

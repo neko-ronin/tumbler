@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "units": "metres, metres per second, radians per second, degrees, seconds",
+  "model": "A rotor turns at its tip-speed ratio until the tip speed is capped, freewheels slowly below cut-in and is held at cut-out. The core owns that rule and the shared step; a client owns the pixels. This is a presentation model, not a turbine power curve: no torque, generator load, pitch control, grid or bearing wear is simulated, and no energy it generates is consumed anywhere.",
+  "note": "The world's generators are the eleven ridge turbines (`worldmap.json:turbines`) and the twenty-four flying blimps (`worldmap.json:blimps`, plus one per collection of homes from `activities.house_blimps`). Where the wind comes from is `worldmap.json:wind`; its speed, its diurnal phase and the weather modes are `shared/activities/flight.json` and `shared/activities/flight.js`. This file owns only what a generator does with the air it is handed. A rotor's `radius_m` is the asset at scale 1; a client multiplies it by the instance's own scale, so a house blimp at 0.28 turns faster than a district hull for the same air. `spin_axis` and `spin_sign` are facts about the shipped glTF, measured from the file, not world decisions. There is no yaw rate here: this world's wind changes strength with the phase of the day, not direction, so the placed pose is the pose.",
+  "rotors": {
+    "turbine": {
+      "asset": "structures/turbine.glb",
+      "part": "rotor",
+      "radius_m": 60.0,
+      "spin_axis": "+Z",
+      "spin_sign": -1,
+      "cut_in_mps": 3.0,
+      "cut_out_mps": 25.0,
+      "tip_speed_ratio": 7.0,
+      "max_tip_mps": 80.0,
+      "idle_fraction": 0.35,
+      "spool_s": 9.0
+    },
+    "blimp": {
+      "asset": "blimp/blimp.glb",
+      "part": "rotor",
+      "radius_m": 15.0,
+      "spin_axis": "+Z",
+      "spin_sign": -1,
+      "cut_in_mps": 2.0,
+      "cut_out_mps": 25.0,
+      "tip_speed_ratio": 2.6,
+      "max_tip_mps": 55.0,
+      "idle_fraction": 0.4,
+      "spool_s": 4.0
+    }
+  }
+}

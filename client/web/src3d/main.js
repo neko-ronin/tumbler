@@ -49,6 +49,7 @@ import { buildEcology } from './ecology.js';
 import { createVisitorWatch } from './insect-visits.js';
 import { createPlayProps } from './play-props.js';
 import { buildTethers, buildTrails, TRAIL_SURFACE_LIFT } from './details.js';
+import { buildGenerators } from './generators.js';
 import { createSoundscape, treeSpots } from './audio.js';
 import {createFoleyEvents} from './character-foley.js';
 import { buildWorldCollision } from './collision.js';
@@ -139,6 +140,7 @@ export async function main() {
   placement={...placement,instances:[...placement.instances,...transition.instances]};
   checkVersion(manifest,1,'viewer manifest');checkVersion(worldmap,WORLDMAP_VERSION,'world map');
   const [meadowData,flightConfig,rideConfig]=await Promise.all([fetchData(worldmap.activities.meadow_life),fetchData(worldmap.activities.flight),fetchData(worldmap.activities.ride)]);
+  const generatorsConfig=await fetchData(worldmap.activities.generators);checkVersion(generatorsConfig,1,'generator rotors');
   const characterConfig=await fetchData(worldmap.activities.character);
   const cameraPolicy=await fetchData(worldmap.activities.camera??'shared/activities/camera.json');checkVersion(cameraPolicy,1,'camera policy');
   const needsSpacing=Object.values(cameraPolicy.profiles).some(p=>p.follow_spacing_fraction>0)||cameraPolicy.areas.some(a=>a.settings.follow_spacing_fraction>0);
@@ -214,9 +216,9 @@ export async function main() {
   // Set the initial sun before expensive atlas bakes; the first preset then
   // reuses them instead of immediately paying for a second bake.
   const lightPresets = {
-      golden: { direction: [-.64,.48,-.55], color: '#ffdda2', fill: '#a8cbdc', intensity: 2.0, ambient: 1.8, exposure: 1.1, warmth: 1, fog: '#d3d8d0' },
-      day: { direction: [-.35,.84,-.42], color: '#fff3d6', fill: '#b7ddef', intensity: 2.0, ambient: 1.75, exposure: 1.05, warmth: .15, fog: '#c8dcd6' },
-      dusk: { direction: [.74,.25,-.63], color: '#ffc18d', fill: '#9baccd', intensity: 1.6, ambient: 1.55, exposure: 1.1, warmth: .85, fog: '#d9b7aa' },
+      golden: { direction: [-.64,.48,-.55], color: '#ffdda2', fill: '#a8cbdc', intensity: 2.0, ambient: 1.8, exposure: 1.1, warmth: 1, fog: '#d3d8d0', windPhase: 'evening' },
+      day: { direction: [-.35,.84,-.42], color: '#fff3d6', fill: '#b7ddef', intensity: 2.0, ambient: 1.75, exposure: 1.05, warmth: .15, fog: '#c8dcd6', windPhase: 'afternoon' },
+      dusk: { direction: [.74,.25,-.63], color: '#ffc18d', fill: '#9baccd', intensity: 1.6, ambient: 1.55, exposure: 1.1, warmth: .85, fog: '#d9b7aa', windPhase: 'night' },
     };
   setTreeLighting({...lightPresets.golden,sun:lightPresets.golden.color,ground:'#7a8452'});
   style.sun.value.set(-.64,.48,-.55).normalize();
@@ -287,6 +289,11 @@ export async function main() {
   checkVersion(places,1,'named places');
   const balanceSurface=(x,y)=>snowAt(x,y)>.03?'snow':closeMeadow.contains(x,y)||forestSoil.sample(x,y)>.48||surfaceAt(x,y)==='trail'?'grass':'granite';
   const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,balance:{config:balanceConfig,surfaceAt:balanceSurface},firstPersonEye:()=>firstPerson.eye,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z),velocity:body.state.coupled?.pilotVelocity}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>{const sample=paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view);paraStreaks.update(sample,camera,view,effects);return sample;},haptics:()=>document.getElementById('haptics').checked});
+  // The world's generators turn in the same air the wing does. They are not
+  // decoration on a timer: calm air slows them and the afternoon's up-valley
+  // breeze slows them again, because both come from the shared field through
+  // `sampleEnvironment`.
+  const generators=buildGenerators({placement,assets,placements,config:generatorsConfig,air:(x,y,z)=>navigation.sampleEnvironment(x,y,z)});
   const folk=await createFolkLayer({fetchData,worldmap,placement,flightConfig,walkConfig:characterConfig.walk,height:walkHeight,ground:(x,y)=>ground.height(x,y),hitTest,gondola:gondolaLine,balance:{config:balanceConfig,surfaceAt:balanceSurface},assets,scene,camera,canvas});
   // Cabins run on the folk world's clock, so the cats ride in the cabins drawn.
   const gondola=createGondolaLayer({line:gondolaLine,scene,navigation,clock:()=>folk.api.world.time,panel:document.getElementById('gondola-panel')});
@@ -379,7 +386,7 @@ export async function main() {
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
-  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',fly:'WASD: fly · Mouse: look (click to capture, Esc to release) · R: up · F: down · Hold Shift: slow',walk:'WASD / stick: walk · Shift: toggle run · push the stick fully to run · Space / A: jump or wall push · Z / LB: tuck and roll down a slope · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: grab tree / reharness · Drag / right stick: look',
+  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',fly:'WASD: fly · Mouse: look (click to capture, Esc to release) · R: up · F: down · Hold Shift: slow',walk:'WASD / stick: walk · Shift: toggle run · push the stick fully to run · Space / A: jump or wall push · Z / LB: tuck and roll down a slope · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: reharness · walk into a trunk to climb it · Drag / right stick: look',
     parakite:'A/D steer · W dive / S flare · Drag to look · Launch to restart',
     ski:'A/D carve · W pole · S snowplough · Shift tuck · Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
     bike:'A/D steer · W pedal · S brake · Shift crouch · Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
@@ -493,6 +500,10 @@ export async function main() {
   }
   function setLight(name) {
     const p = lightPresets[name];
+    // The light preset also says which phase of the day it depicts, and the
+    // core's own diurnal table turns that into the valley's breeze. The client
+    // names the phase; it never decides what the wind does with it.
+    navigation.setTimeOfDay(p.windPhase);
     setTreeLighting({...p,sun:p.color,ground:'#7a8452'});
     style.sun.value.fromArray(p.direction).normalize(); style.warmth.value = p.warmth;
     sun.color.set(p.color); sun.intensity = p.intensity;
@@ -634,7 +645,7 @@ export async function main() {
   // Read-only inspection hook used for repeatable visual/performance checks.
   const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
-  window.tumbler = { organoid,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,terrain,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,startup,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { organoid,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,terrain,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;
     loading.show();status.textContent='Letting the light settle…';
@@ -699,6 +710,7 @@ export async function main() {
       `${forest.stats.trees.toLocaleString()} trees · ${forest.stats.near} nearby meshes · ${forest.stats.tiles} batches`,
       `Redwoods LOD 0 / 1 / 2 / 3: ${forest.stats.adopted.lodCounts.join(" / ")} · ${forest.stats.adopted.culled} culled · select ${forest.stats.adopted.selectionMs.toFixed(1)} ms`,
       `${meadow.stats.patches.toLocaleString()} meadow cells · ${meadow.stats.tiles} batches`,
+      `${generators.stats.turbines} turbines · ${generators.stats.blimps} blimps · ${generators.stats.rpm.toFixed(1)} rpm mean · wind ${(generators.stats.windMps*3.6).toFixed(0)} km/h at the hubs · ${generators.stats.spinning} turning`,
       `Version ${VERSION} · verified ${verifiedFiles} fetched files · generation ${manifest.commit.slice(0,8)} · local working tree`,
     ].join('\n');
   }
@@ -728,6 +740,7 @@ export async function main() {
     organoid.update(Math.min(delta,150)/1000,onFoot);
     playerVisibility.update(character.object.position.clone().add(new T.Vector3(0,1.1*characterConfig.scale,0)),spotlight&&!organoid.active&&navigation.mode!=='orbit'&&navigation.mode!=='fly'&&navigation.view==='chase',characterConfig.scale,treePlay);
     applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
+    generators.update(Math.min(delta,50)/1000);
     terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);play.update(Math.min(delta,50)/1000,camera,[...(onFoot?[onFoot]:[]),...folk.api.world.cats.filter(c=>c.body.mode==='walk').map(c=>({...c.body.state,radius:.25}))]);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit),paraSignals.sample);updateFoley(Math.min(delta,50)/1000);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.

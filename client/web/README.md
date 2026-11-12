@@ -1,3 +1,55 @@
+# Proximity climbing — local web/climb-generator, 2026-11-12
+
+Nothing mounts a tree any more; walking into one does, on the frame he touches it.
+`E`/`X` on foot is only harness and unhook. In the air, any climbable trunk within
+reach takes hold on contact. On the ground he must be against the bark with the
+stick pushed into it, so brushing past a trunk or turning away from one he just
+climbed down never mounts it — the same stick that descends a trunk points away
+from it.
+
+Taking hold never holds the stick: the bark face is his on the contact frame, the
+stick climbs from the next frame, and the body closes the last hand's width onto
+the bark underneath that motion over `attach_s` (a 0.13 m catch-up on foot, up to
+0.28 m from an air grab). There is no push-in dwell, and any climb input ends the
+mount pose at once.
+
+Climbing down to the floor no longer drops him off the bark. It eases him from
+the bark to where he will stand over `mount_s`, the mirror of the mount, and
+hands him to the walk at the pace and direction that stick already asked for, so
+the ground and the tree meet without a stop or a sideways hop. `Space`/`A`
+still pushes off the bark and still wall-jumps from a fresh airborne contact.
+
+Checks: `node --test client/web/tests/climb.test.mjs` asserts the contact-frame
+take-hold, the next-frame climb, the tangent brush, the thin trunk, the off-centre
+approach, the airborne take-hold and the handover; the full browser suite passes
+**781 passed, 4 skipped, 0 failed** (785 tests).
+The rule, ownership and remaining feel limits are recorded in
+[`docs/design/AIR-AND-PARA.md`](../../docs/design/AIR-AND-PARA.md), which
+supersedes the deliberate-grab wording in the 2026-11-03 sections below.
+
+# Wind-turned generators — local web/generator-wind, 2026-11-12
+
+The eleven ridge turbines and twenty-four flying blimps now turn their rotors
+with the same air the wing flies in. The core owns the rule
+(`shared/activities/generators.json` and `generators.js`); the browser only
+draws it (`src3d/generators.js`), rebuilding the rotor's instance matrix each
+frame from the pose the static pass placed.
+
+The world's wind now has a phase of the day. `worldmap.json:wind.diurnal` is the
+valley's up-valley breeze, running from 95° — exactly against the prevailing
+westerly from 275° — so it subtracts from the mean flow instead of turning it.
+At `soaring` the afternoon mean drops 4.2 → 2.6 m/s, evening 3.4, night 4.2; the
+rotors visibly slow, and nothing yaws. The browser's light presets pick the
+phase (`golden`→`evening`, `day`→`afternoon`, `dusk`→`night`). A bare bearing or
+a record with no phase gives exactly the old air, so no existing caller moves.
+
+Checks: `node --test client/web/tests/*.test.mjs`: **777 passed, 4 skipped, 0
+failed** (781 tests); `python3.11 -m unittest shared.tests.test_generators`: 10
+passed. Reproduce the matched turbine and hull frames with
+`client/web/tools/review-generators.cjs`; the
+[review, measurements and limits](../../docs/reviews/wind-turned-generators-2026-11-12/README.md)
+separate what was captured from what a still cannot judge.
+
 # Tree LOD transitions — approved on web/geometry-fixes, 2026-11-11
 
 Side views retain more foliage at LOD 1, overhead views retain more branch

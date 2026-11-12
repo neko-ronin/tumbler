@@ -126,6 +126,12 @@ export function buildPlacements(placement, assets, options = {}) {
         if (!merged) continue;
         const mesh = new InstancedMesh(merged.geometry, merged.material, placed.length);
         mesh.name = `${assetPath}#${partName}:${materialKind}`;
+        // The instances this mesh draws, in slot order, so a caller that
+        // animates one part — a rotor, a turbine blade — can find its own slot
+        // without re-deriving this filter, which would drift the moment the
+        // order here changed. Placement data is already retained; this is a
+        // reference, not a copy.
+        mesh.userData.instances = placed;
         for (let i = 0; i < placed.length; i += 1) {
           mesh.setMatrixAt(i, instanceMatrix(placed[i].position_m, placed[i].yaw_deg, placed[i].scale, local));
         }

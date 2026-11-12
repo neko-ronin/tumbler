@@ -14,6 +14,19 @@ const chest=.9,body=.5;
 export const climbRadiusAt=(trunk,z)=>trunkRadiusAt({profile:trunk.climb_profile??trunk.profile},z);
 const holdRadius=(trunk,z,c)=>climbRadiusAt(trunk,z)+c.hold_m;
 
+/** How far his body is from the bark, at whichever of his collision heights is
+ * nearest: a flare he already stands past does not read as a gap. A typed trunk
+ * is measured to its round bark; an untyped box out to the nearest of its sides.
+ */
+export function trunkGap(box,state,config){
+  const t=box.trunk,heights=[config.radius_m,chest,1.5];
+  if(!box.type)return Math.min(...heights.map(h=>{
+    const p=[state.x,state.y,state.z+h];
+    return Math.max(...[0,1].map(a=>Math.max(box.min[a]-p[a],0,p[a]-box.max[a])));
+  }));
+  return Math.min(...heights.map(h=>Math.hypot(state.x-t.x,state.y-t.y)-trunkRadiusAt(t,state.z+h)));
+}
+
 /** The climbable trunk within reach of the cat, or null: thick enough
  * (`min_radius_m`) at his height and below the climbable top. Typed trunks use their round bark; legacy boxes use their bounds.
  */
@@ -28,7 +41,7 @@ export function findTrunk(state,input,world,config){
     if(state.z<t.base_z-config.max_step_m||state.z>top-c.top_clearance_m)continue;
     // Reach is measured at the nearest of his body's collision heights, where a flare stops him;
     // an untyped box keeps the old measure, to its grown extent at his chest.
-    const r=trunkRadiusAt(t,state.z+chest),gap=Math.min(...[config.radius_m,chest,1.5].map(h=>Math.hypot(state.x-t.x,state.y-t.y)-trunkRadiusAt(t,state.z+h)));
+    const r=trunkRadiusAt(t,state.z+chest),gap=trunkGap(box,state,config);
     if(box.type?gap>reach:!box.min.every((lo,a)=>[state.x,state.y,state.z+chest][a]>=lo-reach&&[state.x,state.y,state.z+chest][a]<=box.max[a]+reach))continue;
     if(r>=c.min_radius_m&&gap<bestGap){best=box;bestGap=gap;}
   }
@@ -37,17 +50,39 @@ export function findTrunk(state,input,world,config){
 
 export function attachClimb(state,box,config){
   const t=box.trunk,c=config.climb,angle=Math.atan2(state.y-t.y,state.x-t.x),z=Math.min(state.z,(t.climb_top_z??t.top_z)-c.top_clearance_m);
-  const s={...state,sliding:false,mode:'climb',trunk:t,trunkBox:box,angle,z,climbPhase:'mount',climbTime:0,climbPush:0,
+  const {dismount,trunk,trunkBox,...rest}=state;
+  const s={...rest,sliding:false,mode:'climb',trunk:t,trunkBox:box,angle,z,climbPhase:'mount',climbTime:0,
     grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vx:0,vy:0,vz:0,speed:0,mountFrom:[state.x,state.y]};
-  return mount(s,c);
+  place(s,c);
+  // He stays where he took hold this frame — the bark face and heading are his,
+  // but the last hand's width is closed by stepClimb's ease, so taking hold never
+  // teleports him.
+  s.x=state.x;s.y=state.y;
+  return s;
 }
 
-/** During the mount he slides from where he grabbed to the bark, eased. */
-function mount(s,c){
-  place(s,c);
-  const u=Math.min(1,s.climbTime/c.mount_s),e=u*u*(3-2*u);
-  s.x=s.mountFrom[0]+(s.x-s.mountFrom[0])*e;s.y=s.mountFrom[1]+(s.y-s.mountFrom[1])*e;
-  return s;
+/** How much of the last hand's width onto the bark the body has closed, eased. */
+const settleAt=u=>{u=Math.max(0,Math.min(1,u));return u*u*(3-2*u);};
+
+/** Standing off the trunk. The floor has come up to meet him, so he steps out
+ * onto it in the direction the stick already points and keeps walking: `mount_s`
+ * eases the step off, and the speed he leaves with is the speed his feet would
+ * have had there. Nothing stops dead at the base and nothing jumps sideways, so
+ * the bark and the ground are one locomotion rather than two modes meeting at a
+ * seam.
+ */
+function stepDismount(s,input,config){
+  const d=s.dismount,u=Math.min(1,s.climbTime/config.climb.mount_s),e=u*u*(3-2*u);
+  s.x=d.from[0]+(d.to[0]-d.from[0])*e;s.y=d.from[1]+(d.to[1]-d.from[1])*e;s.z=d.from[2]+(d.to[2]-d.from[2])*e;
+  s.groundZ=s.z;s.speed=0;s.vz=0;
+  if(u<1)return s;
+  const magnitude=Math.hypot(input.x??0,input.y??0),amount=Math.max(0,Math.min(1,input.run_amount??(input.run?1:0)));
+  const speed=(config.walk_mps+(config.run_mps-config.walk_mps)*amount)*Math.min(1,magnitude);
+  const vx=magnitude>1e-6?input.x/magnitude*speed:0,vy=magnitude>1e-6?input.y/magnitude*speed:0;
+  const {dismount,trunk,trunkBox,climbPhase,launchReady,mountFrom,...rest}=s;
+  return {...rest,mode:'ground',grounded:true,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,sliding:false,
+    x:d.to[0],y:d.to[1],z:d.to[2],groundZ:d.to[2],vx,vy,vz:0,speed:Math.hypot(vx,vy),
+    heading:speed>1e-6?Math.atan2(vy,vx):s.heading,climbCooldown:.5,wallTree:undefined,foliage:undefined};
 }
 
 function place(s,c){
@@ -71,16 +106,23 @@ function clearOf(s,config){
 
 /** Up/down along the trunk (stick forward/back), around it (stick right/left),
  * faster with run; jump pushes off as a ground-mode fall. Reaching the floor
- * stands him up; the top below the crown is a perch.
+ * steps him onto it; the top below the crown is a perch.
+ *
+ * Taking hold never holds the stick. The frame the bark is his, his stick climbs
+ * with it: the body closes the last hand's width onto the bark underneath that
+ * motion over `attach_s`, so a walk or a jump into a trunk answers on the frame
+ * it touches rather than a fifth of a second later. `mount_s` is only the
+ * authored mount pose's length, and any climb input ends it at once.
  */
 export function stepClimb(state,input,dt,config,world){
   const c=config.climb,s={...state},edge=!!input.jump&&!s.jumpHeld;s.jumpHeld=!!input.jump;
   if(!(dt>0))return s;
   s.climbTime+=dt;
-  if(s.climbPhase==='mount'&&!edge){if(s.climbTime>=c.mount_s)s.climbPhase='grip';return mount(s,c);}
+  if(s.climbPhase==='dismount')return stepDismount(s,input,config);
   if(edge){
     return pushOffTree(s,input,config);
   }
+  const arrive=settleAt(s.climbTime/c.attach_s);
   const [sx,sy]=input.stick??[0,0],fast=input.run?c.fast_factor:1,top=(s.trunk.climb_top_z??s.trunk.top_z)-c.top_clearance_m;
   const vz=(sy>0?c.up_mps:c.down_mps)*sy*fast,around=c.around_mps*sx*fast;
   for(let remaining=Math.min(dt,.05);remaining>1e-10;){
@@ -93,20 +135,26 @@ export function stepClimb(state,input,dt,config,world){
       !(box.crown&&box.crown.x===s.trunk.x&&box.crown.y===s.trunk.y));
     if(!blocked)s.angle=angle;
     place(s,c);
+    // The climb motion above is already his; this only slides the body onto the
+    // bark from wherever he took hold.
+    if(arrive<1){s.x=s.mountFrom[0]+(s.x-s.mountFrom[0])*arrive;s.y=s.mountFrom[1]+(s.y-s.mountFrom[1])*arrive;}
     const floor=world.height(s.x,s.y)??s.trunk.base_z;
     if(vz<0&&s.z<=floor+.02){
       const clear=clearOf(s,config),z=world.height(clear.x,clear.y)??floor;
-      return {...s,...clear,mode:'ground',grounded:true,jumpPhase:'grounded',jumpTime:0,z,groundZ:z,vx:0,vy:0,vz:0,speed:0,climbCooldown:.5,climbPhase:undefined,launchReady:false};
+      // The bark hands him to the ground instead of dropping him on it: this
+      // frame starts the eased step off (stepDismount), which ends in walking.
+      return {...s,climbPhase:'dismount',climbTime:0,dismount:{from:[s.x,s.y,s.z],to:[clear.x,clear.y,z]},launchReady:false};
     }
   }
   s.vz=vz;s.around=around;s.speed=Math.hypot(vz,around);
-  s.climbPhase=s.z>=top-1e-9&&vz>=0?'perch':vz||around?'climb':'grip';
+  s.climbPhase=s.z>=top-1e-9&&vz>=0?'perch':vz||around?'climb':s.climbTime<c.mount_s?'mount':'grip';
   s.launchReady=s.climbPhase==='perch'&&!!s.trunk.launch_mode;
   return s;
 }
 
 /** A deliberate bark push: preserve tangential travel and steer away from the
- * surface. No target snapping and no automatic reattachment on the return. */
+ * surface. `climbCooldown` carries him clear before the bark can take hold of
+ * him again. */
 export function pushOffTree(s,input,config){
   const c=config.climb,out=[Math.cos(s.angle),Math.sin(s.angle)],tangent=[-out[1],out[0]];
   const length=Math.hypot(input.x??0,input.y??0),wish=length>.1?[(input.x??0)/length,(input.y??0)/length]:out;

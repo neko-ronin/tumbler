@@ -1,3 +1,22 @@
+# Climb ↔ walk transitions — local review, 2026-11-12
+
+Climbing is proximity's now: walking into a trunk takes hold on the contact
+frame, `E`/`X` no longer mounts one, jumping at a trunk grabs it instead of
+pushing off it, and climbing down eases onto the ground and into walking at the
+pace and direction the stick already asked for. Branch `web/climb-generator`: the generator-wind release and this change
+together, on main `fbcfb2c`.
+
+To review: `tumbler web start` → <http://127.0.0.1:8098/client/web/scene.html>.
+Checks: climb suite 18/18, browser suite **781 passed, 4 skipped, 0 failed**
+(785 tests), viewer data regenerated. Not merged, not published. Details and
+limits: [review record](../../docs/reviews/climb-proximity-2026-11-12.md) and
+[handover](../../docs/HANDOVER.md).
+
+The acrobatics/animation system that follows this is deferred and only researched
+so far: [hybrid animation and volition](../../docs/design/HYBRID-ANIMATION.md).
+
+---
+
 # The Organoid at Tumble Hill — valley review, 2026-11-11
 
 On the southeast shoulder, Ronin can meet a pale-pink Organoid hiding behind

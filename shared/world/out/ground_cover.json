@@ -4976,7 +4976,7 @@
   "version": 1,
   "worldmap": {
     "land_use_digest": "27d51c47050b9627",
-    "sha256": "a6369854e5afea3c84cd8282178ab4026244d844d86081a710d76662eb35f9c4",
+    "sha256": "a8778f6f3e7146aaf7c2731f32395a9be21bca05d6dca6fa2e41b54c8b9ad498",
     "source": "shared/world/worldmap.json"
   },
   "zones": [

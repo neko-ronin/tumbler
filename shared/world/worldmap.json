@@ -10431,7 +10431,17 @@
       "cloud drift",
       "ridge lift",
       "snow loading"
-    ]
+    ],
+    "diurnal": {
+      "axis_bearing_deg": 95.0,
+      "peak_mps": 1.6,
+      "phases": {
+        "afternoon": 1.0,
+        "evening": 0.5,
+        "night": 0.0
+      },
+      "note": "The up-valley breeze the note above calls real but diurnal, as a term the shared air field can add to the prevailing westerly. `axis_bearing_deg` is the direction the afternoon breeze comes FROM, the valley's own axis and the direction the river runs (95), so it blows up-valley against the prevailing wind. `peak_mps` is the breeze at full afternoon heating, before a weather mode's thermal strength scales it; `phases` is how much of that peak each named phase of the day has. There is no negative phase: the night reversal and the down-slope drainage are shallow flows the note already excludes for generators riding hundreds of metres up, and a phase-less caller gets no diurnal term at all. The phases are the core's own names; a client says which one its light depicts. flight.sampleAir applies it."
+    }
   },
   "rasters": {
     "heightmap": {
@@ -15757,7 +15767,8 @@
     },
     "ride": "shared/activities/ride.json",
     "character": "shared/characters/player.json",
-    "speedflying": "shared/activities/speedflying.json"
+    "speedflying": "shared/activities/speedflying.json",
+    "generators": "shared/activities/generators.json"
   },
   "snow": {
     "season": "late spring",
