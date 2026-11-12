@@ -5,20 +5,12 @@
  * judges that and nothing else. It owns no button, DOM node or timer; main.js
  * steps it from animate() and owns the one transition.
  *
- * "Calm" is a full window of INTRO_WINDOW (24) accepted intervals — 0.8 s at the
- * 30 FPS cap, still under 3.5 s at 7 FPS — that satisfies either half of one
- * sentence: the pacer held its target rate across the window, or it held the
- * same slower rate.
+ * "Calm" is a full window of INTRO_WINDOW (24) rendered intervals at a
+ * stable cadence, either near the target or at a steady slower rate.
  *
  *  - Target rate: the window's mean interval is within INTRO_RATE_SHARE (8%) of
- *    WEB_FRAME_MS (i.e. at least ~27.8 FPS) and no interval exceeds
- *    INTRO_SPREAD_MAX (1.6x) the median. This half is not a loosening. A display
- *    cannot show 33.3 ms; the pacer advances in whole refreshes and corrects
- *    phase, so a healthy 30 FPS client emits 40.0 / 26.7 ms alternately at
- *    75 Hz, 36.4 / 30.3 at 165 Hz, and 34.7 with a 27.8 catch frame at 144 Hz.
- *    Those look wildly uneven one at a time and are perfectly even in total —
- *    and, unlike a skipped slot, not one frame was dropped. The max bound is
- *    there because the mean alone would accept a 5 ms / 61 ms alternation.
+ *    WEB_FRAME_MS, with room for the uneven whole refreshes needed by a
+ *    display such as 75 Hz. The longest interval is still bounded.
  *  - Slower rate held: the intervals' median m, a band of INTRO_TOLERANCE_SHARE
  *    (18%) of max(WEB_FRAME_MS, m) — ±6.0 ms at 30 FPS — and at least 22 of the
  *    24 inside it. Absolute rate is the resolution governor's business, so a
@@ -37,7 +29,7 @@ export const INTRO_WINDOW = 24;
 export const INTRO_TOLERANCE_SHARE = .18;
 export const INTRO_OUTLIERS = 2;
 export const INTRO_RATE_SHARE = .08;
-export const INTRO_SPREAD_MAX = 1.6;
+export const INTRO_SPREAD_MAX = 1.65;
 export const INTRO_MIN_DWELL_S = 3;
 export const INTRO_MAX_WAIT_S = 8;
 
@@ -55,7 +47,7 @@ export function introCalm(values,{
   for(const value of recent){sum+=value;if(Math.abs(value-median)<=band)inside++;if(value>longest)longest=value;}
   const mean=sum/recent.length;
   const steady=inside>=window-outliers;
-  const onRate=mean<=WEB_FRAME_MS*(1+rateShare)&&longest<=median*spreadMax;
+  const onRate=mean<=WEB_FRAME_MS*(1+rateShare)&&longest<=Math.max(WEB_FRAME_MS,median)*spreadMax;
   return {window,median,mean,band,inside,steady,onRate,calm:steady||onRate};
 }
 

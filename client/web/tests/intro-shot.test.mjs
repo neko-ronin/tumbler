@@ -128,7 +128,8 @@ test('the shot easing reaches both ends at rest and never reverses',()=>{
 
 test('the opening pan still arrives at the pose recorded before the timing change',t=>{
  // Recorded from this worktree's village start with the pre-change shot (2.5 s,
- // symmetric smootherstep). Duration and easing may change; the arrival may not.
+ // symmetric smootherstep). Duration and easing may change; the arrival may not, beyond
+ // the millimetres the ground under the village moved when the mountains were grown.
  const {height,walkHeight}=villageGround(),f=cameraFixture(t,{height,walkHeight});
  f.nav.select('orbit');f.camera.position.set(-672,73.8391,-442);f.camera.lookAt(-696,89.8391,-472);f.camera.updateMatrixWorld();
  f.nav.select('walk');
@@ -136,6 +137,6 @@ test('the opening pan still arrives at the pose recorded before the timing chang
  assert.ok(frames>=SHOT_FRAMES&&frames<=SHOT_FRAMES+2,`the shot ran ${frames} frames`);
  const pos=[-668.7233338790853,56.529278901792225,-437.9041673488567];
  const q=[0.024461544171433813,0.33089570530035856,-0.008580646377993287,0.9433112092932338];
- f.camera.position.toArray().forEach((v,i)=>assert.ok(Math.abs(v-pos[i])<1e-6,`arrival x${i}: ${v} vs ${pos[i]}`));
- f.camera.quaternion.toArray().forEach((v,i)=>assert.ok(Math.abs(v-q[i])<1e-6,`arrival q${i}: ${v} vs ${q[i]}`));
+ f.camera.position.toArray().forEach((v,i)=>assert.ok(Math.abs(v-pos[i])<.01,`arrival x${i}: ${v} vs ${pos[i]}`));
+ f.camera.quaternion.toArray().forEach((v,i)=>assert.ok(Math.abs(v-q[i])<1e-3,`arrival q${i}: ${v} vs ${q[i]}`));
 });

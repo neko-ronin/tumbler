@@ -11,6 +11,42 @@ import {treeLighting} from './tree-surface.js';
 import {TREE_WOOD_GLSL} from './tree-lighting.js';
 import {forestUniforms,FOREST_FIELD_GLSL} from './forest-field.js';
 import {treeCaptureRect} from './tree-capture.js';
+
+/** Cast the fitted canopy and rooted wood from the existing spatial atlas.
+ * Select the slab axis from the sun in the tree's own frame, independent of
+ * the beauty camera and its LOD fades. The live uniform follows light rebakes. */
+function treeSliceDepthMaterial(capture){
+ const {layers,resolution,alphaCutoff,map}=capture;
+ const material=new T.MeshDepthMaterial({side:T.DoubleSide,colorWrite:false});
+ material.onBeforeCompile=shader=>{
+  shader.uniforms.uSliceShadowMap=map;
+  shader.uniforms.uSliceShadowSun=style.sun;
+  shader.vertexShader=`attribute float sliceTile,sliceAxis;uniform vec3 uSliceShadowSun;varying vec2 vSliceShadowUv;varying float vSliceShadowTile;\n`+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+   mat3 basis=mat3(modelMatrix*instanceMatrix);
+   vec3 ray=(uSliceShadowSun*basis)/vec3(dot(basis[0],basis[0]),dot(basis[1],basis[1]),dot(basis[2],basis[2]));
+   vec3 weights=abs(ray);
+   float axis=weights.y>=max(weights.x,weights.z)?2.:weights.x>=weights.z?1.:0.;
+   float side=axis==2.?ray.y:axis==1.?ray.x:ray.z;
+   vSliceShadowUv=uv;
+   vSliceShadowTile=sliceTile<0.?-1.:sliceAxis==axis?sliceTile+(side<0.?${layers.toFixed(1)}:0.):-2.;
+  `);
+  shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`#include <project_vertex>
+   if(vSliceShadowTile< -1.5)gl_Position=vec4(2.,2.,2.,1.);
+  `);
+  shader.fragmentShader=TREE_ATLAS_GLSL+`uniform highp sampler2DArray uSliceShadowMap;varying vec2 vSliceShadowUv;varying float vSliceShadowTile;\n`+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>',`
+   if(vSliceShadowTile>=0.){
+    vec2 uv=vec2(gl_FrontFacing?vSliceShadowUv.x:1.-vSliceShadowUv.x,vSliceShadowUv.y);
+    float mip=treeAtlasLod(uv,${resolution.toFixed(1)},${Math.max(0,treeAtlasMaxMip(resolution)-3).toFixed(1)});
+    if(textureLod(uSliceShadowMap,vec3(uv,vSliceShadowTile),mip).a<${alphaCutoff.toFixed(3)})discard;
+   }
+  `);
+ };
+ material.customProgramCacheKey=()=>`tree-slice-depth-${layers}-${resolution}-${alphaCutoff}`;
+ return material;
+}
+
 export function bakeTreeSlices(renderer,source,sourceMaterial,settings){
  const layers=settings.layers??12,resolution=settings.resolution??128,views=6,total=views*layers;
  if(!Number.isInteger(layers)||layers<1||layers>32||![64,128,256].includes(resolution))throw Error('Tree slices require 1–32 layers and 64/128/256 texels');
@@ -32,6 +68,7 @@ export function bakeTreeSlices(renderer,source,sourceMaterial,settings){
  const crown=[...leaf];for(let i=0;i<wood.length;i+=3)if(!retainedFaces.has(wood.slice(i,i+3).join(',')))crown.push(wood[i],wood[i+1],wood[i+2]);
  const capture=source.clone();capture.setIndex(crown);capture.computeBoundingBox();
  const box=new T.Box3(),point=new T.Vector3();for(const id of crown)box.expandByPoint(point.fromBufferAttribute(source.attributes.position,id));
+ const crownBounds=new T.Box3();for(const id of leaf)crownBounds.expandByPoint(point.fromBufferAttribute(source.attributes.position,id));
  const size=box.getSize(new T.Vector3()),centre=box.getCenter(new T.Vector3()),positions=[],uv=[],tiles=[],choices=[];
  const scene=new T.Scene(),mesh=new T.Mesh(capture,sourceMaterial);scene.add(mesh);sourceMaterial.defaultAttributeValues={...sourceMaterial.defaultAttributeValues,forestInterval:[0,1]};
  const camera=new T.OrthographicCamera(-1,1,1,-1,.1,2000),clipA=new T.Plane(),clipB=new T.Plane();
@@ -82,11 +119,22 @@ export function bakeTreeSlices(renderer,source,sourceMaterial,settings){
   remap.push(id);
  }
  attributes.forEach(([name,a],i)=>geometry.setAttribute(name,new T.Float32BufferAttribute(packed[i],a.itemSize)));geometry.setIndex(remap);
- const material=new T.MeshBasicMaterial({map:target.texture,vertexColors:true,alphaTest:settings.alphaCutoff??.22,alphaToCoverage:Boolean(settings.coverage),side:T.DoubleSide,toneMapped:false,fog:true});material.onBeforeRender=updateTreeSunShadow;
+ // The atlas holds linear light. Apply the scene tone mapper on playback,
+ // just as the mesh stages do when they draw to the screen.
+ const topCutoff=settings.topAlphaCutoff,porousTop=topCutoff!==undefined;
+ const screenSamples=renderer.getContextAttributes?.()?.antialias;
+ const multisampling={value:0};
+ const material=new T.MeshBasicMaterial({map:target.texture,vertexColors:true,alphaTest:settings.sideAlphaCutoff??settings.alphaCutoff??.22,
+   alphaToCoverage:porousTop||Boolean(settings.coverage),side:T.DoubleSide,fog:true});
+ material.onBeforeRender=renderer=>{
+  updateTreeSunShadow();
+  const target=renderer.getRenderTarget();
+  multisampling.value=Number(target?target.samples>1:Boolean(screenSamples));
+ };
  material.onBeforeCompile=shader=>{
-  sunShadowShader(shader);shader.uniforms.uSliceSun=style.sun;Object.assign(shader.uniforms,forestUniforms(),{uSliceCentre:{value:centre},uTreeRedBark:{value:+Boolean(sourceMaterial.userData.treeRedBark)},uWoodSun:treeLighting.sun,uWoodSky:treeLighting.fill,uWoodGround:treeLighting.ground});
+  sunShadowShader(shader);shader.uniforms.uSliceSun=style.sun;Object.assign(shader.uniforms,forestUniforms(),{uSliceCentre:{value:centre},uSliceTopCutoff:{value:topCutoff??material.alphaTest},uSliceMultisampling:multisampling,uSliceSideRange:{value:new T.Vector2(...(settings.sideAlphaRange??[0,0]))},uTreeRedBark:{value:+Boolean(sourceMaterial.userData.treeRedBark)},uWoodSun:treeLighting.sun,uWoodSky:treeLighting.fill,uWoodGround:treeLighting.ground});
   shader.vertexShader='attribute float sliceTile,sliceAxis;attribute vec2 forestInterval;uniform vec3 uSliceCentre;varying float vSliceTile;varying vec2 vSliceInterval,vSliceRange;varying vec3 vSliceWorld,vWoodNormal,vWoodLocal;\n'+shader.vertexShader;
-  shader.fragmentShader=TREE_ATLAS_GLSL+FOREST_FIELD_GLSL+TREE_WOOD_GLSL+'varying float vSliceTile;varying vec2 vSliceInterval,vSliceRange;varying vec3 vSliceWorld,vWoodNormal,vWoodLocal;uniform vec3 uSliceSun,uWoodSun,uWoodSky,uWoodGround;\n'+shader.fragmentShader;
+  shader.fragmentShader=TREE_ATLAS_GLSL+FOREST_FIELD_GLSL+TREE_WOOD_GLSL+'varying float vSliceTile;varying vec2 vSliceInterval,vSliceRange;varying vec3 vSliceWorld,vWoodNormal,vWoodLocal;uniform vec3 uSliceSun,uWoodSun,uWoodSky,uWoodGround;uniform float uSliceTopCutoff,uSliceMultisampling;uniform vec2 uSliceSideRange;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <map_pars_fragment>','#ifdef USE_MAP\nuniform highp sampler2DArray map;\n#endif');
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
    vSliceInterval=forestInterval;vSliceWorld=(modelMatrix*instanceMatrix*vec4(position,1.)).xyz;vWoodLocal=position;
@@ -109,13 +157,28 @@ export function bakeTreeSlices(renderer,source,sourceMaterial,settings){
    }
   `);
   shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nif(vSliceTile< -1.5)gl_Position=vec4(2.,2.,2.,1.);');
-  shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>',`${settings.coverage?'if(diffuseColor.a<alphaTest)discard;':'#include <alphatest_fragment>'}
+  shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>',`${porousTop?`
+   if(vSliceTile>=${(4*layers).toFixed(1)}){
+    // Stored alpha is coverage. Keep partial foliage samples between
+    // needles instead of turning the top slabs into solid silhouettes.
+    if(uSliceMultisampling>.5){
+     diffuseColor.a=smoothstep(uSliceTopCutoff-.16,uSliceTopCutoff+.3,diffuseColor.a);
+     if(diffuseColor.a<=0.)discard;
+    }else if(diffuseColor.a<uSliceTopCutoff)discard;
+   }else if(vSliceTile>=0. && uSliceMultisampling>.5 && uSliceSideRange.y>uSliceSideRange.x){
+    diffuseColor.a=smoothstep(uSliceSideRange.x,uSliceSideRange.y,diffuseColor.a);
+    if(diffuseColor.a<=0.)discard;
+   }else{
+    if(diffuseColor.a<alphaTest)discard;
+    diffuseColor.a=1.;
+   }`:settings.coverage?'if(diffuseColor.a<alphaTest)discard;':'#include <alphatest_fragment>'}
    float choice=fract(dot(floor(gl_FragCoord.xy),vec2(.754877666,.569840296)));if(choice<vSliceInterval.x||choice>=vSliceInterval.y)discard;
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`float sunlight=cloudObjectLight(vSliceWorld,uSliceSun)*actorSunLight(vSliceWorld)*scenerySunLight(vSliceWorld,normalize(uSliceSun));
    if(vSliceTile>=0.)outgoingLight*=mix(.6,1.,sunlight);
    else outgoingLight=treeWoodLight(diffuseColor.rgb,vWoodLocal,vSliceWorld,normalize(vWoodNormal)*(gl_FrontFacing?1.:-1.),normalize(uSliceSun),uWoodSun,uWoodSky,uWoodGround,sunlight*forestCanopyLight(vSliceWorld),1.);\n#include <opaque_fragment>`);
  };
- material.customProgramCacheKey=()=>`tree-slices-v2-${layers}-${resolution}-${Boolean(settings.coverage)}`;
- return {geometry,material,target,textureBytes:total*resolution*resolution*4*4/3,detail:{layers,triangles:positions.length/9,woodTriangles:compact.triangles,captureViews:total,sourceTriangles:source.index.count/3,capturedTriangles:crown.length/3,retainedWoodTriangles:kept.indices.length/3},dispose(){geometry.dispose();material.dispose();target.dispose();}};
+ material.customProgramCacheKey=()=>`tree-slices-v5-${layers}-${resolution}-${porousTop}-${Boolean(settings.coverage)}`;
+ const shadowCapture={layers,resolution,alphaCutoff:settings.alphaCutoff??.22,map:{value:texture}};
+ return {geometry,material,target,crownBounds,shadowCapture,createShadowMaterial:()=>treeSliceDepthMaterial(shadowCapture),textureBytes:total*resolution*resolution*4*4/3,detail:{layers,triangles:positions.length/9,woodTriangles:compact.triangles,captureViews:total,sourceTriangles:source.index.count/3,capturedTriangles:crown.length/3,retainedWoodTriangles:kept.indices.length/3},dispose(){geometry.dispose();material.dispose();target.dispose();}};
 }

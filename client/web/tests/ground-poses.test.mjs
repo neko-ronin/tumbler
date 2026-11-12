@@ -208,3 +208,15 @@ test('a heavy landing at speed rolls forward once, low and clear of the ground; 
  cat.update(1/60,'jump',0,{jump:heavy(.3),groundZ:0});assert.equal(cat.clip,config.landing.heavy);
  cat.dispose();
 });
+
+test('standing gait starts show half the stride on the first slow frame or within two 60 Hz frames',()=>{
+ for(const [hz,frames] of [[26,1],[60,2]]){
+  const cat=createCharacter(asset(),config),dt=1/hz,ground={groundZ:0,groundHeight:()=>0};
+  try{
+   cat.update(.25,'idle',0,ground);
+   for(let i=0;i<frames;i++)cat.update(dt,'stroll',1.2,ground);
+   assert.equal(cat.clip,config.clips.stroll);
+   assert.ok(cat.bodyAction.getEffectiveWeight()>=.49,`${hz} Hz: gait should be visible promptly`);
+  }finally{cat.dispose();}
+ }
+});

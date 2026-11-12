@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "about": "Named places in the grown valley. Each is somewhere a person can stand: `arrive_xy_m` is checked walkable ground and `facing_deg` (compass, from north) the way to look on arrival. Fast travel arrives here on foot; the development viewpoints frame the same view from behind and above. Core-owned because they have names (AGENTS.md).",
+  "places": [
+    {
+      "id": "tree-village",
+      "label": "The tree village",
+      "kind": "village",
+      "about": "The homes in the redwoods, and the gondola up the north wall.",
+      "arrive_xy_m": [
+        -672.0,
+        442.0
+      ],
+      "facing_deg": 321
+    },
+    {
+      "id": "homestead",
+      "label": "The homestead",
+      "kind": "home",
+      "about": "A farmstead on the valley floor, with its blimp moored beside it.",
+      "arrive_xy_m": [
+        -1698.0,
+        -564.0
+      ],
+      "facing_deg": 51
+    },
+    {
+      "id": "river-bend",
+      "label": "The river bend",
+      "kind": "water",
+      "about": "Where the river swings through the meadows below the village.",
+      "arrive_xy_m": [
+        -640.0,
+        -40.0
+      ],
+      "facing_deg": 354
+    },
+    {
+      "id": "lake-shore",
+      "label": "The lake",
+      "kind": "water",
+      "about": "The still water at the west end of the meadows.",
+      "arrive_xy_m": [
+        -1050.0,
+        -820.0
+      ],
+      "facing_deg": 266
+    },
+    {
+      "id": "landing-meadow",
+      "label": "The landing meadow",
+      "kind": "meadow",
+      "about": "Open grass where The Long Way Home comes down.",
+      "arrive_xy_m": [
+        600.0,
+        -250.0
+      ],
+      "facing_deg": 335
+    },
+    {
+      "id": "tumble-hill",
+      "label": "Tumble Hill",
+      "kind": "play",
+      "about": "A long open slope for tucking, rolling and tumbling.",
+      "arrive_xy_m": [
+        -928.0,
+        976.0
+      ],
+      "facing_deg": 212
+    },
+    {
+      "id": "north-wall",
+      "label": "North Wall",
+      "kind": "launch",
+      "about": "The shoulder by the gondola top, and the parakite launch.",
+      "arrive_xy_m": [
+        -1440.0,
+        3032.0
+      ],
+      "facing_deg": 162
+    },
+    {
+      "id": "cirque",
+      "label": "The cirque",
+      "kind": "snow",
+      "about": "A snow bowl the glaciers left, high behind the north wall.",
+      "arrive_xy_m": [
+        -383.5,
+        4169.7
+      ],
+      "facing_deg": 5
+    },
+    {
+      "id": "meander",
+      "label": "The meander",
+      "kind": "water",
+      "about": "Far down the valley, where the river loops across the plain.",
+      "arrive_xy_m": [
+        4100.0,
+        -350.0
+      ],
+      "facing_deg": 275
+    },
+    {
+      "id": "wind-ridge",
+      "label": "Wind ridge",
+      "kind": "ridge",
+      "about": "The turbine row on an exposed crest above the south wall.",
+      "arrive_xy_m": [
+        -3952.4,
+        -3384.8
+      ],
+      "facing_deg": 181
+    },
+    {
+      "id": "west-gorge",
+      "label": "The gorge",
+      "kind": "water",
+      "about": "Where the river comes down out of the mountains into the valley.",
+      "arrive_xy_m": [
+        -4200.0,
+        500.0
+      ],
+      "facing_deg": 97
+    }
+  ]
+}

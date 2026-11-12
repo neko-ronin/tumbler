@@ -120,7 +120,7 @@ test('a controller alone can launch, steer, change wing/ridge/weather, look and 
   pad.buttons[0].pressed=true;nav.update(1/60);const first=nav.state.distance;for(let i=0;i<20;i++)nav.update(1/60);assert.ok(nav.state.distance>first+1,'a held retry must not relaunch every frame');pad.buttons[0].pressed=false;nav.update(1/60);
   press(15);assert.equal(nav.mode,'parakite');pad.axes[0]=.65;for(let i=0;i<60;i++)nav.update(1/60);assert.ok(nav.state.bank>.1);pad.axes[0]=1;pad.buttons[1].pressed=true;for(let i=0;i<150;i++)nav.update(1/60);assert.ok(nav.state.bank>config.modes.parakite.max_bank_rad+.1,'B grants maneuver authority');pad.buttons[1].pressed=false;pad.axes[0]=0;for(let i=0;i<240;i++)nav.update(1/60);assert.ok(Math.abs(nav.state.bank)<.05,'releasing B recovers');
   press(15);assert.equal(nav.mode,'paramotor');const throttle=nav.state.throttle;pad.buttons[5].pressed=true;for(let i=0;i<60;i++)nav.update(1/60);assert.ok(nav.state.throttle>throttle);pad.buttons[5].pressed=false;
-  press(13);assert.equal(nav.siteIndex,1);press(9);assert.equal(nav.weather,'alpine');assert.equal(nav.state.weather,'alpine');
+  press(13);assert.equal(nav.siteIndex,0,'one launch: cycling stays on North Wall');press(9);assert.equal(nav.weather,'alpine');assert.equal(nav.state.weather,'alpine');
   press(3);assert.equal(nav.view,'first');assert.equal(cat.object.visible,false);
   const view=camera.quaternion.clone();pad.axes[2]=.7;for(let i=0;i<10;i++)nav.update(1/60);assert.ok(camera.quaternion.angleTo(view)>.01);
   press(0);assert.equal(nav.state.grounded,false);assert.ok(changes>0);
@@ -139,8 +139,8 @@ test('the T5 launch belongs to the core trailhead and clears actual rising terra
  const read=p=>JSON.parse(readFileSync(new URL(p,import.meta.url))),manifest=read('../data/viewer.json'),world=read('../../../shared/world/worldmap.json');
  const grid=(path,metadata)=>{const b=readFileSync(new URL(path,import.meta.url));return new HeightGrid({...metadata,values:new Float32Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength))});};
  const ground=new GroundSampler(grid('../data/heightmap.f32',manifest.height_grids.block),grid('../data/farfield.f32',manifest.height_grids.far_field));
- const height=(x,y)=>ground.height(x,y)??0,launch=config.launches.find(l=>l.id==='trail-t5');
- assert.deepEqual(launch.xy_m,world.tracks.find(t=>t.id==='T5').polyline[0]);
+ const height=(x,y)=>ground.height(x,y)??0,launch=config.launches.find(l=>l.id==='north-wall');
+ assert.equal(config.launches.length,1,'one launch: North Wall');
  let s=launchFlight(config,'parakite',launch,height,'calm');
  for(let i=0;i<1200;i++){
   s=stepFlight(s,{brake:i<180?-1:0},1/120,i/120,config,world.wind.direction_deg,height);

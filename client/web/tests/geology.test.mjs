@@ -18,7 +18,7 @@ test('convex roofs intersect all halfspaces, including slanted sides and lower f
  const empty={...box,planes:[...box.planes,[0,0,-1,-3]]};assert.equal(solidRoof(empty,2,1),null);
 });
 
-test('collision roofs match independent vertical rays against the actual published GLB triangles',()=>{
+test('collision roofs match independent vertical rays against the actual published GLB triangles',{skip:!data.counts.bedrock&&'no outcrops are published: the sculpted ground is the rock'},()=>{
  const triangles=new Map();
  for(const asset of Object.values(assets))for(const primitive of asset.primitives){
   const p=primitive.geometry.attributes.position,ids=primitive.geometry.index;
@@ -48,7 +48,7 @@ test('collision roofs match independent vertical rays against the actual publish
  assert.ok(checked>500);
 });
 
-test('published rock shells are closed and outward, with an economical fixed source budget',()=>{
+test('published rock shells are closed and outward, with an economical fixed source budget',{skip:!data.counts.bedrock&&'no outcrops are published: the sculpted ground is the rock'},()=>{
  let total=0,volume=0;
  for(const asset of Object.values(assets)){
   const edges=new Map();
@@ -65,7 +65,7 @@ test('published rock shells are closed and outward, with an economical fixed sou
  const scene=buildGeology(data,assets);try{assert.equal(scene.stats.triangles,total);assert.ok(scene.stats.batches<32);}finally{scene.dispose();}
 });
 
-test('ground sampling adds the shared roof and retains all unoccupied geography',()=>{
+test('ground sampling adds the shared roof and retains all unoccupied geography',{skip:!data.counts.bedrock&&'no outcrops are published: the sculpted ground is the rock'},()=>{
  const manifest=JSON.parse(read('client/web/data/viewer.json'));
  const grid=key=>new HeightGrid({...manifest.height_grids[key],values:new Float32Array(Uint8Array.from(read(manifest.height_grids[key].file)).buffer)});
  const base=new GroundSampler(grid('block'),grid('far_field')),sample=createGeologySampler(data);
@@ -85,7 +85,7 @@ test('ground sampling adds the shared roof and retains all unoccupied geography'
  for(const launch of flight.launches.filter(l=>l.terrain_protection!==false))for(let y=-60;y<=60;y+=12)for(let x=-60;x<=60;x+=12){const [a,b]=launch.xy_m;assert.equal(refined.height(a+x,b+y),base.height(a+x,b+y),'launch neighbourhood');}
 });
 
-test('published terrain refinements preserve source boundaries and the existing error-bounded topology',()=>{
+test('published terrain refinements preserve source boundaries and the existing error-bounded topology',{skip:!data.counts.bedrock&&'no outcrops are published: the sculpted ground is the rock'},()=>{
  const manifest=JSON.parse(read('client/web/data/viewer.json'));
  const refinedGrids={};
  for(const key of ['block','far_field']){

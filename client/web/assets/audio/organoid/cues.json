@@ -1,0 +1,54 @@
+{
+  "listen": {
+    "offset_s": 0.0,
+    "length_s": 1.383563
+  },
+  "eyes": {
+    "offset_s": 1.503562,
+    "length_s": 1.035031
+  },
+  "ridge": {
+    "offset_s": 2.658594,
+    "length_s": 3.485125
+  },
+  "listening": {
+    "offset_s": 6.263719,
+    "length_s": 0.725
+  },
+  "beacons": {
+    "offset_s": 7.108719,
+    "length_s": 5.389188
+  },
+  "hidden": {
+    "offset_s": 12.617906,
+    "length_s": 0.897
+  },
+  "trade": {
+    "offset_s": 13.634906,
+    "length_s": 8.019031
+  },
+  "name": {
+    "offset_s": 21.773937,
+    "length_s": 1.345
+  },
+  "born": {
+    "offset_s": 23.238937,
+    "length_s": 3.401781
+  },
+  "understood": {
+    "offset_s": 26.760719,
+    "length_s": 0.955031
+  },
+  "agreed": {
+    "offset_s": 27.83575,
+    "length_s": 3.351812
+  },
+  "depart": {
+    "offset_s": 31.307562,
+    "length_s": 0.877812
+  },
+  "wake": {
+    "offset_s": 32.305375,
+    "length_s": 2.445906
+  }
+}

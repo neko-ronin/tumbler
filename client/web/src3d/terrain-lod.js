@@ -2,8 +2,8 @@
  * adjacent tiles therefore meet exactly even when their interior detail differs.
  * No displacement, invented peak or change to the collision surface.
  */
-import {Group,Mesh,BufferGeometry,Float32BufferAttribute,Uint16BufferAttribute,Uint32BufferAttribute,DynamicDrawUsage,Vector3,Box3,Sphere} from '../vendor/three.module.min.js';
-import {buildTerrainGeometry} from './terrain.js';
+import {Color,Group,Mesh,BufferGeometry,Float32BufferAttribute,Uint16BufferAttribute,Uint32BufferAttribute,DynamicDrawUsage,Vector3,Box3,Sphere} from '../vendor/three.module.min.js';
+import {buildTerrainGeometry,vertexColor} from './terrain.js';
 import {toonMaterial} from './style.js';
 
 export function terrainTileLevels(grid,row0,col0,rows,cols,strides=[1,4,8,16]){
@@ -131,4 +131,90 @@ function buildBatchedTerrainLod(grid,{tileCells,pixelError,nearM,horizonM,batchT
   for(const batch of batches.values())if(batch.dirty)write(batch);
  }
  return {group,stats,tiles,update,dispose(){for(const batch of batches.values())batch.mesh.geometry.dispose();material.dispose();source.dispose();group.clear();}};
+}
+
+
+/** The whole world's ground, built tile by tile as the camera needs it.
+ *
+ * One vertex buffer over 3009^2 samples would hold 326 MB, so each tile keeps only the
+ * resolution its projected error asks for and rebuilds when that changes, a few per frame,
+ * nearest first. Coarse tiles hide their cracks with a skirt. Normals always read the full
+ * grid at the tile's own stride, so shading doesn't jump at a tile edge. Heights are the
+ * published samples: no displacement, and collision never reads this.
+ */
+export function buildStreamingTerrain(grid,{tileCells=128,strides=[1,2,4,8,16],pixelError=1.5,nearM=260,skirtM=24,buildsPerFrame=3}={}){
+ const group=new Group();group.name='terrain';
+ const material=toonMaterial({name:'continuous_granite_terrain',vertexColors:true},{terrain:true});
+ const R=grid.resolution,quad=grid.quad,values=grid.values,tiles=[],indexCache=new Map(),scratch=new Color();
+ const at=(r,c)=>values[Math.max(0,Math.min(R-1,r))*R+Math.max(0,Math.min(R-1,c))];
+ function indexFor(nr,nc){
+  const key=nr*100000+nc;let cached=indexCache.get(key);if(cached)return cached;
+  const list=[],row=nc+1,grid_=(r,c)=>r*row+c;
+  for(let r=0;r<nr;r++)for(let c=0;c<nc;c++){const a=grid_(r,c),b=a+1,d=grid_(r+1,c),e=d+1;list.push(a,e,d,a,b,e);}
+  // Skirt: a ring below the rim, wound to face outward.
+  const ring=[];for(let c=0;c<nc;c++)ring.push(grid_(0,c));for(let r=0;r<nr;r++)ring.push(grid_(r,nc));for(let c=nc;c>0;c--)ring.push(grid_(nr,c));for(let r=nr;r>0;r--)ring.push(grid_(r,0));
+  const first=(nr+1)*(nc+1),count=ring.length;
+  for(let k=0;k<count;k++){const a=ring[k],b=ring[(k+1)%count],a2=first+k,b2=first+(k+1)%count;list.push(a,b,a2,b,b2,a2);}
+  cached={index:new Uint16BufferAttribute(list,1),ring,triangles:list.length/3};indexCache.set(key,cached);return cached;
+ }
+ for(let row=0;row<R-1;row+=tileCells)for(let col=0;col<R-1;col+=tileCells){
+  const rows=Math.min(tileCells,R-1-row),cols=Math.min(tileCells,R-1-col);let low=Infinity,high=-Infinity;
+  for(let r=0;r<=rows;r++)for(let c=0;c<=cols;c++){const h=at(row+r,col+c);if(h<low)low=h;if(h>high)high=h;}
+  const bounds=new Box3(new Vector3(grid.offsetX+col*quad,low-skirtM,-grid.offsetY-(row+rows)*quad),new Vector3(grid.offsetX+(col+cols)*quad,high,-grid.offsetY-row*quad));
+  // Largest difference between the samples and each stride's bilinear surface.
+  const levels=strides.map(stride=>{let error=0;if(stride>1)for(let r=0;r<=rows;r++)for(let c=0;c<=cols;c++){
+    const r0=Math.floor(r/stride)*stride,c0=Math.floor(c/stride)*stride,r1=Math.min(rows,r0+stride),c1=Math.min(cols,c0+stride),u=c1>c0?(c-c0)/(c1-c0):0,v=r1>r0?(r-r0)/(r1-r0):0;
+    const fit=(at(row+r0,col+c0)*(1-u)+at(row+r0,col+c1)*u)*(1-v)+(at(row+r1,col+c0)*(1-u)+at(row+r1,col+c1)*u)*v;error=Math.max(error,Math.abs(fit-at(row+r,col+c)));}
+   return {stride,error,geometry:null,triangles:0};});
+  const mesh=new Mesh(new BufferGeometry(),material);mesh.name=`terrain_${col}_${row}`;mesh.receiveShadow=true;mesh.matrixAutoUpdate=false;mesh.visible=false;group.add(mesh);
+  tiles.push({row,col,rows,cols,bounds,levels,level:-1,want:levels.length-1,mesh,hidden:false});
+ }
+ function build(tile,level){
+  const entry=tile.levels[level];if(entry.geometry)return entry.geometry;
+  const s=entry.stride,nr=Math.ceil(tile.rows/s),nc=Math.ceil(tile.cols/s),{index,ring,triangles}=indexFor(nr,nc),rimCount=ring.length,count=(nr+1)*(nc+1)+rimCount;
+  const positions=new Float32Array(count*3),normals=new Float32Array(count*3),colors=new Float32Array(count*3);let k=0;
+  for(let r=0;r<=nr;r++){const gr=tile.row+Math.min(tile.rows,r*s),wy=grid.offsetY+gr*quad;for(let c=0;c<=nc;c++){
+   const gc=tile.col+Math.min(tile.cols,c*s),wx=grid.offsetX+gc*quad,h=at(gr,gc);
+   const dzdx=(at(gr,gc+s)-at(gr,gc-s))/(2*s*quad),dzdy=(at(gr+s,gc)-at(gr-s,gc))/(2*s*quad),len=Math.hypot(dzdx,dzdy,1);
+   positions[k]=wx;positions[k+1]=h;positions[k+2]=-wy;normals[k]=-dzdx/len;normals[k+1]=1/len;normals[k+2]=dzdy/len;vertexColor(colors,k,h,wx,wy,scratch);k+=3;}}
+  for(const v of ring){const i=v*3;positions[k]=positions[i];positions[k+1]=positions[i+1]-skirtM;positions[k+2]=positions[i+2];
+   normals[k]=normals[i];normals[k+1]=normals[i+1];normals[k+2]=normals[i+2];colors[k]=colors[i];colors[k+1]=colors[i+1];colors[k+2]=colors[i+2];k+=3;}
+  const geometry=new BufferGeometry();geometry.setAttribute('position',new Float32BufferAttribute(positions,3));geometry.setAttribute('normal',new Float32BufferAttribute(normals,3));geometry.setAttribute('color',new Float32BufferAttribute(colors,3));geometry.setIndex(index);
+  geometry.boundingBox=tile.bounds;geometry.boundingSphere=tile.bounds.getBoundingSphere(new Sphere());entry.geometry=geometry;entry.triangles=triangles;stats.builds++;return geometry;
+ }
+ function show(tile,level){
+  const previous=tile.level;tile.level=level;tile.mesh.geometry=tile.levels[level].geometry;tile.mesh.visible=!tile.hidden;
+  // Only the two finest levels are worth giving back; coarse ones are small and come back often.
+  if(previous>=0&&previous<level&&previous<2&&tile.levels[previous].geometry){tile.levels[previous].geometry.dispose();tile.levels[previous].geometry=null;}
+ }
+ const stats={tiles:tiles.length,lodCounts:strides.map(()=>0),triangles:0,sourceTriangles:(R-1)**2*2,maxProjectedError:0,builds:0,pending:0};
+ for(const tile of tiles){build(tile,strides.length-1);show(tile,strides.length-1);}
+ const queue=[];
+ function update(camera,height=900,{flush=false}={}){
+  const focal=height*Math.abs(camera.projectionMatrix.elements[5])*.5,orthographic=camera.isOrthographicCamera;queue.length=0;
+  for(const tile of tiles){
+   const distance=Math.max(.1,tile.bounds.distanceToPoint(camera.position));tile.distance=distance;let want=0;
+   if(distance>nearM)for(let k=1;k<tile.levels.length;k++){const pixels=tile.levels[k].error*focal/(orthographic?1:distance);if(pixels<=pixelError*(k<=tile.level?1.15:.85))want=k;else break;}
+   if(tile.pinned)want=0;
+   tile.want=want;
+   if(want===tile.level)continue;
+   if(tile.levels[want].geometry)show(tile,want);else queue.push(tile);
+  }
+  queue.sort((a,b)=>a.distance-b.distance);
+  const budget=flush?queue.length:buildsPerFrame;
+  for(let k=0;k<budget&&k<queue.length;k++){const tile=queue[k];build(tile,tile.want);show(tile,tile.want);}
+  stats.pending=Math.max(0,queue.length-budget);stats.lodCounts.fill(0);stats.triangles=0;stats.maxProjectedError=0;
+  for(const tile of tiles){if(tile.hidden)continue;const entry=tile.levels[tile.level];stats.lodCounts[tile.level]++;stats.triangles+=entry.triangles;stats.maxProjectedError=Math.max(stats.maxProjectedError,entry.error*focal/(orthographic?1:tile.distance||1));}
+ }
+ /** The shading a tile's vertex would have here, for meshes that must match the ground at a rim. */
+ function attributeAt(name,x,y){
+  const gx=(x-grid.offsetX)/quad,gy=(y-grid.offsetY)/quad,c=Math.floor(gx),r=Math.floor(gy),u=gx-c,v=gy-r;
+  const value=(rr,cc)=>{const h=at(rr,cc);
+   if(name==='position')return [grid.offsetX+cc*quad,h,-(grid.offsetY+rr*quad)];
+   if(name==='normal'){const a=(at(rr,cc+1)-at(rr,cc-1))/(2*quad),b=(at(rr+1,cc)-at(rr-1,cc))/(2*quad),l=Math.hypot(a,b,1);return [-a/l,1/l,b/l];}
+   const out=new Float32Array(3);vertexColor(out,0,h,grid.offsetX+cc*quad,grid.offsetY+rr*quad,scratch);return out;};
+  const z=value(r,c),b=value(r,c+1),d=value(r+1,c+1),e=value(r+1,c);
+  return [0,1,2].map(k=>u>=v?z[k]+(b[k]-z[k])*u+(d[k]-b[k])*v:z[k]+(e[k]-z[k])*v+(d[k]-e[k])*u);
+ }
+ return {group,material,stats,tiles,update,attributeAt,dispose(){for(const t of tiles)for(const l of t.levels)l.geometry?.dispose();material.dispose();group.clear();}};
 }

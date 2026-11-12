@@ -44,6 +44,18 @@ const HEATHER = new Color("#819b71");
 const PINEFLOOR = new Color("#718568");
 const RIVEREDGE = new Color("#6c9450");
 
+/** The vegetated ground's colour at one sample; rock and snow come from the shader. */
+export function vertexColor(colors, vertex, here, worldX, worldY, scratch) {
+  const jitter = hash(worldX, worldY) - 0.5;
+  if (here < 22) scratch.copy(RIVEREDGE);
+  else if (here > 280) scratch.copy(PINEFLOOR);
+  else if (here > 115) scratch.copy(HEATHER);
+  else scratch.copy(MEADOW).lerp(MEADOW_DRY, Math.min(1, Math.max(0, (here - 20) / 60 + jitter * 0.2)));
+  colors[vertex] = scratch.r * (1 + jitter * 0.06);
+  colors[vertex + 1] = scratch.g * (1 + jitter * 0.06);
+  colors[vertex + 2] = scratch.b * (1 + jitter * 0.06);
+}
+
 export function terrainRegionBlend(region,x,y){
   if(!region)return 0;
   const u=(x-region.centre[0])/region.radii[0],v=(y-region.centre[1])/region.radii[1];
@@ -112,14 +124,7 @@ export function buildTerrainGeometry(grid, { skipCell = null, normalRegion = nul
       normals[vertex + 1] = 1 / length;
       normals[vertex + 2] = dzdy / length;
 
-      const jitter = hash(worldX, worldY) - 0.5;
-      if (here < 22) scratch.copy(RIVEREDGE);
-      else if (here > 280) scratch.copy(PINEFLOOR);
-      else if (here > 115) scratch.copy(HEATHER);
-      else scratch.copy(MEADOW).lerp(MEADOW_DRY, Math.min(1, Math.max(0, (here - 20) / 60 + jitter * 0.2)));
-      colors[vertex] = scratch.r * (1 + jitter * 0.06);
-      colors[vertex + 1] = scratch.g * (1 + jitter * 0.06);
-      colors[vertex + 2] = scratch.b * (1 + jitter * 0.06);
+      vertexColor(colors, vertex, here, worldX, worldY, scratch);
     }
   }
 
@@ -181,6 +186,46 @@ export function buildFarFieldRing(grid, blockExtent) {
 }
 
 /**
+ * The high country past the far field. Display only: nothing samples it, and it
+ * stays out of `GroundSampler`, so flight and walking still end at the far field.
+ *
+ * Painted per vertex rather than through the terrain shader, whose maps stop at the
+ * far field: forest low and gentle, pale rock, snow on what is high and not steep.
+ * Corners past `extent_m` are dropped so the mesh ends on a circle, not a square.
+ */
+export function buildHorizonRange({ grid, heights_m: heights }, map) {
+  const { resolution: n, quad_size_m: quad, offset_xy_m: [low], inner_edge_m: inner, extent_m: extent } = grid;
+  const positions = new Float32Array(n * n * 3), normals = new Float32Array(n * n * 3), uvs = new Float32Array(n * n * 2);
+  const h = (r, c) => heights[Math.max(0, Math.min(n - 1, r)) * n + Math.max(0, Math.min(n - 1, c))];
+  for (let r = 0; r < n; r += 1) for (let c = 0; c < n; c += 1) {
+    const at = r * n + c, x = low + c * quad, y = low + r * quad;
+    positions.set([x, heights[at], -y], at * 3);
+    const dzdx = (h(r, c + 1) - h(r, c - 1)) / (2 * quad), dzdy = (h(r + 1, c) - h(r - 1, c)) / (2 * quad), length = Math.hypot(dzdx, dzdy, 1);
+    normals.set([-dzdx / length, 1 / length, dzdy / length], at * 3);
+    uvs.set([(c + .5) / n, (r + .5) / n], at * 2);
+  }
+  const indices = [], outer = extent * extent;
+  const place = (r, c) => [low + c * quad, low + r * quad];
+  for (let r = 0; r + 1 < n; r += 1) for (let c = 0; c + 1 < n; c += 1) {
+    const corners = [place(r, c), place(r, c + 1), place(r + 1, c), place(r + 1, c + 1)];
+    if (corners.every(([x, y]) => Math.max(Math.abs(x), Math.abs(y)) < inner - 200)) continue;
+    if (corners.some(([x, y]) => x * x + y * y > outer)) continue;
+    const a = r * n + c, b = a + 1, d = a + n, e = d + 1;
+    indices.push(a, e, d, a, b, e);
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeBoundingSphere();
+  const mesh = new Mesh(geometry, toonMaterial({ name: "horizon_range", map, fog: false }, { horizonM: extent }));
+  mesh.name = "horizon_range";
+  mesh.userData = { triangles: indices.length / 3, source: "horizon_range.json" };
+  return mesh;
+}
+
+/**
  * The river and the lake, as the core authored them.
  *
  * Both bodies' surface heights and areas are published in `world.json`, and the
@@ -228,13 +273,14 @@ export function buildRiverReaches(worldmap, farGrid, riverSurface = null) {
   const group = new Group();
   group.name = "river_reaches";
   for (const reach of worldmap.mountains?.enclosure?.river_reaches ?? []) {
-    const line = reach.polyline_xyz_m, half = reach.half_width_m;
+    const line = reach.polyline_xyz_m, halves = reach.half_widths_m;
     const positions = [], across = [], indices = [];
     for (let i = 0; i + 1 < line.length; i += 1) {
       const [ax, ay, az] = line[i], [bx, by, bz] = line[i + 1];
+      const halfA = halves?.[i] ?? reach.half_width_m, halfB = halves?.[i + 1] ?? reach.half_width_m;
       const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 20));
       for (let k = i ? 1 : 0; k <= steps; k += 1) {
-        const t = k / steps, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, z = az + (bz - az) * t;
+        const t = k / steps, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, z = az + (bz - az) * t, half = halfA + (halfB - halfA) * t;
         // Offsets follow the mean of the two neighbouring segments' normals.
         const [px, py] = line[Math.max(0, t === 0 ? i - 1 : i)], [qx, qy] = line[Math.min(line.length - 1, t === 1 ? i + 2 : i + 1)];
         const length = Math.hypot(qx - px, qy - py), nx = -(qy - py) / length, ny = (qx - px) / length;

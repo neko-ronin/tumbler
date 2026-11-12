@@ -5,7 +5,7 @@ const read=p=>JSON.parse(readFileSync(new URL('../../../'+p,import.meta.url)));
 const config=read('shared/npc/folk.json'),models=read('shared/geometry/cat-folk/models.json'),flight=read('shared/activities/flight.json');
 const walk=read('shared/characters/player.json').walk,worldmap=read('shared/world/worldmap.json'),placement=read('shared/world/out/placement.json');
 // A synthetic valley: flat meadow at 30 m, rising to the northern ridge the launches stand on.
-const height=(x,y)=>Math.abs(x)>2500||Math.abs(y)>2500?NaN:30+Math.max(0,y-700)*1.35;
+const height=(x,y)=>Math.abs(x)>9000||Math.abs(y)>9000?NaN:30+Math.max(0,y-700)*.8;
 function world(events=[]){const w=createFolkWorld({config,worldmap,placement,flight,walk,height,onEvent:e=>events.push(e)});createFolk(w,models,{seed:7});return w;}
 const run=(w,seconds,focus=null)=>{for(let t=0;t<seconds;t+=.1)stepFolk(w,.1,focus);};
 
@@ -49,7 +49,7 @@ for(const id of ['saffi','kiri','juno'])test(`${id} flies the shared flight rule
   setController(w,cat,'agent');
   const [x,y]=cat.places.launch;cat.body.state={...cat.body.state,x,y,z:height(x,y)};
   assert.equal(command(w,cat,{verb:'fly'}).ok,true);
-  run(w,1200);
+  run(w,3200);  // launches stand near 2,000 m now: a long glide home
   const launched=events.find(e=>e.cat===id&&e.event==='launched'),landed=events.find(e=>e.cat===id&&e.event==='landed');
   assert.ok(launched,'launched');assert.ok(landed,`landed (${JSON.stringify(events.filter(e=>e.cat===id).slice(-4))})`);
   assert.equal(landed.impact,null,`no collision: ${JSON.stringify(landed)}`);
@@ -135,7 +135,7 @@ test('with aloft, pilots spawn already flying and still land',()=>{
   const events=[],w=createFolkWorld({config,worldmap,placement,flight,walk,height,onEvent:e=>events.push(e)});createFolk(w,models,{seed:7,aloft:true});
   const pilots=w.cats.filter(c=>c.flightPlan);assert.ok(pilots.length);
   for(const c of pilots){assert.equal(c.body.mode,'flight');assert.ok(!c.body.state.grounded,`${c.id} airborne`);assert.ok(c.body.state.z-height(c.body.state.x,c.body.state.y)>10,`${c.id} above ground`);}
-  run(w,1200);
+  run(w,1800); // off North Wall a pilot reaches the field ~1.6 km up and spirals down for ~20 min
   for(const c of pilots)assert.ok(events.find(e=>e.cat===c.id&&e.event==='landed'),`${c.id} landed`);
 });
 

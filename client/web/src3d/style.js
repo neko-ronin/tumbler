@@ -5,7 +5,7 @@ import {ACTOR_SHADOW_GLSL} from './actor-shadow.js';
 import {TREE_SHADOW_GLSL,treeShadowUniforms} from './tree-shadows.js';
 import {CLOUD_GROUND_LIGHT_GLSL} from './cloud-shadow-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
-import {GRANITE_GLSL,graniteMinerals} from './granite-shading.js';
+import {GRANITE_GLSL,graniteTextures,mountainUniforms} from './granite-shading.js';
 import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
 
 export const style = {
@@ -47,6 +47,10 @@ const GROUND = `const vec3 ROCK=vec3(${linear('#a2a39b')});const vec3 SNOW=vec3(
     return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+1.),u.x),u.y);}
   float fbm(vec2 x){return vnoise(x)*.55+vnoise(x*2.03+7.1)*.3+vnoise(x*4.11-3.7)*.15;}
 `;
+// Open air scatters with distance, not to a wall: a fifth of the view at 5 km, two thirds
+// at 24 km, so a world this size keeps its depth. It's the same curve as the range's own air.
+// Underwater fog, tens of metres deep, keeps its full strength.
+T.ShaderChunk.fog_fragment=T.ShaderChunk.fog_fragment.replace('smoothstep( fogNear, fogFar, vFogDepth )','( fogFar > 1000. ? 1. - exp( -vFogDepth / 22000. ) : smoothstep( fogNear, fogFar, vFogDepth ) )');
 const ramp = new T.DataTexture(new Uint8Array([100, 157, 209, 255]), 4, 1, T.RedFormat);
 ramp.minFilter = ramp.magFilter = T.NearestFilter;
 ramp.generateMipmaps = false;
@@ -73,6 +77,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
       float sunlight=${material.userData.receiveActorShadow===false?'1.':'actorSunLight(vPlace)'}*${terrain||meadow?'cloudGroundLight(vPlace)':'cloudObjectLight(vPlace,uSun)'};
       reflectedLight.directDiffuse*=sunlight;reflectedLight.directSpecular*=sunlight;
+      ${terrain||granite?`reflectedLight.indirectDiffuse*=mix(vec3(1.),granite.ambient*vec3(1.05,.95,.86),${terrain?'rockMask*(1.-coreSnow)':'stone'});`:''}
     `);
     shader.uniforms.uTime = style.time;
     shader.uniforms.uWind = style.wind;
@@ -85,7 +90,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     if(meadow){shader.uniforms.uMeadowRange={value:new T.Vector2(...meadowRange)};shader.uniforms.uMeadowFocus=style.meadowFocus;}
     if(canopy)shader.uniforms.uCanopyStart={value:new T.Vector2(...canopyStart)};
     if(terrain)Object.assign(shader.uniforms,forestUniforms());
-    if(terrain||granite)shader.uniforms.uGraniteMinerals={value:graniteMinerals()};
+    if(terrain||granite)Object.assign(shader.uniforms,mountainUniforms,graniteTextures());
     if(terrain||meadow){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;shader.uniforms.uSnowGrid=style.snowGrid;}
     shader.vertexShader = (canopy?'uniform vec2 uCanopyStart;varying vec2 vGrassUv;varying float vGrassSeed;\n':'')+((terrain||meadow)?MEADOW_AIR_GLSL:'')+AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? MEADOW_BEND_GLSL+'uniform vec2 uMeadowRange;uniform vec3 uMeadowFocus; varying float vMeadowFade; attribute float petal; attribute vec3 flowerTint; attribute vec3 bladeRoot; attribute float flex; attribute float plant; attribute vec3 meadowTraits; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.vertexShader;
     if(meadow)shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
@@ -180,7 +185,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       vec2 snowUv=(vec2(vPlace.x,-vPlace.z)-uSnowGrid.xy)/(uSnowGrid.z*uSnowGrid.w);
       float snowInside=step(0.,snowUv.x)*step(0.,snowUv.y)*step(snowUv.x,1.)*step(snowUv.y,1.);
       float lowBiome=1.-smoothstep(180.,360.,vPlace.y);
-      float knownGround=1.-smoothstep(.42,.5,max(abs(snowUv.x-.5),abs(snowUv.y-.5)));
+      float knownGround=1.-smoothstep(.46,.5,max(abs(stampUv.x-.5),abs(stampUv.y-.5)));
       diffuseColor.rgb*=mix(vec3(1.),mix(vec3(.68,.65,.53),vec3(1.),stamped),lowBiome*knownGround);
       // Ground detail is noise at three scales, never a repeating wave:
       // meadow-sized lush/dry drifts, clumps, and grain that fades before it
@@ -197,8 +202,8 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       // Low steep ground is a cut bank of earth under turf, not granite.
       float lowland=1.-smoothstep(38.,70.,vPlace.y+(drift-.5)*20.);
       diffuseColor.rgb=mix(diffuseColor.rgb,EARTH*mix(.8,1.1,clump),slopeMask*lowland*smoothstep(.35,.7,grain*.4+clump*.6+.15));
-      float rockMask=max(slopeMask*(1.-lowland),smoothstep(850.,1160.,vPlace.y+(drift-.5)*160.));
-      GraniteSurface granite=GraniteSurface(vec3(0.),0.,.96,0.);
+      float rockMask=max(slopeMask*(1.-lowland),smoothstep(1620.,1980.,vPlace.y+(drift-.5)*160.));
+      GraniteSurface granite=GraniteSurface(vec3(0.),0.,.96,0.,0.,vec3(0.),1.);
       if(rockMask>.001)granite=graniteSurface(vPlace,normalize(vUp),footprint);
       diffuseColor.rgb=mix(diffuseColor.rgb,granite.color,rockMask);
       float snowMask=smoothstep(1010.,1110.,vPlace.y+(clump-.5)*70.+(drift-.5)*90.)*(1.-smoothstep(.62,1.,steep+(clump-.5)*.35))*(1.-knownGround);
@@ -239,7 +244,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       litter=mix(litter,litter*vec3(.77,.96,.65),moss*.25);
       litter*=mix(1.,.87,forestSoil.b);
       diffuseColor.rgb=mix(diffuseColor.rgb,litter,forestMask);
-      float relief=forestMask*(grain*.007+dot(litterTexture,vec3(.2126,.7152,.0722))*.018)+sward*grass.y*(1.-forestMask)+(rockMask*granite.relief+(1.-rockMask)*clump*.12)*(1.-smoothstep(1.5,5.,footprint));` : ''}
+      float relief=forestMask*(grain*.007+dot(litterTexture,vec3(.2126,.7152,.0722))*.018)+sward*grass.y*(1.-forestMask)+(rockMask*granite.relief+(1.-rockMask)*clump*.12)*(1.-smoothstep(1.5,5.,footprint))+rockMask*granite.farRelief;` : ''}
     `);
     if(granite){
       shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
@@ -247,7 +252,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
         GraniteSurface granite=graniteSurface(vPlace,graniteUp,max(length(dFdx(vPlace)),length(dFdy(vPlace))));
         float stone=step(diffuseColor.g,diffuseColor.r*1.18);
         diffuseColor.rgb=mix(diffuseColor.rgb,granite.color,stone);
-        float relief=granite.relief*stone;
+        float relief=(granite.relief+granite.farRelief)*stone;
       `);
     }
     if(terrain||granite){
@@ -259,6 +264,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
         vec3 sigmaX=dFdx(-vViewPosition),sigmaY=dFdy(-vViewPosition),r1=cross(sigmaY,normal),r2=cross(normal,sigmaX);
         float det=dot(sigmaX,r1)*faceDirection;
         normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*r1+dFdy(relief)*r2));
+        // The baked slopes are mip-filtered, so they hold where bump derivatives cannot.
+        normal=normalize(normal+mat3(viewMatrix)*granite.detail*${terrain?'rockMask*(1.-coreSnow)':'stone'});
+        ${terrain?`// Rock breaks; it doesn't round. Part of each 8 m facet's true normal keeps the edges.
+        if(rockMask>.001){vec3 facet=normalize(cross(dFdx(vViewPosition),dFdy(vViewPosition)));normal=normalize(mix(normal,facet*sign(dot(facet,normal)),.38*rockMask*(1.-coreSnow)*(1.-smoothstep(1.5,6.,footprint))));}`:''}
         ${terrain?`vec3 grassLean=vec3(grassAir.x,0.,grassAir.y);
         grassLean-=normalize(vUp)*dot(grassLean,normalize(vUp));
         // Transform a tangent-plane wind bend into view space for lighting.
@@ -269,12 +278,12 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       shader.uniforms.uHorizonM={value:horizonM};shader.uniforms.uWarmth=style.warmth;
       shader.fragmentShader='uniform float uHorizonM;uniform float uWarmth;\n'+ATMOSPHERE_SKY_GLSL+shader.fragmentShader;
       shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>',`#include <fog_fragment>
-        float horizonFade=smoothstep(uHorizonM*.88,uHorizonM*.99,max(abs(vPlace.x),abs(vPlace.z)));
-        if(horizonFade>0.){
-          vec3 horizonRay=normalize(vPlace-cameraPosition);
-          vec3 horizonColour=clearSky(normalize(vec3(horizonRay.x,.001,horizonRay.z)),uSun,uWarmth,cameraPosition.y);
-          gl_FragColor.rgb=mix(gl_FragColor.rgb,horizonColour,horizonFade);
-        }
+        // The distant range's own air: it thins into the sky's horizon colour rather
+        // than the scene's fog, and is gone by the mesh's circular edge.
+        vec3 horizonRay=normalize(vPlace-cameraPosition);
+        vec3 horizonColour=clearSky(normalize(vec3(horizonRay.x,.001,horizonRay.z)),uSun,uWarmth,cameraPosition.y);
+        float horizonAir=max(1.-exp(-length(vPlace-cameraPosition)/uHorizonM*1.2),smoothstep(uHorizonM*.8,uHorizonM*.98,length(vPlace.xz)));
+        gl_FragColor.rgb=mix(gl_FragColor.rgb,horizonColour,horizonAir);
       `);
     }
     if (foliage) {
@@ -306,27 +315,14 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
   return material;
 }
 
-/** Clear sky and the existing distant ranges use one background draw.
- *
- * Past the far field's 3D ring the horizon is an illusion painted here: three
- * mountain ranges at fixed distances, drawn by the elevation angle they would
- * have from the camera's height, so they sink when you fly. Each map river
- * reach opens a gap toward its far end: a notch where the river comes down
- * from higher ground, a broad low gap where it leaves toward lower ground.
- */
-export function makeSky(reaches = []) {
-  const gaps = [0, 1].map(i => {
-    const line = reaches[i]?.polyline_xyz_m;
-    if (!line) return new T.Vector3(1, 0, 0);
-    const [x, y, z] = line[line.length - 1], length = Math.hypot(x, y);
-    return new T.Vector3(x / length, -y / length, z > line[0][2] ? 1 : -1);
-  });
+/** The clear sky, drawn first and behind everything: the distant range stands past this sphere. */
+export function makeSky() {
   const sky = new T.Mesh(new T.SphereGeometry(14000, 32, 16), new T.ShaderMaterial({
-    side: T.BackSide, depthWrite: false, toneMapped: false,
-    uniforms: { uTime: style.time, uSun: style.sun, uWarmth: style.warmth, uWind: style.wind, uGapA: { value: gaps[0] }, uGapB: { value: gaps[1] } },
+    side: T.BackSide, depthWrite: false, depthTest: false, toneMapped: false,
+    uniforms: { uTime: style.time, uSun: style.sun, uWarmth: style.warmth, uWind: style.wind },
     vertexShader: `varying vec3 vRay; void main(){ vRay = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
     fragmentShader: `
-      varying vec3 vRay; uniform float uTime; uniform vec3 uSun; uniform float uWarmth; uniform vec2 uWind; uniform vec3 uGapA; uniform vec3 uGapB;
+      varying vec3 vRay; uniform float uTime; uniform vec3 uSun; uniform float uWarmth; uniform vec2 uWind;
       float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y);}
       ${ATMOSPHERE_SKY_GLSL}
@@ -345,33 +341,12 @@ export function makeSky(reaches = []) {
         col+=sunTint*(pow(alignment,180.)*.38+rim*.20);
         col=mix(col,mix(vec3(1.8,1.60,1.03),vec3(1.85,1.28,.55),uWarmth),disc);
         // Cumulus lives in the world volume pass, at the core cloud cells.
-        vec2 dir=normalize(ray.xz+vec2(1e-5,0.));
-        float elevation=asin(clamp(ray.y,-1.,1.));
-        for(int layer=2;layer>=0;layer--){
-          float k=float(layer),distanceM=mix(7500.,16000.,k*.5);
-          float profile=noise(dir*(3.4+k*1.3)+k*13.1)*.62+noise(dir*(9.1+k*2.)+k*7.7)*.28+noise(dir*31.+k*3.3)*.1;
-          float height=mix(850.,1750.,k*.5)+mix(900.,1300.,k*.5)*profile;
-          for(int g=0;g<2;g++){
-            vec3 gap=g==0?uGapA:uGapB;
-            float off=acos(clamp(dot(dir,gap.xy),-1.,1.));
-            height*=gap.z>0.?1.-.42*exp(-off*off/.012):1.-.78*exp(-off*off/.2);
-          }
-          float ridge=atan((height-cameraPosition.y)/distanceM);
-          float cover=smoothstep(ridge+.0012,ridge-.0012,elevation);
-          vec3 rock=mix(vec3(.34,.45,.45),vec3(.62,.7,.74),k*.5);
-          rock*=1.+.12*dot(dir,normalize(uSun.xz))+.06*(noise(vec2(atan(dir.y,dir.x)*90.,elevation*70.))-.5);
-          rock=mix(rock,vec3(.86,.88,.9),smoothstep(1500.,2300.,height)*smoothstep(ridge-.012,ridge-.002,elevation)*k*.5);
-          // Each range dissolves into the valley haze below its crest.
-          vec3 haze=mix(horizon,col,.35);
-          rock=mix(rock,haze,mix(.25,.6,k*.5)+.35*smoothstep(0.,.07,ridge-elevation));
-          col=mix(col,rock,cover);
-        }
         gl_FragColor=vec4(col,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`
   }));
-  sky.name = 'painted_sky'; sky.frustumCulled = false;
+  sky.name = 'painted_sky'; sky.frustumCulled = false; sky.renderOrder = -1000;
   return sky;
 }
 

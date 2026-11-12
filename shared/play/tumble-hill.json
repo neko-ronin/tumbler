@@ -1,205 +1,315 @@
 {
- "version": 1,
- "id": "tumble-hill",
- "label": "Tumble Hill",
- "about": "A named place: the west-facing hillside below the northern snowfield, snow to bare granite to a long meadow, about 280 m of fall line with no trees in it. Its props are core-owned because the place has a name (AGENTS.md); they are toys for the reaction table, not plantings, and nothing about them is persisted. Positions were read off the published terrain on 2026-10-31 along the steepest descent from the top; the top is the level ledge above the steep snow, where he can stand.",
- "top_xy_m": [
-  -813.5,
-  2032.9
- ],
- "facing_deg": 125,
- "props": [
-  {
-   "id": "snow_pile-1",
-   "kind": "snow_pile",
-   "xy_m": [
-    -820.6,
-    2050.8
-   ]
-  },
-  {
-   "id": "snow_pile-2",
-   "kind": "snow_pile",
-   "xy_m": [
-    -833.8,
-    2045.5
-   ]
-  },
-  {
-   "id": "snow_pile-3",
-   "kind": "snow_pile",
-   "xy_m": [
-    -840,
-    2062.3
-   ]
-  },
-  {
-   "id": "hanging_bell-4",
-   "kind": "hanging_bell",
-   "xy_m": [
-    -858.7,
-    2064.3
-   ]
-  },
-  {
-   "id": "straw_target-5",
-   "kind": "straw_target",
-   "xy_m": [
-    -860.1,
-    2081.9
-   ]
-  },
-  {
-   "id": "scarecrow-6",
-   "kind": "scarecrow",
-   "xy_m": [
-    -876.2,
-    2080
-   ]
-  },
-  {
-   "id": "tall_grass-7",
-   "kind": "tall_grass",
-   "xy_m": [
-    -888.5,
-    2098.2
-   ]
-  },
-  {
-   "id": "tall_grass-8",
-   "kind": "tall_grass",
-   "xy_m": [
-    -895.5,
-    2094.3
-   ]
-  },
-  {
-   "id": "dandelion-9",
-   "kind": "dandelion",
-   "xy_m": [
-    -898,
-    2108.1
-   ]
-  },
-  {
-   "id": "fern-10",
-   "kind": "fern",
-   "xy_m": [
-    -910,
-    2097.5
-   ]
-  },
-  {
-   "id": "tall_grass-11",
-   "kind": "tall_grass",
-   "xy_m": [
-    -915.8,
-    2107.2
-   ]
-  },
-  {
-   "id": "melon-12",
-   "kind": "melon",
-   "xy_m": [
-    -926.2,
-    2098.3
-   ]
-  },
-  {
-   "id": "mushroom-13",
-   "kind": "mushroom",
-   "xy_m": [
-    -930.8,
-    2114.8
-   ]
-  },
-  {
-   "id": "tall_grass-14",
-   "kind": "tall_grass",
-   "xy_m": [
-    -940,
-    2108.2
-   ]
-  },
-  {
-   "id": "fern-15",
-   "kind": "fern",
-   "xy_m": [
-    -947.4,
-    2120
-   ]
-  },
-  {
-   "id": "dandelion-16",
-   "kind": "dandelion",
-   "xy_m": [
-    -955.4,
-    2104.1
-   ]
-  },
-  {
-   "id": "tall_grass-17",
-   "kind": "tall_grass",
-   "xy_m": [
-    -964.1,
-    2113.6
-   ]
-  },
-  {
-   "id": "melon-18",
-   "kind": "melon",
-   "xy_m": [
-    -970.6,
-    2104.6
-   ]
-  },
-  {
-   "id": "pine_cone-19",
-   "kind": "pine_cone",
-   "xy_m": [
-    -981.4,
-    2114.5
-   ]
-  },
-  {
-   "id": "pine_cone-20",
-   "kind": "pine_cone",
-   "xy_m": [
-    -985.5,
-    2114.3
-   ]
-  },
-  {
-   "id": "mushroom-21",
-   "kind": "mushroom",
-   "xy_m": [
-    -990.4,
-    2100.6
-   ]
-  },
-  {
-   "id": "dandelion-22",
-   "kind": "dandelion",
-   "xy_m": [
-    -999,
-    2105.6
-   ]
-  },
-  {
-   "id": "fern-23",
-   "kind": "fern",
-   "xy_m": [
-    -1008,
-    2095.8
-   ]
-  },
-  {
-   "id": "tall_grass-24",
-   "kind": "tall_grass",
-   "xy_m": [
-    -1013.5,
-    2109.9
-   ]
-  }
- ]
+  "version": 1,
+  "id": "tumble-hill",
+  "label": "Tumble Hill",
+  "about": "A named place: the open south-west-facing apron below the north wall, about 500 m from the tree village: a level ledge at 150 m, then about 260 m of fall line at a mean grade near 0.38 and never steeper than 0.54, down to the meadow. Re-surveyed on 2026-11-07 for the grown valley, whose walls are too steep and whose high ground is snow from top to bottom; the old site became a cliff. The props keep their places along and across the fall line; the three snow piles are pine cones, since no snow lies this low in late spring. Its props are core-owned because the place has a name (AGENTS.md); they are toys for the reaction table, not plantings, and nothing about them is persisted. The placement keeps trees off `fall_line_xy_m`.",
+  "top_xy_m": [
+    -928.0,
+    976.0
+  ],
+  "facing_deg": 212,
+  "props": [
+    {
+      "id": "pine_cone-3",
+      "kind": "pine_cone",
+      "xy_m": [
+        -919.0,
+        970.4
+      ]
+    },
+    {
+      "id": "pine_cone-4",
+      "kind": "pine_cone",
+      "xy_m": [
+        -929.1,
+        976.7
+      ]
+    },
+    {
+      "id": "pine_cone-5",
+      "kind": "pine_cone",
+      "xy_m": [
+        -920.5,
+        971.3
+      ]
+    },
+    {
+      "id": "hanging_bell-4",
+      "kind": "hanging_bell",
+      "xy_m": [
+        -928.2,
+        976.1
+      ]
+    },
+    {
+      "id": "straw_target-5",
+      "kind": "straw_target",
+      "xy_m": [
+        -916.6,
+        968.9
+      ]
+    },
+    {
+      "id": "scarecrow-6",
+      "kind": "scarecrow",
+      "xy_m": [
+        -925.8,
+        974.6
+      ]
+    },
+    {
+      "id": "tall_grass-7",
+      "kind": "tall_grass",
+      "xy_m": [
+        -919.1,
+        970.5
+      ]
+    },
+    {
+      "id": "tall_grass-8",
+      "kind": "tall_grass",
+      "xy_m": [
+        -925.2,
+        974.3
+      ]
+    },
+    {
+      "id": "dandelion-9",
+      "kind": "dandelion",
+      "xy_m": [
+        -916.8,
+        969.1
+      ]
+    },
+    {
+      "id": "fern-10",
+      "kind": "fern",
+      "xy_m": [
+        -930.1,
+        977.3
+      ]
+    },
+    {
+      "id": "tall_grass-11",
+      "kind": "tall_grass",
+      "xy_m": [
+        -926.1,
+        974.8
+      ]
+    },
+    {
+      "id": "melon-12",
+      "kind": "melon",
+      "xy_m": [
+        -937.4,
+        981.8
+      ]
+    },
+    {
+      "id": "mushroom-13",
+      "kind": "mushroom",
+      "xy_m": [
+        -928.2,
+        976.1
+      ]
+    },
+    {
+      "id": "tall_grass-14",
+      "kind": "tall_grass",
+      "xy_m": [
+        -937.2,
+        981.7
+      ]
+    },
+    {
+      "id": "fern-15",
+      "kind": "fern",
+      "xy_m": [
+        -932.6,
+        978.9
+      ]
+    },
+    {
+      "id": "dandelion-16",
+      "kind": "dandelion",
+      "xy_m": [
+        -947.6,
+        988.2
+      ]
+    },
+    {
+      "id": "tall_grass-17",
+      "kind": "tall_grass",
+      "xy_m": [
+        -945.2,
+        986.7
+      ]
+    },
+    {
+      "id": "melon-18",
+      "kind": "melon",
+      "xy_m": [
+        -954.7,
+        992.6
+      ]
+    },
+    {
+      "id": "pine_cone-19",
+      "kind": "pine_cone",
+      "xy_m": [
+        -953.0,
+        991.5
+      ]
+    },
+    {
+      "id": "pine_cone-20",
+      "kind": "pine_cone",
+      "xy_m": [
+        -955.2,
+        992.9
+      ]
+    },
+    {
+      "id": "mushroom-21",
+      "kind": "mushroom",
+      "xy_m": [
+        -967.1,
+        1000.3
+      ]
+    },
+    {
+      "id": "dandelion-22",
+      "kind": "dandelion",
+      "xy_m": [
+        -967.8,
+        1000.7
+      ]
+    },
+    {
+      "id": "fern-23",
+      "kind": "fern",
+      "xy_m": [
+        -979.0,
+        1007.7
+      ]
+    },
+    {
+      "id": "tall_grass-24",
+      "kind": "tall_grass",
+      "xy_m": [
+        -971.9,
+        1003.2
+      ]
+    }
+  ],
+  "fall_line_xy_m": [
+    [
+      -928.0,
+      976.0
+    ],
+    [
+      -933.3,
+      967.5
+    ],
+    [
+      -941.4,
+      961.6
+    ],
+    [
+      -950.9,
+      958.6
+    ],
+    [
+      -960.8,
+      957.0
+    ],
+    [
+      -970.7,
+      956.2
+    ],
+    [
+      -980.7,
+      956.0
+    ],
+    [
+      -990.7,
+      956.3
+    ],
+    [
+      -1000.7,
+      957.0
+    ],
+    [
+      -1010.6,
+      958.4
+    ],
+    [
+      -1020.4,
+      960.2
+    ],
+    [
+      -1030.2,
+      962.3
+    ],
+    [
+      -1039.9,
+      964.9
+    ],
+    [
+      -1049.4,
+      967.8
+    ],
+    [
+      -1058.9,
+      970.9
+    ],
+    [
+      -1068.3,
+      974.3
+    ],
+    [
+      -1077.7,
+      977.8
+    ],
+    [
+      -1087.0,
+      981.6
+    ],
+    [
+      -1096.3,
+      985.3
+    ],
+    [
+      -1105.7,
+      988.5
+    ],
+    [
+      -1115.4,
+      990.9
+    ],
+    [
+      -1125.4,
+      991.3
+    ],
+    [
+      -1131.9,
+      983.7
+    ],
+    [
+      -1140.6,
+      978.6
+    ],
+    [
+      -1141.0,
+      968.7
+    ],
+    [
+      -1150.8,
+      970.9
+    ],
+    [
+      -1148.3,
+      961.2
+    ]
+  ]
 }

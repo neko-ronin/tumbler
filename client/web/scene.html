@@ -31,7 +31,8 @@
     nav { position: absolute; bottom: 30px; left: 28px; padding: 7px; display: flex; gap: 5px; }
     button { border: 0; border-radius: 12px; background: transparent; color: #64745c; font: inherit; font-size: 12px; padding: 12px 17px; cursor: pointer; transition: background .15s; }
     nav button { white-space:nowrap; flex-shrink:0; }
-    nav#cats { bottom: 92px; }
+    nav[aria-label="Places to pause"] { flex-wrap:wrap; max-width:calc(100vw - 340px); }
+    nav#cats { bottom:auto; top:112px; flex-wrap:wrap; max-width:calc(100vw - 420px); }
     button[aria-pressed="true"] { color: #fffbed; background: #617555; }
     button:hover { background: #e4e8d4; color: #34483b; }
     button[aria-pressed="true"]:hover { background: #52684a; color: #fffbed; }
@@ -106,6 +107,92 @@
     #focus{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:var(--f,0);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
       -webkit-mask-image:radial-gradient(circle at var(--x,50%) var(--y,60%),transparent 0 var(--r,40px),#000 calc(var(--r,40px) + 16vmin));mask-image:radial-gradient(circle at var(--x,50%) var(--y,60%),transparent 0 var(--r,40px),#000 calc(var(--r,40px) + 16vmin))}
     #focus[hidden]{display:none}
+
+    /* ---- Development and player interfaces. The player sees only .player-ui; the panels above are development tools. */
+    body[data-ui-mode="player"] :is(header.panel,.lighting,.activities,.weather,nav,details.panel,.flight-guide,#help,.tumble-label,#course-retry,#flight-readout) { display:none !important; }
+    body:not([data-ui-mode="player"]) .player-ui { display:none; }
+    .ui-switch { position:fixed; z-index:60; top:8px; right:50%; transform:translateX(50%); padding:4px 10px; border-radius:8px; font:11px/1.4 ui-monospace,monospace; background:#26291fcc; color:#e9ecdd; }
+    .ui-switch:hover { background:#26291f; color:#fff; }
+    body[data-ui-mode="player"] .ui-switch { opacity:.45; } body[data-ui-mode="player"] .ui-switch:hover { opacity:1; }
+    /* A printed trail map: topo inks, not interface chrome. */
+    .player-ui { --paper:#e9ecdd; --ink:#26291f; --ink-soft:#5b5f4e; --contour:#9a6b3c; --water:#3e7fa8; --trail:#c2302a; --wood:#bfd3a0;
+      --map-face:"Avenir Next Condensed","Avenir Next","Gill Sans","Trebuchet MS",sans-serif; font-family:var(--map-face); color:var(--ink); }
+    .key-card { position:fixed; z-index:6; left:20px; bottom:20px; max-width:min(400px,calc(100vw - 40px)); padding:12px 14px 10px; background:#e9ecddeb; border:1.5px solid var(--ink);
+      box-shadow:3px 3px 0 #26291f22; }
+    .key-card h3 { margin:0 0 6px; font:600 15px/1.2 var(--map-face); letter-spacing:.02em; }
+    .key-card .control-head { display:none; }
+    .key-card.folded { padding:8px 12px; } .key-card.folded h3 { display:inline; margin:0 12px 0 0; font-size:14px; }
+    .card-folded { display:inline-flex; align-items:center; gap:8px; font:14px var(--map-face); }
+    .arrival .notice { display:block; font:600 18px/1.3 var(--map-face); padding:8px 14px; background:var(--paper); border:1.5px solid var(--ink); }
+    .legend { display:grid; gap:3px; }
+    .legend-caption { margin:0 0 2px; font:italic 13px/1.3 var(--map-face); color:var(--ink-soft); }
+    .control-head, .control-row { display:grid; grid-template-columns:minmax(9.5em,1fr) auto auto; align-items:center; gap:4px 14px; }
+    .control-head { font:12px/1 var(--map-face); color:var(--ink-soft); padding-bottom:3px; border-bottom:1px solid #26291f40; margin-bottom:2px; }
+    .control-row { font:14px/1.25 var(--map-face); }
+    .control-keys, .control-pad { display:flex; gap:3px; flex-wrap:wrap; justify-content:flex-start; }
+    .glyph { display:inline-grid; place-items:center; min-width:1.7em; height:1.7em; padding:0 .4em; font:600 11.5px/1 var(--map-face); color:var(--ink); white-space:nowrap; }
+    .glyph-key { border:1.2px solid var(--ink); border-bottom-width:2.5px; border-radius:3px; background:#f6f7ee; }
+    .glyph-pad { border:1.2px solid var(--ink); border-radius:999px; background:#26291f; color:var(--paper); }
+    .glyph-pad.glyph-key { min-width:1.7em; padding:0; }
+    .glyph-none { font:italic 12px var(--map-face); color:var(--ink-soft); }
+    .arrival { position:fixed; z-index:6; left:50%; top:16vh; transform:translateX(-50%); text-align:center; pointer-events:none; opacity:0; color:var(--ink); text-shadow:0 0 12px #e9ecdd, 0 0 3px #e9ecdd; }
+    .arrival strong { display:block; font:600 clamp(26px,4vw,44px)/1.1 var(--map-face); letter-spacing:.08em; font-variant-caps:small-caps; }
+    .arrival span { display:block; margin-top:4px; font:italic 17px var(--map-face); color:var(--ink-soft); }
+    .arrival.shown { animation:arrive 3.6s ease forwards; }
+    @keyframes arrive { 0% { opacity:0; letter-spacing:.3em; } 18%,72% { opacity:1; letter-spacing:.08em; } 100% { opacity:0; } }
+    .trail-map { position:fixed; inset:0; z-index:40; display:grid; place-items:center; padding:clamp(10px,3vw,36px); background:#26291f73; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+    .sheet { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:0; width:min(1320px,100%); max-height:100%; background:var(--paper); border:2px solid var(--ink);
+      box-shadow:0 18px 50px #0006; }
+    .sheet::after { content:''; position:absolute; inset:0 auto 0 calc((100% - 330px) / 2); width:1px; background:linear-gradient(#0000,#26291f30 12%,#26291f30 88%,#0000); pointer-events:none; } /* the fold */
+    .map-frame { position:relative; overflow:hidden; border-right:2px solid var(--ink); }
+    .map-canvas { display:block; width:100%; height:auto; max-height:calc(100dvh - 90px); object-fit:contain; }
+    .markers { position:absolute; inset:0; }
+    .place { position:absolute; transform:translate(-7px,-7px); display:flex; align-items:center; gap:5px; padding:0; border-radius:0; background:none; color:var(--ink); font:600 13.5px/1 var(--map-face); letter-spacing:.03em; text-shadow:0 0 3px var(--paper),0 0 3px var(--paper),0 0 6px var(--paper); }
+    .place:hover { background:none; color:var(--ink); }
+    .place-dot { width:14px; height:14px; border:2px solid var(--ink); border-radius:50%; background:var(--paper); flex-shrink:0; }
+    .place-water { color:var(--water); font-style:italic; font-weight:500; } .place-water .place-dot { border-color:var(--water); }
+    .place-snow .place-dot { background:#fff; } .place-launch .place-dot { border-color:var(--trail); }
+    .place[aria-current="true"] .place-dot { background:var(--trail); border-color:var(--trail); box-shadow:0 0 0 4px #c2302a40; }
+    .place[aria-current="true"] .place-name { text-decoration:underline 2px var(--trail); text-underline-offset:3px; }
+    .place:focus-visible { outline:2px solid var(--trail); outline-offset:4px; }
+    .launch-mark { position:absolute; width:0; height:0; transform:translate(-8px,-26px); border-left:8px solid transparent; border-right:8px solid transparent; border-top:12px solid var(--trail); pointer-events:none; }
+    .you-are-here { position:absolute; pointer-events:none; }
+    .here-ring { position:absolute; left:-9px; top:-9px; width:18px; height:18px; border-radius:50%; border:3px solid var(--trail); background:#fff; }
+    .here-label { position:absolute; left:14px; top:-20px; font:italic 600 12.5px var(--map-face); color:var(--trail); white-space:nowrap; text-shadow:0 0 3px var(--paper),0 0 3px var(--paper); }
+    .cartouche { position:absolute; left:16px; top:14px; padding:9px 14px 8px; background:var(--paper); border:1.5px solid var(--ink); }
+    .cartouche h2 { margin:0; font:600 24px/1 var(--map-face); letter-spacing:.06em; font-variant-caps:small-caps; }
+    .cartouche-time { margin:4px 0 0; font:italic 14px var(--map-face); color:var(--ink-soft); }
+    .scale-bar { position:absolute; left:16px; bottom:14px; display:flex; align-items:center; gap:8px; font:600 12px var(--map-face); text-shadow:0 0 3px var(--paper); }
+    .scale-rule { display:block; height:6px; border:1.5px solid var(--ink); border-top:0; }
+    .north { position:absolute; right:18px; top:16px; width:30px; height:44px; display:grid; justify-items:center; font:700 14px var(--map-face); }
+    .north::before { content:''; width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-bottom:24px solid var(--ink); }
+    .map-side { display:flex; flex-direction:column; gap:14px; padding:20px 20px 18px; overflow:auto; max-height:calc(100dvh - 90px); }
+    .side-name { margin:0; font:600 26px/1.1 var(--map-face); letter-spacing:.02em; }
+    .side-water { color:var(--water); font-style:italic; }
+    .side-about { margin:0; font:15px/1.5 var(--map-face); color:var(--ink-soft); }
+    .actions { display:grid; gap:6px; }
+    .action { text-align:left; border-radius:0; border:1.5px solid var(--ink); background:transparent; color:var(--ink); font:600 14px/1.3 var(--map-face); padding:9px 12px; }
+    .action:hover { background:#26291f12; color:var(--ink); }
+    .action-primary { background:var(--ink); color:var(--paper); } .action-primary:hover { background:#3a3e30; color:var(--paper); }
+    .action:disabled { opacity:.5; cursor:default; font-weight:500; font-style:italic; }
+    .controls-sheet { width:min(1180px,100%); max-height:100%; overflow:auto; padding:24px 28px; background:var(--paper); border:2px solid var(--ink); box-shadow:0 18px 50px #0006; }
+    .controls-title { margin:0 0 14px; font:600 26px/1 var(--map-face); letter-spacing:.06em; font-variant-caps:small-caps; }
+    .controls-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px 28px; margin-bottom:20px; }
+    .controls-group h3 { margin:0 0 6px; font:600 17px var(--map-face); }
+    @media (max-width:900px) { .sheet { grid-template-columns:1fr; overflow:auto; } .sheet::after { display:none; } .map-frame { border-right:0; border-bottom:2px solid var(--ink); } .map-side { max-height:none; } }
+    @media (prefers-reduced-motion:reduce) { .arrival.shown { animation:arrive-still 3.6s steps(1,end) forwards; } @keyframes arrive-still { 0%,80% { opacity:1; } 100% { opacity:0; } } .trail-map { backdrop-filter:none; } }
+
+    #organoid-scene[hidden] { display:none }
+    #organoid-scene { position:fixed; inset:0; z-index:80; color:#f4eee8; background:radial-gradient(ellipse at 50% 44%,transparent 50%,#08080d40 100%); }
+    #organoid-scene::before, #organoid-scene::after { content:""; position:absolute; inset-inline:0; height:clamp(28px,8vh,84px); background:#09090c; }
+    #organoid-scene::before { top:0 }
+    #organoid-scene::after { bottom:0 }
+    .organoid-caption { position:absolute; z-index:1; inset-inline:1rem; bottom:clamp(54px,12vh,125px); text-align:center; pointer-events:none; }
+    .organoid-caption p { margin:0 auto; max-width:42rem; font-size:clamp(15px,2.3vw,23px); line-height:1.4; }
+    .organoid-caption [data-words]:not(:empty) { display:table; background:#08080dde; border-radius:4px; padding:.36em .72em; text-wrap:balance; }
+    .organoid-caption [data-speaker] { display:block; margin-bottom:.38em; font-size:.82rem; letter-spacing:.08em; text-shadow:0 1px 5px #000,0 1px 3px #000; }
+    #organoid-scene button { position:absolute; z-index:1; top:12px; right:14px; color:inherit; background:#16171d; border:1px solid #736f75; border-radius:5px; min-height:38px; padding:.45em .7em; }
+    body[data-organoid-scene="true"] :is(.panel,.help,.key-card,.arrival,.tumble-label,.ui-switch,#focus,.para-guide,.course-retry) { visibility:hidden; }
 </style>
 </head>
 <body data-loading="loading" data-ui="hidden">
@@ -179,9 +266,9 @@
   <main id="stage"><canvas id="canvas" tabindex="0" aria-label="Tumbler countryside. Drag to orbit, right-drag to pan, scroll to approach."></canvas></main>
   <header class="panel"><span class="sunmark" aria-hidden="true">☼</span><div><h1>Tumbler <span id="version" class="version"></span></h1><div id="status" role="status">Opening the countryside…</div></div></header>
   <div class="panel lighting"><label for="light">The light</label><select id="light"><option value="golden">Golden hour</option><option value="day">Clear morning</option><option value="dusk">Evening glow</option></select></div>
-  <div class="panel activities"><label for="activity">Explore</label><select id="activity"><option value="orbit">Look around</option><option value="walk">Walk the meadow</option><option value="paraglider">Paragliding</option><option value="parakite">Parakiting</option><option value="paramotor">Paramotoring</option><option value="ski">Skiing</option><option value="bike">Mountain biking</option><option value="gondola">Gondola from the village</option></select><select id="launch-site" aria-label="Start from"><option value="0">Granite Ridge</option><option value="1">East Bowl</option></select><button id="launch">Launch ↗</button><button id="sound" aria-pressed="true">Sound on</button><button id="cat-size" aria-pressed="false" title="C">Cat: full size</button></div>
+  <div class="panel activities"><label for="activity">Explore</label><select id="activity"><option value="orbit">Look around - orbit</option><option value="fly">Look around - flying</option><option value="walk">Walk the meadow</option><option value="paraglider">Paragliding</option><option value="parakite">Parakiting</option><option value="paramotor">Paramotoring</option><option value="ski">Skiing</option><option value="bike">Mountain biking</option><option value="gondola">Gondola from the village</option></select><select id="launch-site" aria-label="Start from"><option value="0">North Wall</option></select><button id="launch">Launch ↗</button><button id="sound" aria-pressed="true">Sound on</button><button id="cat-size" aria-pressed="false" title="C">Cat: full size</button></div>
   <div class="panel weather"><label for="weather">Air</label><select id="weather" aria-label="Simulated weather"><option value="soaring">Thermal day</option></select></div>
-  <button id="course-retry" class="course-retry" hidden>Fly Gondola Weave again ↗</button>
+  <button id="course-retry" class="course-retry" hidden>Fly the route again ↗</button>
   <output id="para-guide" class="para-guide" aria-live="off" hidden></output>
   <output class="panel" id="flight-readout" aria-live="off"></output>
   <div class="panel gondola" id="gondola-panel" role="status" hidden><span data-gondola-text></span><button data-gondola-action hidden></button><button data-gondola-fast hidden title="T">Fast travel ⇥ (T)</button></div>
@@ -191,6 +278,12 @@
   <details class="panel flight-guide"><summary>Flight moves · B / Shift</summary><p><label for="flight-challenge">Flight goal </label><select id="flight-challenge"><option value="">Free flight</option></select></p><p>Hold B (Shift) for more roll authority. Alternate left/right stick for linked wingovers; hold a side for a descending spiral. Release B and centre the stick to recover. Sudden control changes can swing the pilot under the wing; ease the controls to let it settle.</p><p>Parakite: forward / W raises both handles to dive; back / S pulls them to flare. Centre returns to best glide. Steering combines weight shift and outside-handle release; at full release, steering uses weight shift alone.</p><p>Paraglider and motor wing: forward / W applies the speedbar; back / S brakes. Steering assists weight shift with inside brake. Build speed, then pull progressively to swoop back up; height comes from that speed. Motor power uses LB/RB or R/F and takes time to spool.</p><p>LT / RT pull independent handles. Right stick looks; Y / V changes view. After landing, press X / E to unhook and walk. X / E hooks back in; release, then A / Space starts assisted wing inflation and a takeoff run. Keep clear ground ahead. A flat run may need headwind. Use clear descending ground or a ridge start if you cannot gain enough airspeed. X / E cancels preparation and unhooks.</p><p>On foot, A / Space jumps: stand still for a celebration, heel click or star; move for a skip. Shift toggles between walking and running; a controller's left stick ramps from a walk up to a full run on its own. V changes between first person and chase view. R3 / Ctrl slides while moving. E / X deliberately grabs a nearby tree; moving into one never grabs it automatically. A / Space pushes off a trunk, or wall-jumps on a fresh airborne contact. Steer the push with the stick. Y / F draws or sheathes the katana; run with it drawn to carry it two-handed behind you. Click, Q or B slashes, on the ground or in the air. Press again during the cut to choose a fresh cut from the current blade position. Hold RT / R to charge falling thunder, then release to cleave. Menu changes weather.</p></details>
   <details class="panel"><summary>Field notes</summary><pre id="stamp">Preparing the scene…</pre><div class="quality-target"><label for="render-target">Laptop render target <output id="render-target-label" for="render-target">1440 × 900</output></label><input id="render-target" type="range" min="0" max="11" step="1" value="8" list="render-targets" aria-label="Laptop render target"><datalist id="render-targets"><option value="0" label="640×400"></option><option value="1" label="800×500"></option><option value="2" label="960×600"></option><option value="3" label="1024×640"></option><option value="4" label="1152×720"></option><option value="5" label="1280×720"></option><option value="6" label="1280×800"></option><option value="7" label="1366×768"></option><option value="8" label="1440×900"></option><option value="9" label="1680×1050"></option><option value="10" label="1920×1200"></option><option value="11" label="2560×1600"></option></datalist><small>Sets the maximum render size; adaptive resolution can lower it during demanding scenes.</small></div><div class="quality"><label for="motion">Flight effects</label><select id="motion"><option value="1">Full</option><option value=".35">Subtle</option><option value="0">Reduced motion</option></select></div><div class="quality"><label for="course-guide">Course guide</label><input id="course-guide" type="checkbox" checked></div><div class="quality"><label for="pilot-posture">Pilot posture</label><select id="pilot-posture"><option value="steady" selected>Steadier</option><option value="physical">Follow suspension</option></select></div><div class="quality"><label for="adaptive">Adaptive resolution</label><input id="adaptive" type="checkbox" checked></div><div class="quality"><label for="wind-water-audio">Wind &amp; river ambience</label><input id="wind-water-audio" type="checkbox" checked title="Background wind and water only"></div><div class="quality"><label for="haptics">Controller vibration</label><input id="haptics" type="checkbox" checked></div><div class="quality"><label for="visibility-spotlight">Transparency spotlight</label><input id="visibility-spotlight" type="checkbox" title="Clear scenery and climbing foliage around Ronin"></div><p><button id="save-view">Save view</button></p><p>Read-only core world · <a href="./">Open the map</a></p></details>
   </div>
+  <section id="organoid-scene" aria-label="Conversation" hidden>
+    <div class="organoid-caption" aria-live="polite" aria-atomic="true">
+      <span data-speaker></span><p data-words></p>
+    </div>
+    <button type="button" title="Escape or B">Skip conversation</button>
+  </section>
   <script type="module">
     document.getElementById('loading-retry').addEventListener('click',()=>location.reload());
     try { const {main}=await import(new URL('src3d/main.js',document.baseURI));await main(); }

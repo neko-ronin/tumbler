@@ -10,12 +10,20 @@
       "sha256": "20daa51e7c94ff7703293e590e5b28704a8e88dc9bff0321d4da71880c002306"
     },
     {
+      "path": "client/web/assets/audio/organoid/cues.json",
+      "sha256": "5f01f79447e105ea8ce9286642c28eebae683c00cf371a09ce8d7ba68bc2c41d"
+    },
+    {
+      "path": "client/web/assets/audio/organoid/dialogue.mp3",
+      "sha256": "772aac21bc9ac0547b9aa6d0aeff2e38ac04be541b324bfce0d66ea4e9dc47f6"
+    },
+    {
       "path": "client/web/scene.html",
-      "sha256": "7aaf5491aff930d33bcc63b664330846e20ac13df2ee1a301f0595fd7f6aaf61"
+      "sha256": "8988b754d40f5412e31d5e656ed644ce419a78d8507e6dceae3964db52ffb10c"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
-      "sha256": "36218f6a32346a9aab5909f53475dddb379cc033bfb424f62812e6e111a839bc"
+      "sha256": "4c948d2721ecb34775870c014967eb3a964d1dd9b91541faeadb27e90bdf362e"
     },
     {
       "path": "client/web/src3d/air-cues.js",
@@ -23,7 +31,7 @@
     },
     {
       "path": "client/web/src3d/asset-bytes.js",
-      "sha256": "2408f01f3932177f8e0c161a3b54eacfe26029c2e19ab00e2eea5d98526834d3"
+      "sha256": "d912cd17e96caf29e58373daeef55205cc39c4eb9f53208629c135543dff0783"
     },
     {
       "path": "client/web/src3d/atmosphere-sky.js",
@@ -31,7 +39,7 @@
     },
     {
       "path": "client/web/src3d/audio.js",
-      "sha256": "614a24d1ea4c6ca01e51f7c94cb6e9895ec6b02bab3061ef81231a0f6a8368cd"
+      "sha256": "7b7321bbdb70a552b998cf63a2305be72dc353fe6d85b5ac203d6770f257164c"
     },
     {
       "path": "client/web/src3d/canopy-light.js",
@@ -47,7 +55,7 @@
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "1a5e0a28b9ed6d7c2e8c660a060c17058c990b7771d107660af243569aee78f3"
+      "sha256": "9343daf67113e8140231bf3c731cfd7f17c59060fd4ced9017fa07d55b57244c"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -79,7 +87,7 @@
     },
     {
       "path": "client/web/src3d/details.js",
-      "sha256": "57b488223606c775ff011f829395cbcc402e506da6fa2a7c27a17414f838df2c"
+      "sha256": "1edb7cf8c8ed3467d0be27428fce589816d7a4e53efb30afb5e0ce630270675b"
     },
     {
       "path": "client/web/src3d/ecology.js",
@@ -131,11 +139,11 @@
     },
     {
       "path": "client/web/src3d/forest.js",
-      "sha256": "fe9d98587991a085ddf5cdb3e205220c8a863888362a06aed352298656b1d7b8"
+      "sha256": "c65ad1907f181b3aa5f231723dd4e59878b9c3756fd778b419d77f3c42db96c2"
     },
     {
       "path": "client/web/src3d/frame-pacing.js",
-      "sha256": "41d71ef1fa9a78d0064dbac0d39f9abc8ce9cfd137ee2551a251212820909dbf"
+      "sha256": "bbfbc56696cca258438c1417642c2737d78346028ab2fc8df0253d56b345be5f"
     },
     {
       "path": "client/web/src3d/geology.js",
@@ -151,11 +159,11 @@
     },
     {
       "path": "client/web/src3d/granite-shading.js",
-      "sha256": "41b3462eef240fbebdde264f1d53ac3fa3180f183b4c028b3fab03939815dc5a"
+      "sha256": "652930d47fa7a3c21cc3a81d874abeaba801550eee69f74ae1773097ee470fd5"
     },
     {
       "path": "client/web/src3d/grass-canopy.js",
-      "sha256": "61cdfedd91782b85d81df06443112cb6b38f585f59f2e2ff708d6267848178b6"
+      "sha256": "8e3afcbf8706756c4c6f47f116164d05713c95c1b51310bad18c4b87dd652e9a"
     },
     {
       "path": "client/web/src3d/groundcover.js",
@@ -171,7 +179,7 @@
     },
     {
       "path": "client/web/src3d/intro-gate.js",
-      "sha256": "4e47b2c3583f10c944405470df73b31f9ef5d998022b7cd0711189a329157de4"
+      "sha256": "c9dba85868a16ce5cc154894827537dead64a1dcddf49c3042bff2608e283a9a"
     },
     {
       "path": "client/web/src3d/katana-fx.js",
@@ -183,7 +191,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "36a68cc4fdadd957976f78be95ce869c874390309c53b4e34952596f0bebbcc7"
+      "sha256": "59724c45eeab70056f31dfaa726ff3c418e541a94c90face1cff6e1902ecd543"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -191,7 +199,19 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "6496562d24ab5631536a5a98ffc696e6d2d37b7d3d19819d02275943dd8dbbd3"
+      "sha256": "2a3bb0d2aa29ff5b7039391a152303e4103dc989fc8aff60d33f1bd8e9ee5140"
+    },
+    {
+      "path": "client/web/src3d/organoid-encounter.js",
+      "sha256": "95a056310882bb29384db6a8ac042b0edab6f29a226502215913ad2c05580240"
+    },
+    {
+      "path": "client/web/src3d/organoid-material.js",
+      "sha256": "e0300df9c97d20a5ff780613e7736d1c568d5a36ec022ec31d75ee3b02ca5810"
+    },
+    {
+      "path": "client/web/src3d/organoid-wake.js",
+      "sha256": "dd97c450aa4d8d5c5d7069702c001e33e775398d9d150c05589dfbccd65ff8b2"
     },
     {
       "path": "client/web/src3d/para-audio.js",
@@ -222,6 +242,10 @@
       "sha256": "5a430a06b90922202a24594809e442e5b17a14396b5155d66809689316531d21"
     },
     {
+      "path": "client/web/src3d/player-ui.js",
+      "sha256": "613f3ad061b06a368371cbe99f58df50c2b4272e2ba125b7fadf86ae237a9f22"
+    },
+    {
       "path": "client/web/src3d/player-visibility.js",
       "sha256": "8f1c90777b334b3991bad22d83f46389ef2905bb0a61658fb5bef54c5b6d8774"
     },
@@ -231,11 +255,11 @@
     },
     {
       "path": "client/web/src3d/redwood-rendering.js",
-      "sha256": "c2e41e84072311b40842bc6d449f0967478a6b3eb12c794f3e358c48eba63aa6"
+      "sha256": "ab49228a85eb180ed716fba6635c43b3de69a8e9a86092934b75c28b58af39d6"
     },
     {
       "path": "client/web/src3d/river-granite.js",
-      "sha256": "1781b70ccaea8bcb247a1e64bc86323416cc4367d0ec9418a2da443625d52dd8"
+      "sha256": "8b30d2fe974eb65e54a18fc742b50f56f62ae8078d2ab6a1bdacc2e20a4bd456"
     },
     {
       "path": "client/web/src3d/rock-lod.js",
@@ -243,7 +267,11 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "7218d8222febd14db72cc1961643d9358c39e9e8c3c553c1f8fff482525a72d6"
+      "sha256": "c5e367f78806d5c5c32678c3a2c0dc62c2200640fcf1a9c6dd7844044711fc88"
+    },
+    {
+      "path": "client/web/src3d/sun-pcf.js",
+      "sha256": "a0e59c306afb99da2e48a526d0538fcfdf1f8f2ca5ceb998aa830de100d99b8e"
     },
     {
       "path": "client/web/src3d/sun-rays.js",
@@ -251,11 +279,11 @@
     },
     {
       "path": "client/web/src3d/terrain-lod.js",
-      "sha256": "2e51d2aaee343a764bcbe114b44906f53f1c5d7f92d7a66b4c520369b0e47e4e"
+      "sha256": "e46f7a129ed4c9178b8d552febc93c894ec27958f7afa0476cb7fad862ba488b"
     },
     {
       "path": "client/web/src3d/terrain.js",
-      "sha256": "4f4c86fc82f610b53493773619c3e7965caec0e420e3b2778196a855a2d8c1d4"
+      "sha256": "e9ef3aebb95d087fe8d45517bd6a38c705e6e73927fc638eba9684c48b3f7375"
     },
     {
       "path": "client/web/src3d/tree-atlas.js",
@@ -267,7 +295,7 @@
     },
     {
       "path": "client/web/src3d/tree-capture.js",
-      "sha256": "6e236802098e16b570257cbf9ef36b3e53c8314b14550c492a50e894928fa179"
+      "sha256": "cadf8c28b31baa13a6085e33ed5a4197d0767dccf9df0e4c400a8de760f4e207"
     },
     {
       "path": "client/web/src3d/tree-cards.js",
@@ -287,15 +315,15 @@
     },
     {
       "path": "client/web/src3d/tree-shadows.js",
-      "sha256": "47c22cac8faa217235608e98221e5d37d271f46b666518729034b4584a2d1d36"
+      "sha256": "cc00602bd4a3b7ee9d5e12f66cdc492a1d2b812124093a9ef3442aafe0a5f321"
     },
     {
       "path": "client/web/src3d/tree-slices.js",
-      "sha256": "d6cbfc45c32ab10610f9e0c721a24013aeb8eddb4178709093888f4b7162828b"
+      "sha256": "44119eb5e3dabdba65485347b7addd5117b1e7c6ce6e2d5b05c97fbaaab63082"
     },
     {
       "path": "client/web/src3d/tree-surface.js",
-      "sha256": "0173b8ca1b54bf238f5242085edf63944bd7c1812d4e00aa711115754d43fb2b"
+      "sha256": "bc9968b5fcb1864acd3dc66c4cd6fbdcbf5055b98570d75d95e557862fd6ecd6"
     },
     {
       "path": "client/web/src3d/tumble-body.js",
@@ -303,7 +331,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "85a6ab76f78499f23b085f6a340fc7b1146ddc18659bdb41ee15e7dd18cd7fa5"
+      "sha256": "5c109c8bf74b15e66b55577323a81aa99dbccd3300f6b7dc872ae5b75c839977"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -323,11 +351,11 @@
     },
     {
       "path": "client/web/vendor/three.core.min.js",
-      "sha256": "61ba0df005b05991361d040d8ff670e1aadfd0ce7aeebd1fdb0725957a8957de"
+      "sha256": "486b35224e7068dff435177ca2ab2a063e4a76a8b39a2a364d40efdad2fa702d"
     },
     {
       "path": "client/web/vendor/three.module.min.js",
-      "sha256": "e2b5ee6bccd38fd6d8a2428546b83c5f2426d84b152ef82be8055556e3b40eb6"
+      "sha256": "2ab8c759781e57244580c06006dafa8a5a36490d326c975d4cc220914f094c88"
     },
     {
       "path": "shared/activities/balance.js",
@@ -375,7 +403,7 @@
     },
     {
       "path": "shared/activities/flight.json",
-      "sha256": "0a30d7fb9b975eceeb15a7e53504b819e2999b17e881dbeac5f715cb4933ff5e"
+      "sha256": "07e495c65e018f1537d08b8497f5e46b1c94cd3b86e35aeb86ae2cfecc80393f"
     },
     {
       "path": "shared/activities/forest-spacing.js",
@@ -387,7 +415,7 @@
     },
     {
       "path": "shared/activities/gondola.json",
-      "sha256": "8c5ab32230f6dcea88908d43de4468cc3d5c8022e853ed0ca58a862a3f4b4be5"
+      "sha256": "3f44fac1795f8511b5beb0788a9f6204a10e30fec1a0102fa85f03eb0f80f148"
     },
     {
       "path": "shared/activities/moves.js",
@@ -399,7 +427,7 @@
     },
     {
       "path": "shared/activities/ride.json",
-      "sha256": "84782a0f2f90079aff94014836751ffdae4b6566a26ad194daa371eb4b81975d"
+      "sha256": "5bfe3d2456904e271f465c8c3d85048fb581a5cd2b9c43f01a4198e10bad5f75"
     },
     {
       "path": "shared/activities/river-surface.js",
@@ -411,7 +439,7 @@
     },
     {
       "path": "shared/activities/speedflying.json",
-      "sha256": "b5dfd15468ba95d11c4676303a135dae3c5cc2f27b435843870a1b7a4cb95d66"
+      "sha256": "1b3e32e2598d482d0f5637e666a1b90042e0cca87db33e562f09e29b281a33b8"
     },
     {
       "path": "shared/activities/swim.js",
@@ -419,7 +447,7 @@
     },
     {
       "path": "shared/activities/walk.js",
-      "sha256": "bea98cd80e09243025139a73c29cfe80f50732c9935bada94eefc41bd7d3cd44"
+      "sha256": "bcb2e2900106fcefd48ebfe15132d94574cd44229172d3f2bcc208265c3f9c28"
     },
     {
       "path": "shared/characters/appearance.js",
@@ -435,7 +463,7 @@
     },
     {
       "path": "shared/ecology/habitats.json",
-      "sha256": "201d9196ceec39ec242ef265c4e8495369c295754ba30dc53697e1cf9d2301fa"
+      "sha256": "ffdc5061566134f172c3f81c7e331f1b3d94fba97408720f3243361098a2978a"
     },
     {
       "path": "shared/ecology/meadow.json",
@@ -518,12 +546,12 @@
       "sha256": "3391c710bbb15e246821cf35b1a3b8cae9499855824b27a2c06a7f01f90478d4"
     },
     {
-      "path": "shared/geometry/flight/bee.glb",
-      "sha256": "9150e6d80c66f399a367d1ae7d07b2c58ec83c35ea3b48a9c8bd8c3dca707c9e"
+      "path": "shared/geometry/flight/bee.meshopt.glb",
+      "sha256": "881146ffda77df075c44fa81a277d53c670620b9049bec3ecce7f216cac57a6d"
     },
     {
-      "path": "shared/geometry/flight/butterfly.glb",
-      "sha256": "a4f02c1f08ad5e24bfc42dd4f0568e8891a63a8f3e6e1702be7136de140d5c95"
+      "path": "shared/geometry/flight/butterfly.meshopt.glb",
+      "sha256": "32c4a6e7044b1f8bd40c6c15f795e621237a323366ff0b39169102092631fef7"
     },
     {
       "path": "shared/geometry/flight/contacts.js",
@@ -542,108 +570,16 @@
       "sha256": "243332b1fdddf05c744bbdca2698a31624580ea256d4c9014e2c316f84af6c24"
     },
     {
-      "path": "shared/geometry/granite/bedrock_-1_4.glb",
-      "sha256": "867eede2ee567b0b5eb4411eb036f77f99e5e5fe042aa781e8f5d1cc6b4f0c42"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-2_3.meshopt.glb",
-      "sha256": "4271b97fa73b085775f6c5e3863a0798c22fc9135dcfa0f31ce00ba22770d1be"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-2_4.meshopt.glb",
-      "sha256": "151e9360f34d919132d0d6bbca83e2b5af567cd8424a0aafc7f98311cc0b80f8"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-4_5.glb",
-      "sha256": "b7108df9385715e22e71c28e08f7e6072eb37d2e08a1dd083b19c91535bf724f"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-5_4.meshopt.glb",
-      "sha256": "2a4e4bbdf070be9cb136d185c82330c2ac5e8bfd002a5fef4318b0e2ca61b400"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-5_5.meshopt.glb",
-      "sha256": "431ba1df108c75cd6f905dc65ab7e051d98992c48f9a91bad3688de9fda1a0fe"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-5_6.meshopt.glb",
-      "sha256": "b9d39a49a11e96af1268b5a508c175e56accc642651b2714d13fb257b4509b94"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-6_5.meshopt.glb",
-      "sha256": "cde3f25a80ffe3bc2920a9394a40944f4e09ff8e232dc5e423202b14e12a0555"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-6_6.meshopt.glb",
-      "sha256": "bb55a3386085dcbcc04f075537aa031eaeb1ee2a6e260e88bb361421a91f4a4c"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-7_5.meshopt.glb",
-      "sha256": "df9eae50c4188f37111fdbf03df995a809c6e50dbc78983f47841054839be726"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_-7_6.glb",
-      "sha256": "02dd66117ee0ca337c044b5f338342f66e23d7b981a017c2eae3caf8cc2c2a68"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_1_2.meshopt.glb",
-      "sha256": "319fc6fb9f29aa0b51e4c1f5e23e7e3dac8222a63b1a5e74abfde5a2cfddec0f"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_1_3.meshopt.glb",
-      "sha256": "e20ad8a33d35eacc49323d383d2214565546f5c18c0ca1fd8bec68c6ed9bed64"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_2_2.glb",
-      "sha256": "27dc4713e4a23ccdf9b3e14df942fea9f4a3b6d95b432c7864ad3221dc7a059f"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_2_3.glb",
-      "sha256": "35c7e36b130877022974ccc5f44ba91cf3cbc8957d6e1e3e202e11cfe568a1f8"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_3_4.meshopt.glb",
-      "sha256": "0b1d443e160218bebe55d0c5491ce0efb6fa435266e85cb4e4a06d614c9760e0"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_3_5.meshopt.glb",
-      "sha256": "a361311ef025591d66424613f4e9e6230d17554abb55a914d1fffe761a8ce4f8"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_3_6.glb",
-      "sha256": "53faeeb99d588b590abe2b17f58120d5852940dcbc2d4ee0d9bf751084c8159a"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_4_4.meshopt.glb",
-      "sha256": "e95c05661b37f56bfe3a76b2d929355e6a5e4404065e706900206ee561d46b24"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_4_5.meshopt.glb",
-      "sha256": "4f2e951087bf291ffc985977765dc0480fed080faa052401f0dc6e96b9e2ebcb"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_4_6.glb",
-      "sha256": "70ac85f727164a6539ee9283dff53445b7a245532f573a7ae20cf81bc35cbc6e"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_5_4.meshopt.glb",
-      "sha256": "dd3c3a160b394097e3d36fdb2e6f63f691b9892575e955425de19cfa2fed055f"
-    },
-    {
-      "path": "shared/geometry/granite/bedrock_5_5.meshopt.glb",
-      "sha256": "2cc741dd53e47ee0e20d91c90c288c5a0cfcf79a7f43b66a0970f94e571181a0"
-    },
-    {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "42daf0c6d83af00f04a24235503fea42d7f0ebb07df3b3109c1f1a0145c41cfe"
+      "sha256": "37d96b8ccf7fb2e3b60c192d05b6456cc1ba4ad5fa4f91c5d78d45e2140d3477"
     },
     {
       "path": "shared/geometry/granite/surface.js",
       "sha256": "37ca3aaa124a2d1eb5cd67cc1e49a306bdcd81642d20fd62ad017547f59b6c77"
     },
     {
-      "path": "shared/geometry/granite/terrain_patch.glb",
-      "sha256": "512c038fdc21c8859d27ac20f0c15a184a2a221ba0f1dfcb108aa1c04ed842ea"
+      "path": "shared/geometry/granite/terrain_patch.meshopt.glb",
+      "sha256": "3f0a9f39d0d34c3ee8bfea61e50bf92c76d197e23f4239969b9d15e7ca816dac"
     },
     {
       "path": "shared/geometry/homestead/homestead.meshopt.glb",
@@ -656,6 +592,22 @@
     {
       "path": "shared/geometry/mooring/mooring_mast.meshopt.glb",
       "sha256": "6b2436bb6b71622240ebcdb805fd4f23ddd31a6956870f40135d27ba1a9f7728"
+    },
+    {
+      "path": "shared/geometry/organoid/density-38.r8.gz",
+      "sha256": "9355673d1a6081624c2556bdc97c1f2b4d29f355109a6fce8dcc902bbe879e02"
+    },
+    {
+      "path": "shared/geometry/organoid/field-76.r8.gz",
+      "sha256": "31ba4218a1f34b61b38471f4f518ceeb068cc33735ba26e8d92582731ece5da7"
+    },
+    {
+      "path": "shared/geometry/organoid/material.json",
+      "sha256": "7d41ac6a48d57cf54a9f12dfc4492a5a5041104d0cf50f3d7377f756ed5c85a1"
+    },
+    {
+      "path": "shared/geometry/organoid/shell.glb",
+      "sha256": "de588840fc3988bf2225628fb730983060da446f59f8ad738c9a61df01ac2fd5"
     },
     {
       "path": "shared/geometry/redwood/giant_redwood.meshopt.glb",
@@ -675,7 +627,7 @@
     },
     {
       "path": "shared/geometry/river-granite/river_granite.glb",
-      "sha256": "310582335be0477ecf6942a53c215b3dd60ca12daa843f5c93dc392b9cb3c18b"
+      "sha256": "424b04735c3c1618c98b7e4ef705e08586964608814551ed203456896da99db6"
     },
     {
       "path": "shared/geometry/sports/bicycle.meshopt.glb",
@@ -799,11 +751,23 @@
     },
     {
       "path": "shared/npc/folk.json",
-      "sha256": "a52b3e8a135cc52610ec79fa78bd06465a1bbb41834b690ce2411326e1cc577b"
+      "sha256": "be5bc493b749aa98eeeae84aa92086f3316b9ee39ec5b6882e20ba8365944a94"
     },
     {
       "path": "shared/npc/mind.js",
       "sha256": "5f3ebd25214f223f5a3676145e1c98ee56d44051c6838f821a78327283225de3"
+    },
+    {
+      "path": "shared/npc/organoid.js",
+      "sha256": "1b2b969e14db1841b2333bbb5ab7ffc5049b3cc35dd1f490e45e8e72d00fa142"
+    },
+    {
+      "path": "shared/npc/organoid.json",
+      "sha256": "bc333f5c9449ccbc61c939cf2f19f846f13288546a0401a4de22cfc311ab9f91"
+    },
+    {
+      "path": "shared/play/places.json",
+      "sha256": "bfbd18de2bbdbe2a2ffbb7aa8e05ad7f0eeaf3b135d68fde785e01338fcefc23"
     },
     {
       "path": "shared/play/reactions.js",
@@ -815,43 +779,51 @@
     },
     {
       "path": "shared/play/tumble-hill.json",
-      "sha256": "2787042e167af021fc2fa6cf39b5d631baefb55c5483c3390e4ad7312ad5e34b"
+      "sha256": "93cf387a6bebe89ebd36ca52ebe4abeabf915ec1e64b4f66be492c00e0961744"
     },
     {
       "path": "shared/world/out/forest_floor.json",
-      "sha256": "702db42d4ed690ad7ff011a2b7d6d3f79e8764bd0d07a8ce22f274f26b98bd41"
+      "sha256": "9161643c1c91f90f059d902e270fd60a7dc85e6a449ece09a673cb5b4dcb09f1"
     },
     {
       "path": "shared/world/out/ground_cover.json",
-      "sha256": "25bab51bb795647b2b0838cfd68b0b71d5f35f36770ef0a4b082d94dabb1ae80"
+      "sha256": "bcfb298f69a6d5d6972d5a800ec76d0992790ec4260994666ddc21da0583510b"
+    },
+    {
+      "path": "shared/world/out/horizon_map.png",
+      "sha256": "875b38a61938d8789239338ade68b2846ec974fa10f01370604d5222523d4d15"
+    },
+    {
+      "path": "shared/world/out/horizon_range.json",
+      "sha256": "fed1b01816a1fc87e573e8aa800352d1783a17a34796b0cae1f01a66e6ee2a8c"
     },
     {
       "path": "shared/world/out/landscape_transition.json",
-      "sha256": "daeecec9f068576cc7cdfe040e6a0d80364c6f510fa549c171c43b07e3cf992c"
+      "sha256": "a14962d4273b23ceda10fa1120510cecc955d1b343a518dcc74d8cce1aa0c470"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "72786e0e30ff88d86b58aedd1210fba089fdc7b4bb233a9fc83b220721b97f50"
+      "sha256": "5ed23eac1188baa07a31720fe08146fe6dfffa3c522ac6152cda8120df3a374a"
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "17979660186f091be0afff48fbf5a4a404cef2778edcc7c6bbe08eb887c4adad"
+      "sha256": "418eae0d33d63c42edeca79a0a2c4ca374a6efdba89c49992934098dade7d84a"
     },
     {
       "path": "shared/world/out/snow_cover.json",
-      "sha256": "aa0f9421684b253b60fce3ebe8c909817a08bb0f83d50900850257f59d858745"
+      "sha256": "6152d4b0ecb39afa8c851c4e5c4735d6b55bb02f82b2491f0bfed14a21f87fc0"
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "9e1122fa647d21d0038d590e51acac01d9c7dfc0160b225a0435b28141917895"
+      "sha256": "a6369854e5afea3c84cd8282178ab4026244d844d86081a710d76662eb35f9c4"
     },
     {
       "path": "client/web/data/heightmap.f32",
-      "sha256": "5b9583fb96df956a22e50e0a05865c871a2e9b4ab9552680b96a0486c3e67616"
+      "sha256": "c9b1d59f60a6df6a77d7f993a7d9160212347c7210b7cf6aa85840d678ae33c8"
     },
     {
       "path": "client/web/data/farfield.f32",
-      "sha256": "75736139ffa50e5b6af85e9e0512ae9cf1108013c9c21e6872ea2a7d4e2c3657"
+      "sha256": "07aa371d058e54f7be6c317069bb8e9cac4af8ff7e96940e355de87950cf7b85"
     }
   ],
   "packed": {
@@ -871,25 +843,12 @@
     "shared/geometry/cat-folk/cinematic/tobu.glb": "shared/geometry/cat-folk/cinematic/tobu.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/ume.glb": "shared/geometry/cat-folk/cinematic/ume.meshopt.glb",
     "shared/geometry/dome/dome.glb": "shared/geometry/dome/dome.meshopt.glb",
+    "shared/geometry/flight/bee.glb": "shared/geometry/flight/bee.meshopt.glb",
+    "shared/geometry/flight/butterfly.glb": "shared/geometry/flight/butterfly.meshopt.glb",
     "shared/geometry/flight/parafoil.glb": "shared/geometry/flight/parafoil.meshopt.glb",
     "shared/geometry/flight/parakite.glb": "shared/geometry/flight/parakite.meshopt.glb",
     "shared/geometry/flight/paramotor.glb": "shared/geometry/flight/paramotor.meshopt.glb",
-    "shared/geometry/granite/bedrock_-2_3.glb": "shared/geometry/granite/bedrock_-2_3.meshopt.glb",
-    "shared/geometry/granite/bedrock_-2_4.glb": "shared/geometry/granite/bedrock_-2_4.meshopt.glb",
-    "shared/geometry/granite/bedrock_-5_4.glb": "shared/geometry/granite/bedrock_-5_4.meshopt.glb",
-    "shared/geometry/granite/bedrock_-5_5.glb": "shared/geometry/granite/bedrock_-5_5.meshopt.glb",
-    "shared/geometry/granite/bedrock_-5_6.glb": "shared/geometry/granite/bedrock_-5_6.meshopt.glb",
-    "shared/geometry/granite/bedrock_-6_5.glb": "shared/geometry/granite/bedrock_-6_5.meshopt.glb",
-    "shared/geometry/granite/bedrock_-6_6.glb": "shared/geometry/granite/bedrock_-6_6.meshopt.glb",
-    "shared/geometry/granite/bedrock_-7_5.glb": "shared/geometry/granite/bedrock_-7_5.meshopt.glb",
-    "shared/geometry/granite/bedrock_1_2.glb": "shared/geometry/granite/bedrock_1_2.meshopt.glb",
-    "shared/geometry/granite/bedrock_1_3.glb": "shared/geometry/granite/bedrock_1_3.meshopt.glb",
-    "shared/geometry/granite/bedrock_3_4.glb": "shared/geometry/granite/bedrock_3_4.meshopt.glb",
-    "shared/geometry/granite/bedrock_3_5.glb": "shared/geometry/granite/bedrock_3_5.meshopt.glb",
-    "shared/geometry/granite/bedrock_4_4.glb": "shared/geometry/granite/bedrock_4_4.meshopt.glb",
-    "shared/geometry/granite/bedrock_4_5.glb": "shared/geometry/granite/bedrock_4_5.meshopt.glb",
-    "shared/geometry/granite/bedrock_5_4.glb": "shared/geometry/granite/bedrock_5_4.meshopt.glb",
-    "shared/geometry/granite/bedrock_5_5.glb": "shared/geometry/granite/bedrock_5_5.meshopt.glb",
+    "shared/geometry/granite/terrain_patch.glb": "shared/geometry/granite/terrain_patch.meshopt.glb",
     "shared/geometry/homestead/homestead.glb": "shared/geometry/homestead/homestead.meshopt.glb",
     "shared/geometry/mooring/hardstanding.glb": "shared/geometry/mooring/hardstanding.meshopt.glb",
     "shared/geometry/mooring/mooring_mast.glb": "shared/geometry/mooring/mooring_mast.meshopt.glb",
@@ -921,16 +880,16 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "3085d1a",
+  "commit": "bbbc3bb2",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "9e1122fa647d"
+      "sha256_12": "a6369854e5af"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "72786e0e30ff"
+      "sha256_12": "5ed23eac1188"
     },
     {
       "path": "shared/world/out/fields_albedo.png",
@@ -942,11 +901,11 @@
     },
     {
       "path": "shared/world/out/heightmap.png",
-      "sha256_12": "949611db689c"
+      "sha256_12": "908b8e53318c"
     },
     {
       "path": "shared/world/out/farfield_height.png",
-      "sha256_12": "33d83648c52a"
+      "sha256_12": "71b105f89f21"
     },
     {
       "path": "shared/geometry/granite/clearances.json",
@@ -966,10 +925,10 @@
     "height_resolution": 512
   },
   "heights": {
-    "min_m": 11.993591210803386,
-    "max_m": 1438.3154039826047,
+    "min_m": 11.975280384527352,
+    "max_m": 1133.916227969787,
     "encode_min_m": 0.0,
-    "encode_max_m": 1500.0
+    "encode_max_m": 3600.0
   },
   "partition": {
     "digest_core": "e9300a9ec3a61de9",
@@ -993,23 +952,23 @@
         -2044.0,
         -2044.0
       ],
-      "min_m": 11.993591210803386,
-      "max_m": 1438.3154039826047,
+      "min_m": 11.975280384527352,
+      "max_m": 1133.916227969787,
       "row_0": "min_y",
       "source": "shared/world/out/heightmap.png, decoded by shared.terrain.heightmap.load_heightfield"
     },
     "far_field": {
       "file": "client/web/data/farfield.f32",
-      "resolution": 146,
-      "quad_size_m": 56.0,
+      "resolution": 3009,
+      "quad_size_m": 8,
       "offset_xy_m": [
-        -4060.0,
-        -4060.0
+        -12036,
+        -12036
       ],
-      "min_m": 0.0,
-      "max_m": 1359.6704051270312,
+      "min_m": 11.975280384527352,
+      "max_m": 3210.6385900663768,
       "row_0": "min_y",
-      "source": "shared/world/out/farfield_height.png, decoded by shared.terrain.heightmap.load_far_field"
+      "source": "shared/world/out/massif.f32, written by shared/terrain/massif.mjs"
     }
   },
   "far_field_note": "The far field is vertex-for-vertex with the block at its edge and carries the block's own heights inside it, so a 3D scene can draw it past the edge as a ring and leave the block's own terrain to cover the middle. The ridge ring, the river's valley reaches and the northern skyline stand on it.",

@@ -19,7 +19,7 @@ Then open <http://127.0.0.1:8000/client/web/scene.html> for the 3D scene, or
 ## What is here
 
 - `client/web/`: the browser client. `scene.html` and `src3d/` are the 3D
-  scene, `src/` the 2D map, and `vendor/` holds Three.js r180 (MIT, licence in
+  scene, `src/` the 2D map, and `vendor/` holds Three.js r187 (MIT, licence in
   `vendor/LICENSE.three`).
 - `shared/activities/` and `shared/ecology/`: engine-neutral rules for flight,
   skiing and biking, collision, and water life, shared with other clients.

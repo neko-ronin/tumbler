@@ -12,7 +12,7 @@
     "drag_per_s": 0.45,
     "knock": 0.15
   },
-  "world_limit_m": 2040.0,
+  "world_limit_m": 11900,
   "modes": {
     "ski": {
       "label": "Skiing",
@@ -105,7 +105,7 @@
     },
     {
       "id": "east-bowl-trail",
-      "label": "East Bowl trail (T6)",
+      "label": "Granite Cirque trail (T6)",
       "mode": "bike",
       "track": "T6"
     }

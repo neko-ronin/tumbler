@@ -7,12 +7,12 @@ import {treeMaterial,villageBarkMaterial} from '../src3d/tree-material.js';
 test('tree receivers acquire the existing sun map after first allocation and follow replacement maps',()=>{
  const sun=new T.DirectionalLight(),uniforms=treeShadowUniforms();
  bindTreeSunShadow(sun);assert.equal(uniforms.uTreeSunReady.value,0,'warmup has not allocated the map yet');
- sun.shadow.map=new T.WebGLRenderTarget(2048,2048);sun.shadow.bias=-.00015;sun.shadow.normalBias=.7;
+ sun.shadow.map=new T.WebGLRenderTarget(2048,2048,{depthTexture:new T.DepthTexture(2048,2048)});sun.shadow.bias=-.00015;sun.shadow.normalBias=.7;
  const material=villageBarkMaterial();material.onBeforeRender();
- assert.equal(uniforms.uTreeSunReady.value,1);assert.equal(uniforms.uTreeSunMap.value,sun.shadow.map.texture);
+ assert.equal(uniforms.uTreeSunReady.value,1);assert.equal(uniforms.uTreeSunMap.value,sun.shadow.map.depthTexture);
  assert.equal(uniforms.uTreeSunMatrix.value,sun.shadow.matrix);assert.equal(uniforms.uTreeSunBias.value,-.00015);assert.equal(uniforms.uTreeSunNormalBias.value,.7);
- const first=sun.shadow.map;sun.shadow.map=new T.WebGLRenderTarget(1024,512);updateTreeSunShadow();
- assert.equal(uniforms.uTreeSunMap.value,sun.shadow.map.texture);assert.deepEqual(uniforms.uTreeSunTexel.value.toArray(),[1/1024,1/512]);
+ const first=sun.shadow.map;sun.shadow.map=new T.WebGLRenderTarget(1024,512,{depthTexture:new T.DepthTexture(1024,512)});updateTreeSunShadow();
+ assert.equal(uniforms.uTreeSunMap.value,sun.shadow.map.depthTexture);assert.deepEqual(uniforms.uTreeSunTexel.value.toArray(),[1/1024,1/512]);
  assert.equal(treeShadowUniforms().uTreeSunMap,uniforms.uTreeSunMap,'compiled materials share live handles');
  bindTreeSunShadow(null);assert.equal(uniforms.uTreeSunReady.value,0,'isolated captures can opt out of scenery');
  first.dispose();sun.shadow.map.dispose();material.dispose();material.studioMaskMaterial.dispose();

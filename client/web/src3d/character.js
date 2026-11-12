@@ -83,7 +83,8 @@ export function createCharacter(asset, config) {
   // them, 's0' lays a spring body over them while he is down. ?tumble=s0, or api.spike.mode.
   // ponytail: radius is balance.json's body_radius_m, copied; pass it in if the spike survives.
   const tumbleBody=createTumbleBody(model,{radius:.45}),gauge=createGauge(model);
-  const spike={mode:new URLSearchParams(globalThis.location?.search??'').get('tumble')==='s0'?'s0':'s1',trace:null,body:tumbleBody};
+  // Tuck and tumble's physical body is on by default (2026-11-07); ?tumble=s1 shows the scrubbed clips.
+  const spike={mode:new URLSearchParams(globalThis.location?.search??'').get('tumble')==='s1'?'s1':'s0',trace:null,body:tumbleBody};
   // Legs for foot planting: hip (thigh), knee (shin), ankle (heel) and the foot meshes.
   const legs=['L','R'].map(side=>({thigh:model.getObjectByName('thigh.'+side),shin:model.getObjectByName('shin.'+side),heel:model.getObjectByName('heel.'+side),
     meshes:feet.filter(mesh=>mesh.parent.name==='foot.'+side)})).filter(leg=>leg.thigh&&leg.shin&&leg.heel&&leg.meshes.length);
@@ -222,7 +223,7 @@ export function createCharacter(asset, config) {
     const roll=heavy&&config.landing.roll&&speed>config.landing.roll_min_mps;
     const runOut=jump?.jumpPhase==='landing'&&!heavy&&speed>(config.walk.stroll_mps??1.6);
     const authoredJump=!jump||runOut?null:(fall||(heavy?(roll?config.landing.roll:config.landing.heavy):config.jump_clips?.[jump.jumpStyle]??config.jump_clips?.hop));
-    idleTime=pose==='idle'&&!context.grounded?idleTime+dt:0;
+    idleTime=pose==='idle'&&!context.grounded&&!context.bodyClip?idleTime+dt:0;
     // A sharp turn from near standstill steps round: context.facing is the signed
     // angle (rad, positive left) from where the model faces to where it travels.
     pivotLeft-=dt;
@@ -245,19 +246,37 @@ export function createCharacter(asset, config) {
     const action = actions[name];
     if (!action) throw new Error(`Unknown Ronin pose ${pose}`);
     if (action !== current) {
-      // Sitting down and getting up take longer than a change of step; a jump
-      // must read on the frame he leaves the ground.
-      const fade=current&&[name,clipName].some(clip=>config.idle_sequence?.some(step=>step.hold&&step.clip===clip))?.5:pivoting||authoredJump?.08:.18;
-      action.reset().fadeIn(fade).play();
+      const sittingTransition = current && [name, clipName].some(
+        clip => config.idle_sequence?.some(step => step.hold && step.clip === clip),
+      );
+      const startingGait = lastPose === 'idle' && !context.mode && !context.bodyClip
+        && ['stroll', 'walk', 'run'].includes(pose) && name === config.clips[pose];
+      let fade = .18;
+      if (context.bodyTime !== undefined) fade = 0;
+      else if (sittingTransition) fade = .5;
+      else if (pivoting || authoredJump) fade = .08;
+      else if (startingGait) {
+        // The mixer advances by dt before this pose is drawn. Aim for half
+        // weight on the first slow frame while keeping a blend on fast frames.
+        fade = Math.min(.1, Math.max(.06, 2 * dt));
+      }
+      action.reset().play();
+      if(fade)action.fadeIn(fade);
       if(pivoting||shot)action.setLoop(T.LoopOnce,1).clampWhenFinished=true;
       // Gait clips share a phase convention (left paw down at the same point),
       // so a walk/run change picks up mid-stride instead of restarting it.
       const gait=clip=>clip.userData.ground_speed_mps;
       if(current&&gait(current.getClip())&&gait(action.getClip()))action.time=current.time/current.getClip().duration*action.getClip().duration;
-      current?.fadeOut(fade);
+      if(fade)current?.fadeOut(fade);
+      else current?.stop();
       current = action; clipName = name;
     }
-    if(authoredJump&&!context.bodyClip){
+    if(context.bodyTime !== undefined){
+      action.setLoop(T.LoopOnce,1);
+      action.clampWhenFinished=true;
+      action.paused=true;
+      action.time=T.MathUtils.clamp(context.bodyTime,0,action.getClip().duration);
+    }else if(authoredJump&&!context.bodyClip){
       if(lastJump!==jump.jumpCount&&!heavy&&!fall){action.reset().setLoop(T.LoopOnce,1).play();lastJump=jump.jumpCount;api.onCue?.(`grunt${jump.jumpTier??1}`);}
       const phase=jump.jumpProgress??0;
       const progress=heavy||fall?phase:jump.jumpPhase==='takeoff'?phase/6:jump.jumpPhase==='landing'?5/6+phase/6:1/6+phase*2/3;
@@ -329,7 +348,11 @@ export function createCharacter(asset, config) {
       const action=actions[eyePose.clip];
       if(eyePoseAction!==action){eyePoseAction?.stop();eyePoseAction=action;eyePoseTime=0;action.reset().setLoop(T.LoopOnce,1).play();action.clampWhenFinished=true;action.paused=true;}
       eyePoseTime=Math.min(eyePose.time_s,eyePoseTime+dt*eyePose.time_s/.35);action.time=eyePoseTime;
-    }else if(eyePoseAction){eyePoseAction.paused=false;eyePoseAction=null;blinkTime=3.7;}
+    }else if(eyePoseAction){
+      if(context.bodyTime!==undefined)eyePoseAction.stop();
+      else eyePoseAction.paused=false;
+      eyePoseAction=null;blinkTime=3.7;
+    }
     if(!eyePose&&blinkTime<=0&&config.blink_clip){const blink=actions[config.blink_clip];blink.reset().setLoop(T.LoopOnce,1).play();blink.clampWhenFinished=true;blinkTime=3.2+1.7*(.5+.5*Math.sin(elapsed*1.37));}
     if(katana&&(pose==='flight'||pose==='climb'||pose==='swim'||fall)&&katanaState!=='holstered')playKatana('holstered',.1);
     // An attack ends if he leaves the ground (a ledge, the water, a trunk).
@@ -398,12 +421,14 @@ export function createCharacter(asset, config) {
     }
     footContacts=[];
     if(pose!=='flight'&&context.groundZ!==undefined){
-      model.updateWorldMatrix(true,true);
       // Each foot: how far it must rise. A planted paw stands on its own floor;
       // a paw the clip has in the air only has to stay out of the ground.
       const base=object.position.y,needs=[],planted=[];let clear=0;
       for(const leg of legs){
-        footBox.makeEmpty();for(const mesh of leg.meshes)footBox.union(meshBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld));
+        footBox.makeEmpty();for(const mesh of leg.meshes){
+          mesh.updateWorldMatrix(true,false);
+          footBox.union(meshBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld));
+        }
         const centre=footBox.getCenter(new T.Vector3()),floor=context.groundHeight?.(centre.x,-centre.z)??context.groundZ;
         const down=footBox.min.y-base<PLANTED_M;planted.push(down);
         if(down&&!jump&&['stroll','walk','run'].includes(pose))footContacts.push(leg.thigh.name);
@@ -422,16 +447,19 @@ export function createCharacter(asset, config) {
         if(!support.length||bodyWorld===null)bodyWorld=base+(support.length?Math.min(...support):bodyLift);
         else{const target=base+Math.min(...support);bodyWorld+=(target-bodyWorld)*(1-Math.exp(-dt/(target>bodyWorld?BODY_RISE_S:BODY_DROP_S)));}
         bodyLift=Math.max(bodyWorld-base,high-FOOT_REACH_M);bodyWorld=base+bodyLift;
-        model.position.y+=bodyLift;model.updateWorldMatrix(true,true);
+        model.position.y+=bodyLift;
         legs.forEach((leg,i)=>{if(needs[i]-bodyLift>1e-3)raiseFoot(leg,needs[i]-bodyLift);});
       }else{
         // Rolling, any part of him may lead into the ground, not only the soles:
         // his cloth too (sleeves, hakama), measured as the bones pose it. The
         // tail may sweep the ground as he turns over.
-        if(rollTurn||flip||jump?.fallRoll)for(const mesh of bodyMeshes){
+        if(rollTurn||flip||jump?.fallRoll){
+          model.updateWorldMatrix(true,true);
+          for(const mesh of bodyMeshes){
           if(mesh.isSkinnedMesh)mesh.computeBoundingBox();
           meshBox.copy(mesh.isSkinnedMesh?mesh.boundingBox:mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
           const centre=meshBox.getCenter(new T.Vector3());clear=Math.max(clear,(context.groundHeight?.(centre.x,-centre.z)??context.groundZ)-meshBox.min.y);
+          }
         }
         bodyLift=clear;bodyWorld=null;model.position.y+=clear;
       }
@@ -439,8 +467,8 @@ export function createCharacter(asset, config) {
     // S0 spike: blends in over S1's pose (clearance included), so its first frames start from it.
     if(spike.mode==='s0'&&pose!=='flight'&&context.groundHeight&&tumbleBody.update(dt,down?bal:null,{object,ground:context.groundHeight}))bodyWorld=null;
     if(spike.trace&&context.groundHeight)spike.trace.push({t:elapsed,phase:bal?.phase??pose,mode:spike.mode,...gauge(object,context.groundHeight,dt)});
-    if(katana){const tip=model.getObjectByName('blade.4');if(tip){object.updateWorldMatrix(true,true);const next=model.worldToLocal(tip.getWorldPosition(v())).x;bladeVelocity=dt>0?(next-bladeSide)/dt:0;bladeSide=next;}}
-    if(fx){object.updateWorldMatrix(true,true);fx.update(dt,katanaState==='attack',katanaState!=='holstered');}
+    if(katana){const tip=model.getObjectByName('blade.4');if(tip){const next=model.worldToLocal(tip.getWorldPosition(v())).x;bladeVelocity=dt>0?(next-bladeSide)/dt:0;bladeSide=next;}}
+    if(fx){object.updateMatrix();fx.update(dt,katanaState==='attack',katanaState!=='holstered');}
     shadow.visible=pose!=='flight';
     if(shadow.visible){
       const gap=Math.max(0,object.position.y-(context.groundZ??object.position.y));
@@ -486,6 +514,11 @@ export function createCharacter(asset, config) {
     get footContacts(){return footContacts;},
     /** True while the idle sequence holds a seated pose (he has stood still long enough to sit). */
     get sitting(){return !!config.idle_sequence?.some(step=>step.hold&&step.clip===clipName);},
+    get sleepPose(){
+      const eye=config.idle_sequence?.find(step=>step.hold&&step.clip===clipName)?.eye_pose;
+      return eyePoseAction&&eye&&eyePoseTime>=eye.time_s ? {clip:eyePoseAction.getClip(),time:eyePoseTime} : null;
+    },
+    get idleClip(){return config.clips.idle;},
     /** True while a sword cut or charge plays. */
     get attacking(){return katanaState==='attack';},
     get charging(){return chargeActive;},

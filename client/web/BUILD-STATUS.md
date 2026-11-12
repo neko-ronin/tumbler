@@ -1,3 +1,35 @@
+# The Organoid at Tumble Hill — valley review, 2026-11-11
+
+On the southeast shoulder, Ronin can meet a pale-pink Organoid hiding behind
+an existing redwood. Its first words arrive while the speaker is offscreen.
+The voiced conversation introduces the old beacons and trade at the Salt Steps.
+The shared rules own the site, sweep and dialogue. The browser stages camera,
+expressive volume and glass, and stereo voice.
+
+To review, open [Tumble Hill](http://127.0.0.1:8127/client/web/scene.html?encounter=organoid)
+from the local valley server and walk forward. [Encounter notes and checks](../../docs/reviews/organoid-encounter-2026-11-11.md).
+
+---
+
+# Full-strength distant tree shadows — local review, 2026-11-10
+
+The requested fade removal uses a static 4096² world tree-shadow map beyond
+the local detailed map, with a hard handoff. Both depths attenuate sunlight
+at full strength. The coarse map has roughly 8 m texels in the valley.
+[Quality review and checks](../../docs/reviews/forest-shadow-strength-2026-11-10.md).
+
+---
+
+# Aerial forest shadows — local valley candidate, 2026-11-10
+
+The shadow update is available from `tumbler-valley` on `web/geometry-fixes`.
+The scenery footprint follows terrain under the view target. Fitted canopies
+and wood cast through the valley's Three r187 depth map, independently of
+visible tree budgets. Distant ground projections use the fitted crown bounds.
+[Port and verification](../../docs/reviews/forest-valley-aerial-shadows-2026-11-10.md).
+
+---
+
 # S4 branches and para recovery — local candidate, 2026-10-31
 
 `codex/s4` implements the recovered S4 slice: generator-owned primary branch

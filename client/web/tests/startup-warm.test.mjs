@@ -25,7 +25,7 @@ test('the intro warms the walk view it lands on, then restores the village view 
   world.children.find(node=>node.isDirectionalLight).shadow.map??={texture:{}};
  }};
  const scene=new T.Scene();scene.add(character.object);
- const shadows=createActorShadows(renderer,scene,[character.object],style);
+ const shadows=createActorShadows(renderer,[character.object],style);
  const before={position:camera.position.toArray(),quaternion:camera.quaternion.toArray(),fov:camera.fov,target:orbit.target.toArray(),mode:nav.mode};
  const arrival={};
  const result=await nav.warmArrival(()=>warmScene({

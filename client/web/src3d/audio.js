@@ -4,8 +4,33 @@ import {createFoleyPlayer} from './character-foley.js';
 /** Browser presentation of the existing habitats, wind and flight motor.
  * Original procedural sound, enabled by default and resumed after the first user gesture if autoplay is blocked.
  */
-export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=null){
+export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=null,dialogueBytes=null){
   let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,characterBus=null,paraVoice=null,windWaterBus=null,windWaterEnabled=true,enabled=true;
+  let dialogueBuffer=null, dialogueSource=null, dialogueActive=false;
+  function stopDialogue(){
+    if(!dialogueSource)return;
+    const source=dialogueSource;dialogueSource=null;
+    source.stop();source.disconnect();
+  }
+  function playDialogue(offset,duration){
+    stopDialogue();
+    if(!enabled||context?.state!=='running'||!dialogueBuffer||duration<=0)return false;
+    const source=context.createBufferSource(), level=context.createGain();
+    source.buffer=dialogueBuffer;level.gain.value=.88;
+    source.connect(level).connect(context.destination);
+    source.onended=()=>{
+      source.disconnect();level.disconnect();
+      if(dialogueSource===source)dialogueSource=null;
+    };
+    dialogueSource=source;
+    source.start(0,offset,duration);
+    return true;
+  }
+  function setDialogueActive(active){
+    dialogueActive=!!active;
+    if(!active)stopDialogue();
+    setWindWaterEnabled(windWaterEnabled);
+  }
   async function toggle(next=!enabled){
     enabled=next;
     if(!context){
@@ -13,12 +38,13 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
       let chargeBuffer=null;
       try{if(chargeBytes)chargeBuffer=await context.decodeAudioData(chargeBytes.slice(0));}
       catch(error){const failed=context;context=null;await failed.close();throw error;}
+      if(dialogueBytes)context.decodeAudioData(dialogueBytes.slice(0)).then(buffer=>{dialogueBuffer=buffer;}).catch(()=>{});
       const length=context.sampleRate*3;
       const buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);
       let last=0;for(let i=0;i<length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;data[i]=last*3.5;}
       characterBus=context.createPanner();characterBus.panningModel='HRTF';characterBus.distanceModel='inverse';characterBus.refDistance=5;characterBus.rolloffFactor=1;characterBus.maxDistance=100;characterBus.connect(context.destination);
       cues=createCuePlayer(context,characterBus,chargeBuffer);birds=createBirds(context,createTreeIndex(trees));beeVoices=Array.from({length:3},()=>createBeeVoice(context));
-      windWaterBus=context.createGain();windWaterBus.gain.value=windWaterEnabled?1:0;windWaterBus.connect(context.destination);
+      windWaterBus=context.createGain();windWaterBus.gain.value=windWaterEnabled?(dialogueActive?.24:1):0;windWaterBus.connect(context.destination);
       function noise(frequency,gain,spatial=false){const source=context.createBufferSource();source.buffer=buffer;source.loop=true;
         const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=frequency;
         const level=context.createGain();level.gain.value=gain;source.connect(filter).connect(level);
@@ -32,7 +58,7 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
   }
   function setWindWaterEnabled(value){
     windWaterEnabled=!!value;
-    if(windWaterBus){const t=context.currentTime;windWaterBus.gain.cancelScheduledValues(t);windWaterBus.gain.setTargetAtTime(windWaterEnabled?1:0,t,.03);}
+    if(windWaterBus){const t=context.currentTime;windWaterBus.gain.cancelScheduledValues(t);windWaterBus.gain.setTargetAtTime(windWaterEnabled?(dialogueActive?.24:1):0,t,.03);}
   }
   async function unlock(){if(enabled&&context?.state==='suspended')await context.resume();}
   function update(camera,navigation,nearby,presentation=null){
@@ -69,7 +95,7 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     });
     motor.level.gain.setTargetAtTime(throttle*.032,t,.1);motor.oscillator.frequency.setTargetAtTime(65+throttle*65,t,.1);
   }
-  return {toggle,unlock,update,setWindWaterEnabled,get windWaterEnabled(){return windWaterEnabled;},cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},get paraTargets(){return paraVoice?.targets;},dispose(){paraVoice?.dispose();context?.close();}};
+  return {toggle,unlock,update,setWindWaterEnabled,playDialogue,stopDialogue,setDialogueActive,get windWaterEnabled(){return windWaterEnabled;},cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},get paraTargets(){return paraVoice?.targets;},dispose(){paraVoice?.dispose();context?.close();}};
 }
 /** One bumblebee: a soft low buzz (saw plus an octave-down triangle, low-passed) that wanders in pitch and pulses
  * lazily, with a breath of wing air, placed in space by an HRTF panner. Silent until its gain is raised. */

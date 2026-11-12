@@ -119,7 +119,7 @@ test('a graded bench is ridden at its profile and joins the terrain over its sho
   const P=track.polyline,reach=bench+shoulder;let found=null;
   for(let i=0;i<P.length-1&&!found;i++)for(const side of [1,-1]){
     const [a,b]=[P[i],P[i+1]],mid=[(a[0]+b[0])/2,(a[1]+b[1])/2],n=Math.hypot(b[0]-a[0],b[1]-a[1]),nx=-(b[1]-a[1])/n*side,ny=(b[0]-a[0])/n*side;
-    if(n>30&&[...Array(Math.ceil(reach)+1).keys()].every(k=>Math.abs((trail(mid[0]+nx*k,mid[1]+ny*k)?.d??k)-k)<1e-6)&&trail(mid[0]+nx*(reach+1),mid[1]+ny*(reach+1))===null){found={i,mid,nx,ny};break;}}
+    if(n>reach*2&&[...Array(Math.ceil(reach)+1).keys()].every(k=>Math.abs((trail(mid[0]+nx*k,mid[1]+ny*k)?.d??k)-k)<1e-6)&&trail(mid[0]+nx*(reach+1),mid[1]+ny*(reach+1))===null){found={i,mid,nx,ny};break;}}
   assert.ok(found,'some segment has open ground beside it');
   const {i,mid,nx,ny}=found,z=(track.profile_z_m[i]+track.profile_z_m[i+1])/2,n=1,out=k=>ride(mid[0]+nx*k,mid[1]+ny*k);
   assert.ok(Math.abs(out(0)-z)<1e-9&&Math.abs(out(bench*.9)-z)<1e-9,'flat across the bench');

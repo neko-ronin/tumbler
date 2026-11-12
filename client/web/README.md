@@ -1,3 +1,91 @@
+# Tree LOD transitions — approved on web/geometry-fixes, 2026-11-11
+
+Side views retain more foliage at LOD 1, overhead views retain more branch
+gaps at LOD 2, and LOD 3 keeps the canopy and a continuous trunk. The
+[review](../../docs/reviews/tree-lod-transitions-2026-11-10.md) records the
+in-game approval, matched renders and remaining performance checks.
+
+# Game-driven grove zoom — local web/geometry-fixes, 2026-11-10
+
+The [grove inspector](tree-review/grove-inspector.html) now follows the game's
+per-tree selection by default. Zoom or use Close detail / Mid distance / Far
+grove / Horizon to move the camera. The stage mix, triangles and rendered
+measurements follow actual game draws. Uncheck Automatic LODs for a fixed-view
+manual stage/blend comparison, then recheck to return to game selection.
+The [regression and reproduction](../../docs/reviews/tree-grove-automatic-lod-2026-11-10.md)
+record the default zoom failure, its fix and the isolated grove's limits.
+
+# Live tree grove inspector — initial local version, 2026-11-10
+
+The [grove inspector](tree-review/grove-inspector.html) shows five trees in a
+large orbitable/zoomable view, continuous LOD and sun sliders, current game
+lighting, dynamic rendered measurements, thumbnail species selection and a
+side-by-side effective parameter comparison. It imports the current game
+builders and reads presets from `src3d/main.js`; no production asset or renderer
+changes. Generate the real-thumbnail artifact with `tools/review_tree_grove.cjs`.
+The [comparison contract and verification](../../docs/reviews/tree-grove-inspector-2026-11-10.md)
+distinguish live game inputs, inspection fixtures and remaining acceptance.
+
+# Tree quality audit — local web/geometry-fixes, 2026-11-10
+
+The [audit baseline](../../docs/reviews/tree-quality-audit-2026-11-10.md)
+records every tree source across all four actual browser LOD stages, four
+viewing angles and three transition-size samples. The generated offline grid
+adds a wipe/blink comparison and rendered coverage, silhouette and color
+diagnostics. Reproduce with `tools/review_tree_quality.cjs` using the existing
+Playwright installation. This is an audit instrument; game rendering and assets
+are unchanged, and quality improvements/human acceptance remain open.
+
+# Valley trails, clouds and frame pacing — local web/geometry-fixes candidate
+
+Mountain trails now fit the grown ground. T2 is a maintenance footpath, T5 is
+an expert downhill line, and T6 uses the same traverse where it makes sense.
+The core caps cuts and fills, while the browser draws narrow decomposed granite
+treads and stone where an exposed downhill edge needs support.
+
+Three.js r187 restores physical-pixel cloud and tree captures, and native depth
+comparisons replace the old packed shadow reads. The client groups distant
+tree draws and projected canopy shadows and can present up to 60 FPS.
+See the [valley repair evidence](../../docs/reviews/valley-geometry-fixes-2026-11-09.md)
+for actual frame timings, comparison images and playtest limits.
+
+# Player menu, places and one route — v0.7.0
+
+Players get their own menu, a trail map of the valley drawn from the real ground, with eleven
+named places to fast-travel to (`shared/play/places.json`). Every state shows its keyboard and
+controller keys, only the ones a player can use. Players walk, fly the parakite from the one
+launch (North Wall, on "The Long Way Home", a 14 km route down the valley and back) or start
+the paramotor where they stand. Paragliding, biking and skiing are off the player menu. Each
+fast travel moves the light on: golden hour, dusk, day. Tumbles use the physics body by
+default. On localhost the old menu stays, and the `` ` `` key or the corner switch flips between
+the two. Launch headings were written as compass bearings but flown as math angles, so wings
+left the wall into the slope; `sites.py` now converts them.
+
+# Glacial valley — v0.7.0, 2026-11-11
+
+A 24 km world, 0–3,600 m, grown from geology rather than drawn: an old surface cut by
+rivers, then glaciers, rockfall and jointed granite, on an 8 m grid that streams in
+tiles. One meandering river shapes ground and water; snow and forest cover the whole
+world by their own models; trails, turbines, the gondola top and the cirque are fitted
+to the land afterwards. Homes, village and domes keep their sites.
+Decisions, attempts and metrics are recorded in
+`docs/reviews/valley-shape-2026-11-06/README.md`.
+
+# Mountains that read as mountains at every distance — branch candidate, 2026-11-05
+
+The pale granite gave distant mountains no structure, because every joint is
+sub-pixel by mid-range and bump shading stops at 5 m per pixel. The client now
+bakes a shading map from the real heights at load (`setMountainMap`, about 350 ms):
+gullies routed down each face's fall line, ridge and valley exposure, and the
+slope erosion would cut. Mips carry it across every distance and terrain LOD.
+Regional joints, seep stripes along the baked drainage and reduced ambient in hollows sit on top,
+and a tiled crease band from Prima's granite relief research fills in close range.
+Ground, collision and silhouettes are unchanged. Compare with
+`node client/web/tools/review-mountain-scale.cjs <label>`. The human liked the direction
+at all distances and asked for less of the dark ash; rock stays grey-to-pale, dark only
+on wet tracks and north faces.
+Decisions, attempts and metrics: `docs/reviews/mountain-scale-2026-11-06/README.md`.
+
 # Cats that notice, and no more walking backwards — v0.6.0, 2026-11-05
 
 Cats no longer walk backwards. A stale `body.face` left over from a chat kept
@@ -563,7 +651,7 @@ mountain candidate. The implementation base remains the later accepted landscape
 The east exit now reads shared granite bed/bank/slab geometry, including wet/dry
 surfaces, source-preserving LOD and matching physical water edges. The original
 river course, levels and outer tree placements remain. No future hub site is
-chosen. Preview query bookmarks: `?view=graniteRiver` and `?view=graniteBank`.
+chosen. Viewpoints are the named places in `shared/play/places.json`; open one with `?view=<place id>`.
 [Research, checks, matched evidence and limits](../../docs/reviews/river-granite-2026-10-25.md).
 The human approves main integration. Unreal parity is excluded from this release;
 browser performance examination and next steps follow in the release receipt.
@@ -739,7 +827,7 @@ The original studio study and mutable human settings stay in their own worktree.
 This is a local review candidate, not a published release.
 
 Start with `python3.11 client/web/tools/serve.py --port 8005`:
-- [Game canopy](http://127.0.0.1:8005/client/web/scene.html?view=canopy)
+- [Game canopy](http://127.0.0.1:8005/client/web/scene.html?view=redwood-canopy)
 - [Species / LOD angle inspector](http://127.0.0.1:8005/client/web/tree-review/)
 
 # Repaired Web v0.1.1 release — approved, 2026-10-22
@@ -1472,7 +1560,7 @@ original.
 
 ## Dependencies and remaining decisions
 
-The 3D client uses vendored Three.js r180 modules; the original 2D proposal
+The 3D client uses vendored Three.js r187 modules; the original 2D proposal
 deferred that renderer decision and is historical. [Vendor provenance](vendor/README.md)
 records the pinned upstream files, verified SHA-256 values and MIT license. A
 fresh local checkout passes the focused checks, reproduces viewer data and loads

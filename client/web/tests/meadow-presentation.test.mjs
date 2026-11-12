@@ -306,3 +306,33 @@ test('a stamped sliver with no sampled grass roots stays safe in the tile cache'
   const camera=new T.PerspectiveCamera(52,16/9,.2,3000);camera.position.set(0,40,0);camera.lookAt(0,30,-20);camera.updateMatrixWorld();
   try{canopy.update(camera);assert.doesNotThrow(()=>canopy.update(camera));assert.equal(canopy.group.children.length,0);}finally{canopy.dispose();}
 });
+
+test('batched grass retains every selected root and its wind attributes across a camera turn',async()=>{
+  const {buildGrassCanopy}=await import('../src3d/grass-canopy.js');
+  const cover={covered:new Uint8Array(24*24).fill(1),resolution:24,quad:8,offsetX:-96,offsetY:-96};
+  const ground={height:(x,y)=>30+.013*x-.03*y};
+  const raw=buildGrassCanopy(cover,ground),batch=buildGrassCanopy(cover,ground,{batchTiles:6});
+  const camera=new T.PerspectiveCamera(52,16/9,.2,1500);camera.position.set(0,37,0);
+  function instances(group){
+    const roots=new Map();
+    for(const mesh of group.children)if(mesh.visible){
+      const transform=mesh.instanceMatrix.array,traits=mesh.geometry.attributes.meadowTraits.array;
+      for(let i=0;i<mesh.count;i++){
+        const offset=i*16,key=[mesh.material.name,transform[offset+12],transform[offset+14]].join(',');
+        roots.set(key,[...transform.subarray(offset,offset+16),...traits.subarray(i*3,i*3+3)]);
+      }
+    }
+    return roots;
+  }
+  try{
+    for(const yaw of [-.9,.3,1.5]){
+      camera.lookAt(Math.sin(yaw)*40,30,Math.cos(yaw)*40);
+      raw.update(camera);batch.update(camera);
+      const expected=instances(raw.group),actual=instances(batch.group);
+      assert.ok(expected.size>100);
+      assert.deepEqual(actual,expected);
+      assert.equal(batch.stats.visibleTriangles,raw.stats.visibleTriangles);
+      assert.ok(batch.group.children.length<raw.group.children.filter(mesh=>mesh.visible).length);
+    }
+  }finally{raw.dispose();batch.dispose();}
+});

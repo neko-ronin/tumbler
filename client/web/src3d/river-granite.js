@@ -7,7 +7,7 @@ import {toonMaterial} from './style.js';
 export function buildRiverGranite(surface,asset,terrain,assets,landscapeGrid){
  const data=surface.data,g=data.grid,group=new T.Group();group.name='downstream_granite';
  const source=asset.primitives[0].geometry,cols=g.columns,rows=g.rows,tiles=[];
- const material=toonMaterial({name:'wet_dry_river_granite',vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1},{terrain:true,horizonM:landscapeGrid.maxX});
+ const material=toonMaterial({name:'wet_dry_river_granite',vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1},{terrain:true});
  const compile=material.onBeforeCompile;
  material.onBeforeCompile=shader=>{
   compile(shader);
@@ -26,12 +26,7 @@ export function buildRiverGranite(surface,asset,terrain,assets,landscapeGrid){
  };
  material.defines={...material.defines,USE_UV:''};material.customProgramCacheKey=()=> 'river-granite-wet-dry-v1';
  const grid={resolution:cols,values:g.heights_m};
- const baseGeometry=terrain.group.children[0].geometry;
- function nativeAttribute(name,x,y){
-  const a=baseGeometry.attributes[name],n=landscapeGrid.resolution,gx=(x-landscapeGrid.offsetX)/landscapeGrid.quad,gy=(y-landscapeGrid.offsetY)/landscapeGrid.quad,
-    c=Math.min(n-2,Math.floor(gx)),r=Math.min(n-2,Math.floor(gy)),u=gx-c,v=gy-r;
-  return [0,1,2].map(k=>{const at=(r,c)=>a.array[(r*n+c)*3+k],z=at(r,c),b=at(r,c+1),d=at(r+1,c+1),e=at(r+1,c);return u>=v?z+(b-z)*u+(d-b)*v:z+(e-z)*v+(d-e)*u;});
- }
+ const nativeAttribute=terrain.attributeAt;
 
  for(let r=0;r<rows-1;r+=32)for(let c=0;c<cols-1;c+=32){
   const nr=Math.min(32,rows-1-r),nc=Math.min(32,cols-1-c),geometry=new T.BufferGeometry();
@@ -79,18 +74,14 @@ export function buildRiverGranite(surface,asset,terrain,assets,landscapeGrid){
  // at full source resolution so their visible rim is identical to the patch.
  const bounds=data.bounds_xy_m;
  for(const tile of terrain.tiles){
-  const b=tile.bounds??tile.mesh.geometry.boundingBox;
+  const b=tile.bounds;
   if(b.max.x<bounds[0]||b.min.x>bounds[2]||-b.min.z<bounds[1]||-b.max.z>bounds[3])continue;
-  // Fully covered native tiles cannot contribute a visible pixel. Retain
-  // their source attributes/collision, but submit no hidden triangles.
-  if(b.min.x>bounds[0]+4&&b.max.x<bounds[2]-4&&-b.max.z>bounds[1]+4&&-b.min.z<bounds[3]-4){
-   for(const level of tile.levels){level.globalIndex=new Uint32Array();level.index=new T.Uint16BufferAttribute([],1);level.triangles=level.error=0;}
-   if(tile.batch)tile.batch.dirty=true;else tile.mesh.geometry.setDrawRange(0,0);
-   continue;
-  }
-  tile.levels.forEach(l=>{if(l.stride>1)l.error=Infinity;});
+  // A fully covered tile can't contribute a pixel; a boundary tile stays at full
+  // resolution so its visible rim matches the patch.
+  if(b.min.x>bounds[0]+4&&b.max.x<bounds[2]-4&&-b.max.z>bounds[1]+4&&-b.min.z<bounds[3]-4){tile.hidden=true;tile.mesh.visible=false;continue;}
+  tile.pinned=true;
  }
- const baseMaterial=terrain.group.children[0].material,baseCompile=baseMaterial.onBeforeCompile;
+ const baseMaterial=terrain.material,baseCompile=baseMaterial.onBeforeCompile;
  baseMaterial.onBeforeCompile=shader=>{
   baseCompile(shader);shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
    if(vPlace.x>${(bounds[0]+4).toFixed(1)}&&vPlace.x<${(bounds[2]-4).toFixed(1)}&&-vPlace.z>${(bounds[1]+4).toFixed(1)}&&-vPlace.z<${(bounds[3]-4).toFixed(1)})discard;`);

@@ -40,7 +40,8 @@ export function createWalkHeight(worldmap,height){
         const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(length*length)));
         const surface=a[2]+(b[2]-a[2])*t;
         const distance=Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t);
-        if(distance>reach.half_width_m||distance>=(nearest?.distance??Infinity))continue;
+        const half=reach.half_widths_m?reach.half_widths_m[i-1]+(reach.half_widths_m[i]-reach.half_widths_m[i-1])*t:reach.half_width_m;
+        if(distance>half||distance>=(nearest?.distance??Infinity))continue;
         const sign=b[2]>a[2]?-1:1;
         nearest={distance,surface,flow:[dx/length*sign,dy/length*sign]};
       }
@@ -76,6 +77,19 @@ export function safeWalkGround(x,y,config,height,hitTest,{dropOffs=false}={}){
   if(!samples.every(Number.isFinite)||Math.hypot((samples[0]-samples[1])/(2*r),(samples[2]-samples[3])/(2*r))>rules(config).max_ground_grade)return null;
   if(hitTest?.([x,y,z+r],[x,y,z+1.7-r],r))return null;
   return z;
+}
+
+/** Where a body that does not exist yet first stands: the walkable ground nearest (x, y), in rings out to
+ * `reach_m`. For spawning only, as when leaving Look around to walk under the camera; a body already in the
+ * world is never moved by this (see safeWalkGround). Returns [x, y, z], or null when nothing in reach holds.
+ */
+export function walkSpawn(x,y,config,height,hitTest,reach_m=600){
+  const here=safeWalkGround(x,y,config,height,hitTest);if(here!==null)return [x,y,here];
+  for(let r=8;r<=reach_m;r+=8){
+    const steps=Math.max(8,Math.round(2*Math.PI*r/8));
+    for(let k=0;k<steps;k++){const a=k/steps*2*Math.PI,px=x+Math.cos(a)*r,py=y+Math.sin(a)*r,z=safeWalkGround(px,py,config,height,hitTest);if(z!==null)return [px,py,z];}
+  }
+  return null;
 }
 
 /** Which locomotion slot of the character contract plays at this ground

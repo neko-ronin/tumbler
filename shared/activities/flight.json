@@ -84,76 +84,13 @@
   },
   "launches": [
     {
-      "id": "granite-ridge",
-      "label": "Granite Ridge",
+      "id": "north-wall",
+      "label": "North Wall",
       "xy_m": [
-        -380,
-        1620
+        -1440.0,
+        3020.0
       ],
-      "heading_deg": 270
-    },
-    {
-      "id": "east-bowl",
-      "label": "East Bowl",
-      "xy_m": [
-        1080,
-        1360
-      ],
-      "heading_deg": 250
-    },
-    {
-      "id": "trail-t5",
-      "label": "T5 \u00b7 trail descent",
-      "xy_m": [
-        -420,
-        1560
-      ],
-      "heading_deg": 225,
-      "clearance_m": 32
-    },
-    {
-      "id": "gondola-high-ridge",
-      "label": "Gondola Weave \u00b7 high ridge",
-      "xy_m": [
-        -540,
-        1720
-      ],
-      "heading_deg": 0,
-      "clearance_m": 45,
-      "terrain_protection": false
-    },
-    {
-      "id": "gondola-midline",
-      "label": "Gondola \u00b7 middle shoulder",
-      "xy_m": [
-        -457.5,
-        1200
-      ],
-      "heading_deg": 270,
-      "clearance_m": 100,
-      "terrain_protection": false
-    },
-    {
-      "id": "cirque-lip",
-      "label": "Granite Cirque \u00b7 lip",
-      "xy_m": [
-        192,
-        1441
-      ],
-      "heading_deg": 250,
-      "clearance_m": 55,
-      "terrain_protection": false
-    },
-    {
-      "id": "granite-riverbank",
-      "label": "Granite River \u00b7 south bank",
-      "xy_m": [
-        3150,
-        -1100
-      ],
-      "heading_deg": 90,
-      "clearance_m": 35,
-      "terrain_protection": false
+      "heading_deg": 320
     }
   ],
   "thermals": [
@@ -186,8 +123,8 @@
     }
   ],
   "landing_clearance_m": 1.8,
-  "ceiling_m": 2200,
-  "world_limit_m": 3950,
+  "ceiling_m": 4500,
+  "world_limit_m": 11900,
   "launch_radius_m": 20.0,
   "launch_clearance_m": 90.0,
   "collapse": {

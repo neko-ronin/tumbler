@@ -8,9 +8,9 @@ test('actor sun map updates moving geometry every frame without invalidating the
  const renderer={getRenderTarget(){return null;},setRenderTarget(){},shadowMap:{needsUpdate:false},render(world,camera){
   assert.equal(base.castShadow,false);assert.equal(fur.castShadow,false);
   const proxies=world.children.filter(n=>n.isMesh);assert.equal(proxies.length,1);assert.equal(proxies[0].geometry,base.geometry);assert.equal(proxies[0].castShadow,true);
-  world.children.find(n=>n.isDirectionalLight).shadow.map={texture:{}};this.shadowMap.needsUpdate=false;
+  world.children.find(n=>n.isDirectionalLight).shadow.map={depthTexture:{}};this.shadowMap.needsUpdate=false;
  }};
- const shadows=createActorShadows(renderer,scene,[root],style),sun=new T.Vector3(-.4,.8,-.3).normalize();
+ const shadows=createActorShadows(renderer,[root],style),sun=new T.Vector3(-.4,.8,-.3).normalize();
  for(let i=0;i<12;i++){const point=new T.Vector3(i*.1,10,0);shadows.update(point,sun);assert.ok(shadows.sun.target.position.equals(point),'moving actor map must follow sub-texel motion continuously');assert.equal(renderer.shadowMap.needsUpdate,false);assert.equal(base.castShadow,false);}
  assert.equal(shadows.stats.frame,12);assert.equal(style.actorShadowReady.value,1);
  renderer.shadowMap.needsUpdate=true;shadows.update(new T.Vector3(),sun);assert.equal(renderer.shadowMap.needsUpdate,true,'pending scenery rebuild is preserved');
@@ -27,8 +27,8 @@ test('light-space anchor moves in whole shadow texels, including across the old 
 test('separated visible actors retain their former local shadow coverage',()=>{
  const scene=new T.Scene(),pilot=new T.Group(),parked=new T.Group();scene.add(pilot,parked);
  const geometry=new T.BoxGeometry(),material=new T.MeshBasicMaterial();pilot.add(new T.Mesh(geometry,material));const wing=new T.Mesh(geometry,material);parked.add(wing);parked.position.x=20;
- const renderer={shadowMap:{needsUpdate:false},getRenderTarget(){return null},setRenderTarget(){},render(world){const sun=world.children.find(n=>n.isDirectionalLight);sun.shadow.updateMatrices(sun);sun.shadow.map??={texture:{}};}};
- const shadows=createActorShadows(renderer,scene,[pilot,parked],style),sun=new T.Vector3(0,1,.3).normalize(),point=new T.Vector3();
+ const renderer={shadowMap:{needsUpdate:false},getRenderTarget(){return null},setRenderTarget(){},render(world){const sun=world.children.find(n=>n.isDirectionalLight);sun.shadow.updateMatrices(sun);sun.shadow.map??={depthTexture:{}};}};
+ const shadows=createActorShadows(renderer,[pilot,parked],style),sun=new T.Vector3(0,1,.3).normalize(),point=new T.Vector3();
  shadows.update(point,sun);
  const contains=()=>{const q=wing.getWorldPosition(new T.Vector3()).applyMatrix4(shadows.sun.shadow.matrix);return q.x>.01&&q.x<.99&&q.y>.01&&q.y<.99;};
  assert.ok(contains(),'walking away must not clip a parked wing that was inside the prior actor map');

@@ -356,7 +356,7 @@ test('walking stands on the authored trail tread where the coarse terrain falls 
  const manifest=read('../data/viewer.json');
  const grid=(name,file)=>{const b=readFileSync(new URL(file,import.meta.url));return new HeightGrid({values:new Float32Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength)),...manifest.height_grids[name]});};
  const ground=new GroundSampler(grid('block','../data/heightmap.f32'),grid('far_field','../data/farfield.f32'));
- const floor=walk.createWalkHeight(world,(x,y)=>ground.height(x,y)),x=-419.2988,y=1560,tread=createTrailSampler(world)(x,y);
+ const floor=walk.createWalkHeight(world,(x,y)=>ground.height(x,y)),sampler=createTrailSampler(world),[x,y]=world.tracks.find(t=>t.id==='T5').polyline.find(([u,v])=>{const s=sampler(u,v);return s&&s.beyond===0&&s.z-ground.height(u,v)>.2;}),tread=sampler(x,y);
  assert.equal(tread.beyond,0);assert.ok(tread.z-ground.height(x,y)>.2,'fixture crosses the measured coarse-grid/tread mismatch');
  assert.ok(floor(x,y)>=tread.z,'the character may not stand inside the trail');
  assert.equal(floor.floorHeight(x,y),floor(x,y),'flight landing and ground movement share the same dry floor');
@@ -377,4 +377,27 @@ test('R3 slides without changing view, RT charges separately from B, and short R
  pad.buttons[7].pressed=true;nav.update(1/60);assert.ok(calls.includes('charge'));assert.ok(!calls.includes('slash'));
  pad.buttons[1].pressed=true;nav.update(1/60);assert.equal(calls.filter(c=>c==='slash').length,1);
  nav.update(1/60);assert.equal(calls.filter(c=>c==='slash').length,1,'held B does not become repeated clicks');
+});
+
+test('the flying camera moves at one speed, stops dead, and R and F are world-vertical',t=>{
+ const {nav,key,camera}=fixture(t);camera.position.set(0,500,0);camera.lookAt(0,0,-500);camera.updateMatrixWorld();nav.select('fly');
+ assert.equal(nav.mode,'fly');assert.equal(nav.state,null,'no body to stand in for');
+ const start=camera.position.clone();
+ key('keydown','KeyW');nav.update(.05);key('keyup','KeyW');
+ const flown=camera.position.distanceTo(start);assert.ok(flown>15,`across the map in reasonable time, got ${flown} m per 50 ms`);
+ assert.ok(camera.position.y<start.y,'W follows the view downward');
+ const stopped=camera.position.clone();nav.update(.05);assert.ok(camera.position.distanceTo(stopped)<1e-9,'no momentum');
+ key('keydown','KeyR');nav.update(.05);key('keyup','KeyR');
+ assert.ok(Math.abs(camera.position.x-stopped.x)<1e-9&&Math.abs(camera.position.z-stopped.z)<1e-9&&camera.position.y>stopped.y,'R rises along the world axis while looking down');
+ const high=camera.position.y;key('keydown','KeyF');nav.update(.05);key('keyup','KeyF');assert.ok(camera.position.y<high,'F descends');
+ key('keydown','KeyF');for(let i=0;i<200;i++)nav.update(.05);key('keyup','KeyF');assert.ok(camera.position.y>0,'stays above the ground');
+});
+
+test('holding either Shift slows the flying camera to the running pace, and releasing restores it',t=>{
+ const {nav,key,camera}=fixture(t);camera.position.set(0,500,0);camera.lookAt(0,500,-500);camera.updateMatrixWorld();nav.select('fly');
+ const step=()=>{const from=camera.position.clone();nav.update(.05);return camera.position.distanceTo(from)/.05;};
+ key('keydown','KeyW');
+ for(const shift of ['ShiftLeft','ShiftRight']){key('keydown',shift);assert.ok(Math.abs(step()-character.walk.run_mps)<1e-6,shift);key('keyup',shift);}
+ assert.ok(step()>100,'full speed returns');
+ key('keyup','KeyW');
 });

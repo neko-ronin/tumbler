@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "organoid",
+  "place": "tumble-hill",
+  "cover_tree_xy_m": [-908.0666, 951.3056],
+  "approach_xy_m": [-914.0, 958.8],
+  "trigger_radius_m": 3.8,
+  "hover_m": 1.67,
+  "radius_m": 0.66,
+  "detour_m": 4.25,
+  "stop_m": 2.38,
+  "pace_mps": 3.25,
+  "wake": {
+    "asleep_s": 1.1,
+    "opening": {"id":"wake","speaker":"Organoid","shot":"wake","cue":"notice","text":"Wake up. Hey, listen."}
+  },
+  "dialogue": [
+    {"id":"listen","speaker":"Organoid","shot":"whisper","cue":"notice","text":"Hey, listen."},
+    {"id":"eyes","speaker":"Ronin","shot":"reveal","cue":"notice","vocal":"startled","text":"[Startled chirp, then a low meow.]"},
+    {"id":"ridge","speaker":"Organoid","shot":"organoid","cue":"reply","text":"Voices climb the ridge. I needed one that wouldn’t."},
+    {"id":"listening","speaker":"Ronin","shot":"ronin","vocal":"question","text":"[A rising trill and a short chirp.]"},
+    {"id":"beacons","speaker":"Organoid","shot":"organoid","cue":"reply","text":"The old beacons. One has been calling this valley by a name it had before the sky burned."},
+    {"id":"hidden","speaker":"Ronin","shot":"ronin","vocal":"chatter","text":"[A quick burst of cat chatter.]"},
+    {"id":"trade","speaker":"Organoid","shot":"together","cue":"reply","text":"Until a bearing goes. Beyond the rim, the Salt Steps trade copper and bearings for seeds and sailcloth. Take what we can grow."},
+    {"id":"name","speaker":"Ronin","shot":"ronin","vocal":"dubious","text":"[A long, doubtful meow.]"},
+    {"id":"born","speaker":"Organoid","shot":"organoid","cue":"notice","text":"Keep flying. It learned mine before I was born."},
+    {"id":"understood","speaker":"Ronin","shot":"together","vocal":"understood","text":"[A quiet, deliberate trill.]"},
+    {"id":"agreed","speaker":"Organoid","shot":"together","cue":"acknowledge","text":"You understand. The village is counting on us."},
+    {"id":"depart","speaker":"Ronin","shot":"depart","voice":"mutter","text":"Creepy chud."}
+  ]
+}

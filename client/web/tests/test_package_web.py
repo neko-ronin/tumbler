@@ -72,6 +72,17 @@ class PackageWeb(unittest.TestCase):
         self.assertEqual([len(part) for part in parts], [p["byteLength"] for p in descriptor["parts"]])
         self.assertEqual((self.repo / rel).read_bytes(), data, "the core GLB stays unchanged")
 
+    def test_any_large_file_splits_with_parts_named_after_its_extension(self) -> None:
+        # The grown world's 8 m ground and its forest outgrew the host's cap too (2026-11-07).
+        rel = "client/web/data/farfield.f32"
+        data = bytes(range(80))
+        fake_repo(self.repo, {**self.files, rel: data})
+        with mock.patch.object(pw, "MAX_ASSET_BYTES", 32), mock.patch.object(pw, "ASSET_PART_BYTES", 16):
+            pw.write_package(self.repo, self.out, pw.verified_files(self.repo))
+        descriptor = json.loads((self.out / rel).read_bytes()[len(pw.ASSET_PARTS_MAGIC):])
+        self.assertEqual([p["path"] for p in descriptor["parts"]], [f"client/web/data/farfield.part-{i:03d}.f32" for i in range(5)])
+        self.assertEqual(b"".join((self.out / p["path"]).read_bytes() for p in descriptor["parts"]), data)
+
     def test_a_stale_file_writes_nothing(self) -> None:
         fake_repo(self.repo, self.files)
         (self.repo / "shared/activities/ride.js").write_bytes(b"changed after the manifest")

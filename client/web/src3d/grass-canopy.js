@@ -2,7 +2,7 @@
  * cut-out blades. Cached world tiles follow the ground in the camera's view;
  * roots, colour and wind phase never depend on the viewer or player.
  */
-import {BufferGeometry,Float32BufferAttribute,InstancedBufferAttribute,InstancedMesh,Group,Matrix4,Quaternion,Vector3,Color,DoubleSide,Frustum,Sphere} from '../vendor/three.module.min.js';
+import {BufferGeometry,Float32BufferAttribute,InstancedBufferAttribute,InstancedMesh,Group,Matrix4,Quaternion,Vector3,Color,DoubleSide,Frustum,Sphere,DynamicDrawUsage} from '../vendor/three.module.min.js';
 import {toonMaterial} from './style.js';
 import {deterministicTurn,meadowViewFocus} from './groundcover.js';
 
@@ -57,7 +57,7 @@ export function grassBladeGeometry(){
   g.computeBoundingSphere();return g;
 }
 
-export function buildGrassCanopy(cover,ground,{samples=0}={}){
+export function buildGrassCanopy(cover,ground,{samples=0,batchTiles=1}={}){
   const group=new Group();group.name='meadow';
   // Keep subpixel blades partially covered instead of making the card opaque.
   // Hashed coverage is the sorting-free fallback when MSAA is unavailable.
@@ -68,7 +68,7 @@ export function buildGrassCanopy(cover,ground,{samples=0}={}){
   const farMaterial=toonMaterial({name:'distant_grass_canopy',...coverage},{meadow:true,canopy:true,canopyStart:[110,200],meadowRange:[320,620]});
   const blades=grassBladeGeometry(),bladeMaterial=toonMaterial({name:'near_grass_blades',vertexColors:true,side:DoubleSide,alphaToCoverage:samples>1,alphaHash:samples<=1},{meadow:true,grassBlades:true,meadowRange:[27,46]});
   const layers=[{name:'canopy',tile:TILE,pitch:PITCH,start:0,end:218,material,geometry:prototype},{name:'distant',tile:48,pitch:2.4,start:102,end:628,material:farMaterial,geometry:distant},{name:'blades',tile:TILE,pitch:PITCH,start:0,end:54,material:bladeMaterial,geometry:blades}];
-  for(const layer of layers){layer.tiles=new Map();layer.bounds=new Map();}
+  for(const layer of layers){layer.tiles=new Map();layer.bounds=new Map();layer.batches=new Map();}
   const matrix=new Matrix4(),position=new Vector3(),scale=new Vector3(),rotation=new Quaternion(),tilt=new Quaternion(),up=new Vector3(0,1,0),normal=new Vector3(),projection=new Matrix4(),frustum=new Frustum(),marginSphere=new Sphere();
   const stats={patches:cover.covered.reduce((sum,n)=>sum+n,0),tiles:0,clumps:0,nearClumps:0,triangles:0,visibleTiles:0,visibleTriangles:0,farClumps:0};
   const contains=(x,y)=>{const col=Math.floor((x-cover.offsetX)/cover.quad),row=Math.floor((y-cover.offsetY)/cover.quad);return row>=0&&col>=0&&row<cover.resolution&&col<cover.resolution&&cover.covered[row*cover.resolution+col];};
@@ -116,6 +116,46 @@ export function buildGrassCanopy(cover,ground,{samples=0}={}){
     const sphere=Number.isFinite(low)?new Sphere(new Vector3(x+tile/2,(low+high)/2,-y-tile/2),Math.hypot(tile/2+8,tile/2+8,(high-low)/2+8)):null;
     layer.bounds.set(key,sphere);return sphere;
   }
+  // Selection still runs against each tile's original sphere. Repack only
+  // when its visible membership changes; transforms/coverage remain identical.
+  function submit(layer,visible){
+    const wanted=new Map();
+    for(const [key,tile] of visible){
+      const id=key.split(',').map(x=>Math.floor(Number(x)/batchTiles)).join(',');
+      if(!wanted.has(id))wanted.set(id,[]);
+      wanted.get(id).push(tile);
+    }
+    for(const [id,batch] of layer.batches)if(!wanted.has(id)){
+      group.remove(batch.mesh);release(batch.mesh);layer.batches.delete(id);
+    }
+    for(const [id,tiles] of wanted){
+      let batch=layer.batches.get(id);
+      if(batch?.tiles.length===tiles.length&&tiles.every((tile,i)=>tile===batch.tiles[i]))continue;
+      const count=tiles.reduce((sum,tile)=>sum+tile.count,0);
+      if(!batch||batch.capacity<count){
+        if(batch){group.remove(batch.mesh);release(batch.mesh);}
+        const capacity=2**Math.ceil(Math.log2(count)),geometry=layer.geometry.clone();
+        geometry.setAttribute('flowerTint',new InstancedBufferAttribute(new Float32Array(capacity*3).fill(1),3));
+        geometry.setAttribute('meadowTraits',new InstancedBufferAttribute(new Float32Array(capacity*3),3).setUsage(DynamicDrawUsage));
+        const mesh=new InstancedMesh(geometry,layer.material,capacity);
+        mesh.name=`grass_batch_${layer.name}_${id}`;mesh.receiveShadow=true;mesh.matrixAutoUpdate=false;
+        mesh.boundingSphere=new Sphere();
+        mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+        group.add(mesh);batch={mesh,capacity,tiles:[]};layer.batches.set(id,batch);
+      }
+      const {mesh}=batch,traits=mesh.geometry.attributes.meadowTraits;
+      let offset=0;mesh.boundingSphere.makeEmpty();
+      for(const tile of tiles){
+        mesh.instanceMatrix.array.set(tile.instanceMatrix.array,offset*16);
+        traits.array.set(tile.geometry.attributes.meadowTraits.array,offset*3);
+        mesh.boundingSphere.union(tile.boundingSphere);offset+=tile.count;
+      }
+      for(const attr of [mesh.instanceMatrix,traits]){
+        attr.clearUpdateRanges();attr.addUpdateRange(0,count*attr.itemSize);attr.needsUpdate=true;
+      }
+      batch.tiles=tiles;mesh.count=count;
+    }
+  }
   function update(camera,focus=meadowViewFocus(camera,ground)){
     frame++;
     const hasView=!!camera.projectionMatrix;
@@ -133,10 +173,11 @@ export function buildGrassCanopy(cover,ground,{samples=0}={}){
         marginSphere.copy(bounds);marginSphere.radius+=8;
         if(hasView&&!frustum.intersectsSphere(marginSphere))continue;
         let entry=layer.tiles.get(key);
-        if(!entry){const mesh=tileAt(x,y,layer);entry={mesh,last:frame};layer.tiles.set(key,entry);if(mesh)group.add(mesh);}
+        if(!entry){const mesh=tileAt(x,y,layer);entry={mesh,last:frame};layer.tiles.set(key,entry);if(mesh&&batchTiles===1)group.add(mesh);}
         entry.last=frame;
         if(entry.mesh){const sphere=entry.mesh.boundingSphere,d=sphere.center.distanceTo(camera.position);entry.mesh.visible=(!hasView||frustum.intersectsSphere(sphere))&&d<end+sphere.radius&&d+sphere.radius>start;}
       }
+      const visible=[];
       for(const [key,entry]of layer.tiles){
         // Keep a small cache behind the view while turning; hidden tiles do no
         // draw/vertex work. A teleport releases buffers immediately.
@@ -149,10 +190,11 @@ export function buildGrassCanopy(cover,ground,{samples=0}={}){
         stats.tiles++;stats.triangles+=triangles;
         if(layer.name==='blades')stats.nearClumps+=mesh.count;else stats.clumps+=mesh.count;
         if(layer.name==='distant')stats.farClumps+=mesh.count;
-        if(mesh.visible){stats.visibleTiles++;stats.visibleTriangles+=triangles;}
+        if(mesh.visible){stats.visibleTiles++;stats.visibleTriangles+=triangles;if(batchTiles>1)visible.push([key,mesh]);}
       }
+      if(batchTiles>1)submit(layer,visible);
     }
   }
-  function dispose(){for(const layer of layers){for(const {mesh}of layer.tiles.values())if(mesh)release(mesh);layer.tiles.clear();layer.bounds.clear();}group.clear();prototype.dispose();distant.dispose();blades.dispose();material.dispose();farMaterial.dispose();bladeMaterial.dispose();}
+  function dispose(){for(const layer of layers){for(const {mesh}of layer.tiles.values())if(mesh)release(mesh);for(const {mesh}of layer.batches.values())release(mesh);layer.batches.clear();layer.tiles.clear();layer.bounds.clear();}group.clear();prototype.dispose();distant.dispose();blades.dispose();material.dispose();farMaterial.dispose();bladeMaterial.dispose();}
   return {group,update,dispose,stats,contains};
 }

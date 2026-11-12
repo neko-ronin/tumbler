@@ -75,7 +75,7 @@ test('retry, site changes and focus reset discard old flight poses',t=>{
  const {nav,rig,win}=fixture(t);
  const assertAtState=()=>assert.ok(rig.position.distanceTo(new T.Vector3(nav.state.x,nav.state.z-rules.landing_clearance_m,-nav.state.y))<1e-9);
  nav.select('paraglider',0);for(let i=0;i<150;i++)nav.update(1/90);
- nav.select('paraglider',1);assertAtState();
+ nav.select('paraglider',0);assertAtState(); // one launch now: a relaunch from it is the site change
  nav.update(1/144);win.dispatchEvent(new Event('blur'));nav.update(0);assertAtState();
  nav.select('paraglider',0);assertAtState();
 });

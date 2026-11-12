@@ -5,7 +5,7 @@ import {allocateTreeLods} from '../src3d/tree-budget.js';
 
 test('atlas rectangles address identical physical texels at every render scale',()=>{
  for(const ratio of [.45,.7,1,1.125,1.5,2,2.25]){
-  const rectangles=[],renderer={getPixelRatio:()=>ratio,setViewport:(...r)=>rectangles.push(r.map(v=>Math.round(v*ratio))),setScissor:(...r)=>rectangles.push(r.map(v=>Math.round(v*ratio)))};
+  const rectangles=[],renderer={getPixelRatio:()=>ratio,setViewport:(...r)=>rectangles.push(r.map(Math.round)),setScissor:(...r)=>rectangles.push(r.map(Math.round))};
   for(const r of [[0,0,80,80],[240,160,80,80],[384,256,128,128]]){treeCaptureRect(renderer,...r);assert.deepEqual(rectangles.splice(0),[r,r]);}
  }
 });

@@ -16,3 +16,10 @@ test('missing or truncated parts stop loading; corruption still fails the origin
 test('descriptors cannot redirect fetches or allocate from inconsistent metadata',async()=>{
  for(const d of [{...descriptor,byteLength:9},{...descriptor,byteLength:Infinity},{...descriptor,parts:[]},{...descriptor,parts:[{path:'https://elsewhere.invalid/tree.glb',byteLength:8}]},{...descriptor,parts:[{path:'../tree.glb',byteLength:8}]}]){requests.length=0;await assert.rejects(fetchAssetBytes(path,root,fetcher(packaged(d))),/Invalid packaged/);assert.deepEqual(requests,['/'+path]);}
 });
+test('any large file splits the same way, its parts named after its own extension',async()=>{
+ const grid='client/web/data/farfield.f32',values=Uint8Array.from([1,2,3,4,5,6,7,8]),d={byteLength:8,parts:[{path:'client/web/data/farfield.part-000.f32',byteLength:4},{path:'client/web/data/farfield.part-001.f32',byteLength:4}]};
+ const files={[grid]:encoded(d),[d.parts[0].path]:values.slice(0,4),[d.parts[1].path]:values.slice(4)};
+ assert.deepEqual(new Uint8Array(await fetchAssetBytes(grid,root,fetcher(files))),values);
+ const misnamed={...d,parts:[{path:'client/web/data/farfield.part-000.glb',byteLength:4},d.parts[1]]};
+ await assert.rejects(fetchAssetBytes(grid,root,fetcher({...files,[grid]:encoded(misnamed)})),/Invalid packaged file descriptor/);
+});

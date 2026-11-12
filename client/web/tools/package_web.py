@@ -146,17 +146,18 @@ def verified_files(repo: Path) -> list[str]:
 
 def write_package(repo: Path, out: Path, files: list[str]) -> int:
     """Copy `files` under `out`, keeping repository paths; returns the bytes copied."""
-    # Large GLBs remain neutral, byte-identical core assets. Only this web
-    # transport changes: every uploaded part stays below the static-host cap.
+    # Large files remain neutral, byte-identical core output. Only this web
+    # transport changes: every uploaded part stays below the static host's cap.
+    # Models came first; the grown world's 8 m ground and its forest are larger still.
     split = {}
     for rel in files:
         source = repo / rel
-        if source.suffix == ".glb" and source.stat().st_size > MAX_ASSET_BYTES:
-            size = source.stat().st_size
-            parts = [{"path": rel[:-4] + f".part-{i:03d}.glb", "byteLength": min(ASSET_PART_BYTES, size - offset)}
+        if source.stat().st_size > MAX_ASSET_BYTES:
+            size, suffix = source.stat().st_size, source.suffix
+            parts = [{"path": rel[: len(rel) - len(suffix)] + f".part-{i:03d}{suffix}", "byteLength": min(ASSET_PART_BYTES, size - offset)}
                      for i, offset in enumerate(range(0, size, ASSET_PART_BYTES))]
             if any(part["path"] in files for part in parts):
-                raise PackageError(f"model parts collide with a source path: {rel}")
+                raise PackageError(f"file parts collide with a source path: {rel}")
             split[rel] = {"byteLength": size, "parts": parts}
     if out.exists() and any(out.iterdir()):
         if not (out / MARKER).is_file():

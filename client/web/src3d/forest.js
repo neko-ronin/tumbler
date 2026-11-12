@@ -330,12 +330,13 @@ export function buildStylizedForest(placement, assets, renderer=null, options={}
  * terrain-conforming projected ellipses derived from the actual source crown,
  * not persisted plants or authored places. The near sun map supplies branches.
  */
-export function buildTreeGroundShadows(placement, assets, ground) {
+export function buildTreeGroundShadows(placement, assets, ground, renderer, fittedCrowns=new Map()) {
   const group=new T.Group();group.name='tree_ground_shadows';
+  const multiDraw=renderer?.extensions.has('WEBGL_multi_draw')??false;
   const trees=placement.instances.filter(t=>t.asset.startsWith('redwood/')||t.kind==='arboreal_tree');
   const crowns=new Map();
-  for(const t of trees)if(!crowns.has(t.asset))crowns.set(t.asset,sourceBounds(assets[t.asset],true));
-  const material=new T.MeshBasicMaterial({color:'#223526',transparent:true,opacity:.23,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,side:T.DoubleSide});
+  for(const t of trees)if(!crowns.has(t.asset))crowns.set(t.asset,fittedCrowns.get(t.asset)??sourceBounds(assets[t.asset],true));
+  const material=new T.MeshBasicMaterial({color:'#223526',transparent:true,opacity:.23,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,side:T.DoubleSide,forceSinglePass:true});
   material.onBeforeCompile=shader=>{
     Object.assign(shader.uniforms,treeShadowUniforms());
     shader.vertexShader='varying vec3 vDecalWorld;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvDecalWorld=position;');
@@ -351,11 +352,11 @@ export function buildTreeGroundShadows(placement, assets, ground) {
   };
   // Basic materials otherwise omit UVs when no texture is bound.
   material.defines={USE_UV:''};material.customProgramCacheKey=()=> 'tree-ground-shadow-v3';
-  const stats={trees:trees.length,patches:0,triangles:0,tiles:0,revision:0,contactFallbacks:0};let direction=null;
+  const stats={trees:trees.length,patches:0,triangles:0,tiles:0,batches:0,revision:0,contactFallbacks:0};let direction=null;
   function setSun(sun){
     if(direction&&direction.distanceToSquared(sun)<1e-10)return false;
     direction=sun.clone().normalize();
-    for(const mesh of [...group.children]){group.remove(mesh);mesh.geometry.dispose();}
+    for(const mesh of [...group.children]){group.remove(mesh);if(mesh.isBatchedMesh)mesh.dispose();else mesh.geometry.dispose();}
     const tiles=new Map();stats.patches=stats.triangles=stats.contactFallbacks=0;
     const across=new T.Vector2(-direction.z,direction.x).normalize(),along=new T.Vector2(direction.x,direction.z).normalize();
     if(across.lengthSq()<1e-8){across.set(1,0);along.set(0,1);}
@@ -390,13 +391,33 @@ export function buildTreeGroundShadows(placement, assets, ground) {
       for(let z=0;z<nz-1;z++)for(let x=0;x<nx-1;x++){const a=base+z*nx+x;tile.indices.push(a,a+nx,a+1,a+1,a+nx,a+nx+1);}
       stats.patches++;stats.triangles+=(nx-1)*(nz-1)*2;
     }
+    const spatial=new Map();
+    const makeGeometry=tile=>{
+      const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(tile.positions,3));geometry.setAttribute('uv',new T.Float32BufferAttribute(tile.uv,2));geometry.setIndex(tile.indices);
+      geometry.computeBoundingSphere();return geometry;
+    };
+    const attach=(mesh,key)=>{
+      mesh.name=`tree_ground_shadow_${key}`;mesh.renderOrder=1;mesh.matrixAutoUpdate=false;mesh.matrixWorldAutoUpdate=false;group.add(mesh);
+    };
     for(const [key,tile]of tiles){
-      const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(tile.positions,3));geometry.setAttribute('uv',new T.Float32BufferAttribute(tile.uv,2));geometry.setIndex(tile.indices);geometry.computeBoundingSphere();
-      const mesh=new T.Mesh(geometry,material);mesh.name=`tree_ground_shadow_${key}`;mesh.renderOrder=1;group.add(mesh);
+      if(!multiDraw){attach(new T.Mesh(makeGeometry(tile),material),key);continue;}
+      const batchKey=key.split(',').map(v=>Math.floor(Number(v)/8)).join(',');
+      if(!spatial.has(batchKey))spatial.set(batchKey,[]);
+      spatial.get(batchKey).push(tile);
     }
-    stats.tiles=group.children.length;stats.revision++;return true;
+    for(const [key,patches]of spatial){
+      const mesh=new T.BatchedMesh(patches.length,patches.reduce((n,t)=>n+t.positions.length/3,0),patches.reduce((n,t)=>n+t.indices.length,0),material);
+      // Decals have one tint and no depth writes. Keep the original tile
+      // frusta; there is no need to sort same-colour contributions.
+      mesh.sortObjects=false;
+      for(const tile of patches){
+        const geometry=makeGeometry(tile);mesh.addInstance(mesh.addGeometry(geometry));geometry.dispose();
+      }
+      mesh.computeBoundingSphere();attach(mesh,key);
+    }
+    stats.tiles=tiles.size;stats.batches=group.children.length;stats.revision++;return true;
   }
-  return {group,stats,setSun};
+  return {group,stats,setSun,dispose(){for(const mesh of group.children){if(mesh.isBatchedMesh)mesh.dispose();else mesh.geometry.dispose();}group.clear();material.dispose();}};
 }
 
 // Existing ecology presentation; tree representation changes do not retune it.

@@ -168,28 +168,59 @@ test('distant batching reduces submissions while retaining every selected transf
  }finally{reference.dispose();if(batched.group.children.length)batched.dispose();if(descriptor)Object.defineProperty(performance,'now',descriptor);else delete performance.now;}
 });
 
-test('the real four-stage path uses stable original shadow topology and updates after camera rotation',()=>{
+test('the real four-stage path casts fitted spatial shadows independent of beauty selection',()=>{
   const path='redwood/giant_redwood.glb',assets={[path]:read(path),...crowns};
   const records=Array.from({length:25},(_,id)=>({id:String(id),asset:path,position_m:[(id%5)*18-36,Math.floor(id/5)*18,0],yaw_deg:id*23,scale:[1,1,1]}));
+  records.push({...records[0],id:'upsun',position_m:[460,0,210],scale:[1.3,.8,1.1]});
   const forest=buildAdoptedRedwoods({instances:records},assets,renderer,plan),camera=new T.PerspectiveCamera(62,1.5,.1,5000);
   camera.position.set(0,80,80);camera.lookAt(0,65,-40);camera.updateMatrixWorld();forest.update(camera,new T.Vector3(0,0,0));
-  const costs=forest.stats.costsByAsset[path];assert.ok(costs[0]>costs[1]*4&&costs[1]>costs[2]*4&&costs[3]===costs[2]);
+  const costs=forest.stats.costsByAsset[path];assert.ok(costs[0]>costs[1]*4&&costs[1]>costs[2]*4&&costs[3]<costs[2]);
   const spatial=forest.group.children.filter(m=>/studio_lod[23]_/.test(m.name));
   assert(spatial.every(m=>m.material===spatial[0].material),'budget handoffs share the same captured foliage and light');
-  assert(spatial.every(m=>m.geometry.attributes.position===spatial[0].geometry.attributes.position),'final budget stages cannot change a tree shape or pivot');
-  const full=forest.group.children.find(m=>m.name.includes('studio_lod1_')).geometry,far=spatial[0].geometry;
+  const middle=spatial.find(m=>m.name.includes('studio_lod2_')).geometry;
+  const distant=spatial.find(m=>m.name.includes('studio_lod3_')).geometry;
+  const cards=g=>{
+    const ids=g.index.array,tiles=g.attributes.sliceTile,faces=[];
+    for(let i=0;i<ids.length;i+=3){
+      if(tiles.getX(ids[i])<0)continue;
+      for(const id of ids.slice(i,i+3)){
+        for(const a of Object.values(g.attributes)){
+          if(!a.isInstancedBufferAttribute)for(let k=0;k<a.itemSize;k++)faces.push(a.getComponent(id,k));
+        }
+      }
+    }
+    return faces;
+  };
+  assert.deepEqual(cards(distant),cards(middle),'every indexed canopy triangle survives the distant wood reduction');
+  const woodVertices=new Set(distant.index.array.filter(id=>distant.attributes.sliceTile.getX(id)<0));
+  assert.ok(woodVertices.size>0&&woodVertices.size<=25,'the far bole uses at most three eight-sided rings and a tip');
+  const full=forest.group.children.find(m=>m.name.includes('studio_lod1_')).geometry,far=middle;
   const base=g=>{const p=g.attributes.position,low=g.boundingBox.min.y,result=new Set();for(const id of g.index?.array??Array.from({length:p.count},(_,i)=>i))if(p.getY(id)<=low+.001)result.add([p.getX(id),p.getY(id),p.getZ(id)].join(','));return result;};
-  assert.deepEqual(base(far),base(full),'wood reduction retains every original ground-level vertex exactly');
+  assert.deepEqual(base(far),base(full),'LOD 2 retains every original ground-level vertex exactly');
+  assert.equal(distant.boundingBox.min.y,far.boundingBox.min.y,'the far bole stays on the same ground plane');
   const capture=forest.stats.capturesByAsset[path][2];
   assert.equal(capture.capturedTriangles+capture.retainedWoodTriangles,capture.sourceTriangles,'all fine branches and needles participate in the distant source capture');
-  const proxy=forest.group.children.find(m=>m.name.includes('core_shadow'));
-  assert.ok(proxy.castShadow);assert.ok(proxy.geometry.attributes.position.count/3<costs[0]/10,'dense leaf mesh never enters depth pass');
+  const proxy=forest.group.children.find(m=>m.name.includes('canopy_shadow'));
+  assert.ok(proxy.castShadow&&proxy.customDepthMaterial);
+  assert.equal(proxy.geometry.attributes.position,far.attributes.position,'casters share the current canopy and wood vertices');
+  assert.equal(proxy.geometry.index,far.index,'casters share the current canopy and wood indices');
+  assert.equal(forest.shadowCrowns.get(path).isEmpty(),false);
+  const sun=new T.DirectionalLight();
+  Object.assign(sun.shadow.camera,{left:-320,right:320,bottom:-320,top:320,far:1800});
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.position.set(900,450,0);sun.updateMatrixWorld();sun.shadow.updateMatrices(sun);
+  forest.updateShadowCasters(sun.shadow.getFrustum());
+  assert.equal(forest.stats.shadowProxies,records.length,'the grazing sun sees the upslope caster outside the old 380 m radius');
+  assert.equal(forest.stats.shadowTriangles,records.length*costs[2]);
+  const casterMatrices=proxy.instanceMatrix.array.slice();
   const revision=forest.stats.shadowRevision,first=forest.stats.lodCounts.reduce((a,b)=>a+b,0);assert.ok(first>0);
   camera.lookAt(0,80,400);camera.updateMatrixWorld();forest.update(camera,new T.Vector3(0,0,0));
   assert.ok(forest.stats.culled>0,'rotation culls trees without requiring translation');
   assert.equal(forest.stats.shadowRevision,revision,'beauty culling does not remove ground-shadow casters');
+  assert.deepEqual(proxy.instanceMatrix.array,casterMatrices);
   camera.position.set(0,80,1500);camera.lookAt(0,70,0);camera.updateMatrixWorld();forest.update(camera,camera.position);
   assert.equal(forest.stats.lodCounts[1],0,'the distant view needs no middle mesh before the character approaches');
+  assert.equal(forest.stats.shadowProxies,records.length,'beauty distance cannot retire active shadow casters');
   forest.update(camera,new T.Vector3(0,0,0));
   assert.ok(forest.stats.lodCounts[1]>0,'character approach refreshes nearby detail even while the camera holds still');
   assert.ok(forest.group.children.filter(m=>m.name.includes('lod')).every(m=>!m.castShadow));
@@ -203,7 +234,16 @@ test('prototype release preserves fitted geometry, future rebakes and all origin
   const forest=buildAdoptedRedwoods({instances:[{id:'hero',asset:path,kind:'forest_tree',position_m:[0,0,0],yaw_deg:0,scale:[1,1,1]}]},assets,renderer,plan);
   const bytes=releaseCrownSources(assets,plan);assert(bytes>25000000);assert.equal(assets[path],original);assert(plan.stages.every(s=>!assets[s.asset]));
   assert(forest.group.children.some(m=>m.name.includes('lod0')&&m.geometry.index.count>1000000));
-  const previous=style.sun.value.clone();style.sun.value.set(1,.5,0).normalize();forest.rebuildImpostors(style.sun.value);style.sun.value.copy(previous);forest.dispose();
+  const proxy=forest.group.children.find(m=>m.customDepthMaterial);
+  const shader={uniforms:{},vertexShader:'#include <begin_vertex>\n#include <project_vertex>',fragmentShader:'#include <alphatest_fragment>'};
+  proxy.customDepthMaterial.onBeforeCompile(shader);
+  const atlas=shader.uniforms.uSliceShadowMap,originalMap=atlas.value,previous=style.sun.value.clone();
+  style.sun.value.set(1,.5,0).normalize();
+  try {
+    forest.rebuildImpostors(style.sun.value);
+    assert.notEqual(atlas.value,originalMap,'compiled depth material follows the replacement atlas');
+    assert.equal(atlas.value,forest.group.children.find(m=>m.name.includes('studio_lod2_')).material.map);
+  }finally{style.sun.value.copy(previous);forest.dispose();}
 });
 
 
