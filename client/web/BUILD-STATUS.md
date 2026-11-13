@@ -1,3 +1,27 @@
+# The journal is the door — 2026-11-12
+
+The load now stops on the journal at **The valley is ready.** with a meter that fills
+on real preparation and a *Step into the meadow* button. That gesture starts audio
+(browsers require one) and cuts to the warmed walk view; the village→Cat Ronin pan is
+retired rather than smoothed again. The meter shows the load phases, then each stable
+warm draw, and only reads 100% after the final GPU fence. Automated sessions
+step in through the same door. Reproduce with
+`node --test client/web/tests/loading-screen.test.mjs`.
+
+---
+
+# River and wind ambience waits for the world — 2026-11-12
+
+The river and canyon wind played at referenced distance through the whole
+loading screen, because the WebAudio listener and the river's panner sat at the
+origin until the first presented frame positioned them. They were loud, then
+dropped at the reveal. The wind/water bus now starts silent and fades in from
+the first positioned scene update, after the listener and the river's habitat
+are in place. The loading screen has no ambience, and sound enabled later still
+reaches the game. Reproduce with `node --test client/web/tests/ambient-audio-toggle.test.mjs`.
+
+---
+
 # Climb ↔ walk transitions — local review, 2026-11-12
 
 Climbing is proximity's now: walking into a trunk takes hold on the contact
@@ -18,6 +42,7 @@ so far: [hybrid animation and volition](../../docs/design/HYBRID-ANIMATION.md).
 ---
 
 # The Organoid at Tumble Hill — valley review, 2026-11-11
+
 
 On the southeast shoulder, Ronin can meet a pale-pink Organoid hiding behind
 an existing redwood. Its first words arrive while the speaker is offscreen.

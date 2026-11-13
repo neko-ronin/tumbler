@@ -35,7 +35,6 @@ import { createCloudPass } from './clouds.js';
 import {createActorShadows,snappedShadowAnchor} from './actor-shadow.js';
 import { createResolutionGovernor, createQualityGate } from './flight-quality.js';
 import {createFramePacer,WEB_FPS,WEB_FRAME_MS} from './frame-pacing.js';
-import {createIntroGate,INTRO_MIN_DWELL_S,INTRO_MAX_WAIT_S} from './intro-gate.js';
 import { createFlightRig } from './flight-rig.js';
 import { createNavigation } from './navigation.js';
 import { createCharacter } from './character.js';
@@ -637,7 +636,7 @@ export async function main() {
   const meadowFocus=meadowViewFocus(camera,ground,undefined,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
 
   let frame = 0, contextLost = false, stopped = false, lastFrame = 0, lastStamp = 0;
-  let presenting=false,introGate=null;
+  let presenting=false,presentedOnce=false;
   let elapsed = 0,lastReadout=0;
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
@@ -645,17 +644,19 @@ export async function main() {
   // Read-only inspection hook used for repeatable visual/performance checks.
   const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
-  window.tumbler = { organoid,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,terrain,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { organoid,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,terrain,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
-    presenting=false;startup.ready=false;
+    presenting=false;startup.ready=false;startup.rendered=false;startup.playing=false;
     loading.show();status.textContent='Letting the light settle…';
     paraPass.warm();
+    loading.meter(.63,'Waking the light…');
     await firstPerson.prewarm();
-    // The opening is one continuous move: the village it starts from, then the
-    // walk view it lands on. Both are warmed behind the journal, because the
-    // shot path itself is smooth and the jitter measured inside it is first-use
-    // work — Cat Ronin's programs, geometry and actor shadow map are made while
-    // the camera is still looking at the village.
+    loading.meter(.66,'Finding Cat Ronin…');
+    // Everything the first walk frame needs is warmed behind the journal: the
+    // village view, then the walk view the player will actually open on. The
+    // journal is opaque and the arrival is warmed through the real select('walk')
+    // state, so the entry is a cut to a frame that already exists rather than a
+    // camera move interpolating between two scenes.
     const warmOptions={
       prepare(){
         terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();
@@ -677,27 +678,78 @@ export async function main() {
       pending:()=>forest.stats.adopted.transitioning>0,
       finish:()=>finishGpu(renderer.getContext()),
     };
-    const warmView=()=>warmScene(warmOptions);
-    const result=await warmView();
-    // Only the automatic intro pans down to him; a ?view= or ?course= link is a
-    // developer shortcut that starts where it is told, so it keeps the cheaper
-    // single-view startup.
+    // Progress is the work: completed draws plus the consecutive stable ones
+    // that the completion rule actually requires. It is not a time estimate.
+    const share=p=>Math.min(1,.45*Math.min(1,p.frames/16)+.55*(p.stable/p.stableFrames));
+    const warmView=onProgress=>warmScene({...warmOptions,onProgress});
+    const result=await warmView(p=>loading.meter(.66+.16*share(p),'Rendering the village…'));
+    // A ?view=, ?course= or ?encounter= link is a developer shortcut that starts
+    // where it is told, so it keeps the cheaper single-view startup.
+    const intro=!viewParam&&!requestedCourse&&!requestedOrganoid;
+    // The gate is the first entry only. A context recovery must return the
+    // player to the activity they were in, not dump them on foot.
+    const gate=intro&&!presentedOnce;
     let arrival=null;
-    if(!viewParam&&!requestedCourse&&!requestedOrganoid){
-      arrival=await navigation.warmArrival(warmView);
-      // The preview pointed the scenery shadow focus at the arrival, as the
-      // first walk frame will. Put it back on the bookmark and pay that rebuild
-      // here rather than after the reveal.
-      updateShadow(true);
-      await nextPaint();warmOptions.prepare();warmOptions.render();await warmOptions.finish();
+    if(gate){
+      loading.meter(.82,'Finding the meadow…');
+      arrival=await navigation.warmArrival(()=>warmView(p=>loading.meter(.82+.12*share(p),'Rendering the meadow…')),{restore:false});
+      // The journal covers the world, and the warm leaves the camera, walk
+      // state, orbit target and scenery-shadow focus exactly where the entry
+      // needs them. Keeping them is what makes the entry cut cheap: the first
+      // live frame reuses the warmed shadow map instead of rebuilding it.
+      loading.meter(.96,'Checking the light…');
     }
     firstPerson.finishWarm();
     if(contextLost||stopped)return;
-    Object.assign(startup,result,{ready:true,warm:{orbit:result.frames,arrival:arrival?.frames??0}});
+    Object.assign(startup,result,{warm:{orbit:result.frames,arrival:arrival?.frames??0}});
     // Warm-up costs must not enter play's clock or adaptive-quality samples.
     samples.length=0;lastFrame=0;qualityGate.reset(performance.now());
     status.textContent='Ready for the mountains.';updateStamp();
-    presenting=true;loading.reveal();resume();
+    if(gate){
+      // The world is drawn and fenced; the journal now waits for the player's
+      // gesture. That gesture is also what lets the browser start audio, so the
+      // game never claims sound is on while the context is still suspended.
+      startup.rendered=true;
+      loading.meter(1,'The valley is ready.');
+      loading.ready('The valley is ready.',beginGame);
+      // Automated runs have no gesture to give; they enter through the same
+      // door rather than hanging on a button, and say so in `startup`.
+      if(navigator.webdriver)beginGame({auto:true});
+      return;
+    }
+    Object.assign(startup,{ready:true,rendered:true,playing:true});
+    presentedOnce=true;presenting=true;loading.reveal();resume();
+  }
+  /** The player's gesture. A cut, not a pan: the arrival was warmed above and
+   * the journal covers the one frame it takes to make it current, so there is
+   * no interpolated camera state for first-use work to land inside. */
+  async function beginGame({auto=false}={}){
+    if(presenting||startup.playing)return;
+    if(!auto)soundscape.unlock().catch(()=>{});
+    // The warm left the walk state, camera and shadow focus in place; re-select
+    // would move the camera and force a shadow rebuild for no visible gain.
+    if(navigation.mode!=='walk')setActivity('walk');
+    navigation.cancelShot();
+    modeSelect.value='walk';document.body.dataset.flying='false';updateHelp('walk');
+    document.body.dataset.ui='hidden';
+    canvas.focus();
+    presenting=true;resume();
+    // Hold the journal until the render loop has actually drawn the walk view,
+    // so the reveal never shows the last orbit frame. `ready` is set after the
+    // reveal so it keeps meaning "the world is on screen and interactive".
+    await nextDrawnFrame();
+    if(stopped||contextLost)return;
+    loading.reveal();
+    status.textContent='Walk the meadow.';
+    presentedOnce=true;startup.ready=true;startup.playing=true;if(auto)startup.autoStarted=true;
+  }
+  function nextDrawnFrame(){
+    const start=metrics.frame;
+    return new Promise(resolve=>{
+      let waits=0;
+      const check=()=>{if(metrics.frame>start||++waits>240)resolve();else requestAnimationFrame(check);};
+      requestAnimationFrame(check);
+    });
   }
   function updateStamp() {
     const ordered = [...samples].sort((a,b) => a-b);
@@ -795,20 +847,6 @@ export async function main() {
     // mid-move is a visible hitch, so the gate also restarts the sample window.
     const next=qualityGate.decide(time,samples,adaptiveToggle.checked,navigation.shotActive||organoid.active);
     if(next!==null&&Math.abs(next-qualityScale)>.001){qualityScale=next;adoptedForest.setQuality(qualityScale);samples.length=0;renderer.setPixelRatio(pixelRatio*qualityScale);renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);}
-    // The opening pan starts when the cadence is steady, not on a clock. The
-    // gate reads the same accepted intervals the governor and stamp use, and it
-    // is dropped rather than fired late if the establishing view was left
-    // behind, so it can never interrupt whatever the player is looking at now.
-    if(introGate){
-      if(navigation.mode==='orbit'&&document.body.dataset.view==='tree-village'){
-        const go=introGate.step(time,samples)==='go';
-        metrics.intro=introGate.last;
-        if(go){
-          introGate.last.releasedMs=time;introGate=null;
-          document.body.dataset.ui='hidden';setActivity('walk');canvas.focus();
-        }
-      } else introGate=null;
-    }
     sky.position.copy(camera.position);
     const start = performance.now();
     try {
@@ -850,13 +888,7 @@ export async function main() {
     const [x,y]=organoidConfig.approach_xy_m;
     navigation.placeOnFoot(player.x,player.y,Math.atan2(y-player.y,x-player.x));
   }
-  // Walk is the default: a ?view= link stays put (dev shortcut); otherwise the
-  // village view holds until its cadence has settled, then the UI hides and the
-  // camera pans to him (navigation owns that shot, like any switch from looking
-  // around to walking). animate() steps the gate, so the transition has one
-  // owner and no timer can race the frame loop.
-  if(!viewParam&&!requestedCourse&&!requestedOrganoid){
-    introGate=createIntroGate({minDwellS:INTRO_MIN_DWELL_S,maxWaitS:INTRO_MAX_WAIT_S,startMs:performance.now()});
-    window.tumbler.intro=introGate;
-  }
+  // The default opening is the journal's ready state: the world is drawn behind
+  // it, and the Begin gesture is what starts play and audio. Developer links
+  // (?view=, ?course=, ?encounter=) start where they are told, as before.
 }

@@ -145,16 +145,18 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     options.onFlightChange?.(next,siteIndex,weather);
     updateFlightPresentation(0);
   }
-  /** Hold the walk view the intro shot lands on while `warm` runs, then put the
-   * world back. `select('walk')` already builds that state — the same spawn,
-   * heading, body rotation, pitch and field of view the transition produces —
-   * so the warm sees the real arrival rather than a second copy of the chase
-   * camera math. The preview owns no shot of its own, and everything it moves
-   * — camera, field of view, orbit target and mode — is restored exactly, so
-   * the authored shot still starts from the bookmark byte for byte.
+  /** Hold the walk view the entry opens on while `warm` runs. `select('walk')`
+   * already builds that state — the same spawn, heading, body rotation, pitch
+   * and field of view the entry produces — so the warm sees the real arrival
+   * rather than a second copy of the chase camera math. The preview owns no
+   * shot of its own. By default everything it moves — camera, field of view,
+   * orbit target and mode — is restored exactly, so an authored shot can still
+   * start from its bookmark; `{restore:false}` keeps the arrival instead, which
+   * is what the journal's entry needs: the camera, state, shadow focus and
+   * resources the warm leaves in place are the first live walk frame.
    * Called by the automatic intro while the journal is still up; a ?view= or
    * ?course= link starts where it is told and does not pay for it. */
-  async function warmArrival(warm){
+  async function warmArrival(warm,{restore=true}={}){
     const from={position:camera.position.clone(),quaternion:camera.quaternion.clone(),fov:camera.fov,target:orbit.target.clone(),yaw,pitch,snap,mode,
       rig:rig.visible,ride:ride.rig.visible,body:character.object.visible};
     select('walk');shot=null;
@@ -163,11 +165,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     orbitAtCamera();
     try{return await warm();}
     finally{
-      shot=null;clear();mode=from.mode;state=null;
-      camera.position.copy(from.position);camera.quaternion.copy(from.quaternion);camera.fov=from.fov;camera.updateProjectionMatrix();
-      orbit.enabled=from.mode==='orbit';orbit.target.copy(from.target);
-      rig.visible=from.rig;ride.rig.visible=from.ride;character.object.visible=from.body;
-      yaw=from.yaw;pitch=from.pitch;snap=from.snap;
+      if(restore){
+        shot=null;clear();mode=from.mode;state=null;
+        camera.position.copy(from.position);camera.quaternion.copy(from.quaternion);camera.fov=from.fov;camera.updateProjectionMatrix();
+        orbit.enabled=from.mode==='orbit';orbit.target.copy(from.target);
+        rig.visible=from.rig;ride.rig.visible=from.ride;character.object.visible=from.body;
+        yaw=from.yaw;pitch=from.pitch;snap=from.snap;
+      }
     }
   }
   const walkHeight=(x,y)=>options.walkHeight?.(x,y)??(options.walkHeight?null:ground.height(x,y));

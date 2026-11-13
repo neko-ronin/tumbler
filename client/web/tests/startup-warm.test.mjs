@@ -79,3 +79,21 @@ test('the intro warms the walk view it lands on, then restores the village view 
  assert.deepEqual(character.object.rotation.toArray(),arrival.rotation);
  assert.equal(nav.state.x,arrival.state.x);assert.equal(nav.state.y,arrival.state.y);
 });
+
+test('the entry keeps the warmed arrival instead of restoring the bookmark',async t=>{
+ const f=cameraFixture(t),{nav,camera}=f;
+ const VIEW={position:[-672,73.8391,-442],target:[-696,89.8391,-472]};
+ nav.select('orbit');
+ camera.position.fromArray(VIEW.position);camera.lookAt(...VIEW.target);
+ const arrival={};
+ await nav.warmArrival(async()=>{
+  arrival.mode=nav.mode;arrival.state={...nav.state};arrival.position=camera.position.toArray();arrival.shot=nav.shot;
+  return {frames:4};
+ },{restore:false});
+ assert.equal(arrival.mode,'walk');
+ assert.equal(arrival.shot,null,'the entry owns no interpolated shot');
+ assert.equal(nav.mode,'walk','the entry stays in the walk state it warmed');
+ assert.deepEqual(camera.position.toArray(),arrival.position,'the first live frame opens on the warmed camera');
+ assert.equal(nav.state.x,arrival.state.x);
+ assert.equal(nav.state.y,arrival.state.y);
+});

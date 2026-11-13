@@ -5,7 +5,7 @@ import {createFoleyPlayer} from './character-foley.js';
  * Original procedural sound, enabled by default and resumed after the first user gesture if autoplay is blocked.
  */
 export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=null,dialogueBytes=null){
-  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,characterBus=null,paraVoice=null,windWaterBus=null,windWaterEnabled=true,enabled=true;
+  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,characterBus=null,paraVoice=null,windWaterBus=null,windWaterEnabled=true,enabled=true,ambienceStarted=false;
   let dialogueBuffer=null, dialogueSource=null, dialogueActive=false;
   function stopDialogue(){
     if(!dialogueSource)return;
@@ -44,26 +44,37 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
       let last=0;for(let i=0;i<length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;data[i]=last*3.5;}
       characterBus=context.createPanner();characterBus.panningModel='HRTF';characterBus.distanceModel='inverse';characterBus.refDistance=5;characterBus.rolloffFactor=1;characterBus.maxDistance=100;characterBus.connect(context.destination);
       cues=createCuePlayer(context,characterBus,chargeBuffer);birds=createBirds(context,createTreeIndex(trees));beeVoices=Array.from({length:3},()=>createBeeVoice(context));
-      windWaterBus=context.createGain();windWaterBus.gain.value=windWaterEnabled?(dialogueActive?.24:1):0;windWaterBus.connect(context.destination);
+      windWaterBus=context.createGain();windWaterBus.gain.value=0;windWaterBus.connect(context.destination);
       function noise(frequency,gain,spatial=false){const source=context.createBufferSource();source.buffer=buffer;source.loop=true;
         const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=frequency;
         const level=context.createGain();level.gain.value=gain;source.connect(filter).connect(level);
         let panner=null;if(spatial){panner=context.createPanner();panner.panningModel='HRTF';panner.distanceModel='inverse';panner.refDistance=10;panner.maxDistance=260;level.connect(panner).connect(windWaterBus);}else level.connect(windWaterBus);
         source.start();return {source,filter,level,panner};}
       const tone=context.createOscillator(),toneLevel=context.createGain();tone.type='sine';tone.frequency.value=700;toneLevel.gain.value=0;tone.connect(toneLevel).connect(context.destination);tone.start();vario={tone,level:toneLevel};
-      wind=noise(550,.08);water=noise(1400,.3,true);paraVoice=createParaVoice(context,context.destination,windWaterBus);
+      wind=noise(550,.055);water=noise(1400,.3,true);paraVoice=createParaVoice(context,context.destination,windWaterBus);
       const oscillator=context.createOscillator();oscillator.type='sawtooth';oscillator.frequency.value=85;const level=context.createGain();level.gain.value=0;const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=350;oscillator.connect(filter).connect(level).connect(context.destination);oscillator.start();motor={oscillator,level};
     }
     await (enabled?context.resume():context.suspend());return enabled;
   }
   function setWindWaterEnabled(value){
     windWaterEnabled=!!value;
-    if(windWaterBus){const t=context.currentTime;windWaterBus.gain.cancelScheduledValues(t);windWaterBus.gain.setTargetAtTime(windWaterEnabled?(dialogueActive?.24:1):0,t,.03);}
+    if(windWaterBus){const t=context.currentTime;windWaterBus.gain.cancelScheduledValues(t);windWaterBus.gain.setTargetAtTime(windWaterEnabled&&ambienceStarted?(dialogueActive?.24:1):0,t,.03);}
   }
   async function unlock(){if(enabled&&context?.state==='suspended')await context.resume();}
   function update(camera,navigation,nearby,presentation=null){
     if(!enabled||!context||!birds)return;
     const listener=context.listener,t=context.currentTime,position=camera.position;
+    // The river and the canyon wind are placed relative to the listener, so they
+    // cannot be heard until this first update has put the listener at the camera
+    // and the river at its real habitat. Starting the bus any earlier plays the
+    // river at reference distance through the whole loading screen, then drops it
+    // when the world appears. So the first positioned update is what unmutes it,
+    // and it fades in rather than popping.
+    if(!ambienceStarted){
+      ambienceStarted=true;
+      windWaterBus.gain.cancelScheduledValues(t);
+      windWaterBus.gain.setTargetAtTime(windWaterEnabled?(dialogueActive?.24:1):0,t,.5);
+    }
     if(listener.positionX){listener.positionX.setValueAtTime(position.x,t);listener.positionY.setValueAtTime(position.y,t);listener.positionZ.setValueAtTime(position.z,t);
       const e=camera.matrixWorld.elements;listener.forwardX.setValueAtTime(-e[8],t);listener.forwardY.setValueAtTime(-e[9],t);listener.forwardZ.setValueAtTime(-e[10],t);listener.upX.setValueAtTime(e[4],t);listener.upY.setValueAtTime(e[5],t);listener.upZ.setValueAtTime(e[6],t);}
     const actor=navigation.state;if(actor&&characterBus){characterBus.positionX.setValueAtTime(actor.x,t);characterBus.positionY.setValueAtTime(actor.z+.9,t);characterBus.positionZ.setValueAtTime(-actor.y,t);}

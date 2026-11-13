@@ -19,7 +19,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "8988b754d40f5412e31d5e656ed644ce419a78d8507e6dceae3964db52ffb10c"
+      "sha256": "ba2b6788c72a2245dd355958983c866813a926f14a000ea4986079b5e7a65348"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -39,7 +39,7 @@
     },
     {
       "path": "client/web/src3d/audio.js",
-      "sha256": "7b7321bbdb70a552b998cf63a2305be72dc353fe6d85b5ac203d6770f257164c"
+      "sha256": "53fa0dddd13440891f814a9ab5db4c6f3a1e931d36d5bec31895d31b98c61302"
     },
     {
       "path": "client/web/src3d/canopy-light.js",
@@ -182,20 +182,16 @@
       "sha256": "889b645ce0d24d25c2b7e09928e2758a904d2b0a3e63fa756a7c0c09f74abe25"
     },
     {
-      "path": "client/web/src3d/intro-gate.js",
-      "sha256": "c9dba85868a16ce5cc154894827537dead64a1dcddf49c3042bff2608e283a9a"
-    },
-    {
       "path": "client/web/src3d/katana-fx.js",
       "sha256": "67f88facf59c1ef97a09187e11f4cbec35f4721a4176502025e13ff4b7bf6c28"
     },
     {
       "path": "client/web/src3d/loading.js",
-      "sha256": "6d5e6f07cc61d36492c3b8c8e8673e3d143b30a286f43c4b3fba31fb21f6a4d9"
+      "sha256": "c2b801075bfd6141f7279e3f50fb21eda1317e3a8a6762a61c1891ecf6766302"
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "b88b15bd0125daaf9d854bdabfb78619005c3e1902ffac4e368ed434fad97bf6"
+      "sha256": "af5c8a00105ca37857c16ef214e7661e9cd0dcea5743abdf2546f1cf26b8e122"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -203,7 +199,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "69cb9229fde2816ef92a430fd3e6bed2570077584c46bb6b87103ceee8e50878"
+      "sha256": "07c0d626fb385a3d90a98a593232f8256b853e0df9d0d3e985f4d8ea272552d4"
     },
     {
       "path": "client/web/src3d/organoid-encounter.js",
@@ -892,7 +888,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "031df62",
+  "commit": "4cf8143",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
