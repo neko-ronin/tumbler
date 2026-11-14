@@ -579,7 +579,7 @@
     },
     {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "da15a091fda1f918fd40d93ede726a0fba7f9bf602d245f7762778e5f138fbf2"
+      "sha256": "1bf88500356540b28a0889dc22c1316ba2a9f327b4d8a7da245bd78337bf1db0"
     },
     {
       "path": "shared/geometry/granite/surface.js",
@@ -795,7 +795,7 @@
     },
     {
       "path": "shared/world/out/ground_cover.json",
-      "sha256": "2480b4dad6d46da9b28df3ff8ebc8ed84a2f94c0f287cc94846b38b0a8c14489"
+      "sha256": "40a02fd487e02eb4c6e723ab06036ba9d79c9d30890910091f8df96934526fc4"
     },
     {
       "path": "shared/world/out/horizon_map.png",
@@ -807,15 +807,15 @@
     },
     {
       "path": "shared/world/out/landscape_transition.json",
-      "sha256": "3f33f6dc6e894f13172f88d39046025bdd352e893498a6b1a686171b38e4cf33"
+      "sha256": "e484625ce06bcee99cec618677ecc312038a3f65d6edd6fd9648f2b1bf4c5632"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "5ed23eac1188baa07a31720fe08146fe6dfffa3c522ac6152cda8120df3a374a"
+      "sha256": "1f4cd32b94d1bb7570afe33939205a420d223745d9c341c41a88a02dcb97de1f"
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "0b86296b384a75698dd7a3e490888b84e4e8b7f039b36437730895ade37f098d"
+      "sha256": "ba6881479a70680c688b8ea91c2112af7aaa3c145299c873f954846d4cbe9f9b"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -823,7 +823,7 @@
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "529bf09443cc3a10c24edc05b8bb28fe7b6423c1126d12932a01177e7961b42c"
+      "sha256": "82a70c2cd95881d256ddc9b500e314b1c16f46d1d091f7f88e8f1b8d45b81df6"
     },
     {
       "path": "client/web/data/heightmap.f32",
@@ -888,16 +888,16 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "080a822",
+  "commit": "dae4629",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "529bf09443cc"
+      "sha256_12": "82a70c2cd958"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "5ed23eac1188"
+      "sha256_12": "1f4cd32b94d1"
     },
     {
       "path": "shared/world/out/fields_albedo.png",
