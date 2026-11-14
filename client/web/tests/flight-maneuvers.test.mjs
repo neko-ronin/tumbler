@@ -92,6 +92,17 @@ test('maneuver control is held B or Shift and leaves normal analogue controls av
  pad.buttons[1].pressed=false;assert.equal(flightInput(pad).maneuver,false);
 });
 
+test('J and K pull the left and right handles fully, and the triggers still pull partway',()=>{
+ const pad={axes:[0,0,0,0],buttons:Array.from({length:16},()=>({pressed:false,value:0}))};
+ assert.deepEqual([flightInput(null).brakeLeft,flightInput(null).brakeRight],[0,0],'no input, no pull');
+ const j=flightInput(null,new Set(['KeyJ'])),k=flightInput(null,new Set(['KeyK']));
+ assert.deepEqual([j.brakeLeft,j.brakeRight],[1,0],'J is the left handle only');
+ assert.deepEqual([k.brakeLeft,k.brakeRight],[0,1],'K is the right handle only');
+ pad.buttons[6].value=.4;pad.buttons[7].value=.25;
+ const triggers=flightInput(pad);assert.deepEqual([triggers.brakeLeft,triggers.brakeRight],[.4,.25],'LT / RT stay analogue');
+ const both=flightInput(pad,new Set(['KeyJ']));assert.deepEqual([both.brakeLeft,both.brakeRight],[1,.25],'a held key pulls past a partial trigger');
+});
+
 test('shared wing skins have forward volume, taper to a thin tail and expose a recessed intake',async()=>{
  const {parseGLB}=await import('../src3d/glb.js');
  for(const asset of ['parafoil','parakite']){

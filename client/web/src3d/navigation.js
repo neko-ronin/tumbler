@@ -39,8 +39,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   let queuedSlide=false,queuedBranch=false,actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const director=createFollowCamera(),boom=createCameraBoom(),range=createFollowRange();
   let movementYaw=null,lastInput=[0,0],terrainLift=0;
-  // Shift is a toggle on foot, not a held modifier; the left stick's own travel
-  // ramps the pace to a full run without it. `clear()` retires both.
+  // Keyboard movement runs on foot by default; the left stick's own travel ramps the pace to a
+  // full run. Held Shift is the tuck on foot and feeds the fast-climb flag. In water, Shift is a
+  // toggle for the dive, as it always was. `clear()` retires both.
   let runToggled=false,runStick=0;
   const fallback={version:1,profiles:{climb:{distance:6.9,lift:.6,pitch:-.24,follow_rate:8,return_delay_s:.9},branch:{distance:5.8,lift:.25,pitch:-.3,follow_rate:.65,return_delay_s:2.4,follow_hold_s:.9,follow_ramp_s:2.2,max_turn_rad_s:.55},'tree-jump':{distance:6.9,lift:.6,pitch:-.3,follow_rate:0,return_delay_s:2.4},walk:{distance:5.4,lift:0,pitch:-.24,follow_rate:1.1,return_delay_s:1.8},flight:{distance:12,lift:0,pitch:-.34,follow_rate:1.1,return_delay_s:1.8},ride:{distance:6.5,lift:0,pitch:0,follow_rate:1.1,return_delay_s:1.8}},areas:[]};
   const policy=()=>cameraMovementProfile(cameraProfile(options.cameraPolicy??fallback,mode==='walk'?(state?.mode??'walk'):riding()?'ride':mode==='gondola'?'gondola':'flight',[state?.x??0,state?.y??0,state?.z??0],options.forestSpacingM??0),mode==='walk'?(state?.speed??0):0,characterConfig.walk);
@@ -85,9 +86,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||mode==='gondola'||riding()||config.modes[mode]))toggleView();
     if(down&&!e.repeat&&e.code==='KeyF'&&mode==='walk')character.toggleKatana?.();
     if(down&&!e.repeat&&e.code==='ControlLeft'&&mode==='walk')queuedSlide=true;
-    if(down&&!e.repeat&&(e.code==='ShiftLeft'||e.code==='ShiftRight')&&mode==='walk')runToggled=!runToggled;
+    if(down&&!e.repeat&&(e.code==='ShiftLeft'||e.code==='ShiftRight')&&mode==='walk'&&state?.mode==='swim')runToggled=!runToggled;
     if(down&&!e.repeat&&e.code==='KeyQ'&&mode==='walk')character.attack?.();
-    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyZ','KeyF','KeyE','ControlLeft'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyJ','KeyK','KeyE','ControlLeft'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
   const kd=e=>key(e,true),ku=e=>key(e,false);
   window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);window.addEventListener('blur',clear);
   document.addEventListener('visibilitychange',clear);window.addEventListener('gamepaddisconnected',clear);
@@ -263,8 +264,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(riding()){time+=Math.min(dt,.05);updateRide(dt,pad,x,y);return;}
     if(mode==='walk'){
       time+=Math.min(dt,.05);
-      tuckHeld=keys.has('KeyZ')||(pad?.buttons[4]?.pressed??false);
-      runStick=Math.min(1,Math.hypot(lx,ly));
+      tuckHeld=keys.has('ShiftLeft')||keys.has('ShiftRight')||(pad?.buttons[4]?.pressed??false);
+      // Keyboard movement runs by default; the stick ramps from a walk to a run.
+      const keyed=['KeyW','KeyA','KeyS','KeyD'].some(code=>keys.has(code));
+      runStick=keyed?1:Math.min(1,Math.hypot(lx,ly));
       updateWalk(dt,x,y);
     }else{
       const input=flightInput(pad,keys);
@@ -346,7 +349,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const water=options.walkHeight?.waterAt;
     const busy=character.attacking===true;
     const planted=character.charging&&state.grounded;
-    const input={x:planted?0:movement.x,y:planted?0:-movement.z,run:runToggled&&!planted,run_amount:planted?0:runToggled?1:runStick,jump:actionHeld,tuck:tuckHeld,stick:[x,y],pitch,branch:queuedBranch,slide:queuedSlide};
+    const input={x:planted?0:movement.x,y:planted?0:-movement.z,run:(state.mode==='swim'?runToggled:tuckHeld)&&!planted,run_amount:planted?0:runStick,jump:actionHeld,tuck:tuckHeld,stick:[x,y],pitch,branch:queuedBranch,slide:queuedSlide};
     if(tape&&dt>0)tape.frames.push([1,input,Math.round(dt*1e4)/1e4]);
     state=stepMoves(state,input,dt,characterConfig.walk,
       {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height,balance:options.balance});
@@ -369,7 +372,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const jumping=state.jumpPhase&&state.jumpPhase!=='grounded';
     const bal=state.balance,down=bal&&bal.phase!=='steady'&&bal.phase!=='stumble';
     if(bal){const p=options.balance.config.phases;bal.progress=bal.phase==='trip'?bal.t/p.trip_s:bal.phase==='recover'?bal.t/p.recover_s:0;}
-    // The gait follows the speed the feet actually have, not the Shift key.
+    // The gait follows the speed the feet actually have, not a key.
     const gait=gaitFor(state.speed,characterConfig.walk,characterConfig.clips);
     character.update(dt,onBark?'climb':swimming?'swim':down?'balance':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{balance:bal,slide:state.sliding?state:null,climb:onBark?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching?state.z:characterHeight(state.x,state.y),groundHeight:branching?()=>state.z:characterHeight,knock:state.knock,knockSide:state.knockSide});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);

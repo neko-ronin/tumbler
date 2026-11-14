@@ -103,9 +103,10 @@ test('third-person navigation moves the cat, keeps the camera separate and hides
     key('keydown','KeyW');
     for(let i=0;i<60;i++) nav.update(1/60);
     key('keyup','KeyW');
-    const ramp=config.walk.walk_mps**2/(2*config.walk.accel_mps2);
-    assert.ok(Math.abs(Math.hypot(nav.state.x-before.x,nav.state.y-before.y)-(3.5-ramp))<.03,'one second of walking, less the start-up ramp');
-    assert.equal(cat.object.visible,true);assert.equal(cat.clip,'walk');
+    const ramp=config.walk.run_mps**2/(2*config.walk.accel_mps2);
+    // Run ramps are longer, and 1/60 s steps add about 0.04 m over the continuous estimate.
+    assert.ok(Math.abs(Math.hypot(nav.state.x-before.x,nav.state.y-before.y)-(config.walk.run_mps-ramp))<.05,'one second of running by default, less the start-up ramp');
+    assert.equal(cat.object.visible,true);assert.equal(cat.clip,'run');
     assert.ok(camera.position.distanceTo(cat.object.position)>4);
     for(const mode of ['paraglider','parakite','paramotor']) {
       nav.select(mode);nav.update(1/60);

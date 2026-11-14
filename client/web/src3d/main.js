@@ -385,10 +385,10 @@ export async function main() {
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
-  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',fly:'WASD: fly · Mouse: look (click to capture, Esc to release) · R: up · F: down · Hold Shift: slow',walk:'WASD / stick: walk · Shift: toggle run · push the stick fully to run · Space / A: jump or wall push · Z / LB: tuck and roll down a slope · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: reharness · walk into a trunk to climb it · Drag / right stick: look',
+  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',fly:'WASD: fly · Mouse: look (click to capture, Esc to release) · R: up · F: down · Hold Shift: slow',walk:'WASD: run · stick: walk, push fully to run ·Space / A: jump or wall push · Shift / LB: tuck and roll down a slope · Shift in water: dive toggle · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: reharness · walk into a trunk to climb it · Drag / right stick: look',
     parakite:'A/D steer · W dive / S flare · Drag to look · Launch to restart',
-    ski:'A/D carve · W pole · S snowplough · Shift tuck · Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
-    bike:'A/D steer · W pedal · S brake · Shift crouch · Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
+    ski:'A/D carve · W pole · S snowplough · Shift tuck ·Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
+    bike:'A/D steer · W pedal · S brake · Shift crouch ·Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
   function syncFlightUI(mode,site,weather){
     scenicCourse=flightConfig.modes[mode]&&site!=='here'?speedflying?.courses.find(c=>c.launch_id===flightConfig.launches[site]?.id)??null:null;
     scenicProgress=null;
@@ -402,7 +402,7 @@ export async function main() {
     const power=mode==='paramotor'?' · LB/RB: motor':'';
     const flightHelp=`Stick ${travel} · LT/RT: independent handles · B + steer: wingovers${power} · Y: view · Land then X: unhook · A: launch / air retry · D-pad: wing / ridge · Menu: weather`;
     const pad=[...(navigator.getGamepads?.()??[])].some(p=>p?.connected);
-    const keyboardFlight=`A/D: ${mode==='parakite'?'weight shift + outside release':'weight shift + inside brake'} · W/S: ${mode==='parakite'?'raise handles / pull to flare':'speedbar / brakes'} · Shift + steer: wingovers${mode==='paramotor'?' · R/F: motor':''} · V: view · E: unhook on safe ground · Space: ground launch · Launch: restart`;
+    const keyboardFlight=`A/D: ${mode==='parakite'?'weight shift + outside release':'weight shift + inside brake'} · W/S: ${mode==='parakite'?'raise handles / pull to flare':'speedbar / brakes'} · J/K: independent handles · Shift + steer: wingovers${mode==='paramotor'?' · R/F: motor':''} · V: view · E: unhook on safe ground · Space: ground launch · Launch: restart`;
     document.getElementById('help').textContent=flightConfig.modes[mode]?(pad?flightHelp:keyboardFlight):pad&&mode==='orbit'?'A: take flight · D-pad: wing / ridge · Menu: weather':(helps[mode]??helps.orbit);
   }
   function setActivity(mode){

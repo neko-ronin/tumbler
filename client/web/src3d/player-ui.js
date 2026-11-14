@@ -12,19 +12,19 @@ const TIME_LABELS={golden:'Golden hour',dusk:'Evening',day:'Morning'};
 // as map-legend symbols; an empty list means that input has no binding for it.
 const CONTROLS={
   walk:{title:'On foot',rows:[
-    ['Walk',['WASD'],['L stick']],['Run',['Shift'],['L stick, push fully']],['Look',['Drag','Arrows'],['R stick']],
-    ['Jump',['Space'],['A']],['Tuck and roll, held',['Z'],['LB']],['Slide',['Ctrl'],['R3']],
+    ['Walk, runs by default',['WASD'],['L stick, push fully to run']],['Look',['Drag','Arrows'],['R stick']],
+    ['Jump',['Space'],['A']],['Tuck and roll, held',['Shift'],['LB']],['Dive in water, press to toggle',['Shift'],[]],['Slide',['Ctrl'],['R3']],
     ['Draw the katana',['F'],['Y']],['Slash',['Q','Click'],['B']],['Charge, held',['R'],['RT']],
     ['Grab a tree',['E'],['X']],['First person',['V'],['L3']],['Map',['Esc','M'],['Menu']]]},
   harness:{title:'Paramotor, on the ground',rows:[
     ['Start the take-off run',['Space'],['A']],['Steer',['A','D'],['L stick']],['Motor up, down',['R','F'],['RB','LB']],
     ['Unhook and walk',['E'],['X']],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
   paramotor:{title:'Paramotor',rows:[
-    ['Steer',['A','D'],['L stick']],['Speed bar, brakes',['W','S'],['L stick']],['Brake handles',[],['LT','RT']],
+    ['Steer',['A','D'],['L stick']],['Speed bar, brakes',['W','S'],['L stick']],['Brake handles, left and right',['J','K'],['LT','RT']],
     ['Motor up, down',['R','F'],['RB','LB']],['Wingovers',['Shift','A','D'],['B','L stick']],['View',['V'],['Y']],
     ['Look',['Drag','Arrows'],['R stick']],['After landing, unhook',['E'],['X']],['Map',['Esc','M'],['Menu']]]},
   parakite:{title:'Parakite',rows:[
-    ['Steer',['A','D'],['L stick']],['Dive, flare',['W','S'],['L stick']],['Handles',[],['LT','RT']],
+    ['Steer',['A','D'],['L stick']],['Dive, flare',['W','S'],['L stick']],['Handles, left and right',['J','K'],['LT','RT']],
     ['Wingovers',['Shift','A','D'],['B','L stick']],['View',['V'],['Y']],['Look',['Drag','Arrows'],['R stick']],
     ['After landing, unhook',['E'],['X']],['Map',['Esc','M'],['Menu']]]},
   gondola:{title:'Gondola',rows:[['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},

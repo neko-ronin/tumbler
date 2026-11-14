@@ -32,7 +32,7 @@ export async function runCameraReview(game,scenario='forest'){
   start(1723.3673,927.1585);
   if(nav.view!=='chase'){key('KeyV',true);key('KeyV',false);}
   if(scenario==='forest'){
-   key('KeyW',true);key('ShiftLeft',true);tick(100);key('KeyW',false);key('ShiftLeft',false);
+   key('KeyW',true);tick(100);key('KeyW',false);  // keys run on foot by default; held Shift would tuck
    key('KeyS',true);tick(22);key('KeyS',false);tick(15);
   }else if(scenario==='climb'){
    const shapes=game.ride.hitTest.near([1716.3673,920.1585,270],55).filter(s=>s.trunk&&(s.trunk.climb_top_z??s.trunk.top_z)-s.trunk.base_z>30);
@@ -45,7 +45,7 @@ export async function runCameraReview(game,scenario='forest'){
    if(Math.abs(result.finalBodyScreenY-.5)>.02)throw new Error(`Tree body is not centred: ${result.finalBodyScreenY}`);
    if(nav.state.mode!=='climb'||result.climbYawError>.3)throw new Error(`Climb camera loses the trunk: ${JSON.stringify(result)}`);
   }else if(scenario==='run-turn'){
-   key('KeyD',true);key('ShiftLeft',true);let distance=0;
+   key('KeyD',true);let distance=0;
    for(let i=0;i<54;i++){const {x,y}=nav.state;tick(1);distance+=Math.hypot(nav.state.x-x,nav.state.y-y);}
    result.distanceM=distance;result.durationS=1.8;result.runningYawError=Math.abs(angle(yaw()-(nav.state.heading-Math.PI/2)));
    if(distance<8||result.runningYawError>.15)throw new Error(`Running view trails: ${JSON.stringify(result)}`);

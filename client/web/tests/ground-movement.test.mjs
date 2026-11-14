@@ -34,13 +34,11 @@ test('arrow keys look around on foot while WASD remains locomotion',t=>{
  key('keydown','KeyW');for(let i=0;i<30;i++)nav.update(1/60);key('keyup','KeyW');
  assert.ok(Math.hypot(nav.state.x-position.x,nav.state.y-position.y)>.1,'WASD still moves the player');
 });
-test('Shift toggles running on foot, L3 does nothing, and the stick ramps to a full run',t=>{
+test('keys run on foot by default, L3 does nothing, and the stick ramps to a full run',t=>{
  const {nav,pad,key}=fixture(t);nav.select('walk');nav.update(1/60);
  const w=character.walk,settle=frames=>{for(let i=0;i<frames;i++)nav.update(1/60);return nav.state.speed;};
- key('keydown','KeyW');assert.ok(Math.abs(settle(120)-w.walk_mps)<1e-9,'W alone still walks');
- key('keydown','ShiftLeft');key('keyup','ShiftLeft');assert.ok(Math.abs(settle(120)-w.run_mps)<1e-9,'one Shift tap toggles a full run');
- key('keydown','ShiftLeft');key('keyup','ShiftLeft');assert.ok(Math.abs(settle(120)-w.walk_mps)<1e-9,'a second tap returns to a walk');
- key('keyup','KeyW');
+ key('keydown','KeyW');assert.ok(Math.abs(settle(120)-w.run_mps)<1e-9,'W alone runs by default');
+ key('keyup','KeyW');assert.ok(settle(120)<1e-9,'releasing W stops');
  pad.buttons[10].pressed=true;assert.ok(settle(120)<1e-9,'L3 no longer runs');
  pad.buttons[10].pressed=false;
  pad.axes[0]=.5;const half=settle(120);

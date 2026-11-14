@@ -106,7 +106,7 @@ test('in the game, walking into the pool swims: the clip follows tread, paddle a
  const tick=n=>{for(let i=0;i<n;i++)nav.update(1/60);};
  const forward=['KeyW','KeyA','KeyS','KeyD'].find(code=>{const x=nav.state.x;key('keydown',code);tick(10);key('keyup',code);const moved=nav.state.x-x;nav.state.x=x;return moved>.05;});
  assert.ok(forward,'one key walks toward the pool');
- key('keydown',forward);tick(60*5);
+ key('keydown',forward);tick(60*2);  // on foot now runs by default: two seconds reaches open water, before the far wall
  assert.equal(nav.state.mode,'swim');assert.equal(nav.state.swimPhase,'paddle');assert.equal(cat.clip,clips.paddle);
  key('keyup',forward);tick(60*3);assert.equal(nav.state.swimPhase,'tread');assert.equal(cat.clip,clips.tread);
  key('keydown','KeyE');tick(1);key('keyup','KeyE');assert.equal(nav.state.mode,'swim');assert.match(nav.message,/clear, stable ground/);

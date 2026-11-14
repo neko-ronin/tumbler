@@ -174,6 +174,20 @@ Preview: `python3.11 client/web/tools/serve.py --port 8046`, open
 `scene.html?course=gondola-weave&mode=parakite`, press V.
 [Decisions, measurements and limits](../../docs/design/AIR-AND-PARA.md).
 
+# Keys run on foot; Shift tucks, and toggles the dive in water — 2026-11-14
+
+Current keyboard scheme (supersedes the 2026-11-05 note below where they differ):
+
+- **On foot:** WASD runs by default. The left stick still ramps from walk to run.
+  Held **Shift** is the tuck (a roll on a slope); on a trunk it climbs faster, and on a limb
+  it runs along it.
+  Z is no longer bound.
+- **Swimming:** **Shift** toggles the dive, as before. The toggle works only in water.
+- **Ski and bike:** held **Shift** tucks (ski) or crouches (bike).
+- **Para-modes:** held **Shift** is the wingover, as before. Held **J** / **K** pull the
+  left / right brake handle fully, the keyboard's LT / RT (the triggers still pull partway).
+- **Free-fly camera:** held **Shift** is the slow speed, as before.
+
 # Shift toggles a run; the stick ramps to it — 2026-11-05
 
 On foot, `Shift` is now a toggle: one press runs, another walks. It is no longer
@@ -425,7 +439,7 @@ No deployment or fresh audible in-game acceptance is claimed.
 # Branches, redwood launches and para recovery — S4 candidate, 2026-10-31
 
 Climb a tree with forward input, E / gamepad X steps onto a nearby primary
-branch, and movement follows the limb. Shift runs. Space / A leaps toward a
+branch, and movement follows the limb. Held Shift runs. Space / A leaps toward a
 reachable branch on another tree; without a target it jumps freely. E near the
 branch root returns to the trunk. Climbing follows the full bole taper to the
 crown; E at a giant-redwood perch launches the last selected para mode.
@@ -1036,7 +1050,7 @@ human visual acceptance and sustained target-size performance remain open.
 
 Paragliding, parakiting and paramotoring now use version-2 shared flight/weather
 rules researched from actual manuals. Fly with a controller: left stick shifts
-weight and changes speed demand, LT/RT pull independent handles, LB/RB adjust
+weight and changes speed demand, LT/RT (J/K on the keyboard) pull independent handles, LB/RB adjust
 held motor power, right stick looks, A launches/retries, Y changes view, D-pad
 changes wing/ridge, and X cycles weather. Keyboard flight retains A/D, W/S,
 R/F, drag look and adds V view switching.
@@ -1073,12 +1087,12 @@ recorded as a followup task in `docs/HANDOVER.md`.
 
 Walk the meadow is now third person, playing the rigged Cat Ronin imported from
 the human's `catronin` project. WASD/left stick moves relative to the camera;
-drag/right stick orbits it; Shift/L3 runs. Idle, walk and run clips crossfade.
+drag/right stick orbits it; WASD runs, held Shift tucks. Idle, walk and run clips crossfade.
 Since 2026-10-24 he also climbs and swims (shared rules in `shared/activities/`):
 push into any tree at least 0.6 m across, or jump onto it, to climb; W/S climb,
-A/D circle, Shift climbs faster, Space jumps off. The climb ends in a perch below
+A/D circle, held Shift climbs faster, Space jumps off. The climb ends in a perch below
 the crown (no launching from trees yet). High falls bounce and tumble. Walk into
-a lake or river to wade and swim; the stick paddles, Shift dives along the
+a lake or river to wade and swim; the stick paddles, Shift (toggled) dives along the
 camera's pitch, letting go bobs him up, and below the surface the view tints.
 The same character sits in the harness for paragliding, parakiting and
 paramotoring, with a chase camera. Bicycle and ski models, rules, controls and

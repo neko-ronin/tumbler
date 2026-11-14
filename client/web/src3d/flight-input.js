@@ -7,7 +7,8 @@ export function flightInput(pad,keys=new Set()){
   return {
     turn:Math.max(-1,Math.min(1,Number(keys.has('KeyD'))-Number(keys.has('KeyA'))+axis(0))),
     brake:Math.max(-1,Math.min(1,Number(keys.has('KeyS'))-Number(keys.has('KeyW'))+axis(1))),
-    brakeLeft:pad?.buttons[6]?.value??0,brakeRight:pad?.buttons[7]?.value??0,
+    // Independent handles: LT / RT pull partway, J / K pull fully while held.
+    brakeLeft:Math.max(pad?.buttons[6]?.value??0,Number(keys.has('KeyJ'))),brakeRight:Math.max(pad?.buttons[7]?.value??0,Number(keys.has('KeyK'))),
     maneuver:keys.has('ShiftLeft')||keys.has('ShiftRight')||(pad?.buttons[1]?.pressed??false),
     throttle:Number(keys.has('KeyR'))-Number(keys.has('KeyF'))+Number(pad?.buttons[5]?.pressed??false)-Number(pad?.buttons[4]?.pressed??false),
     lookX:axis(2),lookY:axis(3),

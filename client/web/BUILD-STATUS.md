@@ -83,7 +83,7 @@ brushes/body contacts, and a single long-fall rebound without somersaults.
 
 Run `python3.11 client/web/tools/serve.py --port 8074` and open
 <http://127.0.0.1:8074/client/web/scene.html>. E / X on a trunk steps onto a nearby
-limb; Shift runs; Space / A leaps in the movement direction; E near the root
+limb; held Shift runs along it; Space / A leaps in the movement direction; E near the root
 returns to climbing; E at a giant-redwood crown launches the last para mode.
 
 Scope, reproducible browser review, measured checks and remaining acceptance
@@ -98,7 +98,7 @@ northern snowfield: snow, then bare granite, then a long meadow, about 280 m wit
 fall line. A shared balance budget (`shared/activities/balance.js`, `balance.json`) is spent by
 slope, surface and speed. Step onto the steep snow, or run down too fast, and he stumbles, trips,
 tumbles head over heels, sprawls into a slide and gets up, or rolls on where no one could stand.
-Z / LB tucks into a roll (not R, the katana charge, nor G, the gondola) on any slope over 0.18 grade, and the roll cannot fail. Ten kinds of
+Shift (held) / LB tucks into a roll (not R, the katana charge, nor G, the gondola) on any slope over 0.18 grade, and the roll cannot fail. Ten kinds of
 props answer a katana blow or a body rolling into them (`shared/play/reactions.json`): tall grass,
 ferns, dandelion clocks, melons, pine cones, toadstools, a straw target, a scarecrow, a hanging
 bell and snow piles. Bees and butterflies flee a player on the move and drift back once calm. A
