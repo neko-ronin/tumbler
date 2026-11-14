@@ -1,12 +1,14 @@
 /** Presentation of the gondola, and the player's ride on it; the line and its clock are
  * shared/activities/gondola.js. Stations, towers and rope are drawn once; the cabins are
  * instanced and follow the folk world's clock, so cats ride in the cabins drawn. Walking
- * on a station deck, G boards the next cabin; riding, T (or the button) is fast travel.
+ * on a station deck, G boards the next cabin; riding, T (or the button) is fast travel. Within
+ * APPROACH_M of a station the panel says how to board, so the deck is found before it is needed.
  */
 import * as T from '../vendor/three.module.min.js';
 import {cabinsAt,boardGondola,rideAt,stationNear} from '../../../shared/activities/gondola.js';
 
 const scene3=(x,y,z)=>new T.Vector3(x,z,-y);
+const APPROACH_M=40;
 
 function material(color,options={}){return new T.MeshStandardMaterial({color,roughness:.8,metalness:.1,...options});}
 
@@ -110,6 +112,9 @@ export function createGondolaLayer({line,scene,navigation,clock,panel}){
         const other=line.stations.find(o=>o!==station);
         if(queued){ride=boardGondola(line,station.id,t);}
         message=`${station.label} station · gondola to ${other.label}`;label='Board (G)';
+      }else{
+        const ahead=stationNear(line,s.x,s.y,APPROACH_M);
+        if(ahead)message=`Gondola · ${ahead.label} station ahead · step onto the deck and press G to board`;
       }
     }
     if(!message&&greeting&&t<greeting.until)message=greeting.text;

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
-import {createOrganoidEncounter,organoidDeparture,sampleOrganoidExpression} from '../../../shared/npc/organoid.js';
+import {createOrganoidEncounter,createOrganoidTutor,organoidDeparture,sampleOrganoidExpression} from '../../../shared/npc/organoid.js';
 import {createOrganoidWake} from '../src3d/organoid-wake.js';
 import {closeSampleBudget,detailAt} from '../src3d/organoid-material.js';
 import {buildWorldCollision} from '../src3d/collision.js';
@@ -114,14 +114,54 @@ test('the source hull, density levels and spoken cues match the encounter contra
   assert.equal(config.dialogue[0].text,'Hey, listen.');
   assert.equal(config.wake.opening.text,'Wake up. Hey, listen.');
   const beats=[...config.dialogue,config.wake.opening];
+  assert.ok(clips[config.tutor.call.clip],'the tutor reuses a whispered take');
   assert.deepEqual(beats.map(b=>b.id),Object.keys(clips));
   assert.ok(beats.every(b=>clips[b.id].length_s>.55));
   const ronin=config.dialogue.filter(b=>b.speaker==='Ronin');
-  assert.deepEqual(ronin.slice(0,-1).map(b=>b.vocal),['startled','question','chatter','dubious','understood']);
-  assert.ok(ronin.slice(0,-1).every(b=>/^\[[^\]]+\]$/.test(b.text)));
-  assert.deepEqual(ronin.at(-1),{id:'depart',speaker:'Ronin',shot:'depart',voice:'mutter',text:'Creepy chud.'});
+  // Ronin only ever answers in cat: the closing line is a dismissive meow, not speech.
+  assert.deepEqual(ronin.map(b=>b.vocal),['startled','question','chatter','dubious','understood','dismissive']);
+  assert.ok(ronin.every(b=>/^\[[^\]]+\]$/.test(b.text) && !b.voice));
+  assert.equal(ronin.at(-1).id,'depart');
+  assert.equal(config.scene_enabled,false);
   assert.ok(beats.slice(1).every((b,i)=>{
     const prev=clips[beats[i].id];
     return clips[b.id].offset_s>prev.offset_s+prev.length_s;
   }));
+});
+
+test('the gondola tip fires only on a station deck, where a cabin can be boarded',()=>{
+  const gondola=JSON.parse(read('../../../shared/activities/gondola.json'));
+  assert.equal(config.tutor.tips.find(t=>t.id==='gondola').radius_m,gondola.board_m);
+});
+
+test('the tutor calls only to a player settled on the ground, leaves when they fly or ride, and gives each tip once',()=>{
+  const t=config.tutor, station=[0,0], far={x:500,y:0}, deck={x:3,y:0};
+  const tutor=createOrganoidTutor(t,{gondola:[station]});
+  const run=(seconds,grounded,onFoot=true)=>{let call=null;for(let s=0;s<seconds;s+=.05)call=tutor.update(.05,grounded,onFoot)??call;return call;};
+  assert.equal(run(5,far),null,'nothing to explain far from every anchor');
+  assert.equal(run(5,{x:20,y:0}),null,'walking up to a station is not enough: the tip waits for the deck');
+  run(.1,null);  // a jump: no longer settled
+  assert.equal(run(t.settle_s*.8,deck),null,'waits for the player to settle');
+  assert.equal(run(5,null),null,'airborne, tumbling or in para-mode: never calls');
+  assert.equal(run(t.settle_s+.1,deck),'call');
+  assert.equal(tutor.tip.id,'gondola');
+  run(t.warp_in_s+.05,deck);
+  assert.equal(tutor.phase,'talk');
+  run(.1,null,false);
+  assert.equal(tutor.phase,'out','a launch or a ride sends it away at once');
+  run(t.warp_out_s+.05,deck);
+  assert.equal(tutor.phase,'idle');
+  assert.equal(run(t.gap_s+t.settle_s+1,deck),null,'each tip once');
+  assert.ok(tutor.seen.has('gondola'));
+  const cut=createOrganoidTutor(t,{gondola:[station]});
+  cut.update(t.settle_s+.1,deck,true);cut.update(.05,null,false);
+  assert.equal(cut.seen.has('gondola'),false,'a tip cut off before it showed is offered again');
+  const again=createOrganoidTutor(t,{'tumble-hill':[station]});
+  assert.equal(again.update(t.settle_s+.1,deck,true),'call');
+  assert.equal(again.tip.id,'tumble');
+  again.dismiss();again.update(t.warp_out_s+.01,deck,true);again.update(.01,deck,true);
+  assert.equal(again.phase,'idle');
+  assert.equal(again.update(t.gap_s*.5,deck,true),null,'a gap between tips');
+  assert.equal(again.update(t.gap_s,deck,true),'call');
+  assert.equal(again.tip.id,'katana');
 });

@@ -11,15 +11,15 @@
     },
     {
       "path": "client/web/assets/audio/organoid/cues.json",
-      "sha256": "5f01f79447e105ea8ce9286642c28eebae683c00cf371a09ce8d7ba68bc2c41d"
+      "sha256": "17e7358780030b4598412949ec880ef85bea9108a951f425536a34b436ba7644"
     },
     {
       "path": "client/web/assets/audio/organoid/dialogue.mp3",
-      "sha256": "772aac21bc9ac0547b9aa6d0aeff2e38ac04be541b324bfce0d66ea4e9dc47f6"
+      "sha256": "fac691d5f02a8693643e48fd8217c8568ca84d4926570331c32ac632b5e83451"
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "2d8040d5d12d5fb3a3e0d95c25f3a1bc2cefe7dcae842e5bf3d43d3ecc240212"
+      "sha256": "845940a07c18d85bcba1802cc53237e7812df370f3e01ba4b623e1aa1faf2679"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -159,7 +159,7 @@
     },
     {
       "path": "client/web/src3d/gondola.js",
-      "sha256": "9b687585b25f9047337459ac4f969745d993a6e2b6d2a7ab9ebb8342fc3d785d"
+      "sha256": "7baad19b42eb1cfcc2a541ba85d9387c0ff2d3096a2fd66b79c6228079fba1b7"
     },
     {
       "path": "client/web/src3d/granite-shading.js",
@@ -191,7 +191,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "604e3494051af43fde900895366668dd4f8dd8b0daac0d4dfb93b686e4ec02db"
+      "sha256": "d925262f695e47edd78e949e146564f95ecb91b5ede1fff0284d62cf90b11631"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -203,11 +203,15 @@
     },
     {
       "path": "client/web/src3d/organoid-encounter.js",
-      "sha256": "95a056310882bb29384db6a8ac042b0edab6f29a226502215913ad2c05580240"
+      "sha256": "a700cc7c515cf1d705dbf20a8d1e6d621ccca360b812fd4185f7ee894e651ad8"
     },
     {
       "path": "client/web/src3d/organoid-material.js",
-      "sha256": "e0300df9c97d20a5ff780613e7736d1c568d5a36ec022ec31d75ee3b02ca5810"
+      "sha256": "36678a8e1ae08a1ded1191baefe22e1678ddd99dcdd829ddbfae3b4a9724e2d4"
+    },
+    {
+      "path": "client/web/src3d/organoid-tutor.js",
+      "sha256": "5a123f25ce9954171c07b891cb5270915563ebf703be187288133bf481c0ed06"
     },
     {
       "path": "client/web/src3d/organoid-wake.js",
@@ -243,7 +247,7 @@
     },
     {
       "path": "client/web/src3d/player-ui.js",
-      "sha256": "f64bf998cbbee1c1139243a9c6eaf41042ca946d35ea0d07a41876f23a241fa5"
+      "sha256": "4f76b5c9486fc2f316048ab19c0092ae1cbd5c44af453b1158dd906bf4b518a6"
     },
     {
       "path": "client/web/src3d/player-visibility.js",
@@ -767,11 +771,11 @@
     },
     {
       "path": "shared/npc/organoid.js",
-      "sha256": "1b2b969e14db1841b2333bbb5ab7ffc5049b3cc35dd1f490e45e8e72d00fa142"
+      "sha256": "450d978b383bbd3a85d68d735f38bb8ee16bfd088ac3acf446616b86ca8a1615"
     },
     {
       "path": "shared/npc/organoid.json",
-      "sha256": "bc333f5c9449ccbc61c939cf2f19f846f13288546a0401a4de22cfc311ab9f91"
+      "sha256": "5fbdff8d262f231c0659f18419095ccffe0dc9a405dbb3951d5e288e43acb81a"
     },
     {
       "path": "shared/play/places.json",
@@ -888,7 +892,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "ee439cb",
+  "commit": "1a755d8",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

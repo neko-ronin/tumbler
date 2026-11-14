@@ -161,3 +161,48 @@ export function sampleOrganoidExpression(cue, age, look) {
   }
   return look;
 }
+
+/** The Organoid as a pestering guide: it warps in, calls "Hey! Listen!" and explains the thing
+ * the player is standing near. It calls only to a player who has stood steadily on the ground
+ * for `settle_s`, one tip at a time and each tip once, so a launch, a ride or a tumble is
+ * never interrupted. `anchors[near]` lists the [x, y] points a tip's `near` names; `seen` holds
+ * tip ids already given. Phases: idle → in (warping in, calling) → talk (box shown) → out.
+ *
+ * update(dt, grounded, onFoot): `grounded` is the player standing steadily ({x, y}) or null;
+ * `onFoot` is false once the player is no longer walking at all (flying, riding, in a menu),
+ * which sends a showing Organoid away at once. Returns 'call' when a tip starts, else null. */
+export function createOrganoidTutor(tutor, anchors, seen = new Set()) {
+  let phase = 'idle', tip = null, age = 0, steady = 0, gap = tutor.gap_s;
+  const near = (t, p) => (anchors[t.near] ?? []).some(([x, y]) => Math.hypot(p.x - x, p.y - y) <= t.radius_m);
+  const leave = () => { phase = 'out'; age = 0; };
+  function update(dt, grounded, onFoot) {
+    age += dt;
+    steady = grounded ? steady + dt : 0;
+    if (phase === 'idle') {
+      gap += dt;
+      if (steady < tutor.settle_s || gap < tutor.gap_s) return null;
+      tip = tutor.tips.find(t => !seen.has(t.id) && near(t, grounded)) ?? null;
+      if (!tip) return null;
+      seen.add(tip.id);
+      phase = 'in';
+      age = 0;
+      return 'call';
+    }
+    if (!onFoot && phase !== 'out') {
+      if (phase === 'in') seen.delete(tip.id);  // cut off before the box showed: offer it again
+      leave();
+    }
+    else if (phase === 'in' && age >= tutor.warp_in_s) { phase = 'talk'; age = 0; }
+    else if (phase === 'talk' && age >= tutor.read_s + tip.text.length * tutor.read_per_char_s) leave();
+    else if (phase === 'out' && age >= tutor.warp_out_s) { phase = 'idle'; tip = null; gap = 0; }
+    return null;
+  }
+  return {
+    update,
+    dismiss() { if (phase === 'in' || phase === 'talk') leave(); },
+    get phase() { return phase; },
+    get tip() { return tip; },
+    get age() { return age; },
+    seen,
+  };
+}

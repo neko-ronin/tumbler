@@ -45,10 +45,10 @@
   },
   "depart": {
     "offset_s": 31.307562,
-    "length_s": 0.877812
+    "length_s": 0.695
   },
   "wake": {
-    "offset_s": 32.305375,
+    "offset_s": 32.122563,
     "length_s": 2.445906
   }
 }

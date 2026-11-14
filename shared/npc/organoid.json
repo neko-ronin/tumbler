@@ -2,6 +2,7 @@
   "version": 1,
   "id": "organoid",
   "place": "tumble-hill",
+  "scene_enabled": false,
   "cover_tree_xy_m": [-908.0666, 951.3056],
   "approach_xy_m": [-914.0, 958.8],
   "trigger_radius_m": 3.8,
@@ -13,6 +14,21 @@
   "wake": {
     "asleep_s": 1.1,
     "opening": {"id":"wake","speaker":"Organoid","shot":"wake","cue":"notice","text":"Wake up. Hey, listen."}
+  },
+  "tutor": {
+    "call": {"clip":"listen","text":"Hey! Listen!"},
+    "scale": 0.45,
+    "settle_s": 1.5,
+    "gap_s": 40,
+    "warp_in_s": 0.55,
+    "warp_out_s": 0.4,
+    "read_s": 4,
+    "read_per_char_s": 0.05,
+    "tips": [
+      {"id":"tumble","near":"tumble-hill","radius_m":60,"text":"Run down the fall line and hold Shift (LB) to tuck and roll. Let go on the flat to find your feet."},
+      {"id":"gondola","near":"gondola","radius_m":6,"text":"That’s the gondola! Press G to board the next cabin. Riding, T is fast travel and V changes the view."},
+      {"id":"katana","near":"tumble-hill","radius_m":60,"text":"Draw your katana with F (Y) and slash with Q (B). The bells, targets and scarecrows answer back!"}
+    ]
   },
   "dialogue": [
     {"id":"listen","speaker":"Organoid","shot":"whisper","cue":"notice","text":"Hey, listen."},
@@ -26,6 +42,6 @@
     {"id":"born","speaker":"Organoid","shot":"organoid","cue":"notice","text":"Keep flying. It learned mine before I was born."},
     {"id":"understood","speaker":"Ronin","shot":"together","vocal":"understood","text":"[A quiet, deliberate trill.]"},
     {"id":"agreed","speaker":"Organoid","shot":"together","cue":"acknowledge","text":"You understand. The village is counting on us."},
-    {"id":"depart","speaker":"Ronin","shot":"depart","voice":"mutter","text":"Creepy chud."}
+    {"id":"depart","speaker":"Ronin","shot":"depart","vocal":"dismissive","text":"[A short, dismissive meow.]"}
   ]
 }

@@ -1,4 +1,4 @@
-"""Render the Organoid's whisper, Ronin's cat calls and his closing mutter.
+"""Render the Organoid's whisper and Ronin's cat calls. The tutor's call reuses the "listen" take.
 
 Run on macOS with Whisper and the existing ffmpeg tool. Ronin's calls are
 shaped from the retained Meow Cat #2 source used by the character charge.
@@ -57,6 +57,11 @@ CAT_CALLS = {
         Call(.06, .87, .48, 1.11, .91, .73, 21),
         Call(.56, 1.04, .15, 1.14, 1.00, .33, 16),
     ),
+    # A flat, falling meow and a clipped huff: not worth a full answer.
+    "dismissive": (
+        Call(.03, .86, .30, .98, .70, .82),
+        Call(.38, 1.02, .07, .86, .68, .36),
+    ),
 }
 
 
@@ -80,14 +85,6 @@ def normalized(samples: array, peak: float) -> array:
 def whisper(path: Path, text: str) -> array:
     subprocess.run(["say", "-v", "Whisper", "-r", "148", "-o", str(path), text], check=True)
     return normalized(decode(path), .70)
-
-
-def mutter(path: Path, text: str) -> array:
-    subprocess.run(["say", "-v", "Evan (Enhanced)", "-r", "166", "-o", str(path), text], check=True)
-    samples = decode(path, lowpass=3600)
-    # Trim the synthesizer's trailing pause. The cinematic holds after the take.
-    end = next(i for i in range(len(samples) - 1, -1, -1) if abs(samples[i]) > .001)
-    return normalized(samples[:end + round(.045 * RATE)], .43)
 
 
 def sample_at(samples: array, at: float) -> float:
@@ -150,8 +147,6 @@ def main() -> None:
             if inside:
                 text = {"listen": "Hey… listen.", "wake": "Wake up. Hey… listen."}.get(line["id"], line["text"])
                 samples = whisper(take, text)
-            elif line.get("voice") == "mutter":
-                samples = mutter(take, line["text"])
             else:
                 samples = cat_vocal(cat_source, line["vocal"])
             clip = voice_clip(samples, inside)

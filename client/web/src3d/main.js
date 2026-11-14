@@ -41,6 +41,7 @@ import { createCharacter } from './character.js';
 import { createFolkLayer } from './folk.js';
 import { createOrganoid } from './organoid-material.js';
 import { stageOrganoid } from './organoid-encounter.js';
+import { stageOrganoidTutor } from './organoid-tutor.js';
 import { createGondolaLayer } from './gondola.js';
 import { createPlayerUI } from './player-ui.js';
 import { buildGondola, deckFloor } from '../../../shared/activities/gondola.js';
@@ -341,6 +342,10 @@ export async function main() {
   const organoid=stageOrganoid({config:organoidConfig,clips:organoidCues,actor:organoidActor,scene,camera,canvas,
     navigation,character,characterScale:()=>characterConfig.scale,height:characterHeight,hit:hitTest,waterAt:walkHeight.waterAt,
     playProps:play.props,sun:style.sun.value,soundscape,panel:document.getElementById('organoid-scene')});
+  // The Organoid as guide: tips about the thing the player is standing near, on the ground only.
+  const tutor=stageOrganoidTutor({config:organoidConfig,organoid,soundscape,clip:organoidCues[organoidConfig.tutor.call.clip],
+    panel:document.getElementById('organoid-tip'),navigation,characterScale:()=>characterConfig.scale,
+    anchors:{'tumble-hill':tumbleHill.fall_line_xy_m,gondola:gondolaLine.stations.map(s=>s.xy_m)}});
   const visitors=createVisitorWatch({ecology,character,navigation,camera,focusEl:document.getElementById('focus')});
   character.onCue=name=>{soundscape.cue(name);if(['swish','swish_heavy','spin','impact'].includes(name)&&navigation.mode==='walk')play.swing([navigation.state.x,navigation.state.y],navigation.state.heading??0);};
   const foleyEvents=createFoleyEvents(name=>soundscape.cue(name));
@@ -646,7 +651,7 @@ export async function main() {
   // Read-only inspection hook used for repeatable visual/performance checks.
   const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
-  window.tumbler = { organoid,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,terrain,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { organoid,tutor,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,terrain,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;startup.rendered=false;startup.playing=false;
     loading.show();status.textContent='Letting the light settle…';
@@ -791,6 +796,7 @@ export async function main() {
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
     if(!organoid.active&&navigation.mode!=='orbit'&&navigation.view==='chase')navigation.constrainCamera();
+    tutor.update(Math.min(delta,150)/1000,onFoot);
     organoid.update(Math.min(delta,150)/1000,onFoot);
     playerVisibility.update(character.object.position.clone().add(new T.Vector3(0,1.1*characterConfig.scale,0)),spotlight&&!organoid.active&&navigation.mode!=='orbit'&&navigation.mode!=='fly'&&navigation.view==='chase',characterConfig.scale,treePlay);
     applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
@@ -881,7 +887,7 @@ export async function main() {
     try { contextLost=false;cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();distantTreeShadows.update(style.sun.value,true);ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
     catch(error){stopped=true;loading.fail(error);console.error(error);}
   });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();distantTreeShadows.dispose();forest.dispose();treeShadows.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();organoid.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();distantTreeShadows.dispose();forest.dispose();treeShadows.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();tutor.dispose();organoid.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
   if(requestedOrganoid){
     toTumbleHill();

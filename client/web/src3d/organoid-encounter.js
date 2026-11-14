@@ -10,6 +10,15 @@ const solidPoint = v => [v.x,-v.z,v.y];
 const ease = t => { t=T.MathUtils.clamp(t,0,1); return t*t*(3-2*t); };
 const exitLead = .72;
 
+/** Standing on open ground and not mid-jump, slip, slide or camera move: the only time the
+ * Organoid may speak to the player. */
+export function steadyOnFoot(navigation, onFoot) {
+  return !navigation.suspended && !navigation.shotActive &&
+    (!onFoot?.mode || onFoot.mode === 'ground') &&
+    (!onFoot?.balance || onFoot.balance.phase === 'steady') &&
+    (!onFoot?.jumpPhase || onFoot.jumpPhase === 'grounded') && !onFoot?.sliding;
+}
+
 export function stageOrganoid({config, clips, actor, scene, camera, canvas, navigation, character,
   characterScale, height, hit, waterAt, playProps = [], sun, soundscape, panel}) {
   const rules = createOrganoidEncounter(config, {height, hit});
@@ -18,7 +27,8 @@ export function stageOrganoid({config, clips, actor, scene, camera, canvas, navi
   const skip = panel.querySelector('button');
   const shell = actor.mesh;
   shell.name = 'Organoid';
-  shell.scale.setScalar(config.radius_m / shell.geometry.boundingSphere.radius);
+  const baseScale = config.radius_m / shell.geometry.boundingSphere.radius;
+  shell.scale.setScalar(baseScale);
   shell.visible = false;
   scene.add(shell);
   const look = {sun, target:new T.Vector3(), sunStrength:.72, notice:0, withdraw:0, front:-2, pulse:0};
@@ -51,6 +61,8 @@ export function stageOrganoid({config, clips, actor, scene, camera, canvas, navi
   let savedFov = camera.fov, returnTime = 0, returnFov = camera.fov, returnHeading = 0;
   let closeReady = false, closePending = false, padSkip = false, disposed = false;
   let linesShown = 0;
+  // The tutor's borrowed pose ({position, scale, notice, pulse}); null leaves it at its tree.
+  let guest = null;
 
   function axis() {
     const [x,y] = route === 'wake' ? rules.position : config.cover_tree_xy_m;
@@ -355,12 +367,10 @@ export function stageOrganoid({config, clips, actor, scene, camera, canvas, navi
   function update(dt,onFoot) {
     clock += dt;
     if(active && returnTime){updateReturn(dt);return;}
-    const steady = !navigation.suspended && !navigation.shotActive &&
-      (!onFoot?.mode || onFoot.mode === 'ground') &&
-      (!onFoot?.balance || onFoot.balance.phase === 'steady') &&
-      (!onFoot?.jumpPhase || onFoot.jumpPhase === 'grounded') && !onFoot?.sliding;
+    const steady = steadyOnFoot(navigation,onFoot);
     const sleep = steady && onFoot && onFoot.speed < .05 ? character.sleepPose : null;
-    const transition = rules.update(Math.min(dt,.05),onFoot,steady,!!sleep);
+    // scene_enabled off: the Organoid keeps its watch, but neither the hill nor sleep starts the scene.
+    const transition = rules.update(Math.min(dt,.05),onFoot,steady&&!!config.scene_enabled,!!sleep);
     if(transition === 'start')start('hill');
     if(transition === 'wake'){start('wake',sleep);speak(0);}
     if(active){
@@ -388,13 +398,17 @@ export function stageOrganoid({config, clips, actor, scene, camera, canvas, navi
         }
       }
     }
-    const [x,y,z] = rules.position;
+    const visiting = guest && !active;
+    const [x,y,z] = visiting ? guest.position : rules.position;
     const nod = lastCue === 'acknowledge' ? .09*ease((lineTime-.12)/.34)*(1-ease((lineTime-.51)/.56)) : 0;
     shell.position.set(x,z+.025*Math.sin(clock*.56)-nod,-y);
+    // Never a zero scale: the material inverts the mesh matrix to find the eye.
+    const size = visiting ? Math.max(.01,guest.scale) : 1;
+    shell.scale.setScalar(baseScale*size);
     if(active)frame(dt);
     // Early distance rejection avoids per-frame material work far outside the hill.
     if(camera.position.distanceToSquared(shell.position) > 550*550){shell.visible=false;return;}
-    const pixels = projectedDiameter(camera,shell.position,config.radius_m,canvas.height);
+    const pixels = projectedDiameter(camera,shell.position,config.radius_m*size,canvas.height);
     const tier = detailAt(pixels);
     if(!closeReady && !closePending && pixels>100){
       closePending=true;
@@ -409,6 +423,7 @@ export function stageOrganoid({config, clips, actor, scene, camera, canvas, navi
       const near = Math.hypot(player.x-x,player.y-y);
       look.notice = (1-T.MathUtils.smoothstep(near,6,28))*.35;
     }
+    if(visiting){look.notice = Math.max(look.notice,guest.notice);look.pulse = guest.pulse;look.front = guest.front;}
     actor.update(closeReady?tier:Math.max(1,tier),clock,closeSampleBudget(pixels),look);
   }
 
@@ -416,6 +431,7 @@ export function stageOrganoid({config, clips, actor, scene, camera, canvas, navi
     update,
     skip: skipNow,
     get active() { return active; },
+    set guest(pose) { guest = pose; },
     get state() {
       return {phase:rules.phase,position:[...rules.position],active,route,line,shot,linesShown,voiceStarted,walkDistance,
         visible:shell.visible};
