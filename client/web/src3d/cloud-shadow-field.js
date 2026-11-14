@@ -1,4 +1,10 @@
 /** Client lighting over authoritative heights; no cloud placement lives here. */
+/** The sky for a light preset. The map's atmosphere block is the golden-hour sky, the game's
+ * opening light; atmosphere.times names the skies of the other presets (day, dusk), each with
+ * its own base, top and cells. A preset without its own sky keeps golden hour's. */
+export function skyFor(atmosphere,light){
+ return atmosphere.times?.[light]??atmosphere;
+}
 export function cloudCellBounds(cell,atmosphere){
  const h=Math.min(cell.size_m[2],atmosphere.cloud_top_m-atmosphere.cloud_base_m);
  return {centre:[cell.centre_xy_m[0],atmosphere.cloud_base_m+h*.5,-cell.centre_xy_m[1]],extent:[cell.size_m[0],h,cell.size_m[1]]};

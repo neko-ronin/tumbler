@@ -2,7 +2,7 @@
  * View density/edges stay full detail; only the five sun samples are amortized.
  */
 import * as T from '../vendor/three.module.min.js';
-import {CLOUD_DENSITY_GLSL} from './cloud-field.js';
+import {cloudForm,CLOUD_DENSITY_GLSL} from './cloud-field.js';
 import {cloudCellBounds} from './cloud-shadow-field.js';
 export const LIGHT_VOXELS=32,LIGHT_TILE=34,LIGHT_COLUMNS=8;
 export function cloudLightUv(q,layer,origin,atlas){
@@ -27,9 +27,9 @@ export function createCloudLighting(renderer,atmosphere,noise,style){
  const target=new T.WebGLRenderTarget(width,height,{depthBuffer:false});target.texture.minFilter=target.texture.magFilter=T.LinearFilter;
  const scene=new T.Scene(),camera=new T.Camera(),geometry=new T.PlaneGeometry(2,2),size=new T.Vector2(width,height),origins=[];
  for(const [index,cell]of atmosphere.cloud_cells.entries()){
-  const bounds=cloudCellBounds(cell,atmosphere),origin=new T.Vector2(index%columns*blockW,Math.floor(index/columns)*blockH);origins.push(origin);
+  const bounds=cloudCellBounds(cell,atmosphere),origin=new T.Vector2(index%columns*blockW,Math.floor(index/columns)*blockH);origins.push(origin);const form=cloudForm(cell.seed,bounds.extent);
   const material=new T.ShaderMaterial({glslVersion:T.GLSL3,depthTest:false,depthWrite:false,
-   uniforms:{uOrigin:{value:origin},uCentre:{value:new T.Vector3(...bounds.centre)},uExtent:{value:new T.Vector3(...bounds.extent)},uSun:style.sun,uWind:style.cloudWind,uTime:style.time,uSeed:{value:cell.seed},uNoise:{value:noise}},
+   uniforms:{uOrigin:{value:origin},uCentre:{value:new T.Vector3(...bounds.centre)},uExtent:{value:new T.Vector3(...bounds.extent)},uSun:style.sun,uWind:style.cloudWind,uTime:style.time,uSeed:{value:cell.seed},uBillow:{value:form.billows},uForm:{value:new T.Vector4(...form.form)},uNoise:{value:noise}},
    vertexShader:'void main(){gl_Position=vec4(position.xy,0.,1.);}',
    fragmentShader:`precision highp sampler3D;out vec4 fragColor;uniform vec2 uOrigin,uWind;uniform vec3 uCentre,uExtent,uSun;uniform float uTime,uSeed;uniform sampler3D uNoise;
     ${CLOUD_DENSITY_GLSL}

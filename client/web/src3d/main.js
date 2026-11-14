@@ -505,6 +505,8 @@ export async function main() {
     navigation.setTimeOfDay(p.windPhase);
     setTreeLighting({...p,sun:p.color,ground:'#7a8452'});
     style.sun.value.fromArray(p.direction).normalize(); style.warmth.value = p.warmth;
+    // Each time of day carries its own clouds (worldmap atmosphere.times).
+    cloudPass.setSky(name);
     sun.color.set(p.color); sun.intensity = p.intensity;
     hemisphere.color.set(p.fill); hemisphere.intensity = p.ambient;
     scene.fog.color.set(p.fog); scene.background.copy(scene.fog.color);

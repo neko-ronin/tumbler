@@ -4,7 +4,7 @@
  */
 import * as T from '../vendor/three.module.min.js';
 import {style} from './style.js';
-import {CLOUD_DENSITY_GLSL} from './cloud-field.js';
+import {cloudForm,CLOUD_DENSITY_GLSL} from './cloud-field.js';
 import {cloudCellBounds,cloudGroundFootprint} from './cloud-shadow-field.js';
 export function createCloudShadows(renderer,atmosphere,noise,ground){
  const resolution=256,g=ground.farField;
@@ -16,11 +16,13 @@ export function createCloudShadows(renderer,atmosphere,noise,ground){
  height.minFilter=height.magFilter=T.NearestFilter;height.needsUpdate=true;
  const target=new T.WebGLRenderTarget(resolution,resolution,{depthBuffer:false});
  target.texture.minFilter=target.texture.magFilter=T.LinearFilter;
- style.cloudGroundHeight.value=height;style.cloudBase.value=atmosphere.cloud_base_m;style.cloudGround.value=target.texture;style.cloudGroundGrid.value.copy(grid);style.cloudTop.value=atmosphere.cloud_top_m;
+ // Terrain and meadow read the ground shadow through shared uniforms; the active sky owns them.
+ const activate=()=>{style.cloudGroundHeight.value=height;style.cloudBase.value=atmosphere.cloud_base_m;style.cloudGround.value=target.texture;style.cloudGroundGrid.value.copy(grid);style.cloudTop.value=atmosphere.cloud_top_m;};
+ activate();
  const scene=new T.Scene(),camera=new T.Camera(),geometry=new T.PlaneGeometry(2,2);
  for(const cell of atmosphere.cloud_cells){
-  const bounds=cloudCellBounds(cell,atmosphere),material=new T.ShaderMaterial({glslVersion:T.GLSL3,depthTest:false,depthWrite:false,transparent:true,premultipliedAlpha:true,blending:T.MultiplyBlending,
-   uniforms:{uHeight:{value:height},uGrid:{value:grid},uNoise:{value:noise},uCentre:{value:new T.Vector3(...bounds.centre)},uExtent:{value:new T.Vector3(...bounds.extent)},uSun:style.sun,uWind:style.cloudWind,uTime:style.time,uSeed:{value:cell.seed}},
+  const bounds=cloudCellBounds(cell,atmosphere),form=cloudForm(cell.seed,bounds.extent),material=new T.ShaderMaterial({glslVersion:T.GLSL3,depthTest:false,depthWrite:false,transparent:true,premultipliedAlpha:true,blending:T.MultiplyBlending,
+   uniforms:{uHeight:{value:height},uGrid:{value:grid},uNoise:{value:noise},uCentre:{value:new T.Vector3(...bounds.centre)},uExtent:{value:new T.Vector3(...bounds.extent)},uSun:style.sun,uWind:style.cloudWind,uTime:style.time,uSeed:{value:cell.seed},uBillow:{value:form.billows},uForm:{value:new T.Vector4(...form.form)}},
    vertexShader:'out vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
    fragmentShader:`precision highp sampler3D;in vec2 vUv;out vec4 fragColor;
     uniform sampler2D uHeight;uniform sampler3D uNoise;uniform vec4 uGrid;uniform vec3 uCentre,uExtent,uSun;uniform vec2 uWind;uniform float uTime,uSeed;
@@ -57,5 +59,5 @@ export function createCloudShadows(renderer,atmosphere,noise,ground){
   scene.children.forEach(q=>q.visible=true);renderer.setScissorTest(false);renderer.setClearColor(color,alpha);renderer.setRenderTarget(saved);
   style.cloudGroundReady.value=1;
  }
- return {target,height,grid,scene,update,dispose(){style.cloudGroundReady.value=0;target.dispose();height.dispose();geometry.dispose();scene.children.forEach(q=>q.material.dispose());}};
+ return {target,height,grid,scene,update,activate,dispose(){style.cloudGroundReady.value=0;target.dispose();height.dispose();geometry.dispose();scene.children.forEach(q=>q.material.dispose());}};
 }
