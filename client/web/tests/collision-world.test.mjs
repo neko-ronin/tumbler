@@ -31,7 +31,7 @@ test('a pine crown is soft',()=>{
 });
 
 test('a homestead wall is where it is drawn',()=>{
- const home=placement.instances.find(i=>i.tags?.includes('HS001')),hit=world([home]);
+ const home=placement.instances.find(i=>i.asset==='homestead/homestead.glb'),hit=world([home]);  // measurements below are homestead.glb's; HS001 is now the workshop
  const toCore=v=>{const s=v.applyMatrix4(instanceMatrix(home.position_m,home.yaw_deg,home.scale));return [s.x,-s.z,s.y];};
  // Between the window frame (x -1.09) and the door frame (x -0.56) as built; the wall face is z = 3.65.
  const out=toCore(new T.Vector3(-.83,1.69,3.65+.36)),inside=toCore(new T.Vector3(-.83,1.69,3.65-.1));

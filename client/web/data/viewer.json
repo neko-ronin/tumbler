@@ -583,7 +583,7 @@
     },
     {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "1bf88500356540b28a0889dc22c1316ba2a9f327b4d8a7da245bd78337bf1db0"
+      "sha256": "cf8a5f212e930e02d4658a8ca94bcaa588742387a948a09b262302ad0db56719"
     },
     {
       "path": "shared/geometry/granite/surface.js",
@@ -714,6 +714,22 @@
       "sha256": "56a648d1e851d445f635f778d0e320a6bcff11c365f97e6e59c329b6ca249b25"
     },
     {
+      "path": "shared/geometry/village/civic_hall.meshopt.glb",
+      "sha256": "400fb5c99c9100c679608265ccea9fa0d84c298886a2a4a39303db56525b9cbd"
+    },
+    {
+      "path": "shared/geometry/village/courtyard_inn.meshopt.glb",
+      "sha256": "5d8c95fdd189433c323d51377ecca7cb7e1c5075198eb70a3fc19d31c387a098"
+    },
+    {
+      "path": "shared/geometry/village/shop_home.meshopt.glb",
+      "sha256": "e85a50989ba373236955f83291e45c4e89bb374ea766717399a504f9ad4f781f"
+    },
+    {
+      "path": "shared/geometry/village/workshop.meshopt.glb",
+      "sha256": "07d5cb36d267db647b96e6c245278e78f694f86f1c989264552c2575c2405dfd"
+    },
+    {
       "path": "shared/geometry/water/water.meshopt.glb",
       "sha256": "865aa13690b55e5f51f63dce9560295b6df7490d02cebc4451ca574ef7afda16"
     },
@@ -815,11 +831,11 @@
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "1f4cd32b94d1bb7570afe33939205a420d223745d9c341c41a88a02dcb97de1f"
+      "sha256": "29da0d8bbb2ad6cf3ef18f1fc7324522ca519c72850080396ceae7e6672f80ae"
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "ba6881479a70680c688b8ea91c2112af7aaa3c145299c873f954846d4cbe9f9b"
+      "sha256": "520e918dbdb03207a4b136147f339897aade880a5a728b370b5f74db104ae229"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -879,6 +895,10 @@
     "shared/geometry/tree-design/forest-pine-lod1.glb": "shared/geometry/tree-design/forest-pine-lod1.meshopt.glb",
     "shared/geometry/tree-design/forest-redwood-lod0.glb": "shared/geometry/tree-design/forest-redwood-lod0.meshopt.glb",
     "shared/geometry/tree-design/forest-redwood-lod1.glb": "shared/geometry/tree-design/forest-redwood-lod1.meshopt.glb",
+    "shared/geometry/village/civic_hall.glb": "shared/geometry/village/civic_hall.meshopt.glb",
+    "shared/geometry/village/courtyard_inn.glb": "shared/geometry/village/courtyard_inn.meshopt.glb",
+    "shared/geometry/village/shop_home.glb": "shared/geometry/village/shop_home.meshopt.glb",
+    "shared/geometry/village/workshop.glb": "shared/geometry/village/workshop.meshopt.glb",
     "shared/geometry/water/water.glb": "shared/geometry/water/water.meshopt.glb",
     "shared/geometry/waterside/dragonfly.glb": "shared/geometry/waterside/dragonfly.meshopt.glb",
     "shared/geometry/waterside/dragonfly_wings.glb": "shared/geometry/waterside/dragonfly_wings.meshopt.glb",
@@ -892,7 +912,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "08444bf",
+  "commit": "4f2d03a",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
@@ -901,7 +921,7 @@
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "1f4cd32b94d1"
+      "sha256_12": "29da0d8bbb2a"
     },
     {
       "path": "shared/world/out/fields_albedo.png",

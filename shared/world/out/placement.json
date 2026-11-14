@@ -4,12 +4,12 @@
     "arboreal_tree": 6,
     "blimp": 24,
     "dome": 5,
-    "forest_tree": 6709,
+    "forest_tree": 6715,
     "hardstanding": 2,
     "homestead": 25,
     "lake": 1,
     "mooring_mast": 24,
-    "redwood": 3158,
+    "redwood": 3161,
     "river": 1,
     "turbine": 11
   },
@@ -187,13 +187,13 @@
       "yaw_deg": 0.0
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/workshop.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 29.7185,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "workshop",
           "offset_m": [
             0.0,
             0.0,
@@ -249,13 +249,13 @@
       "yaw_deg": 48.8141
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/shop_home.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 32.3552,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "shop_home",
           "offset_m": [
             0.0,
             0.0,
@@ -311,13 +311,13 @@
       "yaw_deg": 90.0
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/civic_hall.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 35.5962,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "civic_hall",
           "offset_m": [
             0.0,
             0.0,
@@ -373,13 +373,13 @@
       "yaw_deg": 180.0
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/courtyard_inn.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 31.751,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "courtyard_inn",
           "offset_m": [
             0.0,
             0.0,
@@ -435,13 +435,13 @@
       "yaw_deg": 180.0
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/workshop.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 34.0581,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "workshop",
           "offset_m": [
             0.0,
             0.0,
@@ -497,13 +497,13 @@
       "yaw_deg": 275.1944
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/shop_home.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 31.3664,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "shop_home",
           "offset_m": [
             0.0,
             0.0,
@@ -559,13 +559,13 @@
       "yaw_deg": 180.0
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/civic_hall.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 33.8384,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "civic_hall",
           "offset_m": [
             0.0,
             0.0,
@@ -621,13 +621,13 @@
       "yaw_deg": 0.0
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/courtyard_inn.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 31.3115,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "courtyard_inn",
           "offset_m": [
             0.0,
             0.0,
@@ -683,13 +683,13 @@
       "yaw_deg": 21.8014
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/workshop.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 31.0918,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "workshop",
           "offset_m": [
             0.0,
             0.0,
@@ -745,13 +745,13 @@
       "yaw_deg": 180.0
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/shop_home.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 35.7061,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "shop_home",
           "offset_m": [
             0.0,
             0.0,
@@ -807,13 +807,13 @@
       "yaw_deg": 94.7636
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/civic_hall.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 31.2016,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "civic_hall",
           "offset_m": [
             0.0,
             0.0,
@@ -869,13 +869,13 @@
       "yaw_deg": 180.0
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/courtyard_inn.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 30.103,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "courtyard_inn",
           "offset_m": [
             0.0,
             0.0,
@@ -931,13 +931,13 @@
       "yaw_deg": 1.9749
     },
     {
-      "asset": "homestead/homestead.glb",
+      "asset": "village/workshop.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 36.2005,
       "kind": "homestead",
       "parts": [
         {
-          "mesh": "homestead",
+          "mesh": "workshop",
           "offset_m": [
             0.0,
             0.0,
@@ -28988,6 +28988,40 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
+      "ground_z_m": 36.0531,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1356.8327,
+        -1172.3897,
+        36.0531
+      ],
+      "scale": [
+        0.855806,
+        0.855806,
+        0.855806
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
       "ground_z_m": 34.8821,
       "kind": "forest_tree",
       "parts": [
@@ -29284,6 +29318,40 @@
       ],
       "tags": [
         "understory",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 36.3892,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1361.156,
+        -1156.9957,
+        36.3892
+      ],
+      "scale": [
+        1.353006,
+        1.353006,
+        1.353006
+      ],
+      "tags": [
+        "overstory",
         "homestead_screen",
         "forest",
         "mountain_pine"
@@ -33340,6 +33408,40 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
+      "ground_z_m": 31.2122,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        1176.9871,
+        -878.1218,
+        31.2122
+      ],
+      "scale": [
+        0.996221,
+        0.996221,
+        0.996221
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
       "ground_z_m": 31.2003,
       "kind": "forest_tree",
       "parts": [
@@ -33469,6 +33571,40 @@
         "homestead_screen",
         "forest",
         "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/giant_redwood.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 31.3826,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "giant_redwood",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        1164.3493,
+        -867.0177,
+        31.3826
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "giant_redwood"
       ],
       "version": 3,
       "yaw_deg": 0.0
@@ -56322,6 +56458,74 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/redwood_canopy.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 30.2757,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "redwood_canopy",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        1292.4871,
+        -316.8885,
+        30.2757
+      ],
+      "scale": [
+        0.920806,
+        0.920806,
+        0.920806
+      ],
+      "tags": [
+        "main_canopy",
+        "homestead_screen",
+        "forest",
+        "redwood_canopy"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/silver_fir.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 31.5301,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "silver_fir",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        1329.192,
+        -313.0112,
+        31.5301
+      ],
+      "scale": [
+        0.603228,
+        0.603228,
+        0.603228
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "silver_fir"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 32.5865,
@@ -57334,6 +57538,40 @@
       ],
       "tags": [
         "understory",
+        "homestead_screen",
+        "forest",
+        "redwood_canopy"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/redwood_canopy.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 31.1441,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "redwood_canopy",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        1299.0632,
+        -298.5655,
+        31.1441
+      ],
+      "scale": [
+        0.876275,
+        0.876275,
+        0.876275
+      ],
+      "tags": [
+        "main_canopy",
         "homestead_screen",
         "forest",
         "redwood_canopy"
@@ -68222,6 +68460,40 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/silver_fir.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 31.3037,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "silver_fir",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1556.6306,
+        -138.4538,
+        31.3037
+      ],
+      "scale": [
+        0.63951,
+        0.63951,
+        0.63951
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "silver_fir"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 30.702,
@@ -70121,6 +70393,40 @@
         "homestead_screen",
         "forest",
         "silver_fir"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 30.9801,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -1545.3915,
+        -109.3541,
+        30.9801
+      ],
+      "scale": [
+        0.676292,
+        0.676292,
+        0.676292
+      ],
+      "tags": [
+        "understory",
+        "homestead_screen",
+        "forest",
+        "mountain_pine"
       ],
       "version": 3,
       "yaw_deg": 0.0

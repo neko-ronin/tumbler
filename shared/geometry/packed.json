@@ -550,6 +550,51 @@
       "bytes": 750732,
       "sha256": "2b837b77d22dd08278b2ef4dfebf8fd7054aea8026f3aa07f59a88c30c624f4b"
     },
+    "village/civic_hall.glb": {
+      "packed": "village/civic_hall.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.703,
+      "source_bytes": 132860,
+      "source_sha256": "286e09f01f89ca29628cc63797f498c08613587bef8432ed2835797f7249392b",
+      "bytes": 37508,
+      "sha256": "400fb5c99c9100c679608265ccea9fa0d84c298886a2a4a39303db56525b9cbd"
+    },
+    "village/courtyard_inn.glb": {
+      "packed": "village/courtyard_inn.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.387,
+      "source_bytes": 143816,
+      "source_sha256": "6b81279a0f0747f1c42ff0553d141cbb23ee4e14a73b1bb6eeaa5f7b2b03f428",
+      "bytes": 40184,
+      "sha256": "5d8c95fdd189433c323d51377ecca7cb7e1c5075198eb70a3fc19d31c387a098"
+    },
+    "village/market_hall.glb": {
+      "packed": "village/market_hall.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.544,
+      "source_bytes": 153780,
+      "source_sha256": "3019c95d5cd134326c07d36724ce94a0496b5ae80c4fe5d89ccc2630c88c6463",
+      "bytes": 43080,
+      "sha256": "745953bec1d41bb3b133cc3eb36a27c88cb693977ff6246c604ef76b380cb171"
+    },
+    "village/shop_home.glb": {
+      "packed": "village/shop_home.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.518,
+      "source_bytes": 85636,
+      "source_sha256": "e100a17ba0360c7e1011a446c28b25b13c536adf80fc6bb67b8190f83f0541c4",
+      "bytes": 26440,
+      "sha256": "e85a50989ba373236955f83291e45c4e89bb374ea766717399a504f9ad4f781f"
+    },
+    "village/workshop.glb": {
+      "packed": "village/workshop.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.551,
+      "source_bytes": 75940,
+      "source_sha256": "80e2b5e9a499d9d79d79419f09b3610fe021c734ba2b8cb93030316f2af07325",
+      "bytes": 25364,
+      "sha256": "07d5cb36d267db647b96e6c245278e78f694f86f1c989264552c2575c2405dfd"
+    },
     "water/water.glb": {
       "packed": "water/water.meshopt.glb",
       "mode": "exact",
@@ -652,9 +697,13 @@
   },
   "unpacked": {
     "cat-ronin/ronin.glb": "float: parts differ, clips differ; exact: parts differ, clips differ",
+    "city/tower.glb": "saves under 10% compressed",
     "granite/bedrock_-1_4.glb": "saves under 10% compressed",
     "granite/bedrock_1_3.glb": "saves under 10% compressed",
-    "river-granite/river_granite.glb": "river-granite.js reads it as a row-major vertex grid"
+    "river-granite/river_granite.glb": "river-granite.js reads it as a row-major vertex grid",
+    "structures/greenhouse.glb": "saves under 10% compressed",
+    "structures/house.glb": "saves under 10% compressed",
+    "structures/water_tower.glb": "saves under 10% compressed"
   },
   "encoder": "gltfpack 1.2.0"
 }
