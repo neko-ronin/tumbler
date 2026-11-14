@@ -218,7 +218,11 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function poll(){if(suspended)return;const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);if(pad?.buttons[0]?.pressed)queuedPrimary=true;if(mode==='walk'&&pad?.buttons[11]?.pressed)queuedSlide=true;}
   function update(dt){
     const pad=suspended?null:[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
-    if(mode==='gondola'){time+=Math.min(dt,.05);updateCarried(dt,pad);return;}
+    if(mode==='gondola'){
+      // Riding: Y changes the view, as it does in flight. RB (fast travel) is gondola.js's.
+      const y=!!pad?.buttons[3]?.pressed;if(y&&!flightPressed.has(3))toggleView();y?flightPressed.add(3):flightPressed.delete(3);
+      time+=Math.min(dt,.05);updateCarried(dt,pad);return;
+    }
     if(!riding()){
       const edge=i=>{const now=pad?.buttons[i]?.pressed??false,was=flightPressed.has(i);now?flightPressed.add(i):flightPressed.delete(i);return now&&!was;};
       const dev=!playerMode,previous=edge(14)&&dev,next=edge(15)&&dev,up=edge(12)&&dev,down=edge(13)&&dev,changeView=edge(3),changeWeather=edge(9)&&dev,stickView=edge(10);

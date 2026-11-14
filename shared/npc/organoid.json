@@ -26,7 +26,7 @@
     "read_per_char_s": 0.05,
     "tips": [
       {"id":"tumble","near":"tumble-hill","radius_m":60,"text":"Run down the fall line and hold Shift (LB) to tuck and roll. Let go on the flat to find your feet."},
-      {"id":"gondola","near":"gondola","radius_m":6,"text":"That’s the gondola! Press G to board the next cabin. Riding, T is fast travel and V changes the view."},
+      {"id":"gondola","near":"gondola","radius_m":6,"text":"That’s the gondola! Press G (RB) to board the next cabin. Riding, T (RB) is fast travel and V (Y) changes the view."},
       {"id":"katana","near":"tumble-hill","radius_m":60,"text":"Draw your katana with F (Y) and slash with Q (B). The bells, targets and scarecrows answer back!"}
     ]
   },

@@ -1,7 +1,8 @@
 /** Presentation of the gondola, and the player's ride on it; the line and its clock are
  * shared/activities/gondola.js. Stations, towers and rope are drawn once; the cabins are
  * instanced and follow the folk world's clock, so cats ride in the cabins drawn. Walking
- * on a station deck, G boards the next cabin; riding, T (or the button) is fast travel. Within
+ * on a station deck, G or a controller's RB boards the next cabin (and cancels while waiting); riding,
+ * T or RB is fast travel and Y (V) changes the view. Within
  * APPROACH_M of a station the panel says how to board, so the deck is found before it is needed.
  */
 import * as T from '../vendor/three.module.min.js';
@@ -76,7 +77,7 @@ function buildCabins(line){
 export function createGondolaLayer({line,scene,navigation,clock,panel}){
   const group=buildStatic(line),cabins=buildCabins(line);group.add(cabins.group);scene.add(group);
   const text=panel.querySelector('[data-gondola-text]'),action=panel.querySelector('[data-gondola-action]'),fast=panel.querySelector('[data-gondola-fast]');
-  let ride=null,queued=false,fastQueued=false,greeting=null;
+  let ride=null,queued=false,fastQueued=false,greeting=null,padHeld=false;
   const key=e=>{if(e.repeat||e.metaKey||e.ctrlKey||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='KeyG')queued=true;if(e.code==='KeyT'&&ride)fastQueued=true;};
   window.addEventListener('keydown',key);
   action.addEventListener('click',()=>{queued=true;});
@@ -92,17 +93,22 @@ export function createGondolaLayer({line,scene,navigation,clock,panel}){
 
   function update(){
     const t=clock(),s=navigation.state,walking=navigation.mode==='walk';
+    // RB is the gondola's button: board or cancel on the deck, fast travel while riding.
+    const pad=navigation.suspended?null:[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
+    const rb=!!pad?.buttons[5]?.pressed;
+    if(rb&&!padHeld){if(ride&&navigation.mode==='gondola')fastQueued=true;else queued=true;}
+    padHeld=rb;
     let message=null,label=null,canFast=false;
     if(ride){
       const r=rideAt(line,ride,t),here=line.stations[ride.from];
       if(fastQueued&&!r.waiting)ride.fast=true;
       if(r.waiting){
         if(!walking||Math.hypot(s.x-here.xy_m[0],s.y-here.xy_m[1])>line.config.board_m*2||queued){ride=null;}
-        else{message=`${here.label} station · next cabin in ${Math.ceil(r.wait_s)} s`;label='Cancel (G)';}
+        else{message=`${here.label} station · next cabin in ${Math.ceil(r.wait_s)} s`;label='Cancel (G · RB)';}
       }else if(ride.boarded&&navigation.mode!=='gondola'){ride=null;  // left for another activity
       }else if(!r.done){
         navigation.carry({x:r.x,y:r.y,z:r.floor_z,heading:r.heading+Math.PI/2});ride.boarded=true;
-        message=`Gondola to ${r.to.label} · ${fmt(Math.max(0,ride.arrive_t-t))} · V: view · drag to look`;canFast=true;
+        message=`Gondola to ${r.to.label} · ${fmt(Math.max(0,ride.arrive_t-t))} · V or Y: view · drag to look`;canFast=true;
       }else{
         const [x,y]=r.exit_xy_m;navigation.alight(x,y,r.heading);greeting={text:`${r.to.label}${r.to.launch?' · the launch is a few steps ahead':''}`,until:t+6};ride=null;
       }
@@ -111,10 +117,10 @@ export function createGondolaLayer({line,scene,navigation,clock,panel}){
       if(station){
         const other=line.stations.find(o=>o!==station);
         if(queued){ride=boardGondola(line,station.id,t);}
-        message=`${station.label} station · gondola to ${other.label}`;label='Board (G)';
+        message=`${station.label} station · gondola to ${other.label}`;label='Board (G · RB)';
       }else{
         const ahead=stationNear(line,s.x,s.y,APPROACH_M);
-        if(ahead)message=`Gondola · ${ahead.label} station ahead · step onto the deck and press G to board`;
+        if(ahead)message=`Gondola · ${ahead.label} station ahead · step onto the deck and press G or RB to board`;
       }
     }
     if(!message&&greeting&&t<greeting.until)message=greeting.text;

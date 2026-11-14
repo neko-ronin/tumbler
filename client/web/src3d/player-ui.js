@@ -15,7 +15,7 @@ const CONTROLS={
     ['Walk, runs by default',['WASD'],['L stick, push fully to run']],['Look',['Drag','Arrows'],['R stick']],
     ['Jump',['Space'],['A']],['Tuck and roll, held',['Shift'],['LB']],['Dive in water, press to toggle',['Shift'],[]],['Slide',['Ctrl'],['R3']],
     ['Draw the katana',['F'],['Y']],['Slash',['Q','Click'],['B']],['Charge, held',['R'],['RT']],
-    ['Grab a tree',['E'],['X']],['First person',['V'],['L3']],['Board the gondola, on a station deck',['G'],[]],['Map',['Esc','M'],['Menu']]]},
+    ['Grab a tree',['E'],['X']],['First person',['V'],['L3']],['Board the gondola, on a station deck',['G'],['RB']],['Map',['Esc','M'],['Menu']]]},
   harness:{title:'Paramotor, on the ground',rows:[
     ['Start the take-off run',['Space'],['A']],['Steer',['A','D'],['L stick']],['Motor up, down',['R','F'],['RB','LB']],
     ['Unhook and walk',['E'],['X']],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
@@ -27,7 +27,7 @@ const CONTROLS={
     ['Steer',['A','D'],['L stick']],['Dive, flare',['W','S'],['L stick']],['Handles, left and right',['J','K'],['LT','RT']],
     ['Wingovers',['Shift','A','D'],['B','L stick']],['View',['V'],['Y']],['Look',['Drag','Arrows'],['R stick']],
     ['After landing, unhook',['E'],['X']],['Map',['Esc','M'],['Menu']]]},
-  gondola:{title:'Gondola',rows:[['Fast travel to the far station',['T'],[]],['View',['V'],[]],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
+  gondola:{title:'Gondola',rows:[['Fast travel to the far station',['T'],['RB']],['View',['V'],['Y']],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
 };
 const MENU_CONTROLS={
   map:[['Choose a place',['Arrows','WASD','Click'],['D-pad','L stick']],['Travel there',['Enter'],['A']],
