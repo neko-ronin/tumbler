@@ -25,8 +25,9 @@ Then open <http://127.0.0.1:8000/client/web/scene.html> for the 3D scene, or
   skiing and biking, collision, and water life, shared with other clients.
 - `shared/world/` and `shared/geometry/`: the generated world data and the
   models the client reads.
-- `client/web/data/viewer.json` lists every file the scene fetches with its
-  sha256. The scene checks them all when it starts and stops on a mismatch.
+- `client/web/data/viewer.json` records the runtime files with SHA-256 hashes.
+  Packaging checks the source files against the manifest. At startup the scene
+  checks the world data it reads and stops on a mismatch.
 
 ## Tests
 
@@ -44,6 +45,8 @@ here are overwritten. Two test files that check the full model library
 (`glb.test.mjs`, `assets.test.mjs`) run there before every publish and are not
 included here.
 
-The site is static. `python3 client/web/tools/package_web.py` writes
-`dist/web`, and Cloudflare Workers serves it (`wrangler.jsonc`). `npm ci`
-installs the pinned Wrangler with install scripts disabled (`.npmrc`).
+Cloudflare Workers serves `dist/web` as static assets (`wrangler.jsonc`).
+Run `npm ci` to install the pinned Wrangler toolchain with install scripts
+disabled (`.npmrc`), then `npm run package` to write the distribution. It
+includes one minified JavaScript bundle per page and minified inline CSS.
+`npm run deploy` rebuilds the distribution and uploads it with Wrangler.

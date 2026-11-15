@@ -12,6 +12,7 @@ SHA-256 `ff540832ded0cfe919764d24a3d88f3e2a05f23303f876423e4f893841e90728`.
 | `three.module.min.js` | `package/build/three.module.js` · `2ab8c759781e57244580c06006dafa8a5a36490d326c975d4cc220914f094c88` |
 | `LICENSE.three` | `package/LICENSE` · `8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc` |
 | `meshopt_decoder.module.js` | [meshoptimizer 0.22 from r180](https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/jsm/libs/meshopt_decoder.module.js) · `784315b6959c85459eab77f51776158cc381d7e7d77b919ff7c4935f088a7c5c` |
+| `LICENSE.meshoptimizer` | [meshoptimizer 0.22 MIT license](https://github.com/zeux/meshoptimizer/blob/v0.22/LICENSE.md) · `d1bc307ff896c7fc65e3ff4823cc478194f7a5bc6436f99534ebede4d9e2017a` |
 
 The r187 archive no longer ships minified files. The recorded one-off
 minification used the already installed Bun 1.4.2. From an extracted archive,

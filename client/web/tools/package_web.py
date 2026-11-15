@@ -2,14 +2,15 @@
 """Package the browser scene as static files any web host can serve.
 
     python3.11 client/web/tools/package_web.py            # verify, then write dist/web/
+    python3.11 client/web/tools/package_web.py --bundle   # optimized release (after npm ci)
     python3.11 client/web/tools/package_web.py --check    # verify only, write nothing
     python3.11 client/web/tools/package_web.py --out DIR  # write somewhere else
 
-There is no build step to package. The scene resolves every path from the
+The default package needs no build tools. The scene resolves every path from the
 repository root (`main.js`: `new URL('../../../', import.meta.url)`), so the
 package keeps repository paths: `viewer.json`, every file its `fetched` manifest
 names, byte for byte, the core outputs it lists as `sources` (digest-checked too),
-the three.js licence that must travel with its code, and
+the Three.js and meshoptimizer licences that travel with their code, and
 the 2D map the scene links to ("Open the map": `MAP`). The root `index.html` is
 the scene itself, generated from the checked `scene.html` with a `<base>` so its
 relative paths resolve from `client/web/` (`root_page`): the site's address is the
@@ -21,32 +22,38 @@ Every file is checked against the sha256 `viewer.json` records BEFORE anything
 is written. The scene refuses to start when one fetched file differs, so a
 package with a single stale file is a broken deploy; this finds it here rather
 than in a visitor's browser. If a source changed on purpose, regenerate the
-manifest with `make_viewer_data.py` first.
+manifest with `make_viewer_data.py` first. Release mode uses the esbuild already
+installed with Wrangler to bundle JavaScript and minify inline CSS. Its manifest
+records the generated files and preserves the world data digests.
 
 The output folder is replaced only when it is empty or was written by this
 script (it carries `MARKER`); any other folder is refused, never deleted.
-Stdlib only, no network.
+No network access is needed to package.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import re
 import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path, PurePosixPath
 
 REPO = Path(__file__).resolve().parents[3]
 MANIFEST = "client/web/data/viewer.json"
 ENTRY = "client/web/scene.html"
+MAP_PAGE = "client/web/index.html"
 PACKED = "shared/geometry/packed.json"   # tools/pack_meshopt.py's record
-EXTRAS = ("client/web/vendor/LICENSE.three",)   # three.js is MIT: its notice ships with its code
+EXTRAS = ("client/web/vendor/LICENSE.three", "client/web/vendor/LICENSE.meshoptimizer")
 # The 2D map (`client/web/index.html`), linked from the scene: its page, the modules
 # `src/main.js` imports, and what it fetches. Files the manifest already names are
 # packaged once. client/web/tests/test_package_web.py walks the imports and fetches
 # and fails if this list misses one.
 MAP = (
-    "client/web/index.html",
+    MAP_PAGE,
     "client/web/src/main.js", "client/web/src/geometry.js", "client/web/src/scene.js",
     "client/web/src/draw.js", "client/web/src/stamp.js", "client/web/src/digest.js",
     "client/web/src/pyjson.js", "client/web/src/partition_id.js", "client/web/src/wave.js",
@@ -60,8 +67,10 @@ MARKER = ".tumbler-web-package"
 MAX_ASSET_BYTES = 25 * 1024 * 1024
 ASSET_PART_BYTES = 16 * 1024 * 1024
 ASSET_PARTS_MAGIC = b"TUMBLER_ASSET_PARTS_V1\n"
-# Every response is revalidated before use. The file names carry no content
-# hash, and the scene refuses to start when any fetched file differs from
+WEB = PurePosixPath(ENTRY).parent
+BUNDLE_ENTRIES = {ENTRY: "src3d/main.js", MAP_PAGE: "src/main.js"}
+# Every response is revalidated before use. World data has stable paths,
+# and the scene refuses to start when any fetched file differs from
 # viewer.json, so a browser holding last release's copy of one file would break
 # the page; "immutable" or a long max-age is exactly wrong here. Revalidation
 # is a cheap 304 against the ETag the host sends. This is Cloudflare Pages'
@@ -144,8 +153,76 @@ def verified_files(repo: Path) -> list[str]:
     return files
 
 
-def write_package(repo: Path, out: Path, files: list[str]) -> int:
+def bundle_files(repo: Path, files: list[str]) -> tuple[list[str], dict[str, bytes]]:
+    """Build both browser entries from the same files allowed into the plain package."""
+    esbuild = repo / "node_modules" / ".bin" / "esbuild"
+    if not esbuild.is_file():
+        raise PackageError("release bundling needs the esbuild installed with Wrangler; run npm ci in the publish checkout")
+    generated: dict[str, bytes] = {}
+    bundled: set[str] = set()
+    allowed = set(files)
+    try:
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "bundle.js"
+            metafile = Path(directory) / "meta.json"
+            for page, script in BUNDLE_ENTRIES.items():
+                entry = WEB / script
+                subprocess.run(
+                    [str(esbuild), str(entry), "--bundle", "--format=esm", "--minify",
+                     f"--outfile={bundle}", f"--metafile={metafile}"],
+                    check=True, cwd=repo,
+                )
+                graph = json.loads(metafile.read_text(encoding="utf-8"))
+                inputs = set(graph["inputs"])
+                if extra := inputs - allowed:
+                    raise PackageError(f"{entry} imports files outside the verified package: {', '.join(sorted(extra))}")
+                outputs = graph["outputs"]
+                if len(outputs) != 1 or next(iter(outputs.values()))["imports"]:
+                    raise PackageError(f"{entry} did not bundle into one self-contained module")
+                bundled.update(path for path in inputs if PurePosixPath(path).suffix in {".js", ".mjs"})
+                contents = bundle.read_bytes()
+                digest = hashlib.sha256(contents).hexdigest()
+                # main.js uses import.meta.url to find the repository root, so
+                # the bundle stays at the original directory depth.
+                name = entry.with_name(f"main-{digest[:16]}.js")
+                if str(name) in allowed:
+                    raise PackageError(f"generated bundle path collides with a source file: {name}")
+                generated[str(name)] = contents
+                html = (repo / page).read_text(encoding="utf-8")
+                styles = list(re.finditer(r"<style>(.*?)</style>", html, re.DOTALL))
+                if len(styles) != 1 or html.count(script) != 1:
+                    raise PackageError(f"{page} needs one inline style and one reference to {script}")
+                style = styles[0]
+                css = subprocess.run(
+                    [str(esbuild), "--loader=css", "--minify"], cwd=repo, check=True,
+                    input=style[1], text=True, stdout=subprocess.PIPE,
+                ).stdout.strip()
+                html = html[:style.start(1)] + css + html[style.end(1):]
+                generated[page] = html.replace(script, str(name.relative_to(WEB)), 1).encode()
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise PackageError(f"web bundling failed: {error}") from error
+
+    manifest = json.loads((repo / MANIFEST).read_text(encoding="utf-8"))
+    replaced = bundled | generated.keys()
+    manifest["fetched"] = sorted(
+        [entry for entry in manifest["fetched"] if entry["path"] not in replaced]
+        + [{"path": path, "sha256": hashlib.sha256(data).hexdigest()} for path, data in generated.items()],
+        key=lambda entry: entry["path"],
+    )
+    generated[MANIFEST] = (json.dumps(manifest, indent=2) + "\n").encode()
+    return [path for path in files if path not in replaced and path != MANIFEST], generated
+
+
+def write_package(repo: Path, out: Path, files: list[str], *, bundle: bool = False) -> int:
     """Copy `files` under `out`, keeping repository paths; returns the bytes copied."""
+    generated: dict[str, bytes] = {}
+    if bundle:
+        files, generated = bundle_files(repo, files)
+    for rel, data in generated.items():
+        if len(data) > MAX_ASSET_BYTES:
+            raise PackageError(f"generated file exceeds the host limit: {rel}")
+    scene = generated[ENTRY].decode() if bundle else (repo / ENTRY).read_text(encoding="utf-8")
+    home = root_page(scene)
     # Large files remain neutral, byte-identical core output. Only this web
     # transport changes: every uploaded part stays below the static host's cap.
     # Models came first; the grown world's 8 m ground and its forest are larger still.
@@ -156,7 +233,7 @@ def write_package(repo: Path, out: Path, files: list[str]) -> int:
             size, suffix = source.stat().st_size, source.suffix
             parts = [{"path": rel[: len(rel) - len(suffix)] + f".part-{i:03d}{suffix}", "byteLength": min(ASSET_PART_BYTES, size - offset)}
                      for i, offset in enumerate(range(0, size, ASSET_PART_BYTES))]
-            if any(part["path"] in files for part in parts):
+            if any(part["path"] in files or part["path"] in generated for part in parts):
                 raise PackageError(f"file parts collide with a source path: {rel}")
             split[rel] = {"byteLength": size, "parts": parts}
     if out.exists() and any(out.iterdir()):
@@ -175,7 +252,11 @@ def write_package(repo: Path, out: Path, files: list[str]) -> int:
             target.write_bytes(ASSET_PARTS_MAGIC + json.dumps(descriptor, separators=(",", ":")).encode())
         else:
             shutil.copyfile(repo / rel, target)
-    (out / "index.html").write_text(root_page((repo / ENTRY).read_text(encoding="utf-8")), encoding="utf-8")
+    for rel, data in generated.items():
+        target = out / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    (out / "index.html").write_text(home, encoding="utf-8")
     (out / "_headers").write_text(HEADERS, encoding="utf-8")
     (out / MARKER).write_text("Written by client/web/tools/package_web.py; safe for it to replace.\n", encoding="utf-8")
     return sum(path.stat().st_size for path in out.rglob("*") if path.is_file())
@@ -184,7 +265,9 @@ def write_package(repo: Path, out: Path, files: list[str]) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--out", type=Path, default=REPO / "dist" / "web", help="output folder (default: dist/web)")
-    parser.add_argument("--check", action="store_true", help="verify every file against viewer.json and write nothing")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true", help="verify every file against viewer.json and write nothing")
+    mode.add_argument("--bundle", action="store_true", help="bundle and minify the published JavaScript and CSS")
     args = parser.parse_args(argv)
     try:
         files = verified_files(REPO)
@@ -192,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
             fetched = len(json.loads((REPO / MANIFEST).read_text(encoding="utf-8"))["fetched"])
             print(f"verified {fetched} fetched files against viewer.json, and the 2D map's {len(MAP)}; nothing written")
             return 0
-        size = write_package(REPO, args.out.resolve(), files)
+        size = write_package(REPO, args.out.resolve(), files, bundle=args.bundle)
     except PackageError as error:
         print(error, file=sys.stderr)
         return 1

@@ -4,8 +4,8 @@
   "description": "A quiet countryside in the browser.",
   "scripts": {
     "test": "node --test client/web/tests/*.test.mjs",
-    "package": "python3 client/web/tools/package_web.py",
-    "deploy": "python3 client/web/tools/package_web.py && WRANGLER_SEND_METRICS=false wrangler deploy"
+    "package": "python3 client/web/tools/package_web.py --bundle",
+    "deploy": "npm run package && WRANGLER_SEND_METRICS=false wrangler deploy"
   },
   "devDependencies": {
     "wrangler": "4.142.0"

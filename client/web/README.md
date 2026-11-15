@@ -1200,20 +1200,25 @@ commits. Regenerable browser captures remain ignored; nothing was pushed. See [B
 
 ## Deploying as static files
 
-The 3D scene is static: HTML, ES modules and data, with no server code and no
-build step. Package it with:
+The 3D scene is static HTML, ES modules and data. To package it from this
+source checkout with Python:
 
 ```sh
 python3.11 client/web/tools/package_web.py
 ```
 
-That writes `dist/web/` (87 files, about 48.5 MB): `client/web/data/viewer.json`,
-the 69 files it fetches, the core outputs it lists as `sources`, the three.js
-licence, and the 2D map the scene links to ("Open the map"). Every fetched file
+That writes `dist/web/` with `client/web/data/viewer.json`,
+the files it lists, the core outputs it lists as `sources`, the Three.js and
+meshoptimizer licences, and the 2D map the scene links to ("Open the map"). Every fetched file
 and source is checked against the digest in `viewer.json` before anything is
 written, so a stale file stops the package rather than a visitor's browser. If
 you changed a source on purpose, run `make_viewer_data.py` first. `--check`
 verifies without writing; `--out DIR` writes elsewhere.
+
+For the Cloudflare build, run `npm ci` then `npm run package` from the
+public checkout. It adds `--bundle` to the packaging command, producing a
+minified JavaScript bundle per page and minifying inline CSS. The release
+manifest reflects the generated files and retains the source data digests.
 
 The package keeps repository paths, because the scene resolves every file
 from the repository root. Upload the **contents** of `dist/web/` to the web
@@ -1227,7 +1232,7 @@ locally first:
 python3.11 -m http.server 8090 --bind 127.0.0.1 --directory dist/web
 ```
 
-Open <http://127.0.0.1:8090/>; Field notes should read "Verified 69 fetched files",
+Open <http://127.0.0.1:8090/>. Field notes should report verified files,
 and "Open the map" should draw the 2D map with no digest warning in its header.
 
 What the host has to do:
@@ -1246,10 +1251,10 @@ What the host has to do:
 - `.tumbler-web-package` is only the script's marker for a folder it may
   replace. It's harmless to upload, and fine to leave out.
 - `_headers` sets the caching policy for hosts that read it (Cloudflare Pages
-  and Workers static assets): every file is revalidated before use. File names
-  carry no content hash and the scene refuses mixed versions, so long or
-  `immutable` caching would break visitors after a release; revalidation is a
-  cheap 304. Other hosts ignore the file; give them the same policy.
+  and Workers static assets): every file is revalidated before use. World data
+  keeps stable URLs and the scene refuses mixed versions. Revalidation lets a
+  browser keep its cached copy when the server returns 304. Other hosts ignore
+  the file and need the same policy configured separately.
 
 ### On Cloudflare (tumbler.catronin.com)
 

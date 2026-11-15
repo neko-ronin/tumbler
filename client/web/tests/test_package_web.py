@@ -23,7 +23,8 @@ _spec.loader.exec_module(pw)
 
 def fake_repo(root: pathlib.Path, files: dict[str, bytes], manifest_paths: list[str] | None = None) -> None:
     """A repository holding `files`, the licence, and a viewer.json that names `manifest_paths` (default: all)."""
-    for rel, data in {**{m: b"map" for m in pw.MAP}, **files, pw.EXTRAS[0]: b"MIT"}.items():
+    extras = {path: b"MIT" for path in pw.EXTRAS}
+    for rel, data in {**{m: b"map" for m in pw.MAP}, **files, **extras}.items():
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_bytes(data)
     fetched = [{"path": p, "sha256": hashlib.sha256(files.get(p, b"")).hexdigest()} for p in (manifest_paths or list(files))]
@@ -48,7 +49,8 @@ class PackageWeb(unittest.TestCase):
         for rel, data in self.files.items():
             self.assertEqual((self.out / rel).read_bytes(), data, rel)
         self.assertTrue((self.out / pw.MANIFEST).is_file())
-        self.assertTrue((self.out / pw.EXTRAS[0]).is_file())
+        for path in pw.EXTRAS:
+            self.assertEqual((self.out / path).read_bytes(), (self.repo / path).read_bytes(), path)
         root = (self.out / "index.html").read_text()
         self.assertEqual(root.replace(f"\n  {pw.BASE}", ""), self.files[pw.ENTRY].decode(), "the root page is the scene plus one <base>")
         for rel in pw.MAP:
@@ -82,6 +84,41 @@ class PackageWeb(unittest.TestCase):
         descriptor = json.loads((self.out / rel).read_bytes()[len(pw.ASSET_PARTS_MAGIC):])
         self.assertEqual([p["path"] for p in descriptor["parts"]], [f"client/web/data/farfield.part-{i:03d}.f32" for i in range(5)])
         self.assertEqual(b"".join((self.out / p["path"]).read_bytes() for p in descriptor["parts"]), data)
+
+    @unittest.skipUnless((REPO / "node_modules/.bin/esbuild").is_file(), "run npm ci to exercise release bundling")
+    def test_the_release_manifest_names_the_bundles_and_keeps_world_data(self) -> None:
+        game, map_script = (f"client/web/{script}" for script in pw.BUNDLE_ENTRIES.values())
+        world = "shared/world/out/world.json"
+        page = '<html><head><style>body {{ color: #ffffff; }}</style></head><script type="module" src="{}"></script></html>'
+        files = {
+            pw.ENTRY: page.format(pw.BUNDLE_ENTRIES[pw.ENTRY]).encode(),
+            pw.MAP_PAGE: page.format(pw.BUNDLE_ENTRIES[pw.MAP_PAGE]).encode(),
+            game: b'import { level } from "./level.js"; export const main = () => [level, import.meta.url];',
+            "client/web/src3d/level.js": b"export const level = 42;",
+            map_script: b"document.body.textContent = 'map';",
+            world: b'{"version": 1}',
+        }
+        fake_repo(self.repo, files)
+        (self.repo / "node_modules").symlink_to(REPO / "node_modules", target_is_directory=True)
+        pw.write_package(self.repo, self.out, pw.verified_files(self.repo), bundle=True)
+        manifest = json.loads((self.out / pw.MANIFEST).read_text())
+        paths = {entry["path"] for entry in manifest["fetched"]}
+        for entry in manifest["fetched"]:
+            self.assertEqual(hashlib.sha256((self.out / entry["path"]).read_bytes()).hexdigest(), entry["sha256"])
+        for path in (game, map_script, "client/web/src3d/level.js"):
+            self.assertNotIn(path, paths)
+            self.assertFalse((self.out / path).exists())
+        for entry, folder in ((pw.ENTRY, "src3d"), (pw.MAP_PAGE, "src")):
+            bundle, = (self.out / "client/web" / folder).glob("main-*.js")
+            self.assertIn(bundle.relative_to(self.out).as_posix(), paths)
+            self.assertIn(f'src="{folder}/{bundle.name}"', (self.out / entry).read_text())
+            self.assertIn("<style>body{color:#fff}</style>", (self.out / entry).read_text())
+        scene = (self.out / pw.ENTRY).read_text()
+        self.assertEqual((self.out / "index.html").read_text(), pw.root_page(scene))
+        self.assertEqual((self.out / world).read_bytes(), files[world])
+        for path in pw.EXTRAS:
+            self.assertEqual((self.out / path).read_bytes(), (self.repo / path).read_bytes(), path)
+        self.assertEqual((self.repo / pw.ENTRY).read_bytes(), files[pw.ENTRY])
 
     def test_a_stale_file_writes_nothing(self) -> None:
         fake_repo(self.repo, self.files)
