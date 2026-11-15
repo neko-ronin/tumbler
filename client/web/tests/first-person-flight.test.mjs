@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../vendor/three.module.min.js';
 import {DEFAULT_APPEARANCE,APPEARANCE_PRESETS} from '../../../shared/characters/appearance.js';
-import {resolveFirstPersonDesign,generateFirstPerson,firstPersonPose,solveArm} from '../../../shared/geometry/first-person/recipe.js';
+import {resolveFirstPersonDesign,generateFirstPerson,firstPersonPose,solveArm,createSeatedLegSwing} from '../../../shared/geometry/first-person/recipe.js';
 import {controlGrip} from '../../../shared/geometry/flight/contacts.js';
 import {createFirstPersonFlight} from '../src3d/first-person-flight.js';
 const config={asset:'cat-ronin/ronin.glb'},design=()=>resolveFirstPersonDesign(config);
@@ -11,7 +11,7 @@ test('deterministic anatomy recipe preserves palette identity without inferring 
  const a=generateFirstPerson(design()),b=generateFirstPerson(design());assert.deepEqual(a,b);assert.equal(a.anatomy.digits,4);
  assert.ok(a.geometry.indices.every(i=>i>=0&&i<a.geometry.positions.length/3));assert.ok(a.geometry.positions.every(Number.isFinite));
  assert.equal(resolveFirstPersonDesign({asset:'unknown/visitor.glb'}).supported,false);
- const ember=resolveFirstPersonDesign({...config,appearance:APPEARANCE_PRESETS[2].recipe});assert.notEqual(ember.key,design().key);assert.equal(generateFirstPerson(ember).materials.coat.tint,APPEARANCE_PRESETS[2].recipe.palette.coat);assert.equal(generateFirstPerson(ember).materials.knit.tint,APPEARANCE_PRESETS[2].recipe.palette.outfit);assert.ok(Object.isFrozen(a.anatomy.eye));
+ const ember=resolveFirstPersonDesign({...config,appearance:APPEARANCE_PRESETS[2].recipe});assert.notEqual(ember.key,design().key);assert.equal(generateFirstPerson(ember).materials.coat.tint,APPEARANCE_PRESETS[2].recipe.palette.coat);assert.equal(generateFirstPerson(ember).materials.shirt.tint,APPEARANCE_PRESETS[2].recipe.palette.outfit);assert.ok(Object.isFrozen(a.anatomy.eye));
  assert.equal(resolveFirstPersonDesign({...config,appearance:{...DEFAULT_APPEARANCE,name:'Renamed'}}).key,design().key);
 });
 test('both paws wrap independently around shared contacts at every control extreme without stretching either arm',()=>{
@@ -48,15 +48,17 @@ test('a failed shader preparation releases the unattached model and preserves fa
 });
 
 test('garment profile has finite unit normals and each paw shares a grip-relative coat frame',()=>{
- const recipe=generateFirstPerson(design()),g=recipe.geometries.knit;
- for(let i=0;i<g.normals.length;i+=3)assert.ok(Math.abs(Math.hypot(...g.normals.slice(i,i+3))-1)<1e-9);
- assert.ok(g.positions.every(Number.isFinite));assert.ok(g.indices.every(i=>i<g.positions.length/3));
+ const recipe=generateFirstPerson(design());
  for(const pull of [0,.45,1]){
   const s={mode:'parakite',handleLeft:pull,handleRight:1-pull},grips=[controlGrip(s,1),controlGrip(s,-1)],pose=firstPersonPose(recipe,s,grips);
+  for(const {surface:g} of pose.parts.filter(p=>p.surface)){
+   for(let i=0;i<g.normals.length;i+=3)assert.ok(Math.abs(Math.hypot(...g.normals.slice(i,i+3))-1)<1e-9);
+   assert.ok(g.positions.every(Number.isFinite));assert.ok(g.indices.every(i=>i<g.positions.length/3));
+  }
   for(const [i,side]of ['left','right'].entries()){
-   const sleeve=pose.parts.find(p=>p.id===side+'_sleeve').surface,ring=sleeve.positions.slice(6*13*3,6*13*3+12*3),centre=[0,1,2].map(k=>ring.filter((v,i)=>i%3===k).reduce((a,b)=>a+b,0)/12);
-   assert.ok(gap(centre,pose.joints[i].elbow)<1e-9,'the continuous garment passes through the solved elbow');
-   const paw=pose.parts.filter(p=>p.material==='coat'&&p.id.startsWith(side)&&!/_foot|_toe/.test(p.id));
+   const sleeve=pose.parts.find(p=>p.id===side+'_sleeve').surface,ring=sleeve.positions.slice(10*17*3,10*17*3+16*3),centre=[0,1,2].map(k=>ring.filter((v,i)=>i%3===k).reduce((a,b)=>a+b,0)/16);
+   assert.ok(gap(centre,pose.joints[i].elbow)<.003,'the continuous garment passes through the solved elbow');
+   const paw=pose.parts.filter(p=>p.material==='coat'&&p.id.startsWith(side)&&!/_ankle|_foot|_toe/.test(p.id));
    assert.ok(paw.length>10);for(const part of paw)assert.deepEqual(part.patternOrigin,grips[i]);
   }
  }
@@ -73,4 +75,50 @@ test('close apparatus exists only in first person and meets the rig at its real 
  assert.ok(gap([.65+0,0,0].map((_,i)=>[0,.65,0][i]+(small[i]-[0,.65,0][i])*.5),[.35,1.72,.19])<1e-9,'a small pilot keeps the world-sized riser top');
  assert.ok(pose.instrument.width>0);assert.equal(pose.parts.filter(p=>p.id==='instrument_body').length,1);
  const still=firstPersonPose(recipe,s,grips,0).parts.map(p=>p.id);assert.deepEqual(pose.parts.map(p=>p.id),still,'instance layout is stable');
+});
+
+
+test('seated legs lag, overshoot on release, and settle at different frame cadences',()=>{
+ const brake={forward:-8},bank={bank:.8},check=(hz)=>{
+  const legs=createSeatedLegSwing(),dt=1/hz;
+  const first=legs.update(dt,brake)[1];
+  assert.ok(first<0&&first>-.02,'the paw does not jump to the brake pose');
+  for(let i=1;i<hz/2;i++)legs.update(dt,brake);
+  const braked=legs.update(0)[1];
+  assert.ok(braked<-.14);
+  let peak=0;
+  for(let i=0;i<hz;i++)peak=Math.max(peak,legs.update(dt)[1]);
+  assert.ok(peak>.014&&peak<.027,'the paw drifts past neutral and comes back');
+  assert.ok(Math.abs(legs.update(0)[1])<.002);
+  for(let i=0;i<hz/2;i++)legs.update(dt,bank);
+  const lag=legs.update(0)[0];
+  assert.ok(lag<-.046);
+  legs.reset();assert.deepEqual(legs.update(0),[0,0]);
+  return [braked,lag];
+ };
+ assert.ok(gap(check(30),check(120))<1e-10);
+});
+
+test('a seated swing moves the garment and paw together at fixed leg lengths',()=>{
+ const recipe=generateFirstPerson(design()),state={mode:'parakite'},grips=[controlGrip(state,1),controlGrip(state,-1)];
+ const rest=firstPersonPose(recipe,state,grips);
+ const swung=firstPersonPose(recipe,state,grips,0,{legSwing:[.17,-.14]});
+ const side=swung.parts.filter(part=>part.id.startsWith('left_'));
+ const get=(pose,name)=>pose.parts.find(part=>part.id===name);
+ const legLengths=pose=>{
+  const coords=get(pose,'left_hakama').surface.positions,centre=row=>[0,1,2].map(axis=>{
+   let sum=0;for(let i=0;i<20;i++)sum+=coords[(row*21+i)*3+axis];
+   return sum/20;
+  });
+  const foot=get(pose,'left_foot');
+  return [gap(centre(0),centre(8)),gap(centre(8),foot.patternOrigin)];
+ };
+ assert.ok(gap(legLengths(rest),legLengths(swung))<.006);
+ const foot=get(swung,'left_foot'),baseline=get(rest,'left_foot');
+ assert.ok(gap(foot.position,baseline.position)>.075);
+ for(const toe of side.filter(part=>part.id.includes('_toe_'))){
+  assert.deepEqual(toe.quaternion,foot.quaternion);
+  assert.deepEqual(toe.patternOrigin,foot.patternOrigin);
+ }
+ assert.deepEqual(get(swung,'left_grip_bar'),get(rest,'left_grip_bar'));
 });

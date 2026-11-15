@@ -8,7 +8,7 @@ import {stepMoves} from '../../../shared/activities/moves.js';
 import {playTape} from '../../../shared/activities/balance.js';
 import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
-import {createFirstPersonHead} from './first-person-head.js';
+import {createFirstPersonHead,createCockpitCamera} from './first-person-head.js';
 import {composeFollowView,createFollowRange,createCameraBoom,createFollowCamera,clearCameraTerrain,clearTerrainBoom,cameraTerrainRadius} from './follow-camera.js';
 import {cameraProfile,cameraMovementProfile} from '../../../shared/activities/camera.js';
 const JUMP_FRAME_M=2,AIM_S=.5;
@@ -61,6 +61,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const target=new T.Vector3(),framingSubject=new T.Vector3(),framingFoot=new T.Vector3();
   const framingHead=character.model?.getObjectByName('head'),framingFeet=['heel.L','heel.R'].map(name=>character.model?.getObjectByName(name)).filter(Boolean);
   const firstPersonHead=createFirstPersonHead();
+  const fitCockpitCamera=createCockpitCamera();
   const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
   const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
   let pilotMotion=options.pilotMotion??'steady';
@@ -425,6 +426,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     return pose;
   }
   function updateFlightPresentation(dt,pose=state){
+    const resetBody=dt===0&&snap;
     const frame=flightFrame(pose,config);
     const coupled=pose.coupled&&!pose.grounded&&!pose.collapsed;
     rig.position.set(frame.origin[0],frame.origin[2],-frame.origin[1]);
@@ -475,9 +477,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }else{
       character.object.visible=false;
       const head=firstPersonHead.update(pose,dt,effects,snap);
-      if(coupled){const eye=options.firstPersonEye?.();camera.position.copy((eye?new T.Vector3(eye[0]*characterConfig.scale,.65+(eye[1]-.65)*characterConfig.scale-head.sink,eye[2]*characterConfig.scale+head.sink*.4):new T.Vector3(0,config.landing_clearance_m+.15,0)).applyMatrix4(pilotMatrix));}
+      look.set(pitch+pose.pitch*.2+head.pitch,pose.heading-Math.PI/2+yaw+head.yaw,head.roll);
+      camera.quaternion.setFromEuler(look);
+      const eye=coupled&&options.firstPersonEye?.();
+      if(eye)fitCockpitCamera(camera,pilotMatrix,eye,options.firstPersonCollar?.(),.65,characterConfig.scale,head.sink,look.y,effects>0?Math.max(camera.fov,80):62);
+      else if(coupled)camera.position.set(0,config.landing_clearance_m+.15,0).applyMatrix4(pilotMatrix);
       else camera.position.set(pose.x,pose.z+.15,-pose.y);
-      look.set(pitch+pose.pitch*.2+head.pitch,pose.heading-Math.PI/2+yaw+head.yaw,head.roll);camera.quaternion.setFromEuler(look);snap=false;
+      snap=false;
     }
     const presentation=options.flightPresentation?.(pose,view,dt,effects);
     const desired=presentation?.fov??(62+Math.min(18,Math.max(0,pose.speed-12)*.8)*effects);
@@ -490,7 +496,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     const lineSagDirection=coupled?new T.Vector3(0,-1,0).transformDirection(new T.Matrix4().copy(flightMatrix).invert()).toArray():undefined;
     rig.userData.flightUpdate?.(dt,{...pose,harnessed:true},{pilotScale:characterConfig.scale,pilotAttachment:attachment?.position_m,pilotOffset,pilotTransform:coupled?pilotTransform:undefined,lineSagDirection,closeView:view==='first'&&coupled});
-    options.firstPersonBody?.({active:!pose.grounded&&!pose.collapsed&&!pose.launching,view,pilotMatrix,pilotScale:characterConfig.scale,state:pose});
+    options.firstPersonBody?.({active:!pose.grounded&&!pose.collapsed&&!pose.launching,view,pilotMatrix,pilotScale:characterConfig.scale,state:pose,dt,reset:resetBody});
   }
   /** Steer, pedal or pole, brake, tuck and hop; a chase camera, or first person on V / Y. */
   function updateRide(dt,pad,x,y){

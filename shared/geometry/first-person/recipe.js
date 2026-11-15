@@ -3,8 +3,10 @@
  * Geometry, material channels and posed surfaces can be consumed by any
  * engine; the browser batches rigid parts and updates the garment surface. No physics state is modified. */
 import {validateAppearance,DEFAULT_APPEARANCE,CHARACTER_BASES} from '../../characters/appearance.js';
-export const GENERATOR_VERSION=3;
-export const FELID=Object.freeze({id:'felid-biped-v1',eye:Object.freeze([0,1.28,-.20]),hip:Object.freeze([0,.65,0]),upperArm:.18,forearm:.18,digits:4});
+export const GENERATOR_VERSION=6;
+// Encloses the shirt's upper closure (all rings at and above y = .975).
+const COLLAR_BOUNDS=Object.freeze({centre:Object.freeze([0,.99,-.108]),radius:.164,halfSize:Object.freeze([.163,.018,.087])});
+export const FELID=Object.freeze({collarBounds:COLLAR_BOUNDS,id:'felid-biped-v1',eye:Object.freeze([0,1.28,-.20]),hip:Object.freeze([0,.65,0]),upperArm:.18,forearm:.18,digits:4});
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,s)=>a.map(v=>v*s),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),length=a=>Math.hypot(...a),unit=a=>mul(a,1/Math.max(1e-10,length(a)));
 const mix=(a,b,t)=>add(mul(a,1-t),mul(b,t));
 /** Long axis +Y along `axis`, flat face +Z towards `facing`: a strap, not a rod. */
@@ -42,23 +44,96 @@ export function unitGeometry(segments=12,rings=8){
  for(let y=0;y<rings;y++)for(let x=0;x<segments;x++){const a=y*(segments+1)+x,b=a+segments+1;if(y>0)indices.push(a,b,a+1);if(y<rings-1)indices.push(b,b+1,a+1);}
  return {positions,normals,uv,indices};
 }
-/** One continuous tube across the elbow; fixed bones remain the pose source.
- * Catmull-Rom centreline rounds the garment fold without a rigid-part end cap. */
-export function sleeveGeometry(root=[0,0,0],elbow=[0,.5,0],hem=[0,1,0]){
- const positions=[],normals=[],uv=[],indices=[],steps=12,segments=12;
- const nodes=[sub(mul(root,2),elbow),root,elbow,hem,sub(mul(hem,2),elbow)];
- const centre=t=>{const i=t<.5?0:1,u=t*2-i,[a,b,c,d]=nodes.slice(i,i+4);return a.map((_,k)=>.5*((2*b[k])+(-a[k]+c[k])*u+(2*a[k]-5*b[k]+4*c[k]-d[k])*u*u+(-a[k]+3*b[k]-3*c[k]+d[k])*u*u*u));};
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const TAU=2*Math.PI;
+const identity=[0,0,0,1];
+
+/** A two-span centreline with a shared tangent at the bent joint. */
+function bentCentre(root,joint,end){
+ const a=sub(joint,root),b=sub(end,joint),middle=mul(add(a,b),.5);
+ return t=>{
+  const first=t<.5,u=t*2-Number(!first),u2=u*u,u3=u2*u;
+  const start=first?root:joint,finish=first?joint:end,m0=first?a:middle,m1=first?middle:b;
+  return start.map((value,i)=>(2*u3-3*u2+1)*value+(u3-2*u2+u)*m0[i]+(-2*u3+3*u2)*finish[i]+(u3-u2)*m1[i]);
+ };
+}
+
+/** Ring coordinates run with the fabric. Finite-difference normals follow
+ * the actual folds and share the two sides of the UV seam. */
+function garment(steps,segments,centre,reference,section,uvSize){
+ const positions=[],normals=[],uv=[],indices=[],rings=[];
  for(let row=0;row<=steps;row++){
-  const t=row/steps,c=centre(t),axis=unit(sub(centre(Math.min(1,t+.001)),centre(Math.max(0,t-.001)))),ref=Math.abs(axis[0])<.9?[1,0,0]:[0,0,1],x=unit(sub(ref,mul(axis,dot(ref,axis)))),z=[axis[1]*x[2]-axis[2]*x[1],axis[2]*x[0]-axis[0]*x[2],axis[0]*x[1]-axis[1]*x[0]];
-  const radius=(t===0?0:Math.min(1,t*12))*(.047*(1-t)+.035*t);
-  for(let col=0;col<=segments;col++){
-   const angle=col/segments*Math.PI*2,n=add(mul(x,-Math.cos(angle)),mul(z,Math.sin(angle)));
-   positions.push(...add(c,mul(n,radius)));normals.push(...(row===0?mul(axis,-1):n));uv.push(col/segments,t);
+  const t=row/steps,c=centre(t),axis=unit(sub(centre(Math.min(1,t+.001)),centre(Math.max(0,t-.001))));
+  const seed=Math.abs(dot(reference,axis))>.99?[0,1,0]:reference;
+  const across=unit(sub(seed,mul(axis,dot(seed,axis)))),around=cross(axis,across),ring=[];
+  for(let col=0;col<segments;col++){
+   const angle=col/segments*TAU,[x,z]=section(t,angle);
+   ring.push(add(c,add(mul(across,-x*Math.cos(angle)),mul(around,z*Math.sin(angle)))));
   }
+  rings.push(ring);
  }
- for(let row=0;row<steps;row++)for(let col=0;col<segments;col++){const a=row*(segments+1)+col,b=a+segments+1;if(row>0)indices.push(a,b,a+1);indices.push(b,b+1,a+1);}
+ for(let row=0;row<=steps;row++)for(let col=0;col<=segments;col++){
+  const j=col%segments,around=sub(rings[row][(j+1)%segments],rings[row][(j+segments-1)%segments]);
+  const along=sub(rings[Math.min(row+1,steps)][j],rings[Math.max(row-1,0)][j]);
+  positions.push(...rings[row][j]);normals.push(...unit(cross(along,around)));uv.push(col/segments*uvSize[0],row/steps*uvSize[1]);
+  if(row<steps&&col<segments){const a=row*(segments+1)+col,b=a+segments+1;indices.push(a,b,a+1,b,b+1,a+1);}
+ }
  return {positions,normals,uv,indices};
 }
+
+export function sleeveGeometry(root,elbow,hem,side){
+ // The arm's bend plane fixes the cloth's orientation as the brakes travel.
+ const across=mul(unit(cross(sub(elbow,root),sub(hem,elbow))),side);
+ return garment(20,16,bentCentre(root,elbow,hem),length(across)>.5?across:[1,0,0],(t,angle)=>{
+  const elbowFold=.0035*Math.exp(-((t-.56)**2)/.023)*Math.cos(72*(t-.5)+1.2*Math.cos(angle));
+  const cuff=.007*Math.exp(-((t-.91)**2)/.003);
+  const radius=(.061-.019*t+elbowFold+cuff+.002*Math.sin(3*angle+4*t))*Math.min(1,.27+t*9);
+  return [radius,radius*.91];
+ },[.324,.29]);
+}
+
+function shirtTorso(){
+ // Pull the upper torso back into the seat below the eye. The top rolls
+ // down onto the chest so the downward view cannot see into an open collar.
+ const sections=[
+  [.580,.198,.130,-.018],[.625,.209,.141,-.016],[.674,.204,.143,-.016],
+  [.715,.200,.145,-.019],[.755,.202,.144,-.025],[.795,.208,.141,-.032],
+  [.835,.211,.134,-.040],[.875,.206,.125,-.054],[.914,.200,.113,-.076],
+  [.951,.189,.095,-.095],[.975,.160,.077,-.108],[.993,.121,.054,-.122],
+  [1.002,.075,.035,-.127],[1.006,.032,.018,-.129],[1.007,0,0,-.129],
+ ];
+ const positions=[],normals=[],uv=[],indices=[],sides=28,rows=sections.length;
+ function point(row,col){
+  const [y,width,depth,z]=sections[row],angle=TAU*col/sides;
+  const fold=.0035*Math.cos(7*angle+row*.34)*Math.sin(Math.PI*row/(rows-1));
+  const x=Math.cos(angle),fwd=Math.sin(angle);
+  const shape=v=>Math.sign(v)*Math.abs(v)**.82;
+  return [-shape(x)*(width+fold),y,-shape(fwd)*(depth+fold)+z];
+ }
+ for(let row=0;row<rows;row++)for(let col=0;col<=sides;col++){
+  const p=point(row,col%sides),along=sub(point(Math.min(rows-1,row+1),col),point(Math.max(0,row-1),col));
+  const around=sub(point(row,(col+1)%sides),point(row,(col+sides-1)%sides));
+  positions.push(...p);normals.push(...(row===rows-1?[0,1,0]:unit(cross(along,around))));
+  uv.push(p[0],(p[1]-.58)*.82+p[2]*.63);
+  if(row<rows-1&&col<sides){
+   const a=row*(sides+1)+col,b=a+sides+1;
+   indices.push(a,b,a+1);
+   if(row<rows-2)indices.push(b,b+1,a+1);
+  }
+ }
+ return {positions,normals,uv,indices};
+}
+
+function hakama(hip,knee,hem,side){
+ return garment(16,20,bentCentre(hip,knee,hem),[-side,0,0],(t,angle)=>{
+  const pleats=.008*(1-t*.6)*Math.cos(5*angle+.25);
+  const hipFit=Math.min(1,.60+t*5);
+  const width=(.142-.083*t+pleats)*hipFit;
+  const depth=(.105-.048*t+pleats+.005*Math.sin(28*t+1.2*Math.cos(angle))*Math.sin(Math.PI*t))*hipFit;
+  return [width,depth];
+ },[.76,.55]);
+}
+
 /** Flat webbing and hard parts: a unit box (-1..1) with its own UVs on each face. */
 export function boxGeometry(){
  const positions=[],normals=[],uv=[],indices=[];
@@ -82,45 +157,101 @@ export function ringGeometry(segments=14,sides=5,minor=.2){
 const APPARATUS=Object.freeze({strap:'#505b60',riser:'#5d6e74',seat:'#4d575a',buckle:'#2c3234',instrument:'#23282a',steel:'#c6ced0',anodized:'#d2553a',line:'#d9a06e'});
 export function generateFirstPerson(design){
  if(!design.supported)return {supported:false,reason:design.reason};
- const original=design.appearance.base==='cat-ronin-original';
- return {supported:true,key:design.key,version:GENERATOR_VERSION,anatomy:design.anatomy,geometry:unitGeometry(),geometries:{knit:sleeveGeometry(),strap:boxGeometry(),metal:ringGeometry()},
-  materials:{coat:{base:'#92958c',tint:design.appearance.palette.coat},knit:{base:original?'#94372f':'#bca35c',tint:design.appearance.palette.outfit,pattern:original?'plaid':'knit'},cloth:{base:'#343c3d',tint:design.appearance.palette.outfit},pads:{base:'#7d6267',tint:design.appearance.palette.coat},webbing:{base:'#bd8354',tint:design.appearance.palette.accent},strap:{base:'#ffffff',tint:'#ffffff',pattern:'webbing'},metal:{base:'#ffffff',tint:'#ffffff'}},original};
+ const palette=design.appearance.palette;
+ return {
+  supported:true,key:design.key,version:GENERATOR_VERSION,anatomy:design.anatomy,geometry:unitGeometry(),
+  geometries:{strap:boxGeometry(),metal:ringGeometry(10),pads:unitGeometry(8,6)},
+  materials:{
+   coat:{base:'#919397',tint:palette.coat},
+   shirt:{base:'#b05746',tint:palette.outfit,pattern:'flannel'},
+   hakama:{base:'#495468',tint:palette.outfit,pattern:'twill'},
+   cloth:{base:'#343c3d',tint:palette.outfit},
+   pads:{base:'#7d6267',tint:palette.coat},
+   webbing:{base:'#bd8354',tint:palette.accent},
+   strap:{base:'#ffffff',tint:'#ffffff',pattern:'webbing'},
+   metal:{base:'#ffffff',tint:'#ffffff'},
+  },
+  torso:shirtTorso(),
+ };
 }
+const STILL_LEGS=Object.freeze([0,0]);
+const limit=(v,min,max)=>Math.max(min,Math.min(max,v));
+
+/** Passive presentation only. Apparent acceleration and air drag set a target;
+ * the underdamped response carries the feet past it on a brake release. */
+export function createSeatedLegSwing(){
+ const angles=[0,0],rates=[0,0];
+ return {
+  reset(){angles.fill(0);rates.fill(0);},
+  update(dt,{lateral=0,forward=0,sideAir=0,headwind=0,bank=0}={}){
+   if(!(dt>0))return angles;
+   const t=Math.min(dt,.05),decay=5.5,frequency=8,loss=Math.exp(-decay*t);
+   const c=Math.cos(frequency*t),sn=Math.sin(frequency*t);
+   const drive=[
+    limit(-lateral*.017+sideAir*.0028-bank*.075,-.20,.20),
+    limit(forward*.023+headwind*Math.abs(headwind)*.00012,-.17,.22),
+   ];
+   for(let i=0;i<angles.length;i++){
+    const error=angles[i]-drive[i],v=rates[i];
+    angles[i]=drive[i]+loss*(error*c+(v+decay*error)*sn/frequency);
+    rates[i]=loss*(v*c-(frequency**2*error+decay*(v+decay*error))*sn/frequency);
+   }
+   return angles;
+  },
+ };
+}
+
+function legRotation(yaw,pitch){
+ const sx=Math.sin(pitch*.5),cx=Math.cos(pitch*.5),sy=Math.sin(yaw*.5),cy=Math.cos(yaw*.5);
+ return [sx*cy,cx*sy,-sx*sy,cx*cy];
+}
+
+function turnLeg(vector,[x,y,z,w]){
+ const twice=mul(cross([x,y,z],vector),2);
+ return add(vector,add(mul(twice,w),cross([x,y,z],twice)));
+}
+
 /** Curved sleeves and overlapping rounded paws/digits share a solved pose.
  * No permanent third-person mesh, animation state or force is shared. */
-export function firstPersonPose(recipe,state,grips,time=0,{body=true,pilotScale=1}={}){
+export function firstPersonPose(recipe,state,grips,time=0,{body=true,pilotScale=1,legSwing=STILL_LEGS}={}){
  const parts=[],joints=[];let coatOrigin=[0,0,0],instrument=null;
  // The sail keeps its world size when the character is small, so the riser tops
  // stay put in the world: undo the hip-centred scale this frame is drawn under.
  const worldFixed=p=>add(FELID.hip,mul(sub(p,FELID.hip),1/pilotScale));
- const rush=Math.min(1.6,((state.speed??0)/24)**2),roll=state.rollRate??0;
+ const rush=Math.min(1.6,((state.speed??0)/24)**2);
  const strap=(id,a,b,width,thick,tint,facing=[0,0,1],material='strap')=>parts.push({id,material,tint,position:mix(a,b,.5),scale:[width/2,length(sub(b,a))/2,thick/2],quaternion:strapRotation(sub(b,a),facing)});
  const ring=(id,tint,position,scale,axis=[0,0,1],up=[0,1,0])=>parts.push({id,material:'metal',tint,position,scale,quaternion:strapRotation(up,axis)});
  const ball=(id,material,position,scale,quaternion=[0,0,0,1])=>parts.push({id,material,position,scale,quaternion,...(material==='coat'?{patternOrigin:coatOrigin}:{})});
  const beam=(id,material,a,b,r0,r1=r0)=>ball(id,material,mix(a,b,.5),[r0,length(sub(b,a))*.5+r0*.18,r1],rotation(sub(b,a)));
  for(const side of [1,-1]){
   const prefix=side>0?'left':'right',grip=grips[side>0?0:1];coatOrigin=grip;
-  if(body){const shoulder=[side*.20,1.02,.02],wrist=add(grip,[0,-.01,-.09]);
-  const arm=solveArm(shoulder,wrist,FELID.upperArm,FELID.forearm,[side*.55,.65,.04]);joints.push({side,shoulder,...arm,grip});
-  parts.push({id:prefix+'_sleeve',material:'knit',position:[0,0,0],scale:[1,1,1],quaternion:[0,0,0,1],surface:sleeveGeometry(shoulder,arm.elbow,mix(arm.elbow,arm.wrist,.64))});
-  beam(prefix+'_forearm','coat',mix(arm.elbow,arm.wrist,.54),add(grip,[0,-.005,-.045]),.032,.028);
-  ball(prefix+'_cuff','cloth',mix(arm.elbow,arm.wrist,.64),[.038,.009,.035],rotation(sub(arm.wrist,arm.elbow)));
-  ball(prefix+'_palm','coat',add(grip,[0,0,-.045]),[.047,.030,.052]);
-  // Four curled digits, two phalanges each, across the handle's transverse bar.
+  if(body){const shoulder=[side*.20,1.02,.02],wrist=add(grip,[0,-.015,-.078]);
+  const arm=solveArm(shoulder,wrist,FELID.upperArm,FELID.forearm,[side*.55,.65,.04]);
+  joints.push({side,shoulder,...arm,grip});
+  const hem=mix(arm.elbow,arm.wrist,.76);
+  parts.push({id:prefix+'_sleeve',material:'shirt',position:[0,0,0],scale:[1,1,1],quaternion:identity,surface:sleeveGeometry(mix(shoulder,[side*.119,.941,-.081],.77),arm.elbow,hem,side)});
+  beam(prefix+'_forearm','coat',mix(arm.elbow,arm.wrist,.65),add(grip,[0,.003,-.019]),.033,.031);
+  // Overlap the palm and curled digits so the paw closes around the bar.
+  ball(prefix+'_palm','coat',add(grip,[0,.009,-.033]),[.053,.035,.051]);
   for(let i=0;i<FELID.digits;i++){
-   const x=side*(i-1.5)*.026,root=add(grip,[x,.031,-.040]),knuckle=add(grip,[x,.038,.024]),tip=add(grip,[x,-.014,.040]);
-   beam(prefix+`_digit_${i}_a`,'coat',root,knuckle,.014,.014);beam(prefix+`_digit_${i}_b`,'coat',knuckle,tip,.013,.013);
-   ball(prefix+`_pad_${i}`,'pads',add(tip,[0,0,-.011]),[.012,.016,.006]);
+   const x=side*(i-1.5)*.024,endShape=Math.abs(i-1.5),reach=.026-endShape*.004;
+   const root=add(grip,[x,.026,-.043]),knuckle=add(grip,[x,.030,reach]),tip=add(grip,[x,-.013,reach+.013]);
+   beam(prefix+`_digit_${i}_a`,'coat',root,knuckle,.015,.015);beam(prefix+`_digit_${i}_b`,'coat',knuckle,tip,.013,.013);
+   ball(prefix+`_pad_${i}`,'pads',add(tip,[0,0,-.010]),[.011,.013,.006]);
   }
-  const thumb=add(grip,[-side*.060,-.006,-.040]),thumbJoint=add(grip,[-side*.048,-.040,-.005]),thumbTip=add(grip,[-side*.016,-.041,.023]);
-  beam(prefix+'_thumb_a','coat',thumb,thumbJoint,.018);beam(prefix+'_thumb_b','coat',thumbJoint,thumbTip,.017);
-  ball(prefix+'_thumb_pad','pads',add(thumbTip,[0,.010,0]),[.017,.008,.013]);
-  const sway=Math.sin(time*1.8+side)*Math.min(.012,Math.max(0,(state.load??1)-1)*.005),drift=roll*.03,hip=[side*.14,.64,0],knee=[side*.18+drift*.5,.40+sway,.38-.025*rush],ankle=[side*.18+drift,.18+sway+.03*rush,.65-.05*rush];
-  beam(prefix+'_thigh','cloth',hip,knee,.115,.10);beam(prefix+'_shin','cloth',knee,ankle,.085,.078);
+  const thumb=add(grip,[-side*.041,-.011,-.042]),thumbJoint=add(grip,[-side*.052,-.033,-.015]),thumbTip=add(grip,[-side*.028,-.036,.022]);
+  beam(prefix+'_thumb_a','coat',thumb,thumbJoint,.020);beam(prefix+'_thumb_b','coat',thumbJoint,thumbTip,.017);
+  ball(prefix+'_thumb_pad','pads',add(thumbTip,[0,.008,0]),[.016,.007,.013]);
+  const hip=[side*.116,.653,-.022],restKnee=[side*.144,.49,.385],restAnkle=[side*.187,.346,.812];
+  const [sweep,fold]=legSwing;
+  const knee=add(hip,turnLeg(sub(restKnee,hip),legRotation(sweep*.42,fold*.32)));
+  const ankle=add(knee,turnLeg(sub(restAnkle,restKnee),legRotation(sweep,fold)));
+  const trouserHem=mix(knee,ankle,.89);
+  parts.push({id:prefix+'_hakama',material:'hakama',position:[0,0,0],scale:[1,1,1],quaternion:identity,surface:hakama(hip,knee,trouserHem,side)});
   coatOrigin=ankle;
   // Apparatus seen only from the pilot's own eye. Load path, as on the rig:
   // leg loops -> waist -> carabiner -> three risers -> the rig's maillons above.
-  const carabiner=[side*.27,1.04,-.02],facing=[side*.3,.1,-1];
+  const carabiner=[side*.312,1.012,-.055],facing=[side*.3,.1,-1];
   ring(prefix+'_carabiner',APPARATUS.steel,carabiner,[.021,.038,.024],[0,0,1],[.12*side,1,0]);
   ring(prefix+'_carabiner_gate',APPARATUS.anodized,add(carabiner,[0,.026,0]),[.012,.008,.016],[0,0,1],[0,1,0]);
   for(const [row,top]of [.19,.02,-.15].entries()){
@@ -132,29 +263,39 @@ export function firstPersonPose(recipe,state,grips,time=0,{body=true,pilotScale=
    ring(name+'_maillon',APPARATUS.steel,end,[.016,.026,.018],[0,0,1],[0,1,0]);
   }
   ring(prefix+'_pulley',APPARATUS.steel,worldFixed([side*.385,1.70,-.17]),[.024,.024,.018],[1,0,0],[0,1,0]);
-  strap(prefix+'_shoulder',[side*.165,.965,.115],[side*.15,.80,.15],.032,.005,APPARATUS.strap,[0,.3,1]);
-  strap(prefix+'_chest',[side*.15,.86,.14],[side*.018,.865,.158],.024,.005,APPARATUS.strap,[0,.1,1]);
+  const strapTop=[side*.129,.963,-.043],strapMid=[side*.131,.931,-.006],strapChest=[side*.132,.866,.064];
+  strap(prefix+'_shoulder_top',strapTop,strapMid,.028,.005,APPARATUS.strap,[0,.3,1]);
+  strap(prefix+'_shoulder',strapMid,strapChest,.028,.005,APPARATUS.strap,[0,.3,1]);
+  strap(prefix+'_chest',strapChest,[side*.018,.865,.085],.024,.005,APPARATUS.strap,[0,.1,1]);
   // Thin brake line, hand to the riser guides, replacing the rig's chase-weight tube.
   const swivel=add(grip,[0,.062,.002]);
   strap(prefix+'_brake_line',swivel,worldFixed([side*.40,1.72,-.19]),.0034,.0034,APPARATUS.line,facing);
   for(const [i,top]of [.19,-.15].entries())strap(prefix+`_return_${i}`,swivel,state.mode==='parakite'?worldFixed([side*.35,1.72,top]):swivel,.0026,.0026,APPARATUS.line,facing);
-  strap(prefix+'_waist',[side*.21,.70,.08],[side*.02,.70,.165],.05,.007,APPARATUS.strap,[0,.1,1]);
-  strap(prefix+'_pickup',[side*.215,.72,.04],carabiner,.036,.006,APPARATUS.strap,[side,0,.3]);
-  const thigh=sub(knee,hip);ring(prefix+'_leg_loop',APPARATUS.strap,mix(hip,knee,.42),[.122,.106,.05],thigh,Math.abs(unit(thigh)[0])<.9?[1,0,0]:[0,1,0]);
+  strap(prefix+'_waist',[side*.177,.700,.072],[side*.02,.700,.131],.044,.007,APPARATUS.strap,[0,.1,1]);
+  strap(prefix+'_pickup',[side*.177,.700,.072],carabiner,.033,.006,APPARATUS.strap,[side,0,.3]);
+  const thigh=sub(knee,hip);ring(prefix+'_leg_loop',APPARATUS.strap,mix(hip,knee,.30),[.112,.092,.052],thigh,[1,0,0]);
   // Padded grip sleeve and swivel above each paw, for the hand-side of the line.
   beam(prefix+'_grip_pad','cloth',add(grip,[-.056,.002,0]),add(grip,[.056,.002,0]),.016,.016);
   ring(prefix+'_swivel',APPARATUS.steel,add(grip,[0,.062,.002]),[.011,.015,.012],[0,0,1],[0,1,0]);
   if(side>0){
-   // On the chest strap: a glance down, the way a pilot reads a vario.
-   const at=[0,.935,.18],n=unit(sub(FELID.eye,at)),q=strapRotation(sub([0,1,0],mul(n,n[1])),n);
+   parts.push({id:'torso',material:'shirt',position:[0,0,0],scale:[1,1,1],quaternion:identity,surface:recipe.torso});
+   const at=[0,.891,.150],n=unit(sub(FELID.eye,at)),q=strapRotation(sub([0,1,0],mul(n,n[1])),n);
    parts.push({id:'instrument_body',material:'strap',tint:APPARATUS.instrument,position:at,scale:[.058,.04,.009],quaternion:q});
    instrument={position:add(at,mul(n,.0098)),quaternion:q,width:.104,height:.069};
-   strap('chest_buckle',[-.028,.865,.162],[.028,.865,.162],.026,.012,APPARATUS.buckle,[0,.1,1]);
-   strap('waist_buckle',[-.036,.70,.168],[.036,.70,.168],.046,.014,APPARATUS.buckle,[0,.1,1]);
-   parts.push({id:'seat',material:'strap',tint:APPARATUS.seat,position:[0,.515,.17],scale:[.215,.012,.235],quaternion:[0,0,0,1]});
+   strap('vario_mount',[0,.844,.089],sub(at,mul(n,.026)),.048,.012,APPARATUS.buckle,[0,.1,1]);
+   strap('chest_buckle',[-.028,.865,.088],[.028,.865,.088],.026,.012,APPARATUS.buckle,[0,.1,1]);
+   strap('waist_buckle',[-.036,.70,.135],[.036,.70,.135],.046,.014,APPARATUS.buckle,[0,.1,1]);
+   parts.push({id:'seat',material:'strap',tint:APPARATUS.seat,position:[0,.510,.108],scale:[.218,.012,.176],quaternion:[0,0,0,1]});
   }
-  ball(prefix+'_foot','coat',add(ankle,[0,-.04,.065]),[.070,.050,.12]);
-  for(let i=0;i<4;i++)ball(prefix+`_toe_${i}`,'coat',add(ankle,[(i-1.5)*.028,-.048,.155]),[.020,.026,.036]);
+  const pawRotation=legRotation(sweep*.83-side*.09,fold*.72-.09);
+  const pawAt=offset=>add(ankle,turnLeg(offset,pawRotation));
+  beam(prefix+'_ankle','coat',mix(knee,ankle,.81),pawAt([0,-.022,.037]),.043,.042);
+  ball(prefix+'_foot','coat',pawAt([0,-.025,.038]),[.073,.053,.078],pawRotation);
+  for(const toe of [-1,0,1]){
+   const edge=Math.abs(toe);
+   ball(prefix+`_toe_${toe+1}`,'coat',pawAt([toe*.039,-.023,.101-edge*.011]),
+    [.026-edge*.002,.032-edge*.003,.029-edge*.003],pawRotation);
+  }
   }
   // Soft toggle loop, underside grip bar and paired sewn attachment tails.
   const corners=[[-.066,-.036,0],[.066,-.036,0],[.066,.036,0],[-.066,.036,0]];
