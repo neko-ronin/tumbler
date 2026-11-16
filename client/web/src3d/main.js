@@ -383,8 +383,10 @@ export async function main() {
   const windWaterToggle=document.getElementById('wind-water-audio');
   soundscape.setWindWaterEnabled(windWaterToggle.checked);
   windWaterToggle.addEventListener('change',()=>soundscape.setWindWaterEnabled(windWaterToggle.checked));
+  const journal=document.getElementById('loading-screen');
   const unlockSound=event=>{
-    if(event&&!event.isTrusted)return;
+    // Entry resumes audio directly, and touches on the loading journal leave it quiet.
+    if(event&&(!event.isTrusted||!journal.hidden||event.target.id==='loading-begin'))return;
     soundscape.unlock().catch(error=>console.warn('Tumbler could not start audio',error));
   };
   window.addEventListener('click',unlockSound);window.addEventListener('keydown',unlockSound);
@@ -484,20 +486,30 @@ export async function main() {
   const actorShadows=createActorShadows(renderer,[rig,character.object,rideRig],style);
   const actorFocus=new T.Vector3();
   const shadowCentre = new T.Vector3(Infinity, Infinity, Infinity);
-  let shadowRevision=-1,lastShadowTime=0;
-  const shadowFocus=new T.Vector3(Infinity,Infinity,Infinity),groundShadowFocus=new T.Vector3();
-  function updateShadow(force = false) {
+  let shadowRevision=-1,lastShadowTime=0,guidedShadowLead=null;
+  const shadowFocus=new T.Vector3(Infinity,Infinity,Infinity),groundShadowFocus=new T.Vector3(),shadowAim=new T.Vector3();
+  function updateShadow(force = false,forestSelected = false) {
     const aim=controls.target;
     // Keep the scenery footprint on the landscape through aerial descents.
     const target=groundShadowFocus.set(aim.x,ground.height(aim.x,-aim.z)??aim.y,aim.z);
     setTreeShadowFocus(target);
     const now=performance.now();
-    if (!force && target.distanceToSquared(shadowCentre)<40*40 &&
-      ((shadowRevision===forest.stats.shadowRevision&&target.distanceToSquared(shadowFocus)<4*4)||now-lastShadowTime<350))return;
+    if(!force){
+      if(guidedShadowLead){
+        // The 520 m view footprint has 60 m of margin inside the 640 m map.
+        // Keep 12 m in reserve for snapping and the shadow filter.
+        if(shadowRevision===forest.stats.shadowRevision&&target.distanceToSquared(shadowCentre)<48*48)return;
+      }else if(target.distanceToSquared(shadowCentre)<40*40&&
+        ((shadowRevision===forest.stats.shadowRevision&&target.distanceToSquared(shadowFocus)<4*4)||now-lastShadowTime<350))return;
+    }
+    shadowAim.copy(target);
+    if(guidedShadowLead){
+      shadowAim.set(guidedShadowLead.x-target.x,0,-guidedShadowLead.y-target.z).clampLength(0,20).add(target);
+    }
     lastShadowTime=now;shadowFocus.copy(target);
     // Static world shadows retain their light-space texel phase on recenter.
     // A forty-metre world-axis step changes that phase and makes edges jump.
-    shadowCentre.copy(snappedShadowAnchor(target,style.sun.value,SCENERY_SHADOW_SPAN,SCENERY_SHADOW_RESOLUTION));
+    shadowCentre.copy(snappedShadowAnchor(shadowAim,style.sun.value,SCENERY_SHADOW_SPAN,SCENERY_SHADOW_RESOLUTION));
     sun.target.position.copy(shadowCentre);
     sun.position.copy(shadowCentre).addScaledVector(style.sun.value, 900);
     sun.updateMatrixWorld();
@@ -505,7 +517,12 @@ export async function main() {
     sun.shadow.updateMatrices(sun);
     updateTreeSunShadow();
     adoptedForest.updateShadowCasters?.(sun.shadow.getFrustum());
-    forest.update(camera,shadowCentre);shadowRevision=forest.stats.shadowRevision;
+    if(forestSelected){
+      // Adopted tree visibility uses the camera target and is already current.
+      legacyForest.update(camera,shadowCentre);
+      forest.refreshStats();
+    }else forest.update(camera,shadowCentre);
+    shadowRevision=forest.stats.shadowRevision;
     renderer.shadowMap.needsUpdate = true;
   }
   // Under the water's surface: a short teal fog and a tint over the view.
@@ -630,6 +647,7 @@ export async function main() {
     }});
   const playerUI=createPlayerUI({places:places.places,arriveAt,startParakite,startParamotor,paramotorRefusal,navigation,ground,snowAt,
     learnParakite:()=>parakiteTour.offer({force:true}),
+    flightStatsDock:()=>parakitePractice.statsDock??parakiteTour.statsDock,
     trees:placement.instances.filter(i=>i.asset.startsWith('redwood/')).map(i=>i.position_m),worldmap,course:speedflying.courses[0],
     launch:flightConfig.launches[Number(parakiteSite)],timeOfDay:()=>timeOfDay,canvas});
   // Two interfaces: the development panels, served locally, and the player's. Players always get theirs;
@@ -674,7 +692,7 @@ export async function main() {
   const meadowFocus=meadowViewFocus(camera,ground,undefined,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
 
   let frame = 0, contextLost = false, stopped = false, lastFrame = 0, lastStamp = 0;
-  let presenting=false,presentedOnce=false;
+  let presenting=false,presentedOnce=false,openingFrame=null,audioPrepared=false;
   let elapsed = 0,lastReadout=0;
   const samples = [];
   const metrics = { frame: 0, framesMs: samples, cpuMs: 0, render: {}, get view() { return document.body.dataset.view; } };
@@ -735,10 +753,32 @@ export async function main() {
       // state, orbit target and scenery-shadow focus exactly where the entry
       // needs them. Keeping them is what makes the entry cut cheap: the first
       // live frame reuses the warmed shadow map instead of rebuilding it.
-      loading.meter(.96,'Checking the light…');
+      navigation.suspend(true);
+      modeSelect.value='walk';document.body.dataset.flying='false';updateHelp('walk');
+      document.body.dataset.ui='hidden';
+      loading.meter(.96,'Preparing sound…');
+      await nextPaint();
+      if(contextLost||stopped)return;
+      try {
+        await soundscape.prepare();
+        audioPrepared=true;
+      } catch(error) {
+        audioPrepared=false;
+        console.warn('Tumbler could not prepare audio',error);
+      }
     }
     firstPerson.finishWarm();
     if(contextLost||stopped)return;
+    if(gate){
+      loading.meter(.98,'Drawing the meadow…');
+      const time=await nextPaint();
+      if(contextLost||stopped)return;
+      drawFrame(time,0);
+      if(contextLost||stopped)return;
+      retainOpeningFrame();
+      await finishGpu(renderer.getContext());
+      if(contextLost||stopped)return;
+    }
     Object.assign(startup,result,{warm:{orbit:result.frames,arrival:arrival?.frames??0}});
     // Warm-up costs must not enter play's clock or adaptive-quality samples.
     samples.length=0;lastFrame=0;qualityGate.reset(performance.now());
@@ -748,7 +788,6 @@ export async function main() {
       // gesture. That gesture is also what lets the browser start audio, so the
       // game never claims sound is on while the context is still suspended.
       startup.rendered=true;
-      loading.meter(1,'The valley is ready.');
       loading.ready('The valley is ready.',beginGame);
       // Automated runs have no gesture to give; they enter through the same
       // door rather than hanging on a button, and say so in `startup`.
@@ -758,37 +797,33 @@ export async function main() {
     Object.assign(startup,{ready:true,rendered:true,playing:true});
     presentedOnce=true;presenting=true;loading.reveal();resume();
   }
-  /** The player's gesture. A cut, not a pan: the arrival was warmed above and
-   * the journal covers the one frame it takes to make it current, so there is
-   * no interpolated camera state for first-use work to land inside. */
-  async function beginGame({auto=false}={}){
-    if(presenting||startup.playing)return;
-    if(!auto)unlockSound();
-    // The warm left the walk state, camera and shadow focus in place; re-select
-    // would move the camera and force a shadow rebuild for no visible gain.
-    if(navigation.mode!=='walk')setActivity('walk');
-    navigation.cancelShot();
-    modeSelect.value='walk';document.body.dataset.flying='false';updateHelp('walk');
-    document.body.dataset.ui='hidden';
-    canvas.focus();
-    presenting=true;resume();
-    // Hold the journal until the render loop has actually drawn the walk view,
-    // so the reveal never shows the last orbit frame. `ready` is set after the
-    // reveal so it keeps meaning "the world is on screen and interactive".
-    await nextDrawnFrame();
-    if(stopped||contextLost)return;
+  function retainOpeningFrame(){
+    // WebGL may clear its drawing buffer after compositing. Keep just the
+    // opening frame until play can replace it, without changing WebGL buffering.
+    const copy=document.createElement('canvas');
+    copy.className='opening-frame';
+    copy.setAttribute('aria-hidden','true');
+    copy.width=canvas.width;copy.height=canvas.height;
+    copy.getContext('2d',{alpha:false}).drawImage(canvas,0,0);
+    canvas.after(copy);
+    openingFrame=copy;
+  }
+  function clearOpeningFrame(){
+    openingFrame?.remove();
+    openingFrame=null;
+  }
+  function beginGame({auto=false}={}){
+    if(!startup.rendered||presenting||startup.playing||stopped||contextLost)return;
     loading.reveal();
+    navigation.suspend(false);
+    canvas.focus({preventScroll:true});
     parakiteTour.offer();
     status.textContent='Walk the meadow.';
-    presentedOnce=true;startup.ready=true;startup.playing=true;if(auto)startup.autoStarted=true;
-  }
-  function nextDrawnFrame(){
-    const start=metrics.frame;
-    return new Promise(resolve=>{
-      let waits=0;
-      const check=()=>{if(metrics.frame>start||++waits>240)resolve();else requestAnimationFrame(check);};
-      requestAnimationFrame(check);
-    });
+    presenting=true;presentedOnce=true;
+    startup.ready=true;startup.playing=true;if(auto)startup.autoStarted=true;
+    if(!auto&&audioPrepared)unlockSound();
+    // Let the prepared view reach the screen before the next render begins.
+    requestAnimationFrame(()=>requestAnimationFrame(resume));
   }
   function updateStamp() {
     const ordered = [...samples].sort((a,b) => a-b);
@@ -812,6 +847,12 @@ export async function main() {
     const delta = lastFrame ? time - lastFrame : 0;
     lastFrame = time;
     if (delta > 0 && delta < 500) { samples.push(delta); if (samples.length > 240) samples.shift(); }
+    drawFrame(time,delta);
+    if(stopped||contextLost)return;
+    clearOpeningFrame();
+    frame=requestAnimationFrame(animate);
+  }
+  function drawFrame(time,delta){
     elapsed += Math.min(delta, 50) / 1000;
     style.time.value = elapsed;
     // A landed katana blow shakes the view; the offset is taken back off before
@@ -826,7 +867,11 @@ export async function main() {
     if(!flightConfig.modes[navigation.mode]){paraSignals.update(null,{},0,0);firstPerson.update({active:false});paraStreaks.update(null);}
     const treePlay=navigation.mode==='walk'&&['climb','branch','tree-jump'].includes(navigation.state?.mode);
     const treePlayer=navigation.state;treePlayFocus.value.set(treePlayer?.x??0,(treePlayer?.z??0)+.9,-(treePlayer?.y??0),treePlay&&spotlight?1.8:0);
-    folk.update(Math.min(delta,50)/1000,onFoot);
+    const guide=parakiteTour.sceneryLead;
+    const pilot=navigation.state;
+    guidedShadowLead=navigation.view==='chase'&&guide&&pilot&&!pilot.grounded&&
+      Math.hypot(guide.x-pilot.x,guide.y-pilot.y)<85?guide:null;
+    folk.update(Math.min(delta,50)/1000,onFoot,!!guide);
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
     if(!organoid.active&&!parakiteTour.cinematic&&navigation.mode!=='orbit'&&navigation.view==='chase')navigation.constrainCamera();
@@ -835,7 +880,7 @@ export async function main() {
     playerVisibility.update(character.object.position.clone().add(new T.Vector3(0,1.1*characterConfig.scale,0)),spotlight&&!organoid.active&&navigation.mode!=='orbit'&&navigation.mode!=='fly'&&navigation.view==='chase',characterConfig.scale,treePlay);
     applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
     generators.update(Math.min(delta,50)/1000);
-    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);play.update(Math.min(delta,50)/1000,camera,[...(onFoot?[onFoot]:[]),...folk.api.world.cats.filter(c=>c.body.mode==='walk').map(c=>({...c.body.state,radius:.25}))]);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit),paraSignals.sample);updateFoley(Math.min(delta,50)/1000);
+    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow(false,true);meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);play.update(Math.min(delta,50)/1000,camera,[...(onFoot?[onFoot]:[]),...folk.api.world.cats.filter(c=>c.body.mode==='walk').map(c=>({...c.body.state,radius:.25}))]);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit),paraSignals.sample);updateFoley(Math.min(delta,50)/1000);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;
@@ -915,7 +960,6 @@ export async function main() {
     metrics.cpuMs = performance.now() - start; metrics.frame++;
     Object.assign(metrics.render, renderer.info.render);
     if (time - lastStamp > 700) { updateStamp(); lastStamp = time; }
-    frame = requestAnimationFrame(animate);
   }
   function resume() { lastFrame = 0;framePacer.reset(); if (presenting && !frame && !contextLost && !stopped && !document.hidden) frame = requestAnimationFrame(animate); }
   document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else resume(); });
@@ -924,7 +968,8 @@ export async function main() {
     // The shot's clock is frozen while the context is gone; restart it cleanly
     // instead of resuming an interpolation whose frames nobody saw.
     navigation.cancelShot();organoid.skip();
-    presenting=false;startup.ready=false;loading.show('The light slipped away. Preparing it again…');
+    clearOpeningFrame();
+    presenting=false;startup.ready=false;startup.rendered=false;loading.show('The light slipped away. Preparing it again…');
     status.textContent = 'Graphics paused — recovering…';
   });
   canvas.addEventListener('webglcontextrestored', async () => {

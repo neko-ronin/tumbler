@@ -36,3 +36,22 @@ test('rewind returns both pilots to separated solver states',()=>{
   assert.ok(restored.player.rotation.pressure.every(p=>p>.8));
   assert.equal(follow.advance(dt,restored.player),'flying');
 });
+
+
+test('precomputed guide states match live steps and are reused on rewind',()=>{
+  let heightReads=0;
+  const warm=createParakiteFollow({config,wind,height:()=>{heightReads++;return 0;}});
+  const lazy=createParakiteFollow({config,wind,height});
+  const {player}=warm.retry();
+  for(let tick=0;tick<72;tick++)assert.ok(warm.warmNext());
+  const warmedHeightReads=heightReads;
+  for(let pass=0;pass<2;pass++){
+    warm.retry();
+    lazy.retry();
+    for(let tick=0;tick<72;tick++){
+      assert.equal(warm.advance(dt,player),lazy.advance(dt,player));
+      assert.deepEqual(warm.guide,lazy.guide);
+    }
+  }
+  assert.equal(heightReads,warmedHeightReads);
+});

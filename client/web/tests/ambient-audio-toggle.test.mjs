@@ -28,6 +28,15 @@ test('a rejected optional sample does not prevent gesture unlock or ambience',as
  f.sound.update({position:{x:0,y:5,z:0}},{mode:'walk',state:{x:0,y:0,z:0}});
  assert.equal(bus.gain.value,1);
 });
+test('the journal can prepare the audio graph silently before the entry gesture',async t=>{
+ const f=audioFixture(t);
+ await f.sound.prepare();
+ const context=f.context;
+ assert.equal(context.state,'suspended');
+ assert.equal(context.nodes.find(n=>n.kind==='panner'&&n.refDistance===10).outputs[0].gain.value,0);
+ assert.equal(await f.sound.unlock(),true);
+ assert.equal(f.context,context,'unlock reuses the prepared audio context');
+});
 test('the reset calls the cat sample with the alarm pitch at the player position',async t=>{
  const sample={};
  const f=audioFixture(t,()=>Promise.resolve(sample));

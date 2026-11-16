@@ -10,8 +10,8 @@ function controls(t){
   t.after(()=>saved?Object.defineProperty(globalThis,'Option',saved):delete globalThis.Option);
   const nodes=new Map();
   for(const selector of ['select','label','[data-practice-title]','[data-practice-prompt]',
-    '[data-practice-action]','[data-practice-leave]','[data-practice-next]']){
-    nodes.set(selector,Object.assign(new EventTarget(),{hidden:false,replaceChildren(){}}));
+    '[data-tutorial-readings]','[data-practice-action]','[data-practice-leave]','[data-practice-next]']){
+    nodes.set(selector,Object.assign(new EventTarget(),{hidden:false,dataset:{},replaceChildren(){}}));
   }
   const details={},world={dataset:{}};
   const open=Object.assign(new EventTarget(),{closest:selector=>selector==='details'?details:world});
@@ -23,7 +23,7 @@ function controls(t){
     beginFlightLesson(){this.flightLesson.ready=false;},
     endFlightLesson(){this.flightLesson=null;},
   };
-  const practice=createParakitePractice({panel:{querySelector:selector=>nodes.get(selector)},open,navigation,
+  const practice=createParakitePractice({panel:{dataset:{},querySelector:selector=>nodes.get(selector)},open,navigation,
     canvas:{focus(){}},challenge:{}});
   return {nodes,navigation,practice};
 }

@@ -47,14 +47,15 @@ function legend(rows,{caption}={}){
     el('div',{className:'control-head'},el('span',{textContent:''}),el('span',{textContent:'Keyboard'}),el('span',{textContent:'Controller'})),...rows.map(controlRow));
 }
 
-export function createPlayerUI({places,arriveAt,startParakite,startParamotor,paramotorRefusal,navigation,ground,snowAt,trees,worldmap,course,launch,timeOfDay,canvas,learnParakite}){
+export function createPlayerUI({places,arriveAt,startParakite,startParamotor,paramotorRefusal,navigation,ground,snowAt,trees,worldmap,course,launch,timeOfDay,canvas,learnParakite,flightStatsDock}){
   const root=el('div',{className:'player-ui'});
   const card=el('aside',{className:'key-card',ariaLabel:'Controls'});
   const toast=el('div',{className:'arrival',ariaLive:'polite'});
   const menu=el('section',{className:'trail-map',hidden:true,ariaLabel:'Trail map'});
   const statRows=new Map(['Airspeed','Groundspeed','Above ground','Vertical speed','Load','Wing pressure'].map(label=>{
     const value=el('dd');
-    return [label,{value,row:el('div',{},el('dt',{textContent:label}),value)}];
+    const className=['Airspeed','Above ground','Wing pressure'].includes(label)?'compact-reading':'';
+    return [label,{value,row:el('div',{className},el('dt',{textContent:label}),value)}];
   }));
   const flightStats=el('aside',{className:'player-flight-stats',hidden:true,ariaLabel:'Para-flight stats'},
     el('h3',{textContent:'Para-flight'}),el('dl',{},...[...statRows.values()].map(({row})=>row)));
@@ -176,6 +177,8 @@ export function createPlayerUI({places,arriveAt,startParakite,startParamotor,par
 
   let nextStats=0;
   function renderFlightStats(now){
+    const host=flightStatsDock?.()??root;
+    if(flightStats.parentElement!==host){host.append(flightStats);nextStats=0;}
     const flight=navigation.state;
     const show=active()&&!open&&navigation.view==='chase'&&paraModes.has(navigation.mode)&&flight&&!flight.grounded;
     if(!show){flightStats.hidden=true;nextStats=0;return;}

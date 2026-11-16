@@ -37,6 +37,16 @@ test('the journal meter is the preparation: it never rewinds and ready is a real
   assert.equal(elements['loading-message'].textContent,'A step that settled again');
 });
 
+test('warm-up progress cannot reach 100% before entry is ready',t=>{
+  const {elements,restore}=page();t.after(restore);
+  const loading=createLoadingScreen();
+  loading.meter(1,'Drawing the meadow…');
+  assert.equal(elements['loading-progress'].value,.99);
+  assert.equal(elements['loading-percent'].textContent,'99%');
+  assert.equal(elements['loading-begin'].hidden,true);
+  assert.equal(elements['loading-screen'].hidden,false);
+});
+
 test('the ready state holds the world and one gesture enters it exactly once',t=>{
   const {elements,restore}=page();t.after(restore);
   const loading=createLoadingScreen();

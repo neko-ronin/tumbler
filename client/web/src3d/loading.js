@@ -36,7 +36,7 @@ export function createLoadingScreen() {
     /** Warm-up progress in [0,1]. The bar only ever moves forward: a step that
      * resets and re-settles must not look like the world un-preparing itself. */
     meter(value,text){
-      const v=Math.max(progress.value,Math.min(1,value));
+      const v=Math.min(.99,Math.max(progress.value,value));
       if(text&&message.textContent!==text)message.textContent=text;
       showBar(v);
     },

@@ -92,6 +92,7 @@ export function createParakitePractice({panel, open, navigation, canvas, challen
   const label = panel.querySelector('label');
   const title = panel.querySelector('[data-practice-title]');
   const prompt = panel.querySelector('[data-practice-prompt]');
+  const readings = panel.querySelector('[data-tutorial-readings]');
   const action = panel.querySelector('[data-practice-action]');
   const leave = panel.querySelector('[data-practice-leave]');
   const next = panel.querySelector('[data-practice-next]');
@@ -152,6 +153,7 @@ export function createParakitePractice({panel, open, navigation, canvas, challen
     const {id, phase} = attempt.progress;
     const {name, brief, cues} = lessons[id];
     choice.value = id;
+    panel.dataset.guided=String(!!sequence);
     label.hidden=choice.hidden=!!sequence;
     title.hidden=!sequence;
     if(sequence)title.textContent=`${name} · ${sequence.index+1} of ${sequence.ids.length}`;
@@ -165,5 +167,5 @@ export function createParakitePractice({panel, open, navigation, canvas, challen
     action.textContent = attempt.ready ? 'Start flight' : 'Retry';
   }
 
-  return {prepare, render, startSequence, stopSequence, advance};
+  return {prepare, render, startSequence, stopSequence, advance,get statsDock(){return sequence&&!panel.hidden?readings:null;}};
 }

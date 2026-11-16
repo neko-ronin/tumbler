@@ -16,6 +16,8 @@ import {createTumbleBody} from './tumble-body.js';
 const SRGB=Uint8Array.from({length:256},(_,v)=>{const c=v/255;return Math.round(255*(c<=.0031308?c*12.92:1.055*c**(1/2.4)-.055));});
 const FADE_S=.3,LABEL_M=45,MAX_RIGS=3,DRAW_M=700,HEAD_YAW=1.1,HEAD_PITCH=.45,HEAD_TURN=7,EYE_PX=256;
 
+const GUIDE_LIVERY={upper_coral:'#d89b2d',lower_coral:'#f3be53',upper_teal:'#373e89',lower_teal:'#616ac3'};
+
 function basis(frame,out){
   return out.makeBasis(new T.Vector3(frame.left[0],frame.left[2],-frame.left[1]),new T.Vector3(frame.up[0],frame.up[2],-frame.up[1]),
     new T.Vector3(frame.forward[0],frame.forward[2],-frame.forward[1])).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
@@ -31,10 +33,29 @@ function puppet(asset,model){
   actions.blink.play();
   let current=null,name=null;
   const head=root.getObjectByName('head'),pitchAxis=new T.Vector3(),q=new T.Quaternion(),parent=new T.Quaternion(),world=new T.Quaternion(),base=new T.Quaternion(),headAt=new T.Vector3();
-  let yaw=0,pitch=0,looked=false;
+  const arms=model.id==='juno'?[[],[]]:null;
+  if(arms)root.traverse(bone=>{
+    if(!bone.isBone)return;
+    const match=/^(upper_arm|forearm)\.([LR])$/.exec(bone.name);
+    if(match)arms[match[2]==='L'?0:1].push({bone,base:new T.Quaternion(),range:match[1]==='upper_arm'?.32:.38});
+  });
+  let yaw=0,pitch=0,looked=false,posed=false;
   return {object,root,mixer,actions,body:null,
     /** Clips may not key the head, so a turn from last frame must not carry into this one. */
     restoreHead(){if(looked)head.quaternion.copy(base);looked=false;},
+    restoreArms(){
+      if(!posed)return;
+      for(const side of arms)for(const {bone,base} of side)bone.quaternion.copy(base);
+      posed=false;
+    },
+    poseHandles(left,right){
+      if(!arms)return;
+      for(const [i,pull] of [left,right].entries())for(const {bone,base,range} of arms[i]){
+        base.copy(bone.quaternion);
+        bone.rotateX((pull-.45)*range);
+      }
+      posed=true;
+    },
     /** Turn the head on top of the clip, toward a world point ({x, y, z}, Z up), or ease back to the clip. */
     look(target,facing,dt){
       if(!head)return;
@@ -88,31 +109,51 @@ export async function createFolkLayer({fetchData,worldmap,placement,flightConfig
   }));
   const rigs=[],flying=new Map(),flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),v=new T.Vector3(),up=new T.Vector3(0,1,0);
 
+  let guideRig=null;
+  const viewFrustum=new T.Frustum(),viewProjection=new T.Matrix4(),flightBounds=new T.Sphere(new T.Vector3(),12);
+
   function rigFor(cat){
     if(flying.has(cat.id))return flying.get(cat.id);
-    let rig=rigs.find(r=>!r.owner);
-    if(!rig&&rigs.length<MAX_RIGS){rig=createFlightRig(assets,flightConfig);rigs.push(rig);group.add(rig.group);}
+    let rig;
+    if(cat.id==='juno'){
+      if(!guideRig){guideRig=createFlightRig(assets,flightConfig,{parakiteLivery:GUIDE_LIVERY});group.add(guideRig.group);}
+      rig=guideRig;
+    }else{
+      rig=rigs.find(r=>!r.owner);
+      if(!rig&&rigs.length<MAX_RIGS){rig=createFlightRig(assets,flightConfig);rigs.push(rig);group.add(rig.group);}
+    }
     if(!rig)return null;  // ponytail: more than MAX_RIGS fliers draw harness-only; raise the cap if the roster grows
     rig.owner=cat.id;rig.group.visible=true;flying.set(cat.id,rig);return rig;
   }
   function releaseRig(cat){const rig=flying.get(cat.id);if(!rig)return;rig.owner=null;rig.group.visible=false;flying.delete(cat.id);}
 
   /** `player` is the player's state on foot ({x, y, speed}) or null; the cats play with it. */
-  function update(dt,player=null){
+  function update(dt,player=null,escort=false){
     if(!(dt>0))return;
     world.player=player&&{x:player.x,y:player.y,z:player.z,heading:player.heading,speed:player.speed??0};
     stepFolk(world,dt,[camera.position.x,-camera.position.z]);
+    if(escort){
+      camera.updateMatrixWorld();
+      viewFrustum.setFromProjectionMatrix(viewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
+    }
     for(const cat of cats){
       const p=puppets.get(cat.id),s=cat.body.state,model=byModel[cat.id];
+      let visibleFlight=true;
       if(cat.body.mode==='flight'){
-        const rig=rigFor(cat);
+        if(escort&&cat.id!=='juno'){
+          flightBounds.center.set(s.x,s.z+3,-s.y);
+          visibleFlight=viewFrustum.intersectsSphere(flightBounds);
+        }
+        const rig=visibleFlight?rigFor(cat):flying.get(cat.id);
+        if(rig)rig.group.visible=visibleFlight;
         const coupled=s.coupled&&!s.grounded&&!s.collapsed;
         basis(flightFrame(s,flightConfig),flightMatrix);basis(pilotFrame(s,flightConfig),pilotMatrix);
-        if(rig){rig.group.position.setFromMatrixPosition(flightMatrix);rig.group.quaternion.setFromRotationMatrix(flightMatrix);}
         p.object.position.setFromMatrixPosition(pilotMatrix);p.object.quaternion.setFromRotationMatrix(pilotMatrix);
         // Seated, the hips ride where the harness attaches.
         p.object.position.addScaledVector(v.copy(up).applyQuaternion(p.object.quaternion),model.flight_attachment.position_m[1]-model.hip_m);
-        if(rig){
+        if(rig&&visibleFlight){
+          rig.group.position.setFromMatrixPosition(flightMatrix);
+          rig.group.quaternion.setFromRotationMatrix(flightMatrix);
           pilotTransform.copy(flightMatrix).invert().multiply(pilotMatrix);
           rig.update(dt,{...s,harnessed:true},{pilotScale:1,pilotAttachment:[0,model.hip_m+.05,0],pilotTransform:coupled?pilotTransform:undefined});
         }
@@ -127,9 +168,10 @@ export async function createFolkLayer({fetchData,worldmap,placement,flightConfig
         else p.object.quaternion.slerp(goal,1-Math.exp(-dt*8));
       }
       // Skinned meshes are never frustum-culled (glb.js); a far cat is a speck, so skip its draw and its mixer.
-      p.object.visible=camera.position.distanceTo(p.object.position)<DRAW_M;
+      p.object.visible=visibleFlight&&camera.position.distanceTo(p.object.position)<DRAW_M;
       if(p.object.visible){
-        p.restoreHead();p.body?.restore();p.play(cat.body.clip,cat.body.clipSpeed);p.mixer.update(dt);
+        p.restoreHead();p.restoreArms();p.body?.restore();p.play(cat.body.clip,cat.body.clipSpeed);p.mixer.update(dt);
+        if(escort&&cat.id==='juno'&&cat.body.mode==='flight'&&!s.grounded)p.poseHandles(s.handleLeft,s.handleRight);
         if(api.tumbleMode==='s0'&&cat.body.mode!=='flight'){
           // ponytail: radius scales balance.json's body_radius_m (0.45) by hip height; Ronin's hips are ~0.5 m.
           p.body??=createTumbleBody(p.root,{radius:.45*model.hip_m/.5});
@@ -140,7 +182,7 @@ export async function createFolkLayer({fetchData,worldmap,placement,flightConfig
         p.look(cat.body.mode==='walk'&&!DOWN.has(s.balance?.phase)&&camera.position.distanceTo(p.object.position)<LABEL_M?cat.body.look:null,drawnFacing,dt);
       }
       const label=labels.get(cat.id),distance=camera.position.distanceTo(p.object.position);
-      if(distance<LABEL_M||cat.said&&distance<LABEL_M*2){
+      if(visibleFlight&&(distance<LABEL_M||cat.said&&distance<LABEL_M*2)){
         v.copy(p.object.position).setY(p.object.position.y+(cat.height_m??1.4)+.25).project(camera);
         label.hidden=v.z>1;label.style.left=`${(v.x*.5+.5)*100}%`;label.style.top=`${(-v.y*.5+.5)*100}%`;
         label.textContent=cat.said?`${cat.name}: “${cat.said.text}”`:`${cat.name}${cat.activity?` · ${cat.activity}`:''}`;
@@ -179,5 +221,5 @@ export async function createFolkLayer({fetchData,worldmap,placement,flightConfig
     say:text=>playerSay(world,text),see,
     /** Move the camera to look at a cat (debug and screenshots). */
     focus(id){const p=puppets.get(id).object.position;camera.position.set(p.x+4,p.y+2.2,p.z+4);camera.lookAt(p.x,p.y+.8,p.z);return p.toArray();}};
-  return {group,update,api,dispose(){for(const p of puppets.values())p.dispose();for(const r of rigs)r.dispose();for(const l of labels.values())l.remove();scene.remove(group);}};
+  return {group,update,api,dispose(){for(const p of puppets.values())p.dispose();for(const r of rigs)r.dispose();guideRig?.dispose();for(const l of labels.values())l.remove();scene.remove(group);}};
 }

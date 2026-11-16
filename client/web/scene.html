@@ -13,6 +13,7 @@
     body { margin: 0; overflow: hidden; background: #dcd7b8; }
     #stage, canvas { width: 100vw; height: 100dvh; display: block; }
     canvas { touch-action: none; outline: none; }
+    .opening-frame { position:absolute; inset:0; pointer-events:none; }
     body[data-ui="hidden"] :is(.panel, .help) { display: none; }
     body[data-ui="hidden"] .tumble-label { display: none; }
     body[data-rotational-flight="true"] .tumble-label { display:none; }
@@ -61,7 +62,21 @@
     #para-practice :is(button,select,label,h2)[hidden] { display:none; }
     #para-practice button { padding:8px 11px; }
     #world[data-practising-flight="true"] :is(.help,.flight-guide) { display:none; }
-    body[data-ui-mode="player"] #para-practice { top:64px; bottom:auto; right:auto; left:20px; width:min(320px,calc(100vw - 40px)); }
+    body[data-ui-mode="player"] #para-practice[data-guided="true"], #parakite-tour [data-tour-hud] {
+      position:fixed; z-index:8; top:clamp(32px,5vh,46px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
+      width:min(480px,calc(100vw - 24px)); padding:8px 14px; text-align:center;
+      color:#26291f; background:#e9ecdded; border:1px solid #26291f; border-radius:4px;
+      font-family:"Avenir Next","Gill Sans",sans-serif;
+    }
+    #para-practice[data-guided="true"] p { margin:4px 0; }
+    #para-practice[data-guided="true"] button { padding:4px 10px; }
+    [data-tutorial-readings] .player-flight-stats { position:static; width:auto; padding:5px 0; border:0; background:none; }
+    [data-tutorial-readings] .player-flight-stats h3, [data-tutorial-readings] dl div:not(.compact-reading) { display:none; }
+    [data-tutorial-readings] .player-flight-stats dl {
+      display:flex; justify-content:center; flex-wrap:wrap; gap:3px 14px; font:12px/1.25 "Avenir Next","Gill Sans",sans-serif;
+      font-variant-numeric:tabular-nums;
+    }
+    [data-tutorial-readings] dl div:first-child dd { font-size:14px; }
     body[data-menu] :is(#para-practice,#parakite-tour) { visibility:hidden; }
     @media (max-width:700px) {
       #para-practice { right:14px; bottom:64px; }
@@ -186,7 +201,6 @@
     #parakite-tour .tour-dialogue p { margin:4px 0 12px; }
     #parakite-tour .tour-dialogue button { margin-right:6px; padding:7px 10px; }
     #parakite-tour [data-tour-accept] { background:#4e6142; color:#fffbed; }
-    #parakite-tour [data-tour-hud] { position:fixed; z-index:8; top:46px; left:50%; transform:translateX(-50%); width:max-content; max-width:min(460px,calc(100vw - 40px)); text-align:center; padding:8px 12px; border:1px solid var(--ink); background:#e9ecdded; }
     #parakite-tour [data-tour-hud] :is(p,button) { margin:0; padding:2px 4px; }
     #parakite-tour [data-tour-quit] { border:0; text-decoration:underline; }
     #parakite-tour [data-tour-marker] { position:fixed; z-index:7; pointer-events:none; transform:translate(-50%,-100%); padding:2px 7px; border-radius:4px; background:#26291fdc; color:#fffbed; font-weight:600; }
@@ -345,6 +359,7 @@
     <label for="para-lesson">Parakite practice</label>
     <select id="para-lesson"></select>
     <p data-practice-prompt role="status"></p>
+    <div data-tutorial-readings></div>
     <button type="button" data-practice-action>Start flight</button>
     <button type="button" data-practice-next hidden>Next</button>
     <button type="button" data-practice-leave>Free flight</button>
@@ -359,7 +374,7 @@
         <button type="button" data-tour-back>Maybe later</button>
       </div>
     </section>
-    <div data-tour-hud hidden><p data-tour-cue role="status"></p><button type="button" data-tour-quit>Leave tutorial</button></div>
+    <div data-tour-hud hidden><p data-tour-cue role="status"></p><div data-tutorial-readings></div><button type="button" data-tour-quit>Leave tutorial</button></div>
     <span data-tour-marker aria-hidden="true" hidden>Juno</span>
   </div>
   <div class="panel gondola" id="gondola-panel" role="status" hidden><span data-gondola-text></span><button data-gondola-action hidden></button><button data-gondola-fast hidden title="T or RB">Fast travel ⇥ (T · RB)</button></div>

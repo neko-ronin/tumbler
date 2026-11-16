@@ -2,7 +2,8 @@ import {launchFlight,stepFlight} from './flight.js';
 
 const STEP=1/120;
 const LEAD_STEPS=108;
-export const parakiteTourLessons=['stall','tuck-left','tuck-right','spiral','abort','loop','clearance'];
+const MAX_GUIDE_STEPS=90*120;
+export const parakiteTourLessons=['stall','tuck-left','spiral','abort','loop','clearance'];
 
 // Lower North Bench, then two opposing turns across the forested shoulder.
 // Full axes and neutral beats keep the same line flyable with keys or a stick.
@@ -31,37 +32,42 @@ export function stepParakiteFollowFlight(state,input,dt,config,wind,height,hitTe
 
 export function createParakiteFollow({config,wind,height,hitTest,walkHeight=height}){
   const initial={...launchFlight(config,'parakite',config.parakite_practice_launch,height,'calm'),guidedParakite:true,followStep:0};
-  const history=Array(LEAD_STEPS+1);
-  history[0]=initial;
-  let elapsed=0,guide=initial,checkpoint=null,apart=0,collapsed=0;
-  function step(){
-    guide=stepParakiteFollowFlight(guide,followInput(guide.followStep*STEP),STEP,config,wind,height,hitTest,walkHeight);
-    history[guide.followStep%history.length]=guide;
+  // Juno's inputs, air clock and collision world are fixed for this route.
+  // Build her solver states once and reuse them even on a checkpoint rewind.
+  const guideStates=[initial];
+  const failed=s=>s.impact||s.landingQuality==='hard'||!s.grounded&&s.followStep>=MAX_GUIDE_STEPS;
+  const stopped=s=>s.grounded||failed(s);
+  function warmNext(){
+    const last=guideStates.at(-1);
+    if(stopped(last))return false;
+    guideStates.push(stepParakiteFollowFlight(last,followInput(last.followStep*STEP),STEP,config,wind,height,hitTest,walkHeight));
+    return true;
   }
-  for(let n=0;n<LEAD_STEPS;n++)step();
-  checkpoint={guide,player:initial};
+  function guideAt(index){
+    while(guideStates.length<=index&&warmNext()){}
+    return guideStates[Math.min(index,guideStates.length-1)];
+  }
+  let elapsed=0,guide=guideAt(LEAD_STEPS),checkpoint={guide,player:initial},apart=0,collapsed=0;
   function retry(){
     guide=checkpoint.guide;
-    history.fill(null);
-    history[guide.followStep%history.length]=guide;
     elapsed=apart=collapsed=0;
     return {player:checkpoint.player,guide};
   }
   function advance(dt,player){
     let candidate=null;
     elapsed+=Math.min(dt,.05);
-    while(elapsed>=STEP&&!guide.grounded){
+    while(elapsed>=STEP&&!stopped(guide)){
       elapsed-=STEP;
-      step();
+      guide=guideAt(guide.followStep+1);
       const t=guide.followStep-LEAD_STEPS;
-      if(t===16*120||t===43*120)candidate=history[t%history.length];
+      if(t===16*120||t===43*120)candidate=guideStates[t];
     }
-    if(guide.grounded)elapsed=0;
+    if(stopped(guide))elapsed=0;
     const distance=Math.hypot(guide.x-player.x,guide.y-player.y,guide.z-player.z);
     const fullCollapse=player.collapsed||player.rotation?.pressure.every(value=>value<.28);
     collapsed=fullCollapse?collapsed+dt:0;
     apart=distance>(guide.grounded?110:155)?apart+dt:0;
-    if(guide.impact||guide.landingQuality==='hard')return 'guide-contact';
+    if(failed(guide))return 'guide-contact';
     if(guide.grounded&&player.grounded&&distance<=85&&!player.impact)return 'landed';
     // Being down in the same landing area is enough to finish the escort.
     // Give a low, bumpy arrival time to settle while Juno waits on the ground.
@@ -73,9 +79,9 @@ export function createParakiteFollow({config,wind,height,hitTest,walkHeight=heig
       Math.hypot(candidate.x-player.x,candidate.y-player.y)<62&&Math.abs(candidate.z-player.z)<42){
       // The player is still one or more render ticks behind the marker. Retain
       // the paired flight states from the crossing, even on a multi-step frame.
-      checkpoint={player:candidate,guide:history[(candidate.followStep+LEAD_STEPS)%history.length]};
+      checkpoint={player:candidate,guide:guideStates[candidate.followStep+LEAD_STEPS]};
     }
     return 'flying';
   }
-  return {advance,retry,get guide(){return guide;},get time(){return guide.followStep*STEP;},get checkpointTime(){return checkpoint.player.followStep*STEP;}};
+  return {advance,retry,warmNext,get guide(){return guide;},get time(){return guide.followStep*STEP;},get checkpointTime(){return checkpoint.player.followStep*STEP;}};
 }

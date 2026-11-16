@@ -13,7 +13,7 @@ import {bakeTreeSlices} from './tree-slices.js';
 import {paletteOverride} from '../../../shared/geometry/tree-design/forest-palette.js';
 import {fitCrown} from '../../../shared/geometry/tree-design/fit-crown.js';
 import {fitForestCrown} from '../../../shared/geometry/tree-design/forest-sprays.js';
-import {TREE_BUDGETS,projectedTreePixels,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality,treeTransitionBudgets} from './tree-budget.js';
+import {TREE_BUDGETS,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality,treeTransitionBudgets} from './tree-budget.js';
 
 const triangles=g=>(g.index?.count??g.attributes.position.count)/3;
 const lightKey=()=>style.sun.value.toArray().map(v=>v.toFixed(4)).join(',')+','+treeLightingKey();
@@ -252,7 +252,7 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     }
     for(const pool of distant.values())for(const lod of [2,3])pool.meshes[lod].boundingSphere.copy(pool.bounds);
   }
-  stats.tiles=batches.length;stats.drawBatches=beautyMeshes.length;stats.textureBytes=kits.reduce((sum,kit)=>sum+(kit.textureBytes??0),0);let requestedBudgets=[...stats.budgets];let lastKey='',bakedLight=lightKey(),fading=false,lastLive=new Set();
+  stats.tiles=batches.length;stats.drawBatches=beautyMeshes.length;stats.textureBytes=kits.reduce((sum,kit)=>sum+(kit.textureBytes??0),0);let requestedBudgets=[...stats.budgets];let lastKey='',bakedLight=lightKey(),fading=false,lastLive=new Set(),lastVisible=new Set();
   const frustum=new T.Frustum(),matrix=new T.Matrix4(),lastPosition=new T.Vector3(Infinity,Infinity,Infinity),lastAnchor=lastPosition.clone(),lastDirection=new T.Vector3(),direction=new T.Vector3();
   function updateShadowCasters(lightFrustum){
     // Reject whole tiles before visiting trees in the grown valley. The
@@ -297,13 +297,15 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
       }
       if(pool.frozen){frozenTrees+=pool.meshes[3].count;frozenTriangles+=pool.meshes[3].count*(pool.batches[0]?.items[0]?.costs[3]??0);}
     }
-    const visible=[],selected=new Set();
+    const visible=[],selected=new Set(),projection=2*Math.tan(camera.fov*Math.PI/360);
     for(const b of batches){if(b.pool.frozen||!frustum.intersectsSphere(b.bounds))continue;
       for(const item of b.items)if(frustum.intersectsBox(item.visibleBox)){
         item.clearance=Math.min(item.box.distanceToPoint(camera.position),item.box.distanceToPoint(anchor));
-        item.pixels=projectedTreePixels(item.height,camera.position.distanceTo(item.bound.center),camera.fov,size.y);item.priority=item.pixels+800/(1+item.clearance);visible.push(item);selected.add(item);
+        item.pixels=item.height*size.y/(projection*Math.max(1,camera.position.distanceTo(item.bound.center)));item.priority=item.pixels+800/(1+item.clearance);visible.push(item);selected.add(item);
       }}
-    for(const b of batches)if(!b.pool.frozen)for(const item of b.items)if(!selected.has(item)){item.previous=-1;item.from=-1;}
+    // Only a tree drawn on the previous selection can carry a live fade.
+    for(const item of lastVisible)if(!selected.has(item)){item.previous=-1;item.from=-1;}
+    lastVisible=selected;
     const now=performance.now();stats.selectionTime=now;
     stats.budgets=treeTransitionBudgets(visible,requestedBudgets,now);
     const allocation=allocateTreeLods(visible,requestedBudgets),transitions=treeTransitionDraws(allocation,stats.budgets,now);

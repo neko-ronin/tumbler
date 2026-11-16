@@ -22,12 +22,13 @@ export function createParakiteTour({panel,camera,canvas,navigation,practice,worl
   const accept=panel.querySelector('[data-tour-accept]');
   const back=panel.querySelector('[data-tour-back]');
   const hud=panel.querySelector('[data-tour-hud]');
+  const readings=hud.querySelector('[data-tutorial-readings]');
   const cue=panel.querySelector('[data-tour-cue]');
   const marker=panel.querySelector('[data-tour-marker]');
   const quit=panel.querySelector('[data-tour-quit]');
   const aim=new T.Vector3(),projected=new T.Vector3(),front=new T.Vector3();
   let phase='idle',age=0,beat=0,callAt=0,waveAt=0,prior=null,returnPose=null,follow=null,heldA=false,heldX=false,heldB=false;
-  let savedCamera=null,priorWeather=null,meetup=null,alarmPose=null,alarmAt=0,roughLanding=false;
+  let savedCamera=null,priorWeather=null,meetup=null,alarmPose=null,alarmAt=0,roughLanding=false,guideWarmTask=null;
   function remember(){try{localStorage.setItem(KEY,'seen');}catch{}}
   function firstVisit(){try{return !localStorage.getItem(KEY);}catch{return true;}}
   function change(next){phase=next;age=0;panel.dataset.phase=next;}
@@ -89,6 +90,7 @@ export function createParakiteTour({panel,camera,canvas,navigation,practice,worl
     }
     if(priorWeather&&wasFlying)navigation.setWeather(priorWeather);
     release(!complete);
+    cancelGuideWarm();
     follow=meetup=alarmPose=null;talk.hidden=hud.hidden=marker.hidden=true;
     change('idle');
     canvas.focus();
@@ -121,6 +123,7 @@ export function createParakiteTour({panel,camera,canvas,navigation,practice,worl
     if(phase==='invite'&&beat===0||phase==='closing'&&beat===0){beat++;paintScene();return;}
     if(phase==='invite'){
       closeScene();change('lessons');
+      prepareGuide();
       practice.startSequence(parakiteTourLessons,beginFollow,()=>finish());
     }else if(phase==='brief'){
       closeScene();change('following');hud.hidden=false;
@@ -129,9 +132,25 @@ export function createParakiteTour({panel,camera,canvas,navigation,practice,worl
       finish({complete:true});
     }
   }
-  function beginFollow(){
+  const requestGuideWarm=window.requestIdleCallback?.bind(window)??(callback=>setTimeout(callback,16));
+  const cancelWarm=window.cancelIdleCallback?.bind(window)??clearTimeout;
+  function cancelGuideWarm(){
+    if(guideWarmTask===null)return;
+    cancelWarm(guideWarmTask);guideWarmTask=null;
+  }
+  function warmGuide(deadline){
+    const stop=performance.now()+2.5;
+    for(let steps=0;steps<32&&performance.now()<stop&&(deadline?.timeRemaining()??3)>.5;steps++){
+      if(!follow.warmNext()){guideWarmTask=null;return;}
+    }
+    guideWarmTask=requestGuideWarm(warmGuide);
+  }
+  function prepareGuide(){
     follow=createParakiteFollow({config:world.flight,wind:world.worldmap.wind.direction_deg,height:navigation.sampleFloor,
       hitTest:world.hitTest,walkHeight:world.height});
+    guideWarmTask=requestGuideWarm(warmGuide);
+  }
+  function beginFollow(){
     resetPair();
     openScene('brief');
   }
@@ -274,6 +293,6 @@ export function createParakiteTour({panel,camera,canvas,navigation,practice,worl
   back.addEventListener('click',()=>finish());
   quit.addEventListener('click',()=>finish());
   window.addEventListener('keydown',key,true);
-  return {offer,update,finish,get phase(){return phase;},get cinematic(){return !!savedCamera;},get checkpointTime(){return follow?.checkpointTime;},
-    dispose(){window.removeEventListener('keydown',key,true);}};
+  return {offer,update,finish,get phase(){return phase;},get cinematic(){return !!savedCamera;},get statsDock(){return hud.hidden?null:readings;},get sceneryLead(){return phase==='following'&&follow&&!follow.guide.grounded?follow.guide:null;},get checkpointTime(){return follow?.checkpointTime;},
+    dispose(){cancelGuideWarm();window.removeEventListener('keydown',key,true);}};
 }

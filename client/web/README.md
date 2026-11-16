@@ -2,11 +2,11 @@
 
 The load no longer hands off into the village→Cat Ronin camera pan. The journal stays
 opaque while the world is drawn, its meter measures the preparation itself (load
-phases, then each stable warm draw, 100% only after the final GPU fence), and it then
-reads **The valley is ready.** with a *Step into the meadow* button. That click is the
-gesture browsers require for audio, so sound starts when play does rather than after an
-arbitrary click, and the entry is a cut to the already-warmed walk view instead of an
-interpolated camera move. `navigator.webdriver` sessions step in through the same door
+phases, then each stable warm draw, and finally the first gameplay frame). It keeps
+progress below 100% while audio is prepared and until the gameplay draw passes its
+GPU fence. Then it reads **The valley is ready.** with a *Step into the meadow*
+button. The click reveals that frame immediately, resumes the prepared audio from
+the player gesture, and hands off to the live loop after the browser can paint. `navigator.webdriver` sessions step in through the same door
 without a gesture; `?view=`, `?course=` and `?encounter=` links still start where told.
 
 # Proximity climbing — local web/climb-generator, 2026-11-12

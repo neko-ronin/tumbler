@@ -169,12 +169,16 @@ function closeDrawIndex(primitives,cloth){
   }
   return new T.BufferAttribute(Uint32Array.from(indices),1);
 }
-export function createFlightRig(assets,config){
+export function createFlightRig(assets,config,{parakiteLivery}={}){
   const group=new T.Group();group.name='player_parafoil';group.rotation.order='YXZ';group.visible=false;
   const wings={};
   for(const name of ['paraglider','parakite']){
     const primitives=assets[config.modes[name].wing_asset??config.wing_asset].primitives;
-    const data=mergePrimitives(primitives,'opaque');
+    const fabric=name==='parakite'&&parakiteLivery?primitives.map(p=>{
+      const paint=parakiteLivery[p.materialName];
+      return paint?{...p,baseColorFactor:[...new T.Color(paint).toArray(),p.baseColorFactor[3]]}:p;
+    }):primitives;
+    const data=mergePrimitives(fabric,'opaque');
     applyCanopyLighting(data.material);
     const mesh=new T.Mesh(data.geometry,data.material);mesh.name=`${name}_fabric`;
     mesh.castShadow=true;mesh.frustumCulled=false;

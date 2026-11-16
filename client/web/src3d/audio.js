@@ -61,6 +61,12 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     wind=noise(550,.055);water=noise(1400,.3,true);paraVoice=createParaVoice(context,context.destination,windWaterBus);
     const oscillator=context.createOscillator();oscillator.type='sawtooth';oscillator.frequency.value=85;const level=context.createGain();level.gain.value=0;const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=350;oscillator.connect(filter).connect(level).connect(context.destination);oscillator.start();motor={oscillator,level};
   }
+  // Open the audio device and build its graph while the journal is still loading.
+  // Playback itself waits for the trusted entry gesture.
+  async function prepare(){
+    initialize();
+    if(context.state==='running')await context.suspend();
+  }
   async function toggle(next=!enabled){
     enabled=next;
     if(enabled){await unlock();await chargeReady;}else await context?.suspend();
@@ -133,7 +139,7 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     });
     motor.level.gain.setTargetAtTime(throttle*.032,t,.1);motor.oscillator.frequency.setTargetAtTime(65+throttle*65,t,.1);
   }
-  return {toggle,unlock,update,meow,setWindWaterEnabled,playDialogue,stopDialogue,setDialogueActive,get windWaterEnabled(){return windWaterEnabled;},cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},get paraTargets(){return paraVoice?.targets;},dispose(){paraVoice?.dispose();context?.close();}};
+  return {prepare,toggle,unlock,update,meow,setWindWaterEnabled,playDialogue,stopDialogue,setDialogueActive,get windWaterEnabled(){return windWaterEnabled;},cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},get paraTargets(){return paraVoice?.targets;},dispose(){paraVoice?.dispose();context?.close();}};
 }
 /** One bumblebee: a soft low buzz (saw plus an octave-down triangle, low-passed) that wanders in pitch and pulses
  * lazily, with a breath of wing air, placed in space by an HRTF panner. Silent until its gain is raised. */
