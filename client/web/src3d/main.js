@@ -1,6 +1,8 @@
 import {createFirstPersonFlight} from './first-person-flight.js';
 import {forestSpacing} from '../../../shared/activities/forest-spacing.js';
 import {createParaGuide} from './para-guide.js';
+import {createParakitePractice} from './parakite-practice.js';
+import {createParakiteTour} from './parakite-tour.js';
 import {createParaSignals} from './para-signals.js';
 import {createParaPass} from './para-pass.js';
 import {createParaStreaks} from './para-streaks.js';
@@ -57,7 +59,7 @@ import { sha256, verifyFetched, checkVersion, WORLDMAP_VERSION } from './provena
 import {fetchAssetBytes} from './asset-bytes.js';
 import {VERSION} from './version.js';
 import { createSnowSampler, createTrailSampler, createSurfaceSampler, createRideHeight } from '../../../shared/activities/ride.js';
-import { createWalkHeight } from '../../../shared/activities/walk.js';
+import { createWalkHeight, walkSpawn } from '../../../shared/activities/walk.js';
 import {createLoadingScreen,warmScene,finishGpu,nextPaint} from './loading.js';
 
 const root = new URL('../../../', import.meta.url);
@@ -288,7 +290,13 @@ export async function main() {
   const [tumbleHill,reactionTable,places]=await Promise.all([fetchData('shared/play/tumble-hill.json'),fetchData('shared/play/reactions.json'),fetchData('shared/play/places.json')]);
   checkVersion(places,1,'named places');
   const balanceSurface=(x,y)=>snowAt(x,y)>.03?'snow':closeMeadow.contains(x,y)||forestSoil.sample(x,y)>.48||surfaceAt(x,y)==='trail'?'grass':'granite';
-  const navigation=createNavigation(camera,canvas,controls,ground,flightConfig,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,balance:{config:balanceConfig,surfaceAt:balanceSurface},firstPersonEye:()=>firstPerson.eye,firstPersonCollar:()=>firstPerson.collarBounds,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z),velocity:body.state.coupled?.pilotVelocity}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>{const sample=paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view);paraStreaks.update(sample,camera,view,effects);return sample;},haptics:()=>document.getElementById('haptics').checked});
+  const localHost=/^(localhost|127\.0\.0\.1|\[::1\]|.+\.localhost)$/.test(location.hostname);
+  const experimentalParakite=localHost&&new URLSearchParams(location.search).has('rotational-parakite');
+  const practiceLaunch=experimentalParakite?flightConfig.parakite_practice_launch:null;
+  const practiceSite=practiceLaunch?flightConfig.launches.length:-1;
+  const playerFlight=experimentalParakite?{...flightConfig,experimentalParakite,
+    launches:practiceLaunch?[...flightConfig.launches,practiceLaunch]:flightConfig.launches}:flightConfig;
+  const navigation=createNavigation(camera,canvas,controls,ground,playerFlight,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,balance:{config:balanceConfig,surfaceAt:balanceSurface},firstPersonEye:()=>firstPerson.eye,firstPersonCollar:()=>firstPerson.collarBounds,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z),velocity:body.state.coupled?.pilotVelocity}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>{const sample=paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view);paraStreaks.update(sample,camera,view,effects);return sample;},haptics:()=>document.getElementById('haptics').checked});
   // The world's generators turn in the same air the wing does. They are not
   // decoration on a timer: calm air slows them and the afternoon's up-valley
   // breeze slows them again, because both come from the shared field through
@@ -375,18 +383,22 @@ export async function main() {
   const windWaterToggle=document.getElementById('wind-water-audio');
   soundscape.setWindWaterEnabled(windWaterToggle.checked);
   windWaterToggle.addEventListener('change',()=>soundscape.setWindWaterEnabled(windWaterToggle.checked));
-  soundscape.toggle(true).catch(()=>{});
-  const unlockSound=()=>soundscape.unlock().catch(()=>{});
-  window.addEventListener('pointerdown',unlockSound,{once:true});window.addEventListener('keydown',unlockSound,{once:true});
+  const unlockSound=event=>{
+    if(event&&!event.isTrusted)return;
+    soundscape.unlock().catch(error=>console.warn('Tumbler could not start audio',error));
+  };
+  window.addEventListener('click',unlockSound);window.addEventListener('keydown',unlockSound);
   soundButton.addEventListener('click',async e=>{const enabled=await soundscape.toggle();e.target.textContent=enabled?'Sound on':'Sound off';e.target.setAttribute('aria-pressed',String(enabled));});
   const modeSelect=document.getElementById('activity'),siteSelect=document.getElementById('launch-site');
   const rideModes=Object.keys(rideConfig.modes);
   let scenicCourse=null,scenicProgress=null;
   const paraGuide=createParaGuide(document.getElementById('para-guide'),camera);
   const courseRetry=document.getElementById('course-retry');
-  courseRetry.addEventListener('click',()=>{if(scenicCourse&&flightConfig.modes[navigation.mode])setActivity(navigation.mode);});
+  const onPracticeFlight=()=>practiceSite>=0&&navigation.mode==='parakite'&&siteSelect.value===String(practiceSite);
+  courseRetry.addEventListener('click',()=>{if(onPracticeFlight()||scenicCourse&&flightConfig.modes[navigation.mode])setActivity(navigation.mode);});
   function showStarts(mode){
     const list=rideModes.includes(mode)?rideConfig.starts.filter(s=>s.mode===mode).map(s=>[s.id,s.label]):flightConfig.launches.map((l,i)=>[String(i),l.label]);
+    if(mode==='parakite'&&practiceLaunch)list.push([String(practiceSite),practiceLaunch.label]);
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
@@ -403,12 +415,15 @@ export async function main() {
     document.getElementById('weather').value=weather;updateHelp(mode);
   }
   function updateHelp(mode){
+    const rotating=mode==='parakite'&&(experimentalParakite||navigation.state?.guidedParakite);
+    document.body.dataset.rotationalFlight=String(rotating);
     const travel=mode==='parakite'?'forward: raise handles / dive · back: pull / flare':'forward: speedbar · back: brakes';
     const power=mode==='paramotor'?' · LB/RB: motor':'';
-    const flightHelp=`Stick ${travel} · LT/RT: independent handles · B + steer: wingovers${power} · Y: view · Land then X: unhook · A: launch / air retry · D-pad: wing / ridge · Menu: weather`;
+    const flightHelp=`Stick ${travel} · LT/RT: independent handles${rotating?'':' · B + steer: wingovers'}${power} · Y: view · Land then X: unhook · A: launch / air retry · D-pad: wing / ridge · Menu: weather`;
     const pad=[...(navigator.getGamepads?.()??[])].some(p=>p?.connected);
-    const keyboardFlight=`A/D: ${mode==='parakite'?'weight shift + outside release':'weight shift + inside brake'} · W/S: ${mode==='parakite'?'raise handles / pull to flare':'speedbar / brakes'} · J/K: independent handles · Shift + steer: wingovers${mode==='paramotor'?' · R/F: motor':''} · V: view · E: unhook on safe ground · Space: ground launch · Launch: restart`;
-    document.getElementById('help').textContent=flightConfig.modes[mode]?(pad?flightHelp:keyboardFlight):pad&&mode==='orbit'?'A: take flight · D-pad: wing / ridge · Menu: weather':(helps[mode]??helps.orbit);
+    const keyboardFlight=`A/D: ${mode==='parakite'?'weight shift + outside release':'weight shift + inside brake'} · W/S: ${mode==='parakite'?'raise handles / pull to flare':'speedbar / brakes'} · J/K: independent handles${rotating?'':' · Shift + steer: wingovers'}${mode==='paramotor'?' · R/F: motor':''} · V: view · E: unhook on safe ground · Space: ground launch · Launch: restart`;
+    const parakiteHelp=pad?'Left stick to fly · Y changes view · A retries in the air':'A/D steer · W dive · S pull · V changes view';
+    document.getElementById('help').textContent=rotating?parakiteHelp:flightConfig.modes[mode]?(pad?flightHelp:keyboardFlight):pad&&mode==='orbit'?'A: take flight · D-pad: wing / ridge · Menu: weather':(helps[mode]??helps.orbit);
   }
   function setActivity(mode){
     if(organoid.active)return;
@@ -439,6 +454,8 @@ export async function main() {
   const challengeSelect=document.getElementById('flight-challenge');
   challengeSelect.replaceChildren(new Option('Free flight',''),...Object.entries(flightConfig.challenges??{}).map(([id,c])=>new Option(c.label,id)));
   challengeSelect.addEventListener('change',()=>navigation.setChallenge(challengeSelect.value));
+  const parakitePractice=createParakitePractice({navigation,canvas,challenge:challengeSelect,
+    panel:document.getElementById('para-practice'),open:document.querySelector('[data-practice-open]')});
   const motionSelect=document.getElementById('motion');
   motionSelect.value=matchMedia('(prefers-reduced-motion: reduce)').matches?'0':'1';navigation.setEffects(Number(motionSelect.value));
   motionSelect.addEventListener('change',()=>navigation.setEffects(Number(motionSelect.value)));
@@ -603,22 +620,31 @@ export async function main() {
   const canStartParamotor=()=>paramotorRefusal()===null;
   // The wing still needs room to spread; if the ground refuses it, say what the game said.
   function startParamotor(){if(!canStartParamotor())return paramotorRefusal();setActivity('paramotor');return navigation.mode==='paramotor'?null:(navigation.message||'No room to spread the wing here');}
+  const parakiteTour=createParakiteTour({panel:document.getElementById('parakite-tour'),camera,canvas,navigation,practice:parakitePractice,
+    world:folk.api.world,soundscape,isAvailable:()=>document.body.dataset.uiMode==='player'&&!organoid.active,
+    onFootMode:pose=>{
+      const spawn=walkSpawn(pose.x,pose.y,characterConfig.walk,walkHeight,hitTest);
+      if(navigation.mode!=='walk')navigation.select('orbit');
+      if(spawn)navigation.placeOnFoot(spawn[0],spawn[1],pose.heading);else navigation.select('walk');
+      navigation.cancelShot();syncFlightUI('walk','here',navigation.weather);
+    }});
   const playerUI=createPlayerUI({places:places.places,arriveAt,startParakite,startParamotor,paramotorRefusal,navigation,ground,snowAt,
+    learnParakite:()=>parakiteTour.offer({force:true}),
     trees:placement.instances.filter(i=>i.asset.startsWith('redwood/')).map(i=>i.position_m),worldmap,course:speedflying.courses[0],
     launch:flightConfig.launches[Number(parakiteSite)],timeOfDay:()=>timeOfDay,canvas});
   // Two interfaces: the development panels, served locally, and the player's. Players always get theirs;
   // on a local server a switch (or the ` key) chooses, and remembers the choice.
-  const localHost=/^(localhost|127\.0\.0\.1|\[::1\]|.+\.localhost)$/.test(location.hostname);
   const storedMode=(()=>{try{return localStorage.getItem('tumbler.ui-mode');}catch{return null;}})();
-  function setUiMode(mode){
+  function setUiMode(mode,remember=true){
     document.body.dataset.uiMode=mode;navigation.setPlayerMode(mode==='player');if(mode!=='player')playerUI.close();
     if(uiSwitch)uiSwitch.textContent=mode==='player'?'Player UI · switch to dev (`)':'Dev UI · switch to player (`)';
-    try{localStorage.setItem('tumbler.ui-mode',mode);}catch{}
+    if(remember)try{localStorage.setItem('tumbler.ui-mode',mode);}catch{}
   }
   const uiSwitch=localHost?Object.assign(document.createElement('button'),{className:'ui-switch',type:'button'}):null;
   if(uiSwitch){document.body.append(uiSwitch);uiSwitch.addEventListener('click',()=>setUiMode(document.body.dataset.uiMode==='player'?'dev':'player'));
     window.addEventListener('keydown',e=>{if(e.code==='Backquote'&&!e.repeat&&!/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))setUiMode(document.body.dataset.uiMode==='player'?'dev':'player');});}
-  setUiMode(localHost?(storedMode==='player'?'player':'dev'):'player');
+  const previewPlayer=new URLSearchParams(location.search).get('ui')==='player';
+  setUiMode(!localHost||previewPlayer||storedMode==='player'?'player':'dev',!previewPlayer);
   // Cat links: Cat Ronin drops you into walk mode; the folk get an orbit look-in.
   const catNav=document.getElementById('cats');
   for(const cat of folk.api.list()){const b=document.createElement('button');b.dataset.cat=cat.id;b.textContent=cat.name;catNav.append(b);}
@@ -631,7 +657,12 @@ export async function main() {
   setView(viewParam in views ? viewParam : 'tree-village');
   const requestedOrganoid=localHost&&new URLSearchParams(location.search).get('encounter')==='organoid';
   const requestedCourse=speedflying?.courses.find(c=>c.id===new URLSearchParams(location.search).get('course'));
-  if(requestedCourse){
+  const requestedPractice=!!practiceLaunch&&!requestedCourse&&!requestedOrganoid;
+  if(requestedPractice){
+    setUiMode('dev',false);showStarts('parakite');siteSelect.value=String(practiceSite);navigation.setWeather('calm');setActivity('parakite');document.body.dataset.ui='';
+    const lesson=new URLSearchParams(location.search).get('lesson');
+    if(lesson)parakitePractice.prepare(lesson);
+  }else if(requestedCourse){
     const requestedMode=new URLSearchParams(location.search).get('mode');
     const mode=flightConfig.modes[requestedMode]?requestedMode:'parakite';
     const site=flightConfig.launches.findIndex(l=>l.id===requestedCourse.launch_id);
@@ -651,7 +682,7 @@ export async function main() {
   // Read-only inspection hook used for repeatable visual/performance checks.
   const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
-  window.tumbler = { organoid,tutor,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,terrain,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { organoid,tutor,parakiteTour,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;startup.rendered=false;startup.playing=false;
     loading.show();status.textContent='Letting the light settle…';
@@ -692,7 +723,7 @@ export async function main() {
     const result=await warmView(p=>loading.meter(.66+.16*share(p),'Rendering the village…'));
     // A ?view=, ?course= or ?encounter= link is a developer shortcut that starts
     // where it is told, so it keeps the cheaper single-view startup.
-    const intro=!viewParam&&!requestedCourse&&!requestedOrganoid;
+    const intro=!viewParam&&!requestedCourse&&!requestedPractice&&!requestedOrganoid;
     // The gate is the first entry only. A context recovery must return the
     // player to the activity they were in, not dump them on foot.
     const gate=intro&&!presentedOnce;
@@ -732,7 +763,7 @@ export async function main() {
    * no interpolated camera state for first-use work to land inside. */
   async function beginGame({auto=false}={}){
     if(presenting||startup.playing)return;
-    if(!auto)soundscape.unlock().catch(()=>{});
+    if(!auto)unlockSound();
     // The warm left the walk state, camera and shadow focus in place; re-select
     // would move the camera and force a shadow rebuild for no visible gain.
     if(navigation.mode!=='walk')setActivity('walk');
@@ -747,6 +778,7 @@ export async function main() {
     await nextDrawnFrame();
     if(stopped||contextLost)return;
     loading.reveal();
+    parakiteTour.offer();
     status.textContent='Walk the meadow.';
     presentedOnce=true;startup.ready=true;startup.playing=true;if(auto)startup.autoStarted=true;
   }
@@ -786,7 +818,9 @@ export async function main() {
     // navigation places the camera again, so it never drifts the follow.
     camera.position.sub(cameraShake);
     gondola.update();
-    if(!organoid.active)navigation.update(Math.min(delta,50)/1000);
+    const tourFoot=navigation.mode==='walk'&&navigation.state?.mode!=='climb'&&navigation.state?.mode!=='swim'?navigation.state:null;
+    parakiteTour.update(Math.min(delta,50)/1000,tourFoot);
+    if(!organoid.active&&!parakiteTour.cinematic)navigation.update(Math.min(delta,50)/1000);
     const onFoot=navigation.mode==='walk'&&navigation.state?.mode!=='climb'&&navigation.state?.mode!=='swim'?navigation.state:null;
     const spotlight=visibilityToggle.checked;
     if(!flightConfig.modes[navigation.mode]){paraSignals.update(null,{},0,0);firstPerson.update({active:false});paraStreaks.update(null);}
@@ -795,7 +829,7 @@ export async function main() {
     folk.update(Math.min(delta,50)/1000,onFoot);
     const quake=navigation.mode==='walk'?character.shake??0:0;
     cameraShake.set((Math.random()-.5)*quake,(Math.random()-.5)*quake,(Math.random()-.5)*quake);camera.position.add(cameraShake);
-    if(!organoid.active&&navigation.mode!=='orbit'&&navigation.view==='chase')navigation.constrainCamera();
+    if(!organoid.active&&!parakiteTour.cinematic&&navigation.mode!=='orbit'&&navigation.view==='chase')navigation.constrainCamera();
     tutor.update(Math.min(delta,150)/1000,onFoot);
     organoid.update(Math.min(delta,150)/1000,onFoot);
     playerVisibility.update(character.object.position.clone().add(new T.Vector3(0,1.1*characterConfig.scale,0)),spotlight&&!organoid.active&&navigation.mode!=='orbit'&&navigation.mode!=='fly'&&navigation.view==='chase',characterConfig.scale,treePlay);
@@ -807,10 +841,13 @@ export async function main() {
     const flight=navigation.state;
     const rider=rideModes.includes(navigation.mode)?flight:null,riderSpeed=rider?Math.hypot(rider.vx,rider.vy,rider.vz):0;
     const airborne=!!flightConfig.modes[navigation.mode];
+    parakitePractice.render();
     const air=airborne?navigation.air:null;
     if(time-lastReadout>125){
       lastReadout=time;
       const readout=document.getElementById('flight-readout');
+      const rotationalReadout=flight?.mode==='parakite'&&(experimentalParakite||flight.guidedParakite);
+      const lessonActive=!!navigation.flightLesson;
       const touchdown=flight?.landingQuality?
         `${flight.landingQuality[0].toUpperCase()+flight.landingQuality.slice(1)} touchdown · ${(flight.landingSpeed??0).toFixed(1)} m/s down · ${((flight.landingGroundSpeed??0)*3.6).toFixed(0)} km/h along ground`+
         ((flight.landingRunM??0)>.5?` · ${Math.round(flight.landingRunM)} m run`:''):'Landed';
@@ -818,16 +855,19 @@ export async function main() {
         `${rideConfig.modes[rider.mode].label} · ${(riderSpeed*3.6).toFixed(0)} km/h · ${Math.round(rider.startZ-rider.z)} m down · ${(rider.distance/1000).toFixed(2)} km · ${rider.grounded?rider.surface:'airborne'}`):
         !airborne?(navigation.mode==='walk'?(navigation.message||(flight.mode==='climb'?(flight.launchReady?'Crown perch · E / X: launch para':'Climbing · E / X: step onto a nearby branch · Space / A: jump off'):flight.mode==='branch'?'On branch · move along limb · Space / A: leap toward another tree · E / X near trunk: climb':flight.mode==='tree-jump'?'Leaping to branch':null)||`On foot · V: ${navigation.view==='first'?'chase view':'first person'} · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
         flight.launching?`${flight.launchStage==='running'?'Running for takeoff':'Inflating the wing'} · ${Math.round((flight.launchProgress??0)*100)}%\n${(flight.speed*3.6).toFixed(0)} km/h · E / X: cancel and unhook`:
-        flight.grounded?`${flight.launchAborted?flight.figure:touchdown}${flight.impact?` · Contact with ${flight.impact}`:''}\n${navigation.message||'E / X: unhook · Space / A: launch here'}`:
+        flight.grounded?`${flight.launchAborted?flight.figure:touchdown}${flight.impact?` · Contact with ${flight.impact}`:''}\n${lessonActive?'Space / A: retry from the bench':navigation.message||'E / X: unhook · Space / A: launch here'}`:
         `${flightConfig.modes[flight.mode].label}  /  ${flightConfig.weather[navigation.weather].label}\n`+
-        `${(flight.speed*3.6).toFixed(0)} km/h AIR   ${(flight.groundSpeed*3.6).toFixed(0)} GROUND   ${Math.round(air.agl)} m AGL\n`+
+        (rotationalReadout?`Air ${Math.round(flight.speed*3.6)} km/h · ${Math.round(air.agl)} m above ground\n`:
+          `${(flight.speed*3.6).toFixed(0)} km/h AIR   ${(flight.groundSpeed*3.6).toFixed(0)} GROUND   ${Math.round(air.agl)} m AGL\n`)+
         `${flight.vario>=0?'+':''}${flight.vario.toFixed(1)} m/s   ${flight.load.toFixed(1)} g   Wind from ${Math.round((Math.atan2(-air.wx,-air.wy)*180/Math.PI+360)%360)}° ${(air.windSpeed*3.6).toFixed(0)} km/h`+
         (flight.mode==='paramotor'?`   Motor ${Math.round(flight.engine*100)}% / set ${Math.round(flight.throttle*100)}% · ${Math.round(flight.thrustN??0)} N thrust`:'')+
         (flight.mode==='parakite'?`\nHandle pull L ${Math.round(flight.handleLeft*100)}% / R ${Math.round(flight.handleRight*100)}% · 45% best glide`:
           `\nBrakes L ${Math.round(flight.brakeLeft*100)}% / R ${Math.round(flight.brakeRight*100)}% · Speedbar ${Math.round(flight.accelerator*100)}%`)+
-        `\n${flight.figure}`+
-        (flight.stall>.15?'\nLOW ENERGY · Ease the handles':air.lee>.15?'\nLEE SIDE · Descending, turbulent air':Math.abs(air.turbulence)>.85?'\nTURBULENT AIR':'');
-      readout.dataset.warning=String(airborne&&!flight.launching&&(flight.grounded?flight.landingQuality==='hard':flight.stall>.15||air.agl<12));
+        (flight.rotation?`\nWing pressure L ${Math.round(flight.rotation.pressure[1]*100)}% / R ${Math.round(flight.rotation.pressure[0]*100)}%`:'')+
+        (lessonActive?'':`\n${flight.figure}`)+
+        (flight.stall>.15&&!flight.rotation?'\nLOW ENERGY · Ease the handles':air.lee>.15?'\nLEE SIDE · Descending, turbulent air':Math.abs(air.turbulence)>.85?'\nTURBULENT AIR':'');
+      readout.dataset.warning=String(airborne&&!flight.launching&&(flight.grounded?flight.landingQuality==='hard':
+        flight.stall>.15||flight.rotation?.pressure.some(value=>value<.65)||air.agl<12));
       if(airborne&&flight.challenge){
         const goal=flightConfig.challenges[flight.challenge.id],progress=flight.challenge;
         readout.textContent+=`\n${goal.label}: ${progress.status==='complete'?'Complete':progress.status==='retry'?'Try again on your next flight':goal.goal==='linked_turns'?`${progress.lastSide?Math.min(progress.turns+1,goal.reversals+1):0} / ${goal.reversals+1} turns`:`Touch down gently below ${Math.round(goal.max_ground_mps*3.6)} km/h`}`;
@@ -846,8 +886,12 @@ export async function main() {
       paraGuide.update(airborne?scenicCourse:null,scenicProgress,flight,document.getElementById('course-guide').checked);
       document.body.dataset.flying=String(airborne);document.body.dataset.pilotView=navigation.view;
     }
-    courseRetry.hidden=!(airborne&&scenicCourse&&['landed','retry'].includes(scenicProgress?.phase)&&document.getElementById('course-guide').checked);
-    if(!courseRetry.hidden)courseRetry.textContent=`Fly ${scenicCourse.label} again ↗`;
+    const practiceLanded=onPracticeFlight()&&flight?.grounded&&!flight.launching;
+    courseRetry.hidden=!!navigation.flightLesson||!(airborne&&(practiceLanded||scenicCourse&&['landed','retry'].includes(scenicProgress?.phase)&&document.getElementById('course-guide').checked));
+    if(!courseRetry.hidden){
+      courseRetry.dataset.practice=String(!!practiceLanded);
+      courseRetry.textContent=`Fly ${practiceLanded?practiceLaunch.label:scenicCourse.label} again ↗`;
+    }
     const localWind=air??navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);
     style.wind.value.set(localWind.wx/Math.max(1,flightConfig.wind.speed_mps),-localWind.wy/Math.max(1,flightConfig.wind.speed_mps));
     // Slow, bounded render-scale adaptation. Preserve the user's chosen ceiling.
@@ -887,7 +931,7 @@ export async function main() {
     try { contextLost=false;cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();distantTreeShadows.update(style.sun.value,true);ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
     catch(error){stopped=true;loading.fail(error);console.error(error);}
   });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();distantTreeShadows.dispose();forest.dispose();treeShadows.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();tutor.dispose();organoid.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();distantTreeShadows.dispose();forest.dispose();treeShadows.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();tutor.dispose();parakiteTour.dispose();organoid.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
   if(requestedOrganoid){
     toTumbleHill();

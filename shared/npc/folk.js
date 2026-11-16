@@ -378,6 +378,26 @@ export function setController(world,cat,controller){
   cat.controller=controller;emit(world,cat,'controller',{controller});
 }
 
+/** Stage a named pilot while the lesson owns the plan. The same mind, body and renderer stay in use. */
+export function stageFlightGuide(world,cat,pose,airborne=false){
+  if(cat.controller!=='agent'||!cat.skills.includes('fly'))return false;
+  if(airborne&&cat.body.mode==='flight'&&cat.activity==='parakite-escort'){
+    cat.body.state=pose;
+    return true;
+  }
+  cat.deciding=null;
+  cat.step=null;
+  cat.plan=[];
+  cat.activity=airborne?'parakite-escort':null;
+  cat.said=null;
+  const landing=pose.mode==='parakite'&&pose.grounded;
+  const foot=landing?unharnessFlight(pose,world.walk,world.flight,world.height,world.hitTest):null;
+  const state=airborne?pose:foot??{x:pose.x,y:pose.y,z:world.height(pose.x,pose.y)??pose.z,
+    heading:pose.heading,speed:0,grounded:true,jumpPhase:'grounded'};
+  cat.body={...cat.body,mode:airborne?'flight':'walk',state,facing:state.heading};
+  return true;
+}
+
 /** Validate and run one agent command. Returns {ok, error?}; never throws on bad input. */
 export function command(world,cat,cmd){
   const fail=error=>{emit(world,cat,'command_refused',{verb:cmd?.verb,error});return {ok:false,error};};

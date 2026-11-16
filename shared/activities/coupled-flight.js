@@ -13,6 +13,17 @@ const unit=(a,fallback=[0,0,1])=>length(a)>1e-9?a.map(v=>v/length(a)):[...fallba
 const kinetic=(v,m)=>m*dot(v,v)/2;
 const airVector=a=>[a.wx,a.wy,a.lift];
 
+/** Parakite handle travel shared by the ordinary and rotational solves. */
+export function mixParakiteHandles(previous, mode, brake, steer, leftPull, rightPull, dt) {
+  const neutral=.45+brake*(brake>0?.55:.45);
+  const giveUp=mode.turn_release??.4;
+  const targets=[
+    clamp(neutral+leftPull*.55-Math.max(0,steer)*giveUp,0,1),
+    clamp(neutral+rightPull*.55-Math.max(0,-steer)*giveUp,0,1),
+  ];
+  return previous.map((position, side)=>position+(targets[side]-position)*(1-Math.exp(-5*dt)));
+}
+
 export function wingBasis(heading,pitch,bank){
   const f=[Math.cos(heading),Math.sin(heading),0],l=[-f[1],f[0],0];
   const u=[-f[0]*Math.sin(pitch),-f[1]*Math.sin(pitch),Math.cos(pitch)];

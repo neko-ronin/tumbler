@@ -1,8 +1,10 @@
 /** Keyboard, pointer and Gamepad input; flight, ski and bike rules live in shared/. */
 import * as T from '../vendor/three.module.min.js';
+import {stepParakiteFollowFlight} from '../../../shared/activities/parakite-follow.js';
 import {launchFlight,launchTreeFlight,stepFlight,sampleAir,flightFrame,pilotFrame,startFlightChallenge} from '../../../shared/activities/flight.js';
 import {rideStart,startRide,stepRide} from '../../../shared/activities/ride.js';
 import {flightInput} from './flight-input.js';
+import {parakiteLessonLift,startParakiteLesson,stepParakiteLesson} from '../../../shared/activities/parakite-lesson.js';
 import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal,safeWalkGround,walkSpawn} from '../../../shared/activities/walk.js';
 import {stepMoves} from '../../../shared/activities/moves.js';
 import {playTape} from '../../../shared/activities/balance.js';
@@ -28,6 +30,7 @@ const FLY_SPEED_MPS=450;  // the 24 km world in under a minute
 export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,hitTest,ride,character,characterConfig,options={}){
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true,shot=null,preferredFlightMode='paraglider';
   let weather='soaring',timeOfDay='afternoon',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0,challengeId='';
+  let flightLesson=null;
   // The air as it is now: the world's own wind record, plus which phase of the
   // day it is being sampled in. One record is handed to the flight step, the
   // scenery sampler and so the generators, so nothing in the scene can be
@@ -64,6 +67,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const fitCockpitCamera=createCockpitCamera();
   const flightMatrix=new T.Matrix4(),pilotMatrix=new T.Matrix4(),pilotTransform=new T.Matrix4(),flightLeft=new T.Vector3(),flightUp=new T.Vector3(),flightForward=new T.Vector3();
   const pilotPosture=createFlightPosture(),physicalPilotRotation=new T.Quaternion(),pilotOrigin=new T.Vector3(),pilotUp=new T.Vector3(),unitScale=new T.Vector3(1,1,1);
+  const interpolatedAttitude=new T.Quaternion(),nextAttitude=new T.Quaternion();
+  const cockpitForward=new T.Quaternion(0,1,0,0),headAttitude=new T.Quaternion();
   let pilotMotion=options.pilotMotion??'steady';
   let treeFraming=0,framedDistance=null,framedLift=0,framedLower=null;
   let presentedGrounded=null,landingClipLeft=0,carried=null,tuckHeld=false,tape=null;
@@ -81,7 +86,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // A control may receive focus between press and release. Always retire
     // the held key, while leaving form key presses to the form itself.
     if(!down){blockedActions.delete(e.code);keys.delete(e.code);return;}
-    if(suspended||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+    if(suspended||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||flightLesson&&e.code==='Space'&&e.target.tagName==='BUTTON')return;
     if(down&&(['Space','KeyE'].includes(e.code))&&(e.repeat||blockedActions.has(e.code)))return;
     if(down&&e.code==='Space')queuedPrimary=true;if(down&&e.code==='KeyE')queuedHarness=true;
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||mode==='gondola'||riding()||config.modes[mode]))toggleView();
@@ -111,6 +116,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // The chase framing looks down at the pilot; a pilot looks along the flight path.
     if(view==='first'&&config.modes[mode])pitch=-.2;snap=true;}
   function select(next,site='0'){
+    flightLesson=null;
     if(config.modes[mode])preferredFlightMode=mode;
     if(next==='walk'&&config.modes[mode]){changeHarness();return;}
     if(mode==='walk'&&config.modes[next]){
@@ -143,7 +149,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       state=startRide(ride.config,rideStart(ride.config,site,worldmap,ride.snowAt),ride.height);yaw=0;pitch=0;snap=true;hop=false;
       for(const [name,mesh] of Object.entries(ride.meshes))mesh.visible=name===next;return;
     }
-    siteIndex=Number(site)||0;state=startFlightChallenge(launchFlight(config,next,config.launches[siteIndex],height,weather),challengeId,config);yaw=0;pitch=-.34;
+    siteIndex=Number(site)||0;
+    if(!config.launches[siteIndex]||next!=='parakite'&&config.launches[siteIndex]===config.parakite_practice_launch)siteIndex=0;
+    state=startFlightChallenge(launchFlight(config,next,config.launches[siteIndex],height,weather),challengeId,config);yaw=0;pitch=-.34;
     options.onFlightChange?.(next,siteIndex,weather);
     updateFlightPresentation(0);
   }
@@ -184,6 +192,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const foot=config.modes[mode]?unharnessFlight(state,characterConfig.walk,config,walkHeight,hitTest):null;
     const hooked=mode==='walk'?reharnessWalk(state,characterConfig.walk,config,walkHeight,hitTest):null;
     if(!foot&&!hooked){message='Find clear, stable ground before changing harness';return false;}
+    flightLesson=null;
     pilotPosture.reset();presentedGrounded=null;landingClipLeft=0;
     parkedWing=foot?{...state,pressure:0,engine:0,throttle:0,harnessed:false,launching:false}:null;
     state=foot??hooked;mode=foot?'walk':hooked.mode;accumulator=0;previousFlight=null;actionArmed=false;harnessArmed=false;actionHeld=false;message='';snap=true;view='chase';
@@ -195,7 +204,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function launchHere(){
     if(!config.modes[mode]||!state.grounded||state.launching)return false;
     const launched=relaunchGround(state,characterConfig.walk,config,walkHeight,hitTest);
-    if(launched){state=startFlightChallenge(launched,challengeId,config);previousFlight=null;accumulator=0;message='';return true;}
+    if(launched){flightLesson=null;state=startFlightChallenge(launched,challengeId,config);previousFlight=null;accumulator=0;message='';return true;}
     message=relaunchRefusal(state,characterConfig.walk,config,walkHeight,hitTest)==='canopy'?'No room for the wing here':'Need clear, stable ground and room ahead to launch';return false;
   }
   function launchFromTree(){
@@ -207,6 +216,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   /** Ride something the core moves (a gondola cabin): {x, y, z, heading} of the floor he stands on, every frame. */
   function carry(pose){
     if(mode!=='gondola'){
+      flightLesson=null;
       clear();shot=null;message='';parkedWing=null;mode='gondola';orbit.enabled=false;rig.visible=false;ride.rig.visible=false;
       character.object.visible=true;camera.fov=62;camera.updateProjectionMatrix();snap=true;yaw=0;pitch=-.12;
     }
@@ -218,6 +228,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
    * shorter than one 30 FPS frame is latched like a keyboard tap. */
   function poll(){if(suspended)return;const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);if(pad?.buttons[0]?.pressed)queuedPrimary=true;if(mode==='walk'&&pad?.buttons[11]?.pressed)queuedSlide=true;}
   function update(dt){
+    if(suspended&&state?.guidedParakite)return;
     const pad=suspended?null:[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
     if(mode==='gondola'){
       // Riding: Y changes the view, as it does in flight. RB (fast travel) is gondola.js's.
@@ -239,8 +250,14 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
         else if(mode==='walk'&&hitTest?.branchesNear&&characterConfig.walk.branches&&['climb','branch'].includes(state?.mode))queuedBranch=true;
         else changeHarness();}
       if(previous||next){const i=flightModes.indexOf(mode);select(flightModes[(Math.max(0,i)+(next?1:-1)+flightModes.length)%flightModes.length],siteIndex);}
-      if(up||down){siteIndex=(siteIndex+(up?-1:1)+config.launches.length)%config.launches.length;if(config.modes[mode])select(mode,siteIndex);}
-      if(primaryEdge&&config.modes[mode]&&state.launching){/* A held or repeated launch cannot restart inflation. */}
+      if(up||down){
+        const count=config.launches.length-Number(mode!=='parakite'&&config.launches.at(-1)===config.parakite_practice_launch);
+        siteIndex=(siteIndex+(up?-1:1)+count)%count;if(config.modes[mode])select(mode,siteIndex);
+      }
+      if(primaryEdge&&flightLesson){
+        if(flightLesson.ready) beginFlightLesson();
+        else if(!flightLesson.guided||flightLesson.progress.phase!=='passed')prepareFlightLesson(flightLesson.progress.id,flightLesson.guided);
+      }else if(primaryEdge&&config.modes[mode]&&state.launching){/* A held or repeated launch cannot restart inflation. */}
       else if(primaryEdge&&config.modes[mode]&&state.grounded){
         launchHere();
       }else if(primaryEdge&&mode==='orbit'&&!playerMode)select('paraglider',siteIndex);
@@ -276,8 +293,16 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       updateWalk(dt,x,y);
     }else{
       const input=flightInput(pad,keys);
-      accumulator+=Math.min(dt,.05);
-      while(accumulator>=1/120){previousFlight=state;state=stepFlight(state,input,1/120,time,config,air,height,hitTest,launchHeight,walkHeight);time+=1/120;accumulator-=1/120;}
+      const stoppedLesson=flightLesson?.ready||flightLesson?.guided&&flightLesson.progress.phase==='passed';
+      if(!stoppedLesson)accumulator+=Math.min(dt,.05);
+      while(accumulator>=1/120){
+        previousFlight=state;
+        const localLift=parakiteLessonLift(flightLesson?.progress,state);
+        state=state.followStep===undefined?stepFlight(state,input,1/120,time,config,air,height,hitTest,launchHeight,walkHeight,localLift):
+          stepParakiteFollowFlight(state,input,1/120,config,worldmap.wind.direction_deg,height,hitTest,walkHeight);
+        if(flightLesson)stepParakiteLesson(flightLesson.progress,previousFlight,state,input,1/120,height);
+        time+=1/120;accumulator-=1/120;
+      }
       updateFlightPresentation(dt,flightPose());
       feedbackTime+=dt;
       if(options.haptics?.()!==false&&effects&&feedbackTime>.12&&pad?.vibrationActuator?.playEffect){
@@ -423,6 +448,14 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       for(const key of ['pilotPosition','wingPosition'])pose.coupled[key]=state.coupled[key].map((v,i)=>previousFlight.coupled[key][i]+(v-previousFlight.coupled[key][i])*alpha);
       pose.coupled.lineSlackM=previousFlight.coupled.lineSlackM+(state.coupled.lineSlackM-previousFlight.coupled.lineSlackM)*alpha;
     }
+    if(state.rotation&&previousFlight.rotation){
+      pose.rotation={...state.rotation};
+      for(const body of ['pilot','wing']){
+        const orientation=interpolatedAttitude.fromArray(previousFlight.rotation[body].orientation)
+          .slerp(nextAttitude.fromArray(state.rotation[body].orientation),alpha).toArray();
+        pose.rotation[body]={...state.rotation[body],orientation};
+      }
+    }
     return pose;
   }
   function updateFlightPresentation(dt,pose=state){
@@ -433,7 +466,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     rig.quaternion.setFromRotationMatrix(frameMatrix(frame,flightMatrix));
     if(coupled){
       frameMatrix(pilotFrame(pose,config),pilotMatrix);
-      if(pilotMotion==='steady'){
+      if(pilotMotion==='steady'&&!pose.rotation){
         // A single cable gives an effective particle orientation, not a rigid
         // human torso. Animate around the TRUE hip only; this posture and its
         // eye/equipment appearance never return to the shared force model.
@@ -473,14 +506,23 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       groundZ:pose.grounded?characterHeight(pose.x,pose.y):undefined,groundHeight:pose.grounded?characterHeight:undefined});
     landingClipLeft=Math.max(0,landingClipLeft-dt);
     if(view==='chase'){
-      follow(dt,(policy().distance+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),pose.heading);
+      const heading=pose.rotation&&Math.hypot(frame.left[0],frame.left[1])>.1?
+        Math.atan2(-frame.left[0],frame.left[1]):pose.heading;
+      follow(dt,(policy().distance+Math.min(3,pose.speed*.08))*Math.max(1,.95/camera.aspect),heading);
     }else{
       character.object.visible=false;
       const head=firstPersonHead.update(pose,dt,effects,snap);
-      look.set(pitch+pose.pitch*.2+head.pitch,pose.heading-Math.PI/2+yaw+head.yaw,head.roll);
-      camera.quaternion.setFromEuler(look);
+      if(pose.rotation){
+        look.set(pitch+head.pitch,yaw+head.yaw,head.roll);
+        camera.quaternion.setFromRotationMatrix(pilotMatrix).multiply(cockpitForward)
+          .multiply(headAttitude.setFromEuler(look));
+      }else{
+        look.set(pitch+pose.pitch*.2+head.pitch,pose.heading-Math.PI/2+yaw+head.yaw,head.roll);
+        camera.quaternion.setFromEuler(look);
+      }
       const eye=coupled&&options.firstPersonEye?.();
-      if(eye)fitCockpitCamera(camera,pilotMatrix,eye,options.firstPersonCollar?.(),.65,characterConfig.scale,head.sink,look.y,effects>0?Math.max(camera.fov,80):62);
+      if(eye)fitCockpitCamera(camera,pilotMatrix,eye,options.firstPersonCollar?.(),.65,characterConfig.scale,head.sink,look.y,
+        effects>0?Math.max(camera.fov,80):62,!!pose.rotation);
       else if(coupled)camera.position.set(0,config.landing_clearance_m+.15,0).applyMatrix4(pilotMatrix);
       else camera.position.set(pose.x,pose.z+.15,-pose.y);
       snap=false;
@@ -519,11 +561,44 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     snap=false;orbit.target.copy(p);
   }
-  function setWeather(name){if(!config.weather[name])return;weather=name;if(state&&config.modes[mode])state={...state,weather};else if(mode==='walk'&&state?.harnessMode)state={...state,harnessWeather:weather};options.onFlightChange?.(mode,siteIndex,weather);}
+  function setWeather(name){if(!config.weather[name])return;flightLesson=null;weather=name;if(state&&config.modes[mode])state={...state,weather};else if(mode==='walk'&&state?.harnessMode)state={...state,harnessWeather:weather};options.onFlightChange?.(mode,siteIndex,weather);}
+  function prepareFlightLesson(id,guided=false){
+    const practiceSite=config.launches.indexOf(config.parakite_practice_launch);
+    if(!guided&&(!config.experimentalParakite||practiceSite<0||mode!=='parakite'))return false;
+    const progress=startParakiteLesson(id);
+    const primaryHeld=keys.has('Space')||[...(navigator.getGamepads?.()??[])].some(pad=>pad?.connected&&pad.buttons[0]?.pressed);
+    challengeId='';
+    setWeather('calm');
+    if(guided){
+      const launch=launchFlight(config,'parakite',config.parakite_practice_launch,height,weather);
+      placeGuidedFlight(launch);
+    }else select('parakite',practiceSite);
+    flightLesson={ready:true,progress,guided};
+    actionArmed=!primaryHeld;
+    return true;
+  }
+  function placeGuidedFlight(pose){
+    if(mode!=='orbit'&&mode!=='parakite')select('orbit');
+    if(mode==='orbit')select('parakite');
+    clear();challengeId='';flightLesson=null;view='chase';siteIndex='here';
+    state={...pose,guidedParakite:true};weather=state.weather;
+    snap=true;yaw=0;pitch=-.34;message='';
+    updateFlightPresentation(0);
+    options.onFlightChange?.(mode,siteIndex,weather);
+  }
+  function endGuidedFlight(){
+    flightLesson=null;
+    if(state?.guidedParakite)state={...state,guidedParakite:false,followStep:undefined,rotation:undefined,coupled:undefined};
+  }
+  function beginFlightLesson(){
+    if(!flightLesson?.ready)return;
+    clear();
+    flightLesson.ready=false;
+  }
   /** Which phase of the day the light depicts; the core's diurnal wind table
    * decides what that means for the air. The phase is a name, never a speed. */
   function setTimeOfDay(name){if(name===timeOfDay)return;timeOfDay=name;refreshAir();}
-  function setChallenge(id){if(id&&!config.challenges?.[id])throw new Error(`Unknown flight challenge: ${id}`);challengeId=id;if(state&&config.modes[mode])state=startFlightChallenge(state,id,config);}
+  function setChallenge(id){if(id&&!config.challenges?.[id])throw new Error(`Unknown flight challenge: ${id}`);flightLesson=null;challengeId=id;if(state&&config.modes[mode])state=startFlightChallenge(state,id,config);}
   function setPilotMotion(value){if(!['steady','physical'].includes(value))throw new Error(`Unknown pilot posture: ${value}`);pilotMotion=value;pilotPosture.reset();}
   // Fixed renderer fields share the live wind clock/weather, while their
   // immutable floor/trail queries may be reused for this scene's lifetime.
@@ -550,5 +625,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   }
   function setPlayerMode(on){playerMode=!!on;}
   function suspend(on){suspended=!!on;if(suspended){keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;}}
-  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
+  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
+    prepareFlightLesson,beginFlightLesson,placeGuidedFlight,endGuidedFlight,endFlightLesson(){flightLesson=null;},get flightLesson(){return flightLesson;},
+    dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

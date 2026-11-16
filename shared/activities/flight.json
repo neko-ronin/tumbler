@@ -51,12 +51,12 @@
       "canopy_height_m": 4.4,
       "arc_m": 0.95,
       "dive_response": 0.95,
-      "maneuver_bank_rad": 1.3,
+      "maneuver_bank_rad": 1.26,
       "recovery_response": 0.55,
       "roll_damping": 3.1,
       "ground_drag_relief": 0.23,
       "max_roll_rate_rps": 0.95,
-      "turn_release": 0.1
+      "turn_release": 0.025
     },
     "paramotor": {
       "label": "Paramotoring",
@@ -93,6 +93,14 @@
       "heading_deg": 320
     }
   ],
+  "parakite_practice_launch": {
+    "id": "lower-north-bench",
+    "label": "Lower North Bench",
+    "xy_m": [-1200, 1750],
+    "heading_deg": 280,
+    "clearance_m": 65,
+    "terrain_protection": false
+  },
   "thermals": [
     {
       "xy_m": [

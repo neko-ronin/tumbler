@@ -47,7 +47,7 @@ function legend(rows,{caption}={}){
     el('div',{className:'control-head'},el('span',{textContent:''}),el('span',{textContent:'Keyboard'}),el('span',{textContent:'Controller'})),...rows.map(controlRow));
 }
 
-export function createPlayerUI({places,arriveAt,startParakite,startParamotor,paramotorRefusal,navigation,ground,snowAt,trees,worldmap,course,launch,timeOfDay,canvas}){
+export function createPlayerUI({places,arriveAt,startParakite,startParamotor,paramotorRefusal,navigation,ground,snowAt,trees,worldmap,course,launch,timeOfDay,canvas,learnParakite}){
   const root=el('div',{className:'player-ui'});
   const card=el('aside',{className:'key-card',ariaLabel:'Controls'});
   const toast=el('div',{className:'arrival',ariaLive:'polite'});
@@ -130,6 +130,9 @@ export function createPlayerUI({places,arriveAt,startParakite,startParamotor,par
     const actions=[el('button',{type:'button',className:'action action-primary',onclick:travel},'Travel to ',selected.label),
       el('button',{type:'button',className:'action',onclick:()=>{close();startParakite();}},'Fly the parakite from North Wall'),
       el('button',{type:'button',className:'action',disabled:!paramotor,onclick:paramotorNow},paramotor?'Paramotor from where you stand':`Paramotor: ${refusal.toLowerCase()}`)];
+    if(learnParakite&&navigation.mode==='walk')actions.push(el('button',{type:'button',className:'action',onclick:()=>{
+      close();if(!learnParakite())notice('Look for Juno on open ground.');
+    }},'Learn parakiting with Juno'));
     side.replaceChildren(el('h3',{className:`side-name side-${selected.kind}`,textContent:selected.label}),el('p',{className:'side-about',textContent:selected.about}),
       el('div',{className:'actions'},...actions),legend(MENU_CONTROLS.map.filter(([a])=>paramotor||!a.startsWith('Paramotor')),{caption:'This map'}));
   }

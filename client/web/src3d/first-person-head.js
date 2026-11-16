@@ -45,13 +45,14 @@ export function createCockpitCamera(){
  const collar=new T.Vector3(),awayAxis=new T.Vector3(),sideAxis=new T.Vector3(),plane=new T.Vector3();
  const viewInverse=new T.Quaternion(),baseView=new T.Quaternion(),trialView=new T.Quaternion(),turn=new T.Quaternion();
  const planes=[[-1,0],[1,0],[0,-1],[0,1],[0,0]];
- return (camera,pilotMatrix,eye,collarBounds,hipY,scale,sink,yaw,fov=camera.fov)=>{
+ return (camera,pilotMatrix,eye,collarBounds,hipY,scale,sink,yaw,fov=camera.fov,pilotRelative=false)=>{
   up.setFromMatrixColumn(pilotMatrix,1);
   ahead.setFromMatrixColumn(pilotMatrix,2);
   aim.set(0,0,-1).applyQuaternion(camera.quaternion);
   const down=-Math.asin(clamp(aim.dot(up),-1,1));
   horizontal.copy(aim).projectOnPlane(up);
-  neutral.set(-Math.sin(yaw),0,-Math.cos(yaw)).projectOnPlane(up);
+  if(pilotRelative)neutral.copy(ahead).applyAxisAngle(up,yaw);
+  else neutral.set(-Math.sin(yaw),0,-Math.cos(yaw)).projectOnPlane(up);
   if(neutral.lengthSq()<1e-8)neutral.copy(ahead);
   neutral.normalize();
   const radius=horizontal.length();

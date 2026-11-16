@@ -3,7 +3,8 @@
  * docs/design/FLIGHT-MANUALS.md. This is not a flight-training model.
  */
 import {knockDirection} from './collision.js';
-import {stepCoupled,wingBasis,pilotBasis,coupledEnergy} from './coupled-flight.js';
+import {stepCoupled,wingBasis,pilotBasis,coupledEnergy,mixParakiteHandles} from './coupled-flight.js';
+import {advanceRotationalParakite,rotationalBasis,updateRotationalContact} from './parakite-dynamics.js';
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const approach=(a,b,rate,dt)=>a+(b-a)*(1-Math.exp(-rate*dt));
 const wave=(x,y,z,t)=>Math.sin(x*.013+y*.009+t*.73+z*.005)*.55+Math.sin(x*.043-y*.031-t*1.87)*.3+Math.sin(y*.11+z*.07+t*3.1)*.15;
@@ -51,7 +52,7 @@ function suspensionPose(s,previousSpeed,dt,mode,config){
     if(Math.abs(s[key])===limit&&Math.sign(s[rate])===Math.sign(s[key]))s[rate]=0;
   }
 }
-function releaseSuspension(s){s.pilotPitch=s.pilotRoll=s.pilotPitchRate=s.pilotRollRate=0;delete s.coupled;}
+function releaseSuspension(s){s.pilotPitch=s.pilotRoll=s.pilotPitchRate=s.pilotRollRate=0;delete s.coupled;delete s.rotation;}
 
 export function startFlightChallenge(state,id,config){
   if(!id)return {...state,challenge:null};
@@ -219,7 +220,8 @@ export function sampleAir(config,wind,state,time,height) {
  */
 export function flightFrame(state,config){
   if(state.coupled&&!state.grounded&&!state.collapsed){
-    const basis=wingBasis(state.heading,state.pitch,state.bank),height=config.modes[state.mode].canopy_height_m;
+    const basis=state.rotation?rotationalBasis(state.rotation.wing):wingBasis(state.heading,state.pitch,state.bank);
+    const height=config.modes[state.mode].canopy_height_m;
     return {...basis,origin:state.coupled.wingPosition.map((v,i)=>v-basis.up[i]*height)};
   }
   const h=state.heading??0,p=state.grounded?0:(state.pitch??0),b=state.grounded?0:(state.bank??0);
@@ -237,7 +239,7 @@ export function flightFrame(state,config){
  */
 export function pilotFrame(state,config){
   if(!state.coupled||state.grounded||state.collapsed)return flightFrame(state,config);
-  const basis=pilotBasis(state);
+  const basis=state.rotation?rotationalBasis(state.rotation.pilot):pilotBasis(state);
   return {...basis,origin:state.coupled.pilotPosition.map((v,i)=>v-basis.up[i]*config.coupled.harness_height_m)};
 }
 
@@ -274,6 +276,25 @@ function canopyContact(segment,hitTest){
   return {points,fraction:points.length/(n+1),softFraction:points.filter(p=>p.soft).length/(n+1),
     solidFraction:points.filter(p=>p.solid).length/(n+1),tipOnly:points.length>0&&points.every(p=>Math.abs(2*p.u-1)>=.72),
     side:points.length?points.reduce((sum,p)=>sum+2*p.u-1,0)/points.length:0};
+}
+
+function rotatingWingTouchesTerrain(previous,next,config,height){
+  const end=canopySegment(next,config),start=previous.rotation?canopySegment(previous,config):end;
+  const spanSamples=Math.ceil(Math.hypot(...end.b.map((v,i)=>v-end.a[i])));
+  const travelSamples=Math.max(1,Math.ceil(2*Math.max(
+    Math.hypot(...end.a.map((v,i)=>v-start.a[i])),
+    Math.hypot(...end.b.map((v,i)=>v-start.b[i])))));
+  for(let t=1;t<=travelSamples;t++){
+    const u=t/travelSamples;
+    const a=end.a.map((v,i)=>start.a[i]+(v-start.a[i])*u);
+    const b=end.b.map((v,i)=>start.b[i]+(v-start.b[i])*u);
+    for(let i=0;i<=spanSamples;i++){
+      const f=i/spanSamples;
+      const [x,y,z]=a.map((v,j)=>v+(b[j]-v)*f);
+      if(z-end.radius<=height(x,y))return true;
+    }
+  }
+  return false;
 }
 
 const BODY=.45,G=9.81;
@@ -355,7 +376,7 @@ function stepCollapsed(state,dt,config,height,hitTest){
   return publish(s,v);
 }
 
-export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest=null,launchHeight=height,launchDryHeight=launchHeight) {
+export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest=null,launchHeight=height,launchDryHeight=launchHeight,localLift) {
   if(!(dt>0)||!Number.isFinite(dt))return {...state};
   const s={...state},mode=config.modes[s.mode];
   if(s.launching&&config.ground_launch)return stepGroundLaunch(s,input,dt,time,config,windBearing,height,hitTest,launchHeight,launchDryHeight);
@@ -370,17 +391,13 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   if(s.mode==='parakite'){
     // Neutral is the best-glide flag. Forward stick releases both handles;
     // weight shift releases the outside one, changing whole-wing incidence.
-    const neutral=.45+control*(control>0?.55:.45);
     // turn_release: how much outside handle a full turn gives up. Less keeps a
     // fast wing's speed, and so its turn radius and sink, from running away.
     const giveUp=mode.turn_release??.4;
-    const targetLeft=clamp(neutral+(input.brakeLeft||0)*.55-Math.max(0,steer)*giveUp);
-    const targetRight=clamp(neutral+(input.brakeRight||0)*.55-Math.max(0,-steer)*giveUp);
     // One actual handle state drives both incidence and flight response.
     // At full release no outside travel remains: weight shift still rolls,
     // without secretly pulling the inside handle for the player.
-    s.handleLeft=approach(s.handleLeft??.45,targetLeft,5,dt);
-    s.handleRight=approach(s.handleRight??.45,targetRight,5,dt);
+    [s.handleLeft,s.handleRight]=mixParakiteHandles([s.handleLeft??.45,s.handleRight??.45],mode,control,steer,input.brakeLeft||0,input.brakeRight||0,dt);
     turn=clamp(steer*Math.max(.5,1-giveUp*1.5)+(s.handleRight-s.handleLeft)*1.5,-1,1);
     release=clamp((.45-(s.handleLeft+s.handleRight)*.5)/.45);
     left=clamp((s.handleLeft-.45)/.55);right=clamp((s.handleRight-.45)/.55);
@@ -402,7 +419,8 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   // Hold maneuver for greater weight-shift authority and a less damped roll.
   // Alternating turns carry roll through the centre; release progressively
   // damps the pendulum. No scripted rotation, impulse or energy award.
-  s.maneuver=approach(s.maneuver??0,input.maneuver?1:0,4,dt);
+  const rotational=(config.experimentalParakite||s.guidedParakite)&&s.mode==='parakite';
+  s.maneuver=approach(s.maneuver??0,!rotational&&input.maneuver?1:0,4,dt);
   const bankLimit=mode.max_bank_rad+(mode.maneuver_bank_rad-mode.max_bank_rad)*s.maneuver;
   const targetBank=turn*bankLimit+(s.mode==='paramotor'?s.engine*.045:0)+clamp(air.turbulence*.035,-.12,.12);
   s.rollRate=(s.rollRate+(targetBank-s.bank)*12*dt)*Math.exp(-(5.8+(mode.roll_damping-5.8)*s.maneuver)*dt);
@@ -412,9 +430,12 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   if(Math.abs(turn)>.45)s.turnMemory=turn;
   if(s.maneuver<.1)s.reversals=0;
   if(config.coupled){
-    stepCoupled(s,dt,config,position=>sampleAir(config,windBearing,{...s,x:position[0],y:position[1],z:position[2]},time,height));
+    const airAt=position=>sampleAir(config,windBearing,{...s,x:position[0],y:position[1],z:position[2]},time,height);
+    if(rotational)
+      advanceRotationalParakite(s,config,dt,steer,position=>{const air=airAt(position);return [air.wx,air.wy,air.lift+(localLift?.(position)??0)];});
+    else stepCoupled(s,dt,config,airAt);
     s.turbulence=air.turbulence;
-    if(s.maneuver>.5&&Math.abs(s.bank)>.72&&!s.stall)s.figure=(s.reversals??0)>0?'Wingover':'Spiral · release to recover';
+    if(!s.rotation&&s.maneuver>.5&&Math.abs(s.bank)>.72&&!s.stall)s.figure=(s.reversals??0)>0?'Wingover':'Spiral · release to recover';
   }else{
   s.load=1/Math.max(.25,Math.cos(s.bank));
   s.heading-=clamp(9.81*Math.tan(s.bank)/Math.max(5,s.speed),-mode.turn_rps,mode.turn_rps)*dt;
@@ -470,7 +491,7 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   s.x+=dx;s.y+=dy;s.z+=s.vertical*dt+exchange+engineHeight;s.groundSpeed=Math.hypot(dx,dy)/dt;s.distance+=Math.hypot(dx,dy);
   }
   // Which half lost pressure last: fades as the cells refill. Presentation only.
-  s.tuckSide=(s.tuckSide??0)*Math.exp(-dt/.6);
+  if(!s.rotation)s.tuckSide=(s.tuckSide??0)*Math.exp(-dt/.6);
   const beforeClamp=[s.x,s.y,s.z];
   s.x=clamp(s.x,-config.world_limit_m,config.world_limit_m);s.y=clamp(s.y,-config.world_limit_m,config.world_limit_m);
   s.z=Math.min(config.ceiling_m,s.z);
@@ -478,9 +499,12 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
     // World/ceiling boundaries are external contacts, not free-flight work.
     const shift=[s.x,s.y,s.z].map((v,i)=>v-beforeClamp[i]);
     if(shift.some(v=>v!==0)){
-      const c=s.coupled,mass=config.coupled.pilot_mass_kg+config.coupled.wing_mass_kg;
-      for(const key of ['pilotPosition','wingPosition'])c[key]=c[key].map((v,i)=>v+shift[i]);
-      const work=mass*G*shift[2];c.contactWorkJ=(c.contactWorkJ??0)+work;c.energyJ+=work;
+      if(s.rotation)updateRotationalContact(s,config,shift,s.rotation.pilot.velocity);
+      else {
+        const c=s.coupled,mass=config.coupled.pilot_mass_kg+config.coupled.wing_mass_kg;
+        for(const key of ['pilotPosition','wingPosition'])c[key]=c[key].map((v,i)=>v+shift[i]);
+        const work=mass*G*shift[2];c.contactWorkJ=(c.contactWorkJ??0)+work;c.energyJ+=work;
+      }
     }
   }
   let bodyContact=false;s.canopyBrush=false;
@@ -493,10 +517,13 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
     const softBrush=wing.softFraction>0&&wing.softFraction<=(c.recoverable_foliage_fraction??0);
     if(tipBrush||softBrush){
       if(!state.canopyBrush){
-        s.rollRate=clamp((s.rollRate??0)+wing.side*(c.tip_brush_roll_rps??0),-1,1);
-        s.pressure=Math.max(.45,(s.pressure??1)-(c.tip_brush_pressure??0));
-        if(s.coupled)s.coupled.cellPressure=s.pressure;
-        s.tuckSide=wing.side;
+        if(s.rotation)updateRotationalContact(s,config,[0,0,0],s.rotation.pilot.velocity,wing.side);
+        else {
+          s.rollRate=clamp((s.rollRate??0)+wing.side*(c.tip_brush_roll_rps??0),-1,1);
+          s.pressure=Math.max(.45,(s.pressure??1)-(c.tip_brush_pressure??0));
+          if(s.coupled)s.coupled.cellPressure=s.pressure;
+          s.tuckSide=wing.side;
+        }
       }
       s.canopyBrush=true;
     }
@@ -505,7 +532,8 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
       s.collapsed=true;releaseSuspension(s);settle(s,v,config,height);return scoreFlight(publish(s,v),config);
     }
     if(solid||leaves){
-      if(s.coupled){
+      if(s.rotation)updateRotationalContact(s,config,[s.x,s.y,s.z].map((x,i)=>x-contactPosition[i]),[...v]);
+      else if(s.coupled){
         const particles=s.coupled,before=coupledEnergy(particles,config.coupled);
         const shift=[s.x,s.y,s.z].map((x,i)=>x-contactPosition[i]);
         for(const key of ['pilotPosition','wingPosition'])particles[key]=particles[key].map((x,i)=>x+shift[i]);
@@ -518,7 +546,18 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   const hit=bodyContact?null:hitTest?.([state.x,state.y,state.z],[s.x,s.y,s.z],.45);
   if(hit){s.x=state.x;s.y=state.y;s.z=state.z;s.impact=hit.kind;s.grounded=true;s.vx=s.vy=s.vz=s.vertical=s.vario=s.speed=0;releaseSuspension(s);return scoreFlight(s,config);}
   const floor=height(s.x,s.y)+config.landing_clearance_m;
+  if(config.collapse&&s.rotation&&rotatingWingTouchesTerrain(state,s,config,height)){
+    const v=[s.vx,s.vy,s.vz];
+    s.collapsed=true;
+    releaseSuspension(s);
+    settle(s,v,config,height);
+    return scoreFlight(publish(s,v),config);
+  }
   if(s.z<=floor){
+    if(s.rotation?.pressure.every(value=>value<.18)){
+      s.collapsed=true;
+      s.figure='Wing collapsed · unhook or relaunch';
+    }
     touchdown(s,Math.max(0,-s.vario),s.groundSpeed,config);
     s.z=floor;s.grounded=true;s.vx=s.vy=s.vz=s.vertical=s.vario=s.speed=0;releaseSuspension(s);
   }

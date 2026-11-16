@@ -1,21 +1,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createSoundscape} from '../src3d/audio.js';
-function audioFixture(t){
+function audioFixture(t,decode){
  const saved=Object.getOwnPropertyDescriptor(globalThis,'AudioContext');let context;
  const param=()=>({value:0,setValueAtTime(v){this.value=v;},setTargetAtTime(v,time,ramp){this.value=v;this.ramp=ramp;},cancelScheduledValues(){},linearRampToValueAtTime(v){this.value=v;},exponentialRampToValueAtTime(v){this.value=v;}});
  class Context{
   constructor(){context=this;this.nodes=[];this.sampleRate=100;this.currentTime=1;this.listener={};this.state='suspended';this.destination=this.node('destination');}
-  node(kind){const n={kind,outputs:[],frequency:param(),gain:param(),Q:param(),pan:param(),positionX:param(),positionY:param(),positionZ:param(),loop:false,connect(to){this.outputs.push(to);return to;},disconnect(){},start(){},stop(){}};this.nodes.push(n);return n;}
+  node(kind){const n={kind,outputs:[],frequency:param(),gain:param(),Q:param(),pan:param(),playbackRate:param(),positionX:param(),positionY:param(),positionZ:param(),loop:false,connect(to){this.outputs.push(to);return to;},disconnect(){},start(){this.started=true;},stop(){}};this.nodes.push(n);return n;}
   createGain(){return this.node('gain');}createStereoPanner(){return this.node('stereo-panner');}createPanner(){return this.node('panner');}createBiquadFilter(){return this.node('filter');}createConvolver(){return this.node('convolver');}createBufferSource(){return this.node('source');}createOscillator(){return this.node('oscillator');}
   createBuffer(channels,length){const arrays=Array.from({length:channels},()=>new Float32Array(length));return {getChannelData:i=>arrays[i]};}
+  decodeAudioData(){return decode();}
   async resume(){this.state='running';}async suspend(){this.state='suspended';}async close(){this.state='closed';}
  }
  Object.defineProperty(globalThis,'AudioContext',{value:Context,configurable:true});
  t.after(()=>saved?Object.defineProperty(globalThis,'AudioContext',saved):delete globalThis.AudioContext);
- const sound=createSoundscape({habitats:[{centre_m:[0,0,0]}]});t.after(()=>sound.dispose());
+ const sound=createSoundscape({habitats:[{centre_m:[0,0,0]}]},undefined,decode?new ArrayBuffer(1):null);t.after(()=>sound.dispose());
  return {sound,get context(){return context;}};
 }
+test('a rejected optional sample does not prevent gesture unlock or ambience',async t=>{
+ const warn=t.mock.method(console,'warn',()=>{});
+ const f=audioFixture(t,()=>Promise.reject(new Error('unreadable sample')));
+ assert.equal(f.context,undefined,'wait for a player gesture before creating the context');
+ assert.equal(await f.sound.unlock(),true);
+ assert.equal(warn.mock.callCount(),1);
+ assert.equal(f.context.state,'running');
+ const bus=f.context.nodes.find(n=>n.kind==='panner'&&n.refDistance===10).outputs[0];
+ f.sound.update({position:{x:0,y:5,z:0}},{mode:'walk',state:{x:0,y:0,z:0}});
+ assert.equal(bus.gain.value,1);
+});
+test('the reset calls the cat sample with the alarm pitch at the player position',async t=>{
+ const sample={};
+ const f=audioFixture(t,()=>Promise.resolve(sample));
+ assert.equal(f.sound.meow({x:1,y:2,z:3},true),false);
+ await f.sound.unlock();
+ assert.equal(f.sound.meow({x:1,y:2,z:3},true),true);
+ const voice=f.context.nodes.find(n=>n.buffer===sample);
+ assert.equal(voice.started,true);
+ assert.equal(voice.playbackRate.value,1.25);
+ const panner=voice.outputs[0].outputs[0];
+ assert.deepEqual([panner.positionX.value,panner.positionY.value,panner.positionZ.value],[1,3.8,-2]);
+ assert.ok(reaches(voice,f.context.destination));
+});
 function reaches(from,target,seen=new Set()){
  if(from===target)return true;if(seen.has(from))return false;seen.add(from);return from.outputs.some(n=>reaches(n,target,seen));
 }
