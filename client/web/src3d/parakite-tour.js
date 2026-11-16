@@ -265,7 +265,7 @@ export function createParakiteTour({panel,camera,canvas,navigation,practice,worl
       if(phase==='closing'){navigation.setWeather(priorWeather);finish({complete:true});}else finish();
     }else if(phase==='offering'&&!talk.hidden&&event.code==='KeyE'){
       event.preventDefault();event.stopImmediatePropagation();openScene('invite');
-    }else if(phase==='lessons'&&event.code==='Enter'&&event.target===canvas&&practice.advance()){
+    }else if(phase==='lessons'&&!navigation.suspended&&event.code==='Enter'&&event.target===canvas&&practice.advance({allowIncomplete:true})){
       event.preventDefault();event.stopImmediatePropagation();
     }
   }

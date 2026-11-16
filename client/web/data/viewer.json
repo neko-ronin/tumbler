@@ -239,11 +239,11 @@
     },
     {
       "path": "client/web/src3d/parakite-practice.js",
-      "sha256": "9b5929d1a5eb12bec32adb4d88db12297c03bde12ba30e19f42f045bb6719e94"
+      "sha256": "93bc7ea6b24755b04766b192387e0bbc00518c2c3b897c83548aebb82182cbc7"
     },
     {
       "path": "client/web/src3d/parakite-tour.js",
-      "sha256": "5c1480b4f64eb9822b52e70cd228e1d9711bb89afc4eccd3322eb857867f76ad"
+      "sha256": "06ef15a156ebbe34f07942b3fa9610b0e8e5719adc05f7b1861d1714a58d0776"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -936,7 +936,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "bf3937e",
+  "commit": "df1900b",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

@@ -120,8 +120,9 @@ export function createParakitePractice({panel, open, navigation, canvas, challen
     else navigation.endFlightLesson();
     canvas.focus();
   });
-  function advance() {
-    if (!sequence || navigation.flightLesson?.progress.phase !== 'passed') return false;
+  function advance({allowIncomplete=false}={}) {
+    const attempt=navigation.flightLesson;
+    if (!sequence || !attempt || (!allowIncomplete && attempt.progress.phase !== 'passed')) return false;
     sequence.index++;
     if (sequence.index===sequence.ids.length) {
       const done=sequence.onDone;
@@ -130,7 +131,7 @@ export function createParakitePractice({panel, open, navigation, canvas, challen
     } else prepare(sequence.ids[sequence.index]);
     return true;
   }
-  next.addEventListener('click',advance);
+  next.addEventListener('click',()=>advance({allowIncomplete:true}));
   function startSequence(ids,onDone,onLeave) {
     sequence={ids,index:0,onDone,onLeave};
     return prepare(ids[0]);
@@ -154,7 +155,7 @@ export function createParakitePractice({panel, open, navigation, canvas, challen
     label.hidden=choice.hidden=!!sequence;
     title.hidden=!sequence;
     if(sequence)title.textContent=`${name} · ${sequence.index+1} of ${sequence.ids.length}`;
-    next.hidden=!sequence||phase!=='passed';
+    next.hidden=!sequence;
     next.textContent=sequence?.index===sequence?.ids.length-1?'Fly with Juno':'Next';
     action.hidden=!!sequence&&phase==='passed';
     leave.textContent=sequence?'Leave tutorial':'Free flight';
