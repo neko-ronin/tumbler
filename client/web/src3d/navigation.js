@@ -588,7 +588,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   }
   function endGuidedFlight(){
     flightLesson=null;
-    if(state?.guidedParakite)state={...state,guidedParakite:false,followStep:undefined,rotation:undefined,coupled:undefined};
+    if(state?.guidedParakite)state={...state,guidedParakite:false,followStep:undefined};
   }
   function beginFlightLesson(){
     if(!flightLesson?.ready)return;

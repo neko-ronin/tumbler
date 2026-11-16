@@ -30,7 +30,8 @@ test('legacy dive stores speed, neutral retains it, and progressive flare visibl
 });
 
 test('legacy linked rolls and spirals respond to analogue authority, pay height and damp on release',()=>{
- for(const name of Object.keys(config.modes)){
+ // Parakite no longer has the legacy maneuver modifier; it flies the rotational model.
+ for(const name of Object.keys(config.modes).filter(name=>name!=='parakite')){
   const ordinary=legacyRun(legacyStart(name),{turn:1},2.5),spiral=legacyRun(legacyStart(name),{turn:1,maneuver:true},2.5);
   assert.ok(spiral.bank>ordinary.bank+.12,name);assert.ok(spiral.load>ordinary.load,name);
   assert.ok(head(spiral)<head(ordinary),name);

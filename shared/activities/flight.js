@@ -419,7 +419,7 @@ export function stepFlight(state,input,dt,time,config,windBearing,height,hitTest
   // Hold maneuver for greater weight-shift authority and a less damped roll.
   // Alternating turns carry roll through the centre; release progressively
   // damps the pendulum. No scripted rotation, impulse or energy award.
-  const rotational=(config.experimentalParakite||s.guidedParakite)&&s.mode==='parakite';
+  const rotational=s.mode==='parakite';
   s.maneuver=approach(s.maneuver??0,!rotational&&input.maneuver?1:0,4,dt);
   const bankLimit=mode.max_bank_rad+(mode.maneuver_bank_rad-mode.max_bank_rad)*s.maneuver;
   const targetBank=turn*bankLimit+(s.mode==='paramotor'?s.engine*.045:0)+clamp(air.turbulence*.035,-.12,.12);

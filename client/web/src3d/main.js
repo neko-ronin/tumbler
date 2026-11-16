@@ -417,7 +417,7 @@ export async function main() {
     document.getElementById('weather').value=weather;updateHelp(mode);
   }
   function updateHelp(mode){
-    const rotating=mode==='parakite'&&(experimentalParakite||navigation.state?.guidedParakite);
+    const rotating=mode==='parakite';
     document.body.dataset.rotationalFlight=String(rotating);
     const travel=mode==='parakite'?'forward: raise handles / dive · back: pull / flare':'forward: speedbar · back: brakes';
     const power=mode==='paramotor'?' · LB/RB: motor':'';
@@ -891,7 +891,7 @@ export async function main() {
     if(time-lastReadout>125){
       lastReadout=time;
       const readout=document.getElementById('flight-readout');
-      const rotationalReadout=flight?.mode==='parakite'&&(experimentalParakite||flight.guidedParakite);
+      const rotationalReadout=flight?.mode==='parakite';
       const lessonActive=!!navigation.flightLesson;
       const touchdown=flight?.landingQuality?
         `${flight.landingQuality[0].toUpperCase()+flight.landingQuality.slice(1)} touchdown · ${(flight.landingSpeed??0).toFixed(1)} m/s down · ${((flight.landingGroundSpeed??0)*3.6).toFixed(0)} km/h along ground`+
