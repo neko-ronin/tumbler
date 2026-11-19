@@ -343,7 +343,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "73e36e79bdc472c59a2aa759ccb6576c900781ee3828d76cf0964be85d868c7d"
+      "sha256": "65f8668724bd217fe607ae68e30b9a6c36919567eaa5080753dc1e28e5116cb4"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -506,12 +506,12 @@
       "sha256": "c3139bc801ef267688e5ca01541200a6de731768acd74483da10e7eb5cc361c9"
     },
     {
-      "path": "shared/geometry/arboreal/skybridge.meshopt.glb",
-      "sha256": "fcc0a11fee437c1d7f09127ed6046664cae048627ebe078c2dfde68c3cd51033"
-    },
-    {
       "path": "shared/geometry/arboreal/skybridge_20.meshopt.glb",
       "sha256": "a8622a4e42138352c546cb1204b87dffb0eed9ba01e9e91584b6cfaf28b10992"
+    },
+    {
+      "path": "shared/geometry/arboreal/skybridge_8.meshopt.glb",
+      "sha256": "3f87862c5742378613fd8f909ca10066a772a834b3bc2e5208857323401c927a"
     },
     {
       "path": "shared/geometry/arboreal/village_tree.meshopt.glb",
@@ -607,7 +607,7 @@
     },
     {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "b6282788ec76cbdbc6f3625db9566443ef6eca825d5774886b316dd04b13fe35"
+      "sha256": "a81be72703e2fc9180b489549297ef988e40f033767391bd9814b7cf38abf032"
     },
     {
       "path": "shared/geometry/granite/surface.js",
@@ -615,7 +615,7 @@
     },
     {
       "path": "shared/geometry/granite/terrain_patch.meshopt.glb",
-      "sha256": "3f0a9f39d0d34c3ee8bfea61e50bf92c76d197e23f4239969b9d15e7ca816dac"
+      "sha256": "f3eb5b7cd6c069286c0fba5226547aa1731dee596024e01bd677772d5fe89c2e"
     },
     {
       "path": "shared/geometry/homestead/homestead.meshopt.glb",
@@ -855,11 +855,11 @@
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "29da0d8bbb2ad6cf3ef18f1fc7324522ca519c72850080396ceae7e6672f80ae"
+      "sha256": "759154f9d5cffce4632e8bcb59d751e895d2e736a9607480e4700823cdb63ec7"
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "520e918dbdb03207a4b136147f339897aade880a5a728b370b5f74db104ae229"
+      "sha256": "8eca3d128cab92426f84ea27e8c3c9699bd3f04db41796716ab810addad3e5e3"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -879,8 +879,8 @@
     }
   ],
   "packed": {
-    "shared/geometry/arboreal/skybridge.glb": "shared/geometry/arboreal/skybridge.meshopt.glb",
     "shared/geometry/arboreal/skybridge_20.glb": "shared/geometry/arboreal/skybridge_20.meshopt.glb",
+    "shared/geometry/arboreal/skybridge_8.glb": "shared/geometry/arboreal/skybridge_8.meshopt.glb",
     "shared/geometry/arboreal/village_tree.glb": "shared/geometry/arboreal/village_tree.meshopt.glb",
     "shared/geometry/arboreal/village_tree_high.glb": "shared/geometry/arboreal/village_tree_high.meshopt.glb",
     "shared/geometry/arboreal/village_tree_low.glb": "shared/geometry/arboreal/village_tree_low.meshopt.glb",
@@ -936,7 +936,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "8d010926",
+  "commit": "244bd32d",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
@@ -945,7 +945,7 @@
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "29da0d8bbb2a"
+      "sha256_12": "759154f9d5cf"
     },
     {
       "path": "shared/world/out/fields_albedo.png",

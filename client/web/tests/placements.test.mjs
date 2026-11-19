@@ -92,7 +92,12 @@ test("the placement record agrees with the ground it claims to stand on", () => 
   const grounded = placement.instances.filter((instance) => instance.ground_z_m != null);
   assert.ok(grounded.some(i=>i.asset.startsWith("redwood/")),"the ground check must include the forest");
   const differences = grounded.map((instance) => {
-    assert.equal(instance.ground_z_m, instance.position_m[2]);
+    // A village trunk may stand up to 0.7 m into its slope so its skybridges land level
+    // (shared/geometry/arboreal/arrangement.py SINK_MAX_M); everything else sits exactly on its ground.
+    if (instance.kind === "arboreal_tree") {
+      const sink = instance.ground_z_m - instance.position_m[2];
+      assert.ok(sink >= 0 && sink <= 0.7 + 1e-6, `village trunk sink ${sink} m is outside 0..0.7 m`);
+    } else assert.equal(instance.ground_z_m, instance.position_m[2]);
     const height = ground.height(instance.position_m[0], instance.position_m[1]);
     assert.notEqual(height, null, "every grounded placement must have sampled terrain");
     return Math.abs(height - instance.ground_z_m);

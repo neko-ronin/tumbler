@@ -4,7 +4,7 @@
     "arboreal_tree": 6,
     "blimp": 24,
     "dome": 5,
-    "forest_tree": 6715,
+    "forest_tree": 6717,
     "hardstanding": 2,
     "homestead": 25,
     "lake": 1,
@@ -964,7 +964,7 @@
     {
       "asset": "arboreal/village_tree_low.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 49.8032,
+      "ground_z_m": 50.2237,
       "kind": "arboreal_tree",
       "parts": [
         {
@@ -977,9 +977,9 @@
         }
       ],
       "position_m": [
-        -722.0,
-        426.0,
-        49.8032
+        -719.0,
+        425.0,
+        50.1237
       ],
       "scale": [
         1.0,
@@ -991,12 +991,12 @@
         "B1"
       ],
       "version": 3,
-      "yaw_deg": 144.154
+      "yaw_deg": 50.154
     },
     {
       "asset": "arboreal/village_tree_low.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 51.5953,
+      "ground_z_m": 50.7919,
       "kind": "arboreal_tree",
       "parts": [
         {
@@ -1009,9 +1009,9 @@
         }
       ],
       "position_m": [
-        -690.0,
-        428.0,
-        51.5953
+        -695.0,
+        423.0,
+        50.0919
       ],
       "scale": [
         1.0,
@@ -1023,12 +1023,12 @@
         "B2"
       ],
       "version": 3,
-      "yaw_deg": 337.367
+      "yaw_deg": 209.367
     },
     {
       "asset": "arboreal/village_tree_mid.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 50.4967,
+      "ground_z_m": 50.2495,
       "kind": "arboreal_tree",
       "parts": [
         {
@@ -1041,9 +1041,9 @@
         }
       ],
       "position_m": [
-        -720.0,
-        451.0,
-        50.4967
+        -722.0,
+        450.0,
+        49.5495
       ],
       "scale": [
         1.0,
@@ -1055,12 +1055,12 @@
         "B3"
       ],
       "version": 3,
-      "yaw_deg": 24.246
+      "yaw_deg": 14.246
     },
     {
       "asset": "arboreal/village_tree.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 53.4493,
+      "ground_z_m": 53.8218,
       "kind": "arboreal_tree",
       "parts": [
         {
@@ -1073,9 +1073,9 @@
         }
       ],
       "position_m": [
-        -696.0,
-        472.0,
-        53.4493
+        -689.0,
+        469.0,
+        53.8218
       ],
       "scale": [
         1.0,
@@ -1087,12 +1087,12 @@
         "B4"
       ],
       "version": 3,
-      "yaw_deg": 56.703
+      "yaw_deg": 48.703
     },
     {
       "asset": "arboreal/village_tree.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 53.7609,
+      "ground_z_m": 54.1651,
       "kind": "arboreal_tree",
       "parts": [
         {
@@ -1105,9 +1105,9 @@
         }
       ],
       "position_m": [
-        -721.0,
-        491.0,
-        53.7609
+        -717.0,
+        494.0,
+        54.0651
       ],
       "scale": [
         1.0,
@@ -1119,12 +1119,12 @@
         "B5"
       ],
       "version": 3,
-      "yaw_deg": 73.891
+      "yaw_deg": 211.891
     },
     {
       "asset": "arboreal/village_tree_high.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 56.0243,
+      "ground_z_m": 55.1076,
       "kind": "arboreal_tree",
       "parts": [
         {
@@ -1137,9 +1137,9 @@
         }
       ],
       "position_m": [
-        -688.0,
-        509.0,
-        56.0243
+        -693.0,
+        498.0,
+        54.4076
       ],
       "scale": [
         1.0,
@@ -1151,10 +1151,10 @@
         "B6"
       ],
       "version": 3,
-      "yaw_deg": 110.613
+      "yaw_deg": 8.613
     },
     {
-      "asset": "arboreal/skybridge.glb",
+      "asset": "arboreal/skybridge_8.glb",
       "facing_bearing_deg": null,
       "ground_z_m": null,
       "kind": "arboreal_skybridge",
@@ -1169,9 +1169,9 @@
         }
       ],
       "position_m": [
-        -705.933,
-        425.951,
-        52.2716
+        -706.477,
+        425.555,
+        68.2078
       ],
       "scale": [
         1.0,
@@ -1181,10 +1181,10 @@
       "tags": [
         "B_canyon",
         "B1-B2",
-        "dwelling_0_0"
+        "dwelling_2_2"
       ],
       "version": 3,
-      "yaw_deg": 93.458
+      "yaw_deg": 117.734
     },
     {
       "asset": "arboreal/skybridge_20.glb",
@@ -1202,9 +1202,9 @@
         }
       ],
       "position_m": [
-        -704.281,
-        440.297,
-        67.4024
+        -709.212,
+        435.539,
+        67.9207
       ],
       "scale": [
         1.0,
@@ -1214,13 +1214,13 @@
       "tags": [
         "B_canyon",
         "B2-B3",
-        "dwelling_3_0"
+        "dwelling_2_0"
       ],
       "version": 3,
-      "yaw_deg": 235.61
+      "yaw_deg": 217.575
     },
     {
-      "asset": "arboreal/skybridge.glb",
+      "asset": "arboreal/skybridge_20.glb",
       "facing_bearing_deg": null,
       "ground_z_m": null,
       "kind": "arboreal_skybridge",
@@ -1235,9 +1235,9 @@
         }
       ],
       "position_m": [
-        -708.311,
-        461.895,
-        77.7215
+        -705.677,
+        459.797,
+        77.6356
       ],
       "scale": [
         1.0,
@@ -1250,40 +1250,7 @@
         "dwelling_1_3"
       ],
       "version": 3,
-      "yaw_deg": 139.295
-    },
-    {
-      "asset": "arboreal/skybridge.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": null,
-      "kind": "arboreal_skybridge",
-      "parts": [
-        {
-          "mesh": "skybridge",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -709.211,
-        480.479,
-        92.7923
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "tags": [
-        "B_canyon",
-        "B4-B5",
-        "dwelling_6_5"
-      ],
-      "version": 3,
-      "yaw_deg": 232.682
+      "yaw_deg": 123.596
     },
     {
       "asset": "arboreal/skybridge_20.glb",
@@ -1301,9 +1268,42 @@
         }
       ],
       "position_m": [
-        -704.83,
-        500.486,
-        102.872
+        -703.919,
+        480.596,
+        92.5435
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tags": [
+        "B_canyon",
+        "B4-B5",
+        "dwelling_6_6"
+      ],
+      "version": 3,
+      "yaw_deg": 231.454
+    },
+    {
+      "asset": "arboreal/skybridge_8.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": null,
+      "kind": "arboreal_skybridge",
+      "parts": [
+        {
+          "mesh": "skybridge",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -705.525,
+        497.646,
+        102.8364
       ],
       "scale": [
         1.0,
@@ -1313,10 +1313,10 @@
       "tags": [
         "B_canyon",
         "B5-B6",
-        "dwelling_7_2"
+        "dwelling_8_4"
       ],
       "version": 3,
-      "yaw_deg": 118.582
+      "yaw_deg": 82.195
     },
     {
       "asset": "dome/dome.glb",
@@ -3653,7 +3653,7 @@
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 56.3576,
+      "ground_z_m": 51.5814,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -3666,9 +3666,9 @@
         }
       ],
       "position_m": [
-        -675.8822,
-        452.4964,
-        56.3576
+        -741.3138,
+        478.3033,
+        51.5814
       ],
       "scale": [
         0.28,
@@ -3706,9 +3706,9 @@
         }
       ],
       "position_m": [
-        -598.2834,
-        445.7074,
-        251.8586
+        -663.7149,
+        471.5143,
+        247.0824
       ],
       "scale": [
         0.28,
@@ -103244,6 +103244,40 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
+      "ground_z_m": 46.8973,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -738.2321,
+        413.6801,
+        46.8973
+      ],
+      "scale": [
+        0.545864,
+        0.545864,
+        0.545864
+      ],
+      "tags": [
+        "understory",
+        "meadow_edge",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
       "ground_z_m": 47.8412,
       "kind": "forest_tree",
       "parts": [
@@ -104393,6 +104427,40 @@
         "meadow_edge",
         "forest",
         "redwood_canopy"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/silver_fir.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 53.3418,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "silver_fir",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -671.1942,
+        438.3404,
+        53.3418
+      ],
+      "scale": [
+        0.67041,
+        0.67041,
+        0.67041
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "silver_fir"
       ],
       "version": 3,
       "yaw_deg": 0.0

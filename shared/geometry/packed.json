@@ -19,6 +19,15 @@
       "bytes": 62948,
       "sha256": "a8622a4e42138352c546cb1204b87dffb0eed9ba01e9e91584b6cfaf28b10992"
     },
+    "arboreal/skybridge_8.glb": {
+      "packed": "arboreal/skybridge_8.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.251,
+      "source_bytes": 222092,
+      "source_sha256": "17336579ccfc3c480c056ce8adb80bb93ec785e52935f0e6de776a171198ef3a",
+      "bytes": 63224,
+      "sha256": "3f87862c5742378613fd8f909ca10066a772a834b3bc2e5208857323401c927a"
+    },
     "arboreal/village_tree.glb": {
       "packed": "arboreal/village_tree.meshopt.glb",
       "mode": "float",
@@ -383,10 +392,10 @@
       "packed": "granite/terrain_patch.meshopt.glb",
       "mode": "exact",
       "worst_mm": 0,
-      "source_bytes": 20940420,
-      "source_sha256": "0359780febe44f5d8b0df71c7bef550179ba31fd387f591fbf7be23001b3d537",
-      "bytes": 7312944,
-      "sha256": "3f0a9f39d0d34c3ee8bfea61e50bf92c76d197e23f4239969b9d15e7ca816dac"
+      "source_bytes": 20897412,
+      "source_sha256": "d2bb401fb8e75300102aa584b5eb323eeaf2afa4bb84b464d8da10d087b7e137",
+      "bytes": 7297416,
+      "sha256": "f3eb5b7cd6c069286c0fba5226547aa1731dee596024e01bd677772d5fe89c2e"
     },
     "homestead/homestead.glb": {
       "packed": "homestead/homestead.meshopt.glb",
