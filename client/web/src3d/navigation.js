@@ -31,6 +31,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   let mode='orbit',state=null,previousFlight=null,accumulator=0,time=0,yaw=0,pitch=0,drag=false,view='chase',hop=false,snap=true,shot=null,preferredFlightMode='paraglider';
   let weather='soaring',timeOfDay='afternoon',siteIndex=0,feedbackTime=0,effects=1,aimY=null,aimV=0,challengeId='';
   let flightLesson=null;
+  const parakiteOnly=l=>l===config.parakite_practice_launch||!!config.parakite_launches?.includes(l);
   // The air as it is now: the world's own wind record, plus which phase of the
   // day it is being sampled in. One record is handed to the flight step, the
   // scenery sampler and so the generators, so nothing in the scene can be
@@ -150,7 +151,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       for(const [name,mesh] of Object.entries(ride.meshes))mesh.visible=name===next;return;
     }
     siteIndex=Number(site)||0;
-    if(!config.launches[siteIndex]||next!=='parakite'&&config.launches[siteIndex]===config.parakite_practice_launch)siteIndex=0;
+    if(!config.launches[siteIndex]||next!=='parakite'&&parakiteOnly(config.launches[siteIndex]))siteIndex=0;
     state=startFlightChallenge(launchFlight(config,next,config.launches[siteIndex],height,weather),challengeId,config);yaw=0;pitch=-.34;
     options.onFlightChange?.(next,siteIndex,weather);
     updateFlightPresentation(0);
@@ -251,7 +252,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
         else changeHarness();}
       if(previous||next){const i=flightModes.indexOf(mode);select(flightModes[(Math.max(0,i)+(next?1:-1)+flightModes.length)%flightModes.length],siteIndex);}
       if(up||down){
-        const count=config.launches.length-Number(mode!=='parakite'&&config.launches.at(-1)===config.parakite_practice_launch);
+        const count=mode==='parakite'?config.launches.length:config.launches.filter(l=>!parakiteOnly(l)).length;
         siteIndex=(siteIndex+(up?-1:1)+count)%count;if(config.modes[mode])select(mode,siteIndex);
       }
       if(primaryEdge&&flightLesson){

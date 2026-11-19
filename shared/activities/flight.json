@@ -93,6 +93,16 @@
       "heading_deg": 320
     }
   ],
+  "parakite_launches": [
+    {
+      "id": "tumble-hill",
+      "label": "Tumble Hill",
+      "xy_m": [-928, 976],
+      "heading_deg": 184,
+      "clearance_m": 8,
+      "terrain_protection": false
+    }
+  ],
   "parakite_practice_launch": {
     "id": "lower-north-bench",
     "label": "Lower North Bench",

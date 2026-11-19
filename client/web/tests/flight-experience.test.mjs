@@ -149,3 +149,18 @@ test('the T5 launch belongs to the core trailhead and clears actual rising terra
  }
  assert.ok(s.distance>150);
 });
+test('the Tumble Hill parakite launch glides clear of the apron and stays parakite-only',async()=>{
+ const {GroundSampler,HeightGrid}=await import('../src3d/heights.js');
+ const read=p=>JSON.parse(readFileSync(new URL(p,import.meta.url))),manifest=read('../data/viewer.json'),world=read('../../../shared/world/worldmap.json');
+ const grid=(path,metadata)=>{const b=readFileSync(new URL(path,import.meta.url));return new HeightGrid({...metadata,values:new Float32Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength))});};
+ const ground=new GroundSampler(grid('../data/heightmap.f32',manifest.height_grids.block),grid('../data/farfield.f32',manifest.height_grids.far_field));
+ const height=(x,y)=>ground.height(x,y)??0,launch=config.parakite_launches.find(l=>l.id==='tumble-hill');
+ assert.ok(launch&&!config.launches.includes(launch));
+ assert.deepEqual(launch.xy_m,read('../../../shared/play/tumble-hill.json').top_xy_m,'launches from the top of Tumble Hill');
+ let s=launchFlight(config,'parakite',launch,height,'calm');
+ for(let i=0;i<1200;i++){
+  s=stepFlight(s,{},1/120,i/120,config,world.wind.direction_deg,height);
+  assert.equal(s.grounded,false,'the first ten seconds must clear the apron');
+ }
+ assert.ok(s.distance>150);
+});

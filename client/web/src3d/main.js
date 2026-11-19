@@ -292,10 +292,11 @@ export async function main() {
   const balanceSurface=(x,y)=>snowAt(x,y)>.03?'snow':closeMeadow.contains(x,y)||forestSoil.sample(x,y)>.48||surfaceAt(x,y)==='trail'?'grass':'granite';
   const localHost=/^(localhost|127\.0\.0\.1|\[::1\]|.+\.localhost)$/.test(location.hostname);
   const experimentalParakite=localHost&&new URLSearchParams(location.search).has('rotational-parakite');
+  // Parakite-only sites sit after the shared launches, so a launch index means the same thing in every mode.
   const practiceLaunch=experimentalParakite?flightConfig.parakite_practice_launch:null;
-  const practiceSite=practiceLaunch?flightConfig.launches.length:-1;
-  const playerFlight=experimentalParakite?{...flightConfig,experimentalParakite,
-    launches:practiceLaunch?[...flightConfig.launches,practiceLaunch]:flightConfig.launches}:flightConfig;
+  const parakiteSites=[...flightConfig.parakite_launches??[],...practiceLaunch?[practiceLaunch]:[]];
+  const practiceSite=practiceLaunch?flightConfig.launches.length+parakiteSites.length-1:-1;
+  const playerFlight={...flightConfig,experimentalParakite,launches:[...flightConfig.launches,...parakiteSites]};
   const navigation=createNavigation(camera,canvas,controls,ground,playerFlight,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,balance:{config:balanceConfig,surfaceAt:balanceSurface},firstPersonEye:()=>firstPerson.eye,firstPersonCollar:()=>firstPerson.collarBounds,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z),velocity:body.state.coupled?.pilotVelocity}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>{const sample=paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view);paraStreaks.update(sample,camera,view,effects);return sample;},haptics:()=>document.getElementById('haptics').checked});
   // The world's generators turn in the same air the wing does. They are not
   // decoration on a timer: calm air slows them and the afternoon's up-valley
@@ -400,7 +401,7 @@ export async function main() {
   courseRetry.addEventListener('click',()=>{if(onPracticeFlight()||scenicCourse&&flightConfig.modes[navigation.mode])setActivity(navigation.mode);});
   function showStarts(mode){
     const list=rideModes.includes(mode)?rideConfig.starts.filter(s=>s.mode===mode).map(s=>[s.id,s.label]):flightConfig.launches.map((l,i)=>[String(i),l.label]);
-    if(mode==='parakite'&&practiceLaunch)list.push([String(practiceSite),practiceLaunch.label]);
+    if(mode==='parakite')list.push(...parakiteSites.map((l,i)=>[String(flightConfig.launches.length+i),l.label]));
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
@@ -625,10 +626,12 @@ export async function main() {
   document.body.append(tumbleLabel);
   function setTumbleMode(mode){character.spike.mode=mode;folk.api.tumbleMode=mode;tumbleLabel.textContent=`Tumble: ${mode==='s0'?'S0 spring body':'S1 scrubbed clips'} · T switches`;}
   setTumbleMode(character.spike.mode);
-  // Taking to the air as a player: the parakite always leaves North Wall, the one launch, and flies
-  // its route; the paramotor unfolds wherever he stands, if the ground there will take it.
+  // Taking to the air as a player: the parakite leaves North Wall, the route's launch, unless asked for
+  // a parakite-only site such as Tumble Hill; the paramotor unfolds wherever he stands, if the ground there will take it.
   const parakiteSite=String(flightConfig.launches.findIndex(l=>l.id===speedflying.courses[0].launch_id));
-  function startParakite(){if(navigation.mode!=='orbit')setActivity('orbit');showStarts('parakite');siteSelect.value=parakiteSite;setActivity('parakite');if(navigation.mode==='parakite')passTime();}
+  function startParakite(id){
+    const site=id?String(playerFlight.launches.findIndex(l=>l.id===id)):parakiteSite;if(site==='-1')throw new Error(`Unknown parakite launch ${id}`);
+    if(navigation.mode!=='orbit')setActivity('orbit');showStarts('parakite');siteSelect.value=site;setActivity('parakite');if(navigation.mode==='parakite')passTime();}
   // Why the paramotor cannot unfold right now, in a player's words, or null when it can.
   function paramotorRefusal(){const s=navigation.state;
     if(navigation.mode!=='walk')return navigation.mode==='gondola'?'Get off the gondola first':'Land and unhook first';
@@ -645,7 +648,7 @@ export async function main() {
       if(spawn)navigation.placeOnFoot(spawn[0],spawn[1],pose.heading);else navigation.select('walk');
       navigation.cancelShot();syncFlightUI('walk','here',navigation.weather);
     }});
-  const playerUI=createPlayerUI({places:places.places,arriveAt,startParakite,startParamotor,paramotorRefusal,navigation,ground,snowAt,
+  const playerUI=createPlayerUI({places:places.places,arriveAt,startParakite,navigation,ground,snowAt,
     learnParakite:()=>parakiteTour.offer({force:true}),
     flightStatsDock:()=>parakitePractice.statsDock??parakiteTour.statsDock,
     trees:placement.instances.filter(i=>i.asset.startsWith('redwood/')).map(i=>i.position_m),worldmap,course:speedflying.courses[0],

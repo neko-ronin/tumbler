@@ -31,7 +31,7 @@ const CONTROLS={
 };
 const MENU_CONTROLS={
   map:[['Choose a place',['Arrows','WASD','Click'],['D-pad','L stick']],['Travel there',['Enter'],['A']],
-    ['Fly the parakite from North Wall',['L'],['Y']],['Paramotor from where you stand',['P'],['X']],['All controls',['Tab'],['RB']],['Back to the valley',['Esc'],['B','Menu']]],
+    ['Fly the parakite from North Wall',['L'],['Y']],['Fly the parakite from Tumble Hill',['H'],['X']],['All controls',['Tab'],['RB']],['Back to the valley',['Esc'],['B','Menu']]],
   controls:[['Back to the map',['Tab'],['LB']],['Back to the valley',['Esc'],['B','Menu']]],
 };
 
@@ -47,7 +47,7 @@ function legend(rows,{caption}={}){
     el('div',{className:'control-head'},el('span',{textContent:''}),el('span',{textContent:'Keyboard'}),el('span',{textContent:'Controller'})),...rows.map(controlRow));
 }
 
-export function createPlayerUI({places,arriveAt,startParakite,startParamotor,paramotorRefusal,navigation,ground,snowAt,trees,worldmap,course,launch,timeOfDay,canvas,learnParakite,flightStatsDock}){
+export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,snowAt,trees,worldmap,course,launch,timeOfDay,canvas,learnParakite,flightStatsDock}){
   const root=el('div',{className:'player-ui'});
   const card=el('aside',{className:'key-card',ariaLabel:'Controls'});
   const toast=el('div',{className:'arrival',ariaLive:'polite'});
@@ -127,23 +127,20 @@ export function createPlayerUI({places,arriveAt,startParakite,startParamotor,par
   function select(p){selected=p;for(const [q,b] of placeMarkers)b.setAttribute('aria-current',String(q===p));renderSide();}
   function nearestTo(){const s=navigation.state;if(!s)return selected;return places.reduce((a,p)=>Math.hypot(p.arrive_xy_m[0]-s.x,p.arrive_xy_m[1]-s.y)<Math.hypot(a.arrive_xy_m[0]-s.x,a.arrive_xy_m[1]-s.y)?p:a);}
   function renderSide(){
-    const refusal=paramotorRefusal(),paramotor=refusal===null;paramotorShown=refusal;
     const actions=[el('button',{type:'button',className:'action action-primary',onclick:travel},'Travel to ',selected.label),
       el('button',{type:'button',className:'action',onclick:()=>{close();startParakite();}},'Fly the parakite from North Wall'),
-      el('button',{type:'button',className:'action',disabled:!paramotor,onclick:paramotorNow},paramotor?'Paramotor from where you stand':`Paramotor: ${refusal.toLowerCase()}`)];
+      el('button',{type:'button',className:'action',onclick:()=>{close();startParakite('tumble-hill');}},'Fly the parakite from Tumble Hill')];
     if(learnParakite&&navigation.mode==='walk')actions.push(el('button',{type:'button',className:'action',onclick:()=>{
       close();if(!learnParakite())notice('Look for Juno on open ground.');
     }},'Learn parakiting with Juno'));
     side.replaceChildren(el('h3',{className:`side-name side-${selected.kind}`,textContent:selected.label}),el('p',{className:'side-about',textContent:selected.about}),
-      el('div',{className:'actions'},...actions),legend(MENU_CONTROLS.map.filter(([a])=>paramotor||!a.startsWith('Paramotor')),{caption:'This map'}));
+      el('div',{className:'actions'},...actions),legend(MENU_CONTROLS.map,{caption:'This map'}));
   }
-  let paramotorShown;
-  function paramotorNow(){close();const refused=startParamotor();if(refused)notice(refused);}
   function notice(text){toast.replaceChildren(el('span',{className:'notice',textContent:text}));toast.classList.remove('shown');void toast.offsetWidth;toast.classList.add('shown');
   }
   function renderControls(){
     controlsSheet.replaceChildren(el('h2',{className:'controls-title',textContent:'Controls'}),
-      el('div',{className:'controls-grid'},...['walk','paramotor','parakite'].map(m=>el('div',{className:'controls-group'},el('h3',{textContent:CONTROLS[m].title}),legend(CONTROLS[m].rows)))),
+      el('div',{className:'controls-grid'},...['walk','parakite'].map(m=>el('div',{className:'controls-group'},el('h3',{textContent:CONTROLS[m].title}),legend(CONTROLS[m].rows)))),
       legend(MENU_CONTROLS.controls,{caption:'This page'}));
   }
   function show(name){sheetName=name;sheet.hidden=name!=='map';controlsSheet.hidden=name!=='controls';if(name==='controls')renderControls();else{renderSide();layout();}}
@@ -207,13 +204,12 @@ export function createPlayerUI({places,arriveAt,startParakite,startParamotor,par
     if(e.code==='Tab'){show(sheetName==='map'?'controls':'map');return;}
     if(sheetName!=='map')return;
     const dir={ArrowUp:[0,1],KeyW:[0,1],ArrowDown:[0,-1],KeyS:[0,-1],ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0]}[e.code];
-    if(dir)move(...dir);else if(e.key==='Enter')travel();else if(e.code==='KeyL'){close();startParakite();}else if(e.code==='KeyP'&&paramotorRefusal()===null)paramotorNow();
+    if(dir)move(...dir);else if(e.key==='Enter')travel();else if(e.code==='KeyL'){close();startParakite();}else if(e.code==='KeyH'){close();startParakite('tumble-hill');}
   },true);
   const held=new Set();let stickReady=true;
   function poll(now){
     renderCard();
     renderFlightStats(now);
-    if(open&&sheetName==='map'&&paramotorRefusal()!==paramotorShown)renderSide();
     if(active()){
       const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
       const edge=i=>{const now=!!pad?.buttons[i]?.pressed,was=held.has(i);now?held.add(i):held.delete(i);return now&&!was;};
@@ -225,7 +221,7 @@ export function createPlayerUI({places,arriveAt,startParakite,startParamotor,par
           const ax=pad?.axes[0]??0,ay=pad?.axes[1]??0,stick=Math.hypot(ax,ay)>.6;
           if(stick&&stickReady){move(ax,-ay);stickReady=false;}else if(!stick)stickReady=true;
           if(edge(12))move(0,1);if(edge(13))move(0,-1);if(edge(14))move(-1,0);if(edge(15))move(1,0);
-          if(edge(0))travel();else if(edge(3)){close();startParakite();}else if(edge(2)&&paramotorRefusal()===null)paramotorNow();else if(edge(5))show('controls');
+          if(edge(0))travel();else if(edge(3)){close();startParakite();}else if(edge(2)){close();startParakite('tumble-hill');}else if(edge(5))show('controls');
         }else if(edge(4))show('map');
       }
     }
