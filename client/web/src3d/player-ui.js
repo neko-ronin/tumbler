@@ -15,10 +15,14 @@ const CONTROLS={
     ['Walk, runs by default',['WASD'],['L stick, push fully to run']],['Look',['Drag','Arrows'],['R stick']],
     ['Jump',['Space'],['A']],['Tuck and roll, held',['Shift'],['LB']],['Dive in water, press to toggle',['Shift'],[]],['Slide',['Ctrl'],['R3']],
     ['Draw the katana',['F'],['Y']],['Slash',['Q','Click'],['B']],['Charge, held',['R'],['RT']],
-    ['Grab a tree',['E'],['X']],['First person',['V'],['L3']],['Board the gondola, on a station deck',['G'],['RB']],['Map',['Esc','M'],['Menu']]]},
+    ['Grab a tree',['E'],['X']],['Launch from a giant redwood crown',['1','2','3'],['D-pad','X']],['First person',['V'],['L3']],['Board the gondola, on a station deck',['G'],['RB']],['Map',['Esc','M'],['Menu']]]},
   harness:{title:'Paramotor, on the ground',rows:[
     ['Start the take-off run',['Space'],['A']],['Steer',['A','D'],['L stick']],['Motor up, down',['R','F'],['RB','LB']],
     ['Unhook and walk',['E'],['X']],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
+  paraglider:{title:'Paraglider',rows:[
+    ['Steer',['A','D'],['L stick']],['Speed bar, brakes',['W','S'],['L stick']],['Brake handles, left and right',['J','K'],['LT','RT']],
+    ['Wingovers',['Shift','A','D'],['B','L stick']],['View',['V'],['Y']],
+    ['Look',['Drag','Arrows'],['R stick']],['After landing, unhook',['E'],['X']],['Map',['Esc','M'],['Menu']]]},
   paramotor:{title:'Paramotor',rows:[
     ['Steer',['A','D'],['L stick']],['Speed bar, brakes',['W','S'],['L stick']],['Brake handles, left and right',['J','K'],['LT','RT']],
     ['Motor up, down',['R','F'],['RB','LB']],['Wingovers',['Shift','A','D'],['B','L stick']],['View',['V'],['Y']],
@@ -38,6 +42,8 @@ const MENU_CONTROLS={
 const el=(tag,props={},...children)=>{const n=Object.assign(document.createElement(tag),props);n.append(...children.filter(c=>c!=null));return n;};
 const glyph=(label,kind)=>el('span',{className:`glyph glyph-${kind} glyph-${label.length>2?'word':'key'}`,textContent:label});
 const paraModes=new Set(['paraglider','parakite','paramotor']);
+// What a giant redwood's crown perch offers, in the order of its number keys.
+const PERCH_MODES=[['parakite','Parakite'],['paraglider','Paraglider'],['paramotor','Paramotor']];
 function controlRow([action,keys,pad]){
   const keyCell=keys.length?keys.map(k=>glyph(k,'key')):[el('span',{className:'glyph-none',textContent:'not on the keyboard'})];
   return el('div',{className:'control-row'},el('span',{className:'control-action',textContent:action}),el('span',{className:'control-keys'},...keyCell),el('span',{className:'control-pad'},...pad.map(b=>glyph(b,'pad'))));
@@ -59,7 +65,10 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   }));
   const flightStats=el('aside',{className:'player-flight-stats',hidden:true,ariaLabel:'Para-flight stats'},
     el('h3',{textContent:'Para-flight'}),el('dl',{},...[...statRows.values()].map(({row})=>row)));
-  root.append(card,flightStats,toast,menu);document.body.append(root);
+  const perchRows=PERCH_MODES.map(([mode,label],i)=>el('li',{},el('button',{type:'button',className:'perch-option',onclick:()=>navigation.launchFromTree(mode)},glyph(String(i+1),'key'),el('span',{textContent:label}))));
+  const perch=el('aside',{className:'perch-launch',hidden:true,ariaLabel:'Launch from the crown'},el('h3',{textContent:'Crown perch · take to the air'}),el('ol',{},...perchRows),
+    el('p',{className:'perch-pad'},glyph('D-pad','pad'),' choose ',glyph('X','pad'),' launch ',glyph('B','pad'),' close'));
+  root.append(card,flightStats,perch,toast,menu);document.body.append(root);
 
   // ---- the map, drawn once from the world
   const pts=[...places.map(p=>p.arrive_xy_m),...course.control_xy_m];
@@ -172,6 +181,27 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
     card.classList.remove('folded');card.replaceChildren(el('h3',{textContent:CONTROLS[k].title}),legend(CONTROLS[k].rows));
     foldTimer=setTimeout(()=>{if(cardKey===k){card.classList.add('folded');card.replaceChildren(el('h3',{textContent:CONTROLS[k].title}),folded());}},12000);}
 
+  // ---- the crown perch prompt
+  // Shown on arriving at a launch perch, faded after a few seconds. The number keys launch at any
+  // time on the perch; on a controller the D-pad picks a mode (the one X launches, through the
+  // navigation's own tree launch) and wakes the prompt, and B puts it away.
+  let perched=false,perchFade=0;
+  const perchedNow=()=>navigation.mode==='walk'&&navigation.state?.mode==='climb'&&!!navigation.state.launchReady;
+  function wakePerch(){perch.hidden=false;perch.classList.remove('faded');clearTimeout(perchFade);perchFade=setTimeout(()=>perch.classList.add('faded'),5000);}
+  function sleepPerch(){perch.hidden=true;clearTimeout(perchFade);}
+  function renderPerch(pad,edge){
+    const now=active()&&!open&&perchedNow();
+    if(now!==perched){perched=now;now?wakePerch():sleepPerch();}
+    if(!now)return;
+    const chosen=Math.max(0,PERCH_MODES.findIndex(([m])=>m===navigation.preferredFlightMode));
+    perch.classList.toggle('pad',!!pad);
+    perchRows.forEach((row,i)=>row.classList.toggle('chosen',!!pad&&i===chosen));
+    if(!pad)return;
+    const step=edge(12)?-1:edge(13)?1:0;
+    if(step){navigation.preferredFlightMode=PERCH_MODES[(chosen+step+PERCH_MODES.length)%PERCH_MODES.length][0];wakePerch();}
+    if(edge(1))sleepPerch();
+  }
+
   let nextStats=0;
   function renderFlightStats(now){
     const host=flightStatsDock?.()??root;
@@ -198,6 +228,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   const active=()=>document.body.dataset.uiMode==='player';
   window.addEventListener('keydown',e=>{
     if(!active()||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.metaKey||e.ctrlKey)return;
+    if(!open&&/^Digit[123]$/.test(e.code)&&!e.repeat&&perchedNow()){e.preventDefault();navigation.launchFromTree(PERCH_MODES[e.code.at(-1)-1][0]);return;}
     if(!open){if((e.key==='Escape'||e.code==='KeyM')&&!e.repeat){e.preventDefault();openMenu();}return;}
     e.preventDefault();e.stopImmediatePropagation();
     if(e.key==='Escape'){close();return;}
@@ -214,7 +245,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
       const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
       const edge=i=>{const now=!!pad?.buttons[i]?.pressed,was=held.has(i);now?held.add(i):held.delete(i);return now&&!was;};
       const menuButton=edge(9);
-      if(!open){if(menuButton)openMenu();}
+      if(!open){if(menuButton)openMenu();else renderPerch(pad,edge);}
       else{
         if(menuButton||edge(1))close();
         else if(sheetName==='map'){
@@ -225,6 +256,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
         }else if(edge(4))show('map');
       }
     }
+    if(!active()||open)renderPerch(null,()=>false);
     requestAnimationFrame(poll);
   }
   requestAnimationFrame(poll);

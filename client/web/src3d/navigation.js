@@ -213,7 +213,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(launched){flightLesson=null;state=startFlightChallenge(launched,challengeId,config);previousFlight=null;accumulator=0;message='';return true;}
     message=relaunchRefusal(state,characterConfig.walk,config,walkHeight,hitTest)==='canopy'?'No room for the wing here':'Need clear, stable ground and room ahead to launch';return false;
   }
-  function launchFromTree(){
+  /** From a launch-ready crown perch, in `next` or the last flown mode; false anywhere else. */
+  function launchFromTree(next=preferredFlightMode){
+    if(mode!=='walk'||state?.mode!=='climb'||!state.launchReady||!config.modes[next])return false;
+    preferredFlightMode=next;
     const launched=launchTreeFlight(config,preferredFlightMode,state,height,weather);
     clear();mode=preferredFlightMode;state=startFlightChallenge(launched,challengeId,config);message='';parkedWing=null;
     rig.visible=true;ride.rig.visible=false;character.object.visible=true;orbit.enabled=false;snap=true;view='chase';yaw=0;pitch=-.34;
@@ -656,7 +659,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;drag=false;
   }
   function suspend(on){suspended=!!on;if(suspended){keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;}}
-  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,introShot,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
+  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,introShot,update,poll,clear,changeHarness,launchHere,launchFromTree,get preferredFlightMode(){return preferredFlightMode;},set preferredFlightMode(next){if(config.modes[next])preferredFlightMode=next;},carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
     prepareFlightLesson,beginFlightLesson,placeGuidedFlight,endGuidedFlight,endFlightLesson(){flightLesson=null;},get flightLesson(){return flightLesson;},
     dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

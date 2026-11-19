@@ -187,6 +187,15 @@
     .glyph-pad { border:1.2px solid var(--ink); border-radius:999px; background:#26291f; color:var(--paper); }
     .glyph-pad.glyph-key { min-width:1.7em; padding:0; }
     .glyph-none { font:italic 12px var(--map-face); color:var(--ink-soft); }
+    .perch-launch { position:fixed; z-index:6; right:20px; top:50%; transform:translateY(-50%); padding:12px 14px 10px; background:#e9ecddeb; border:1.5px solid var(--ink); box-shadow:3px 3px 0 #26291f22; transition:opacity .8s ease; }
+    .perch-launch.faded { opacity:0; pointer-events:none; }
+    .perch-launch h3 { margin:0 0 8px; font:600 15px/1.2 var(--map-face); }
+    .perch-launch ol { margin:0; padding:0; list-style:none; display:grid; gap:4px; }
+    .perch-option { display:flex; align-items:center; gap:10px; width:100%; padding:4px 8px; border:1.5px solid transparent; background:none; font:16px/1.2 var(--map-face); color:var(--ink); cursor:pointer; text-align:left; }
+    .perch-option:hover, .perch-option:focus-visible, .chosen .perch-option { border-color:var(--ink); background:#f6f7ee; }
+    .perch-pad { display:none; margin:8px 0 0; font:13px/1.8 var(--map-face); color:var(--ink-soft); }
+    .perch-launch.pad .perch-pad { display:block; }
+    @media (prefers-reduced-motion:reduce) { .perch-launch { transition:none; } }
     .arrival { position:fixed; z-index:6; left:50%; top:16vh; transform:translateX(-50%); text-align:center; pointer-events:none; opacity:0; color:var(--ink); text-shadow:0 0 12px #e9ecdd, 0 0 3px #e9ecdd; }
     .arrival strong { display:block; font:600 clamp(26px,4vw,44px)/1.1 var(--map-face); letter-spacing:.08em; font-variant-caps:small-caps; }
     .arrival span { display:block; margin-top:4px; font:italic 17px var(--map-face); color:var(--ink-soft); }
