@@ -87,7 +87,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // A control may receive focus between press and release. Always retire
     // the held key, while leaving form key presses to the form itself.
     if(!down){blockedActions.delete(e.code);keys.delete(e.code);return;}
-    if(suspended||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||flightLesson&&e.code==='Space'&&e.target.tagName==='BUTTON')return;
+    if(held()||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||flightLesson&&e.code==='Space'&&e.target.tagName==='BUTTON')return;
     if(down&&(['Space','KeyE'].includes(e.code))&&(e.repeat||blockedActions.has(e.code)))return;
     if(down&&e.code==='Space')queuedPrimary=true;if(down&&e.code==='KeyE')queuedHarness=true;
     if(down&&!e.repeat&&e.code==='Space')hop=true;if(down&&!e.repeat&&e.code==='KeyV'&&(mode==='walk'||mode==='gondola'||riding()||config.modes[mode]))toggleView();
@@ -102,21 +102,23 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   // An authored shot yields the moment the player takes the camera, so a drag,
   // a scroll or the stick never fights the interpolation.
   const manual=()=>{shot=null;director.manual();};
+  // The first load's glide from the village viewpoint down to him holds every input until it lands.
+  const held=()=>suspended||shot?.intro===true;
   // On foot, a click that does not drag the view is an attack.
   let press=null;
-  const down=e=>{if(mode==='orbit')return;if(mode==='fly')canvas.requestPointerLock?.()?.catch?.(()=>{});drag=true;press={x:e.clientX,y:e.clientY,t:e.timeStamp};canvas.focus();canvas.setPointerCapture(e.pointerId);};
+  const down=e=>{if(mode==='orbit'||held())return;if(mode==='fly')canvas.requestPointerLock?.()?.catch?.(()=>{});drag=true;press={x:e.clientX,y:e.clientY,t:e.timeStamp};canvas.focus();canvas.setPointerCapture(e.pointerId);};
   const up=e=>{drag=false;if(press&&mode==='walk'&&e.button===0&&e.timeStamp-press.t<300&&Math.hypot(e.clientX-press.x,e.clientY-press.y)<6)character.attack?.();press=null;};
-  const move=e=>{if(mode==='orbit'||(!drag&&document.pointerLockElement!==canvas))return;if(e.movementX||e.movementY){manual();if(movementYaw!==null)movementYaw-=e.movementX*.003;}yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
+  const move=e=>{if(mode==='orbit'||held()||(!drag&&document.pointerLockElement!==canvas))return;if(e.movementX||e.movementY){manual();if(movementYaw!==null)movementYaw-=e.movementX*.003;}yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
   const cancel=()=>{drag=false;press=null;};
   canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('lostpointercapture',cancel);
-  const wheel=e=>{if(mode==='orbit'||e.ctrlKey)return;const unit=e.deltaMode===1?16:e.deltaMode===2?canvas.clientHeight||800:1;const dx=e.deltaX*unit*.003,dy=e.deltaY*unit*.003;if(dx||dy){manual();yaw-=dx;if(movementYaw!==null)movementYaw-=dx;pitch=Math.max(-1.35,Math.min(1.35,pitch-dy));}e.preventDefault();};
+  const wheel=e=>{if(mode==='orbit'||held()||e.ctrlKey)return;const unit=e.deltaMode===1?16:e.deltaMode===2?canvas.clientHeight||800:1;const dx=e.deltaX*unit*.003,dy=e.deltaY*unit*.003;if(dx||dy){manual();yaw-=dx;if(movementYaw!==null)movementYaw-=dx;pitch=Math.max(-1.35,Math.min(1.35,pitch-dy));}e.preventDefault();};
   canvas.addEventListener('wheel',wheel,{passive:false});
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointermove',move);
   const dead=v=>Math.abs(v??0)<.14?0:Math.sign(v)*(Math.abs(v)-.14)/.86;
   function toggleView(){manual();movementYaw=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';
     // The chase framing looks down at the pilot; a pilot looks along the flight path.
     if(view==='first'&&config.modes[mode])pitch=-.2;snap=true;}
-  function select(next,site='0'){
+  function select(next,site='0',arrival=null){
     flightLesson=null;
     if(config.modes[mode])preferredFlightMode=mode;
     if(next==='walk'&&config.modes[mode]){changeHarness();return;}
@@ -141,10 +143,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(next==='walk'){
       // From Look around he appears under the camera; over a granite wall or water that is no footing,
       // so he appears on the nearest ground he can stand on. A body already walking keeps its place.
-      const spawn=previous?null:walkSpawn(camera.position.x,-camera.position.z,characterConfig.walk,walkHeight,hitTest);
-      const x=previous?.x??spawn?.[0]??camera.position.x,y=previous?.y??spawn?.[1]??-camera.position.z;
-      state={x,y,z:spawn?.[2]??height(x,y),heading:previous?.heading??yaw+Math.PI/2,speed:0};
-      pitch=-.24;character.object.rotation.set(0,state.heading+Math.PI/2,0);updateWalk(0,0,0);return;
+      // An authored `arrival` (the first load's opening frame) names his spot, heading and the chase camera's yaw and pitch.
+      const from=arrival&&!previous?arrival:{x:camera.position.x,y:-camera.position.z};
+      const spawn=previous?null:walkSpawn(from.x,from.y,characterConfig.walk,walkHeight,hitTest);
+      const x=previous?.x??spawn?.[0]??from.x,y=previous?.y??spawn?.[1]??from.y;
+      state={x,y,z:spawn?.[2]??height(x,y),heading:previous?.heading??(arrival&&!previous?arrival.heading:yaw+Math.PI/2),speed:0};
+      pitch=-.24;if(arrival&&!previous){yaw=arrival.yaw;pitch=arrival.pitch;}
+      character.object.rotation.set(0,state.heading+Math.PI/2,0);updateWalk(0,0,0);return;
     }
     if(riding()){
       state=startRide(ride.config,rideStart(ride.config,site,worldmap,ride.snowAt),ride.height);yaw=0;pitch=0;snap=true;hop=false;
@@ -167,10 +172,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
    * resources the warm leaves in place are the first live walk frame.
    * Called by the automatic intro while the journal is still up; a ?view= or
    * ?course= link starts where it is told and does not pay for it. */
-  async function warmArrival(warm,{restore=true}={}){
+  async function warmArrival(warm,{restore=true,arrival=null}={}){
     const from={position:camera.position.clone(),quaternion:camera.quaternion.clone(),fov:camera.fov,target:orbit.target.clone(),yaw,pitch,snap,mode,
       rig:rig.visible,ride:ride.rig.visible,body:character.object.visible};
-    select('walk');shot=null;
+    select('walk','0',arrival);shot=null;
     // The first real walk frame ends by trailing the orbit target with the
     // camera; the scenery shadow and meadow focus read it, so warm that too.
     orbitAtCamera();
@@ -227,10 +232,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   function alight(x,y,heading){state={x,y,heading};carried=null;mode='gondola';select('walk');}
   /** Called on display refreshes between render frames: a controller A tap
    * shorter than one 30 FPS frame is latched like a keyboard tap. */
-  function poll(){if(suspended)return;const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);if(pad?.buttons[0]?.pressed)queuedPrimary=true;if(mode==='walk'&&pad?.buttons[11]?.pressed)queuedSlide=true;}
+  function poll(){if(held())return;const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);if(pad?.buttons[0]?.pressed)queuedPrimary=true;if(mode==='walk'&&pad?.buttons[11]?.pressed)queuedSlide=true;}
   function update(dt){
     if(suspended&&state?.guidedParakite)return;
-    const pad=suspended?null:[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
+    const pad=held()?null:[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);
     if(mode==='gondola'){
       // Riding: Y changes the view, as it does in flight. RB (fast travel) is gondola.js's.
       const y=!!pad?.buttons[3]?.pressed;if(y&&!flightPressed.has(3))toggleView();y?flightPressed.add(3):flightPressed.delete(3);
@@ -348,7 +353,21 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       framingSubject.multiplyScalar(.5);
     }
     composeFollowView(camera,target,lowerFraction,framingSubject,mode==='walk'?treeFraming:0);snap=false;
-    if(shot){
+    if(shot?.path){
+      // The first load's tour: a centripetal Catmull-Rom through the spiral's waypoints that ends on the
+      // live chase pose, watching the village centre and handing the aim to him as it lands.
+      shot.raw.copy(camera.position);shot.aim.copy(camera.quaternion);shot.t+=dt;
+      // Every channel rides the one ease k, so speed, turn and handoff each rise once and settle once.
+      const u=Math.min(1,shot.t/shot.seconds),k=u*u*u*(u*(u*6-15)+10),end=shot.curve.points[shot.curve.points.length-1];
+      if(end.distanceToSquared(shot.raw)>1e-4){end.copy(shot.raw);shot.curve.needsUpdate=true;shot.curve.updateArcLengths();}
+      camera.position.copy(shot.curve.getPointAt(k));
+      shot.look.copy(shot.focus).lerp(target,k);
+      shot.basis.lookAt(camera.position,shot.look,T.Object3D.DEFAULT_UP);
+      camera.quaternion.setFromRotationMatrix(shot.basis).slerp(shot.aim,k*k*k);
+      camera.fov=shot.fov+(62-shot.fov)*k;camera.updateProjectionMatrix();
+      clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));
+      if(u>=1)shot=null;
+    }else if(shot){
       shot.raw.copy(camera.position);shot.aim.copy(camera.quaternion);shot.t+=dt;
       const u=Math.min(1,shot.t/SHOT_S),k=Math.max(introProgress,introShotEase(u));
       camera.position.lerpVectors(shot.from,shot.raw,k);camera.quaternion.slerpQuaternions(shot.q,shot.aim,k);
@@ -625,8 +644,19 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     return playTape(t,{...t.start},(s,input,h)=>stepMoves(s,input,h,characterConfig.walk,world));
   }
   function setPlayerMode(on){playerMode=!!on;}
+  /** Open on foot with an authored tour: `waypoints` (scene coordinates, the first is the opening
+   * camera) lead round to the live chase view over `seconds`, the camera watching `focus` until it
+   * hands the aim to him. Input is held until it lands; mode stays walk throughout. */
+  function introShot(waypoints,focus,seconds,fov=camera.fov){
+    if(mode!=='walk')return;
+    const points=waypoints.map(p=>p.clone());  // the last is replaced by the live chase pose each frame
+    shot={path:true,curve:new T.CatmullRomCurve3(points,false,'centripetal'),focus:focus.clone(),look:new T.Vector3(),basis:new T.Matrix4(),
+      seconds,fov,raw:new T.Vector3(),aim:new T.Quaternion(),t:0,intro:true};
+    camera.position.copy(points[0]);camera.lookAt(focus);
+    keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;drag=false;
+  }
   function suspend(on){suspended=!!on;if(suspended){keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;}}
-  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
+  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,introShot,update,poll,clear,changeHarness,launchHere,carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
     prepareFlightLesson,beginFlightLesson,placeGuidedFlight,endGuidedFlight,endFlightLesson(){flightLesson=null;},get flightLesson(){return flightLesson;},
     dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

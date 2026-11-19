@@ -575,8 +575,27 @@ export async function main() {
   // behind and above, the player map arrives at it on foot. One list, so the two cannot drift apart.
   const placeById=Object.fromEntries(places.places.map(p=>[p.id,p]));
   const bearing=deg=>[Math.sin(deg*Math.PI/180),Math.cos(deg*Math.PI/180)];
+  // The first load opens on foot at the top of the village street, the chase camera in front of him
+  // looking back down through the bridges. Set up by hand in the game and read from it on 2026-11-19:
+  // x/y metres (east, north), heading and yaw in radians as navigation.js keeps them.
+  const OPENING_ARRIVAL={x:-703.8497,y:505.8483,heading:1.5699,yaw:3.1407,pitch:-.072};
+  // The first load tours the village: it opens south of it looking up into the decks, swings west and
+  // north round the outside of the trunks (7 m or more from every tree, checked by ray against the scene
+  // on 2026-11-19) and settles in front of him. Points are [east, north, up] metres; the last leg ends
+  // on the live chase view. Only the first load uses it; Look around keeps its own viewpoint below.
+  // One spiral round the village: compass bearing from the focus, radius and height each eased with zero slope at both
+  // ends, so the path has no kinks and lands level and tangential on his chase pose (bearing 1.5, 46 m, 57 m up).
+  const OPENING_TOUR={seconds:9,focus:[-705,465,82],from:{bearing:157,radius:62,up:76},to:{bearing:361.5,radius:46,up:57},rise:16,samples:16};
+  OPENING_TOUR.waypoints=Array.from({length:OPENING_TOUR.samples+1},(_,i)=>{
+    const s=i/OPENING_TOUR.samples,e=s*s*(3-2*s),{from:a,to:b,focus:[fe,fn]}=OPENING_TOUR,mix=(x,y,w)=>x+(y-x)*w;
+    const bearing=mix(a.bearing,b.bearing,s)*Math.PI/180,radius=mix(a.radius,b.radius,e);
+    return [fe+radius*Math.sin(bearing),fn+radius*Math.cos(bearing),mix(a.up,b.up,e)+OPENING_TOUR.rise*Math.sin(Math.PI*s)**2];
+  });
+  const scenePoint=([e,n,u])=>new T.Vector3(e,u,-n);
+  const OPENING_VIEW={position:scenePoint(OPENING_TOUR.waypoints[0]).toArray(),target:scenePoint(OPENING_TOUR.focus).toArray()};
   function placeView(place){
-    if(place.id==='tree-village')return {position:[-672,73.8391,-442],target:[-696,89.8391,-472]};  // matched to the approved game-village.png capture
+    // Framed by hand in the game on 2026-11-19 (Fly camera; target 60 m along its look).
+    if(place.id==='tree-village')return {position:[-723.2534,99.2090,-543.9767],target:[-704.3150,93.8070,-487.3008]};
     if(place.id==='homestead')return {position:homeCamera,target:[hx,hz+3,-hy]};
     const [x,y]=place.arrive_xy_m,[dx,dy]=bearing(place.facing_deg),ex=x-dx*40,ey=y-dy*40,tx=x+dx*260,ty=y+dy*260;
     const eye=Math.max(ground.height(ex,ey),ground.height(x,y))+14;
@@ -741,6 +760,8 @@ export async function main() {
     // that the completion rule actually requires. It is not a time estimate.
     const share=p=>Math.min(1,.45*Math.min(1,p.frames/16)+.55*(p.stable/p.stableFrames));
     const warmView=onProgress=>warmScene({...warmOptions,onProgress});
+    // The first load warms the opening framing the glide starts from, not the Look around viewpoint.
+    if(!viewParam&&!requestedCourse&&!requestedPractice&&!requestedOrganoid&&!presentedOnce){camera.position.fromArray(OPENING_VIEW.position);controls.setTarget(...OPENING_VIEW.target);controls.update();}
     const result=await warmView(p=>loading.meter(.66+.16*share(p),'Rendering the village…'));
     // A ?view=, ?course= or ?encounter= link is a developer shortcut that starts
     // where it is told, so it keeps the cheaper single-view startup.
@@ -751,7 +772,7 @@ export async function main() {
     let arrival=null;
     if(gate){
       loading.meter(.82,'Finding the meadow…');
-      arrival=await navigation.warmArrival(()=>warmView(p=>loading.meter(.82+.12*share(p),'Rendering the meadow…')),{restore:false});
+      arrival=await navigation.warmArrival(()=>warmView(p=>loading.meter(.82+.12*share(p),'Rendering the meadow…')),{restore:false,arrival:OPENING_ARRIVAL});
       // The journal covers the world, and the warm leaves the camera, walk
       // state, orbit target and scenery-shadow focus exactly where the entry
       // needs them. Keeping them is what makes the entry cut cheap: the first
@@ -774,6 +795,9 @@ export async function main() {
     if(contextLost||stopped)return;
     if(gate){
       loading.meter(.98,'Drawing the meadow…');
+      // He is already standing at OPENING_ARRIVAL in walk mode; the camera opens on the tour's first
+      // point and, once the player enters, flies it round to him. Input is held until it lands.
+      navigation.introShot(OPENING_TOUR.waypoints.map(scenePoint),scenePoint(OPENING_TOUR.focus),OPENING_TOUR.seconds);
       const time=await nextPaint();
       if(contextLost||stopped)return;
       drawFrame(time,0);

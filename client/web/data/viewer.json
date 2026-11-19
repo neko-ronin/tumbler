@@ -191,7 +191,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "1e6efa32eaaa3fed296bb7173fae3e31567c45164ab9014ed7f1af88d8b8e9a4"
+      "sha256": "e458814dd6f545061a1dc8ad7ee49c6f6f9cbe1b69bae3544993baaa2f569f5f"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -199,7 +199,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "96dc5711758c76e17c479cdcf219c39cf7b5e4ce78f7729a956a1551a5547f5b"
+      "sha256": "8209b2fcb27f1316032137866fe530e77e5b68ba53e0c89a3f0f53a85ddb92aa"
     },
     {
       "path": "client/web/src3d/organoid-encounter.js",
@@ -343,7 +343,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "65f8668724bd217fe607ae68e30b9a6c36919567eaa5080753dc1e28e5116cb4"
+      "sha256": "970c02df7b2a29f14131228eb7914623b39d258c0d2de2626d0b79d82a9d4480"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -936,7 +936,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "244bd32d",
+  "commit": "7d4ed9d6",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
