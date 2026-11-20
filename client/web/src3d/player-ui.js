@@ -6,6 +6,7 @@
  * contours, the forest from the published trees, rock where it is too steep to hold them, the snow
  * the core lays, the river and the lake, the parakite route and the named places.
  */
+import * as T from '../vendor/three.module.min.js';
 const TIME_LABELS={golden:'Golden hour',dusk:'Evening',day:'Morning'};
 
 // Each control: what it does, its keyboard keys, its controller buttons. Keys and buttons render
@@ -39,7 +40,7 @@ const CONTROLS={
 };
 const MENU_CONTROLS={
   map:[['Choose a place',['Arrows','WASD','Click'],['D-pad','L stick']],['Travel there',['Enter'],['A']],
-    ['Fly the parakite from North Wall',['L'],['Y']],['Fly the parakite from Tumble Hill',['H'],['X']],['All controls',['Tab'],['RB']],['Back to the valley',['Esc'],['B','Menu']]],
+    ['Fly the parakite from North Wall',['L'],['Y']],['Fly the parakite from Tumble Hill',['H'],['X']],['The map or the valley itself',['V'],['LB']],['All controls',['Tab'],['RB']],['Back to the valley',['Esc'],['B','Menu']]],
   controls:[['Back to the map',['Tab'],['LB']],['Back to the valley',['Esc'],['B','Menu']]],
 };
 
@@ -57,7 +58,7 @@ function legend(rows,{caption}={}){
     el('div',{className:'control-head'},el('span',{textContent:''}),el('span',{textContent:'Keyboard'}),el('span',{textContent:'Controller'})),...rows.map(controlRow));
 }
 
-export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,snowAt,trees,worldmap,course,launch,timeOfDay,canvas,learnParakite,flightStatsDock}){
+export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,snowAt,trees,worldmap,course,launch,timeOfDay,nextTimeOfDay,showLight,canvas,camera,fog,learnParakite,flightStatsDock}){
   const root=el('div',{className:'player-ui'});
   const card=el('aside',{className:'key-card',ariaLabel:'Controls'});
   const toast=el('div',{className:'arrival',ariaLive:'polite'});
@@ -115,7 +116,9 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   const scaleBar=el('div',{className:'scale-bar'},el('span',{className:'scale-rule'}),el('span',{textContent:'2 km'}));
   const north=el('div',{className:'north',ariaHidden:'true'},el('span',{textContent:'N'}));
   const side=el('div',{className:'map-side'});
-  frame.append(markers,cartouche,scaleBar,north);sheet.append(frame,side);
+  const viewButtons=['Map','Scene'].map(label=>el('button',{type:'button',textContent:label,onclick:()=>setScene(label==='Scene')}));
+  const viewToggle=el('div',{className:'view-toggle',role:'group',ariaLabel:'Map or the valley itself'},...viewButtons);
+  frame.append(markers,cartouche,scaleBar,north,viewToggle);sheet.append(frame,side);
   const controlsSheet=el('div',{className:'controls-sheet',hidden:true});
   menu.append(sheet,controlsSheet);
   const here=el('div',{className:'you-are-here',ariaHidden:'true'},el('span',{className:'here-ring'}),el('span',{className:'here-label',textContent:'You are here'}));
@@ -126,17 +129,57 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   });
   markers.append(...placeMarkers.map(([,b])=>b),here);
   const launchMark=el('span',{className:'launch-mark',title:launch.label,ariaHidden:'true'});markers.append(launchMark);
+  // On the paper a mark sits at its map pixel; over the scene it sits where the camera sees that ground.
+  const v=new T.Vector3();
   function layout(){
-    const r=frame.getBoundingClientRect(),k=r.width/W;
-    const put=(node,xy)=>{const [px,py]=toPx(xy);node.style.left=`${px*k}px`;node.style.top=`${py*k}px`;};
+    const r=frame.getBoundingClientRect(),k=r.width/W,c=canvas.getBoundingClientRect();
+    const put=(node,xy,z)=>{
+      if(!sceneShown()){const [px,py]=toPx(xy);node.style.left=`${px*k}px`;node.style.top=`${py*k}px`;return;}
+      v.set(xy[0],z??ground.height(xy[0],xy[1])??0,-xy[1]).project(camera);
+      node.style.left=`${c.left+(v.x+1)/2*c.width-r.left}px`;node.style.top=`${c.top+(1-v.y)/2*c.height-r.top}px`;
+    };
     for(const [p,b] of placeMarkers)put(b,p.arrive_xy_m);
     put(launchMark,launch.xy_m);
-    const s=navigation.state;if(s&&navigation.mode!=='orbit'){here.hidden=false;put(here,[s.x,s.y]);}else here.hidden=true;
+    const s=navigation.state;if(s&&navigation.mode!=='orbit'){here.hidden=false;put(here,[s.x,s.y],s.z);}else here.hidden=true;
     scaleBar.querySelector('.scale-rule').style.width=`${2000/scale*k}px`;
   }
 
   // ---- state
-  let open=false,sheetName='map',selected=places.find(p=>p.id==='tree-village')??places[0];
+  let open=false,sheetName='map',scene=false,panning=false,baseFog=null,selected=places.find(p=>p.id==='tree-village')??places[0];
+  const sceneShown=()=>open&&scene&&sheetName==='map';
+  // The scene view shows the valley at the time a journey arrives at; anywhere else, the time it is.
+  let shownLight=null;
+  function syncLight(){const want=sceneShown()?nextTimeOfDay():timeOfDay();if(want!==shownLight){shownLight=want;showLight(want);}}
+
+  // ---- the scene view: the game camera straight overhead, north up, framing the same ground the
+  // paper shows. Height comes from the frame's metres-per-pixel at the places' mean ground height.
+  const groundRef=places.reduce((a,p)=>a+(ground.height(...p.arrive_xy_m)??0),0)/places.length;
+  const DOWN=new T.Quaternion().setFromEuler(new T.Euler(-Math.PI/2,0,0));  // looking down, screen top is north
+  function setScene(on){scene=on;viewButtons.forEach((b,i)=>b.setAttribute('aria-pressed',String((i===1)===on)));
+    menu.classList.toggle('scene',sceneShown());if(open){syncLight();hold();layout();}}
+  /** Called every frame after navigation moves the camera: holds the overhead view while it is shown,
+   * and lifts the fog with the camera's height until the pan down has landed. */
+  function hold(){
+    if(sceneShown()){
+      const r=frame.getBoundingClientRect(),c=canvas.getBoundingClientRect(),s=r.width/(x1-x0);
+      camera.fov=62;camera.updateProjectionMatrix();
+      const f=c.height/2/Math.tan(camera.fov*Math.PI/360),ox=r.left+r.width/2-(c.left+c.width/2),oy=r.top+r.height/2-(c.top+c.height/2);
+      camera.position.set((x0+x1)/2-ox/s,groundRef+f/s,-((y0+y1)/2+oy/s));camera.quaternion.copy(DOWN);camera.updateMatrixWorld();
+      layout();
+    }
+    if(panning&&!navigation.shotActive)panning=false;
+    if(sceneShown()||panning){
+      baseFog??={near:fog.near,far:fog.far};
+      const k=Math.max(1,(camera.position.y-(ground.height(camera.position.x,-camera.position.z)??0))/500);
+      fog.near=baseFog.near*k;fog.far=baseFog.far*k;
+    }else if(baseFog){fog.near=baseFog.near;fog.far=baseFog.far;baseFog=null;}
+  }
+  // From the overhead view down to him: one straight, eased glide into the live chase view.
+  function panDown(from){
+    if(navigation.mode!=='walk')return;
+    navigation.glideFrom(from,DOWN,4);panning=navigation.shotActive;
+  }
+  function leave(){const from=sceneShown()?camera.position.clone():null;close();if(from)panDown(from);}
   function select(p){selected=p;for(const [q,b] of placeMarkers)b.setAttribute('aria-current',String(q===p));renderSide();}
   function nearestTo(){const s=navigation.state;if(!s)return selected;return places.reduce((a,p)=>Math.hypot(p.arrive_xy_m[0]-s.x,p.arrive_xy_m[1]-s.y)<Math.hypot(a.arrive_xy_m[0]-s.x,a.arrive_xy_m[1]-s.y)?p:a);}
   function renderSide(){
@@ -156,15 +199,15 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
       el('div',{className:'controls-grid'},...['walk','stair','parakite'].map(m=>el('div',{className:'controls-group'},el('h3',{textContent:CONTROLS[m].title}),legend(CONTROLS[m].rows)))),
       legend(MENU_CONTROLS.controls,{caption:'This page'}));
   }
-  function show(name){sheetName=name;sheet.hidden=name!=='map';controlsSheet.hidden=name!=='controls';if(name==='controls')renderControls();else{renderSide();layout();}}
+  function show(name){sheetName=name;sheet.hidden=name!=='map';controlsSheet.hidden=name!=='controls';menu.classList.toggle('scene',sceneShown());syncLight();if(name==='controls')renderControls();else{renderSide();hold();layout();}}
   function openMenu(){
-    if(open||navigation.suspended)return;open=true;navigation.suspend(true);
+    if(open||navigation.suspended)return;open=true;navigation.suspend(true);shownLight=timeOfDay();
     if(!drawn)frame.prepend(draw());
-    menu.hidden=false;document.body.dataset.menu='open';cartouche.querySelector('.cartouche-time').textContent=TIME_LABELS[timeOfDay()]??'';
-    select(nearestTo());show('map');requestAnimationFrame(layout);
+    menu.hidden=false;document.body.dataset.menu='open';cartouche.querySelector('.cartouche-time').textContent=TIME_LABELS[nextTimeOfDay()]??'';
+    setScene(scene);select(nearestTo());show('map');requestAnimationFrame(()=>{hold();layout();});
   }
-  function close(){if(!open)return;open=false;menu.hidden=true;delete document.body.dataset.menu;navigation.suspend(false);canvas.focus();}
-  function travel(){const p=selected;close();arriveAt(p);arrived(p);}
+  function close(restoreLight=true){if(!open)return;open=false;menu.hidden=true;menu.classList.remove('scene');delete document.body.dataset.menu;navigation.suspend(false);canvas.focus();if(restoreLight)syncLight();}
+  function travel(){const p=selected,from=sceneShown()?camera.position.clone():null;close(false);arriveAt(p);shownLight=timeOfDay();arrived(p);if(from)panDown(from);}
   function arrived(p){toast.replaceChildren(el('strong',{textContent:p.label}),el('span',{textContent:TIME_LABELS[timeOfDay()]??''}));toast.classList.remove('shown');void toast.offsetWidth;toast.classList.add('shown');}
   function move(dx,dy){
     // The nearest place in the direction pressed, weighting distance by how far off the line it lies.
@@ -173,7 +216,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
       if(cos<.35)continue;const s=dist*(2-cos);if(s<score){score=s;best=p;}}
     if(best)select(best);
   }
-  window.addEventListener('resize',()=>{if(open)layout();});
+  window.addEventListener('resize',()=>{if(open){hold();layout();}});
 
   // ---- the key card while playing
   // The card shows in full when an activity starts, then folds to where the map and all controls are,
@@ -235,11 +278,11 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
     if(!open&&/^Digit[123]$/.test(e.code)&&!e.repeat&&perchedNow()){e.preventDefault();navigation.launchFromTree(PERCH_MODES[e.code.at(-1)-1][0]);return;}
     if(!open){if((e.key==='Escape'||e.code==='KeyM')&&!e.repeat){e.preventDefault();openMenu();}return;}
     e.preventDefault();e.stopImmediatePropagation();
-    if(e.key==='Escape'){close();return;}
+    if(e.key==='Escape'){leave();return;}
     if(e.code==='Tab'){show(sheetName==='map'?'controls':'map');return;}
     if(sheetName!=='map')return;
     const dir={ArrowUp:[0,1],KeyW:[0,1],ArrowDown:[0,-1],KeyS:[0,-1],ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0]}[e.code];
-    if(dir)move(...dir);else if(e.key==='Enter')travel();else if(e.code==='KeyL'){close();startParakite();}else if(e.code==='KeyH'){close();startParakite('tumble-hill');}
+    if(dir)move(...dir);else if(e.key==='Enter')travel();else if(e.code==='KeyV')setScene(!scene);else if(e.code==='KeyL'){close();startParakite();}else if(e.code==='KeyH'){close();startParakite('tumble-hill');}
   },true);
   const held=new Set();let stickReady=true;
   function poll(now){
@@ -251,12 +294,12 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
       const menuButton=edge(9);
       if(!open){if(menuButton)openMenu();else renderPerch(pad,edge);}
       else{
-        if(menuButton||edge(1))close();
+        if(menuButton||edge(1))leave();
         else if(sheetName==='map'){
           const ax=pad?.axes[0]??0,ay=pad?.axes[1]??0,stick=Math.hypot(ax,ay)>.6;
           if(stick&&stickReady){move(ax,-ay);stickReady=false;}else if(!stick)stickReady=true;
           if(edge(12))move(0,1);if(edge(13))move(0,-1);if(edge(14))move(-1,0);if(edge(15))move(1,0);
-          if(edge(0))travel();else if(edge(3)){close();startParakite();}else if(edge(2)){close();startParakite('tumble-hill');}else if(edge(5))show('controls');
+          if(edge(0))travel();else if(edge(3)){close();startParakite();}else if(edge(2)){close();startParakite('tumble-hill');}else if(edge(5))show('controls');else if(edge(4))setScene(!scene);
         }else if(edge(4))show('map');
       }
     }
@@ -264,5 +307,5 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
     requestAnimationFrame(poll);
   }
   requestAnimationFrame(poll);
-  return {open:openMenu,close,arrived,get isOpen(){return open;},select:id=>select(places.find(p=>p.id===id))};
+  return {open:openMenu,close,arrived,hold,get isOpen(){return open;},select:id=>select(places.find(p=>p.id===id))};
 }

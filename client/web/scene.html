@@ -243,6 +243,16 @@
     .scale-rule { display:block; height:6px; border:1.5px solid var(--ink); border-top:0; }
     .north { position:absolute; right:18px; top:16px; width:30px; height:44px; display:grid; justify-items:center; font:700 14px var(--map-face); }
     .north::before { content:''; width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-bottom:24px solid var(--ink); }
+    .view-toggle { position:absolute; right:16px; bottom:14px; display:flex; border:1.5px solid var(--ink); background:var(--paper); }
+    .view-toggle button { padding:5px 12px; border:0; border-radius:0; background:none; color:var(--ink); font:600 13px/1 var(--map-face); letter-spacing:.04em; }
+    .view-toggle button[aria-pressed="true"] { background:var(--ink); color:var(--paper); }
+    /* Scene view: the paper lifts away and the game camera, overhead, shows the valley itself. */
+    .trail-map.scene { background:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+    .trail-map.scene .sheet { background:none; } .trail-map.scene .sheet::after { display:none; }
+    body[data-menu="open"] .key-card { visibility:hidden; }
+    .trail-map.scene .map-canvas { visibility:hidden; }
+    .trail-map.scene .map-side { background:var(--paper); }
+    .trail-map.scene .place-name { padding:2px 4px; background:color-mix(in srgb,var(--paper) 82%,transparent); }
     .map-side { display:flex; flex-direction:column; gap:14px; padding:20px 20px 18px; overflow:auto; max-height:calc(100dvh - 90px); }
     .side-name { margin:0; font:600 26px/1.1 var(--map-face); letter-spacing:.02em; }
     .side-water { color:var(--water); font-style:italic; }

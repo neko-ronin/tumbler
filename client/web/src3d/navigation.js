@@ -391,7 +391,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       if(u>=1)shot=null;
     }else if(shot){
       shot.raw.copy(camera.position);shot.aim.copy(camera.quaternion);shot.t+=dt;
-      const u=Math.min(1,shot.t/SHOT_S),k=Math.max(introProgress,introShotEase(u));
+      const u=Math.min(1,shot.t/(shot.seconds??SHOT_S)),k=Math.max(introProgress,introShotEase(u));
       camera.position.lerpVectors(shot.from,shot.raw,k);camera.quaternion.slerpQuaternions(shot.q,shot.aim,k);
       camera.fov=shot.fov+(62-shot.fov)*k;camera.updateProjectionMatrix();
       clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));
@@ -686,8 +686,15 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     camera.position.copy(points[0]);camera.lookAt(focus);
     keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;drag=false;
   }
+  /** Start the walk-in glide from a held pose (the trail map's overhead view) instead of where the
+   * camera was: one straight, eased move to the live chase view over `seconds`. */
+  function glideFrom(position,quaternion,seconds){
+    if(mode!=='walk')return;
+    shot={from:position.clone(),q:quaternion.clone(),fov:camera.fov,raw:new T.Vector3(),aim:new T.Quaternion(),t:0,seconds};
+    camera.position.copy(position);camera.quaternion.copy(quaternion);
+  }
   function suspend(on){suspended=!!on;if(suspended){keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;}}
-  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,introShot,update,poll,clear,changeHarness,launchHere,launchFromTree,get preferredFlightMode(){return preferredFlightMode;},set preferredFlightMode(next){if(config.modes[next])preferredFlightMode=next;},carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
+  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,introShot,glideFrom,update,poll,clear,changeHarness,launchHere,launchFromTree,get preferredFlightMode(){return preferredFlightMode;},set preferredFlightMode(next){if(config.modes[next])preferredFlightMode=next;},carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
     prepareFlightLesson,beginFlightLesson,placeGuidedFlight,endGuidedFlight,endFlightLesson(){flightLesson=null;},get flightLesson(){return flightLesson;},
     dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

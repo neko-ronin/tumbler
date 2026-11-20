@@ -672,7 +672,7 @@ export async function main() {
     learnParakite:()=>parakiteTour.offer({force:true}),
     flightStatsDock:()=>parakitePractice.statsDock??parakiteTour.statsDock,
     trees:placement.instances.filter(i=>i.asset.startsWith('redwood/')).map(i=>i.position_m),worldmap,course:speedflying.courses[0],
-    launch:flightConfig.launches[Number(parakiteSite)],timeOfDay:()=>timeOfDay,canvas});
+    launch:flightConfig.launches[Number(parakiteSite)],timeOfDay:()=>timeOfDay,nextTimeOfDay:()=>dayOrder[(dayOrder.indexOf(timeOfDay)+1)%dayOrder.length],showLight:setLight,canvas,camera,fog:scene.fog});
   // Two interfaces: the development panels, served locally, and the player's. Players always get theirs;
   // on a local server a switch (or the ` key) chooses, and remembers the choice.
   const storedMode=(()=>{try{return localStorage.getItem('tumbler.ui-mode');}catch{return null;}})();
@@ -890,6 +890,7 @@ export async function main() {
     const tourFoot=navigation.mode==='walk'&&navigation.state?.mode!=='climb'&&navigation.state?.mode!=='swim'?navigation.state:null;
     parakiteTour.update(Math.min(delta,50)/1000,tourFoot);
     if(!organoid.active&&!parakiteTour.cinematic)navigation.update(Math.min(delta,50)/1000);
+    playerUI.hold();
     const onFoot=navigation.mode==='walk'&&navigation.state?.mode!=='climb'&&navigation.state?.mode!=='swim'?navigation.state:null;
     const spotlight=visibilityToggle.checked;
     if(!flightConfig.modes[navigation.mode]){paraSignals.update(null,{},0,0);firstPerson.update({active:false});paraStreaks.update(null);}

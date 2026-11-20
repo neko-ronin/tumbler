@@ -49,8 +49,9 @@ const GROUND = `const vec3 ROCK=vec3(${linear('#a2a39b')});const vec3 SNOW=vec3(
 `;
 // Open air scatters with distance, not to a wall: a fifth of the view at 5 km, two thirds
 // at 24 km, so a world this size keeps its depth. It's the same curve as the range's own air.
-// Underwater fog, tens of metres deep, keeps its full strength.
-T.ShaderChunk.fog_fragment=T.ShaderChunk.fog_fragment.replace('smoothstep( fogNear, fogFar, vFogDepth )','( fogFar > 1000. ? 1. - exp( -vFogDepth / 22000. ) : smoothstep( fogNear, fogFar, vFogDepth ) )');
+// Underwater fog, tens of metres deep, keeps its full strength. A fog near past the valley's
+// 2.5 km stretches the curve with it: the trail map's overhead view thins the air that way.
+T.ShaderChunk.fog_fragment=T.ShaderChunk.fog_fragment.replace('smoothstep( fogNear, fogFar, vFogDepth )','( fogFar > 1000. ? 1. - exp( -vFogDepth / ( 22000. * max( 1., fogNear / 2500. ) ) ) : smoothstep( fogNear, fogFar, vFogDepth ) )');
 const ramp = new T.DataTexture(new Uint8Array([100, 157, 209, 255]), 4, 1, T.RedFormat);
 ramp.minFilter = ramp.magFilter = T.NearestFilter;
 ramp.generateMipmaps = false;
