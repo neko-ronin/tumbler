@@ -14,16 +14,17 @@ function run(s,input,seconds=2,dt=1/120){
  return s;
 }
 
-test('assisted turns pull the inside brake on conventional wings and release the outside on parakites',()=>{
+test('assisted turns pull the inside brake on conventional wings and draw inside, ease outside on parakites',()=>{
  for(const mode of Object.keys(config.modes))for(const turn of [-1,1]){
   const s=run(start(mode),{turn});
   const inside=turn>0?'Right':'Left',outside=turn>0?'Left':'Right';
   assert.equal(Math.sign(s.bank),turn);
   assert.equal(Math.sign(s.heading),-turn);
   if(mode==='parakite'){
-   assert.ok(s['handle'+outside]<=.45-config.modes.parakite.turn_release+.01,'raise outside handle');
-   assert.equal(s['handle'+inside],.45,'keep inside handle at best glide');
-   assert.equal(s.brakeLeft+s.brakeRight,0,'no hidden inside braking');
+   const kite=config.modes.parakite;
+   assert.ok(s['handle'+outside]<=.45-kite.turn_release+.01,'raise outside handle');
+   assert.ok(Math.abs(s['handle'+inside]-(.45+kite.turn_pull))<.01,'draw the inside handle as a pilot does');
+   assert.ok(Math.abs(s['brake'+inside]-(s['handle'+inside]-.45)/.55)<1e-12,'the drawn handle is the brake the wing feels');
   }else{
    assert.ok(s['brake'+inside]>.3,'visible inside brake');
    assert.equal(s['brake'+outside],0,'outside remains free');
@@ -43,11 +44,18 @@ test('parakite handle travel is progressive and both dynamics and cloth receive 
  assert.ok(Math.abs(at30.handleLeft-at120.handleLeft)<1e-12,'travel does not depend on refresh rate');
 });
 
-test('full-release parakite rolls by weight shift without inventing extra inside pull',()=>{
+test('a full-release parakite turns by easing back only the inside riser',()=>{
  const fast=run(start('parakite'),{brake:-1},4),turn=run(fast,{brake:-1,turn:1},2);
- assert.ok(turn.handleLeft<1e-8&&turn.handleRight<1e-8);
+ assert.ok(turn.handleLeft<1e-8,'outside stays released');
+ assert.ok(Math.abs(turn.handleRight-config.modes.parakite.turn_pull)<.01,'inside comes back by the turn draw');
  assert.ok(turn.bank>.3);
- assert.equal(turn.brakeLeft+turn.brakeRight,0);
+ assert.equal(turn.brakeLeft+turn.brakeRight,0,'still short of the brake range');
+});
+
+test('a pulled-up turn keeps its handle difference when the inside hand reaches its stop',()=>{
+ const pulled=run(start('parakite'),{brake:1,turn:1},3);
+ assert.ok(pulled.handleRight>.99);
+ assert.ok(Math.abs(pulled.handleRight-pulled.handleLeft-config.modes.parakite.turn_pull-config.modes.parakite.turn_release)<.01);
 });
 
 test('opposed independent pulls cancel the assisted turn and left/right flight remains symmetric',()=>{

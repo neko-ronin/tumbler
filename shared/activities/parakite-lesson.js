@@ -50,7 +50,9 @@ function stall(lesson, state, input, dt, bothOpen) {
     if (input.brake < -.6) lesson.held += dt;
     else if (centred(input) && lesson.held >= .3) lesson.phase = 'centre';
     else lesson.held = 0;
-    if (lesson.held >= 1.9) lesson.phase = 'centre';
+    // The canopy, with the air it carries, takes a couple of seconds to
+    // surge forward and fly; centring sooner leaves it parachuting.
+    if (lesson.held >= 2.5) lesson.phase = 'centre';
   }
   if (lesson.phase === 'centre' && centred(input)) { lesson.phase = 'settle'; lesson.held = 0; }
   if (lesson.phase === 'settle') {
@@ -63,11 +65,35 @@ function stall(lesson, state, input, dt, bothOpen) {
   }
 }
 
+// Leaving a turn while the wing is still diving into the spiral surges the
+// canopy ahead; letting go at once folds a side unless the pilot catches the
+// surge with a brief pull. The lesson practises that early exit first.
 function spiral(lesson, before, state, input, dt, height, bothOpen) {
   if (lesson.phase === 'clearance' && state.z - height(state.x, state.y) >= 340) {
-    lesson.phase = 'turn';
+    lesson.phase = lesson.caught ? 'turn' : 'entry';
     lesson.travel = 0;
     lesson.descended = false;
+    lesson.held = 0;
+  }
+  if (lesson.phase === 'entry') {
+    lesson.held = input.turn < -.3 ? lesson.held + dt : 0;
+    if (lesson.held >= 2.5) { lesson.phase = 'release'; lesson.since = null; lesson.checked = false; }
+  }
+  if (lesson.phase === 'release') {
+    if (lesson.since === null && Math.abs(input.turn ?? 0) < .12) lesson.since = 0;
+    if (lesson.since !== null) {
+      lesson.since += dt;
+      if (lesson.since < 1.5 && input.brake > .3) lesson.checked = true;
+      if (Math.min(...state.rotation.pressure) < .5) lesson.phase = 'surge-fold';
+      else if (lesson.since >= 3) {
+        if (lesson.checked) { lesson.caught = true; lesson.phase = 'clearance'; }
+        else lesson.phase = 'missed-check';
+      }
+    }
+  }
+  if ((lesson.phase === 'surge-fold' || lesson.phase === 'missed-check') && bothOpen && centred(input) &&
+      Math.abs(state.bank) < .15) {
+    lesson.phase = 'clearance';
   }
   if (lesson.phase === 'turn') {
     if (input.turn < -.3) {
@@ -77,9 +103,9 @@ function spiral(lesson, before, state, input, dt, height, bothOpen) {
       lesson.travel = 0;
       lesson.descended = false;
     }
-    if (lesson.travel >= TAU && lesson.descended) lesson.phase = 'exit';
+    if (lesson.travel >= TAU && lesson.descended) lesson.phase = 'unwind';
   }
-  if (lesson.phase === 'exit') stableExit(lesson, state, input, dt, true, bothOpen);
+  if (lesson.phase === 'unwind') stableExit(lesson, state, input, dt, true, bothOpen);
 }
 
 function pitchAngles(rotation, heading) {

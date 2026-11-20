@@ -34,12 +34,16 @@ const lessons = {
   },
   spiral: {
     name: 'Descending spiral',
-    brief: 'A sustained turn can wind into a fast descent. Give it room, then feel the wing unwind.',
+    brief: 'A held turn winds into a fast descent. Leave it early and the wing surges ahead: catch the surge with the brakes.',
     cues: {
       clearance: 'Glide straight out over the valley to give the spiral room.',
-      turn: 'Hold left through one full circle. Watch how quickly the ground comes up.',
-      exit: 'Centre the controls. Let the bank straighten and the dive settle.',
-      passed: 'Full circle and a controlled exit.',
+      entry: 'Roll into a left turn and hold it while the wing dives in.',
+      release: 'Let go of the turn now, and pull back briefly as the wing surges ahead.',
+      'surge-fold': 'The wing surged ahead and folded a side. Let it refill and level out, then try again: pull back as you let go.',
+      'missed-check': 'The wing held this time, but catch the surge with a brief pull as you let go. Level out and try again.',
+      turn: 'Now hold left through one full circle. Watch how quickly the ground comes up.',
+      unwind: 'Let go of the turn and pull back briefly as the wing surges, then centre and let the dive settle.',
+      passed: 'Early exit caught, full circle, and a controlled exit.',
     },
   },
   loop: {
@@ -81,7 +85,9 @@ const lessons = {
 
 const controls = {
   pull: 'S / stick back', raise: 'W / stick forward', centre: 'Let go of W / centre the stick',
-  turn: 'A / stick left', exit: 'Controls centred',
+  turn: 'A / stick left', exit: 'Controls centred', unwind: 'Let go of A, tap S / ease the stick back',
+  entry: 'A / stick left', release: 'Let go of A, tap S / ease the stick back',
+  'surge-fold': 'Controls centred', 'missed-check': 'Controls centred',
   dive: 'W / stick forward', rotate: 'S / stick back',
   'short-dive': 'W / stick forward', 'short-pull': 'S / stick back',
   'close-turn': 'D / stick right', 'clear-turn': 'Controls centred',

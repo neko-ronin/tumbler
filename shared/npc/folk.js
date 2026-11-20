@@ -627,7 +627,7 @@ export function pilotInput(world,cat,s,air){
     const thermal=world.flight.thermals.filter(t=>t.top_m>s.z+60).map(t=>({t,d:dist([s.x,s.y],t.xy_m)})).sort((a,b)=>a.d-b.d)[0];
     if(thermal&&thermal.d<thermal.t.radius_m*.8&&(s.vario??0)>-.2&&s.z<g.cruise_agl_m+homeZ)circle=true;
     else if(thermal&&thermal.d<2000&&(powered||(s.z-world.ground(...thermal.t.xy_m)-60)/thermal.d>1/7))target=thermal.t.xy_m;
-  }else if(toHome<70&&agl>15*pace){circle=true;maneuver=agl>150;}
+  }else if(toHome<70&&agl>15*pace){circle=true;maneuver=agl>150*pace;}
   air.launchHeading??=s.heading;
   // Climb out straight along the corridor the launch was chosen for.
   let desired=agl<120&&air.t<60&&!final?air.launchHeading:circle?s.heading+1.1:Math.atan2(target[1]-s.y,target[0]-s.x);
@@ -661,12 +661,24 @@ export function pilotInput(world,cat,s,air){
       air.avoiding=true;
     }else air.avoiding=false;
   }
-  let turn=maneuver?-1:clamp(-wrap(desired-s.heading)*(air.avoiding?3:1.3),air.avoiding?-1:-.7,air.avoiding?1:.7);
+  // A faster wing spirals at less than full steering: the same input winds it far steeper.
+  let turn=maneuver?-Math.min(1,1/pace):clamp(-wrap(desired-s.heading)*(air.avoiding?3:1.3),air.avoiding?-1:-.7,air.avoiding?1:.7);
   // Low circles are gentle: a steep bank near the ground is a fast sink.
   if(circle&&!maneuver&&!air.avoiding)turn=agl<80*pace?-.3:-.6;
+  // Fly a bank, not a fixed input: a held turn keeps winding steeper, so ease
+  // off, and counter if needed, past the bank this turn calls for.
+  const bankCap=maneuver?1.2:circle?(agl<80*pace?.45:.7):.8;
+  if(Math.sign(s.bank??0)===Math.sign(turn)&&Math.abs(s.bank??0)>bankCap-.17)turn*=clamp((bankCap-Math.abs(s.bank))/.17,-.5,1);
   // Near the ground only on the way down: the climb-out is near the ground too.
   const landing=final||air.t>15&&(s.vario??0)<-.3;
-  if(landing&&agl<flare*4)turn*=.3;
+  // A steep spiral needs its recovery arc: level the wing about six seconds of
+  // sink before the ground, then turn gently into the round-out.
+  if(landing&&agl<Math.max(flare*4,-(s.vario??0)*6))turn*=(s.vario??0)<-8?0:.3;
+  // A pilot lets a turn out over a second or two; dropping the hips and hands
+  // at once surges the canopy (the spiral exit). Entering is not limited.
+  const since=Math.max(0,air.t-(air.steeredAt??air.t)),held=air.turn??0;
+  if(Math.abs(turn)<Math.abs(held)||Math.sign(turn)!==Math.sign(held))turn=held+clamp(turn-held,-since/1.5,since/1.5);
+  air.turn=turn;air.steeredAt=air.t;
   // Round out: from flare*3 down, work the brakes to sink no faster than agl/τ, easing off when the wing
   // balloons and adding when it drops, as a pilot does by feel. A height-only flare balloons fast wings.
   // Full brake (a stall) only in the last metre and a half.

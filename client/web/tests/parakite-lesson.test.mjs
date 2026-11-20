@@ -31,7 +31,7 @@ function run(id, inputs, duration) {
 test('stall practice requires active recovery after both halves fold', () => {
   const pull = t => t >= .55 && t < 3.05;
   const waiting = run('stall', t => ({brake: pull(t) ? 1 : 0}), 19);
-  const recovered = run('stall', t => ({brake: pull(t) ? 1 : t >= 3.65 && t < 5 ? -1 : 0}), 19);
+  const recovered = run('stall', t => ({brake: pull(t) ? 1 : t >= 3.65 && t < 6.15 ? -1 : 0}), 19);
   assert.equal(waiting.lesson.phase, 'raise');
   assert.deepEqual([...recovered.phases], ['pull', 'ease', 'raise', 'settle', 'passed']);
   assert.equal(run('stall', () => ({}), 10).lesson.phase, 'pull');
@@ -57,11 +57,30 @@ test('the stall prompts lead back to glide at different reaction times', () => {
   }
 });
 
-test('spiral practice waits for a whole descending circle and centred exit', () => {
-  const short = run('spiral', t => ({turn: t < 6 ? -1 : 0}), 30);
-  const full = run('spiral', t => ({turn: t < 15 ? -1 : 0}), 34);
-  assert.equal(short.lesson.phase, 'turn');
-  assert.equal(full.lesson.phase, 'passed');
+// A pilot who follows the cues: catch each surge with a brief pull on letting go.
+function spiralPilot({check = true} = {}) {
+  let unwindAt = null;
+  return (t, lesson) => {
+    if (lesson.phase === 'entry' || lesson.phase === 'turn') return {turn: -1};
+    if (lesson.phase === 'release') return {brake: check && (lesson.since ?? 0) < 1 ? 1 : 0};
+    if (lesson.phase === 'unwind') { unwindAt ??= t; return {brake: check && t - unwindAt < 1 ? 1 : 0}; }
+    return {};
+  };
+}
+
+test('spiral practice: an early exit caught with the brakes, a full circle, then a caught exit', () => {
+  const caught = run('spiral', spiralPilot(), 60);
+  assert.deepEqual([...caught.phases].filter(phase => phase !== 'clearance'), ['entry', 'release', 'turn', 'unwind', 'passed']);
+});
+
+test('spiral practice: letting go of an early spiral without catching the surge folds a side', () => {
+  const cold = run('spiral', spiralPilot({check: false}), 20);
+  assert.ok(cold.phases.has('surge-fold'), [...cold.phases].join(' > '));
+  assert.notEqual(cold.lesson.phase, 'passed');
+});
+
+test('spiral practice: holding the turn on never reaches the circle', () => {
+  assert.equal(run('spiral', () => ({turn: -1}), 20).lesson.phase, 'release');
 });
 
 test('loop practice credits both physical attitudes and paths, with a stable exit', () => {

@@ -17,10 +17,18 @@ const airVector=a=>[a.wx,a.wy,a.lift];
 export function mixParakiteHandles(previous, mode, brake, steer, leftPull, rightPull, dt) {
   const neutral=.45+brake*(brake>0?.55:.45);
   const giveUp=mode.turn_release??.4;
-  const targets=[
-    clamp(neutral+leftPull*.55-Math.max(0,steer)*giveUp,0,1),
-    clamp(neutral+rightPull*.55-Math.max(0,-steer)*giveUp,0,1),
-  ];
+  // A turn is weight shift with the inside handle drawn and the outside eased,
+  // as a pilot steers. turn_pull is how far a full turn draws the inside one.
+  // When the inside hand is already at its stop, the outside one rises by the
+  // travel left over, so a pulled-up turn keeps the same handle difference.
+  const draw=mode.turn_pull??0;
+  const turnHands=(inside,outside,amount)=>{
+    const drawn=inside+amount*draw;
+    const spill=clamp(drawn-Math.max(1,inside),0,amount*draw);
+    return [clamp(drawn,0,1),clamp(outside-amount*giveUp-spill,0,1)];
+  };
+  const left=neutral+leftPull*.55,right=neutral+rightPull*.55;
+  const targets=steer>0?turnHands(right,left,steer).reverse():turnHands(left,right,-steer);
   return previous.map((position, side)=>position+(targets[side]-position)*(1-Math.exp(-5*dt)));
 }
 

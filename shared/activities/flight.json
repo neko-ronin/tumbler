@@ -56,7 +56,16 @@
       "roll_damping": 3.1,
       "ground_drag_relief": 0.23,
       "max_roll_rate_rps": 0.95,
-      "turn_release": 0.025
+      "turn_release": 0.025,
+      "turn_pull": 0.2,
+      "handle_drag": 0.6,
+      "handle_camber": 0.1,
+      "weight_shift_rad": 0.06,
+      "weight_shift_s": 0.3,
+      "arc_side_force_slope": 0.6,
+      "line_fan_m": 1.0,
+      "harness_damping_nms": 60,
+      "separation_lag_chords": 3
     },
     "paramotor": {
       "label": "Paramotoring",
