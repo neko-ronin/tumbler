@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import * as T from '../vendor/three.module.min.js';
 import {parseGLB,makeMaterialFor,mergePrimitives} from '../src3d/glb.js';
 import {buildRedwoodSprays,rasterSprayAtlas} from '../../../shared/geometry/tree-design/redwood-sprays.js';
-import {CROWN_SPREAD,browserTreeStages,fittedTreeGeometry,buildAdoptedRedwoods,retainedVillagePrimitive,releaseCrownSources} from '../src3d/redwood-rendering.js';
+import {CROWN_SPREAD,VILLAGE_CROWN_SPREAD,VILLAGE_DROOP,browserTreeStages,fittedTreeGeometry,buildAdoptedRedwoods,retainedVillagePrimitive,releaseCrownSources} from '../src3d/redwood-rendering.js';
 import {TREE_BUDGETS,preferredTreeLod,allocateTreeLods,treeTransitionDraws,treeBudgetsForQuality} from '../src3d/tree-budget.js';
 import {setTreeLighting} from '../src3d/tree-surface.js';
 import {style} from '../src3d/style.js';
@@ -70,11 +70,22 @@ test('all adopted species keep their original crown footprint, bare bole and hei
       // Leaves can be slightly inside a retained solid branch extremum; no
       // silhouette dimension or dwelling clearance is allowed to expand.
       for(let a=0;a<3;a++){
-        // Drawn forest crowns spread sideways by CROWN_SPREAD; the village's stay put.
-        const k=a!==1&&type!=='village'?CROWN_SPREAD:1;
-        assert.ok(seen.min.getComponent(a)>=crown.min.getComponent(a)*k-1e-4,path+' crown minimum');
-        assert.ok(seen.max.getComponent(a)<=crown.max.getComponent(a)*k+1e-4,path+' crown maximum');
+        // Drawn crowns spread sideways; the village giants spread further.
+        const k=a===1?1:type==='village'?VILLAGE_CROWN_SPREAD:CROWN_SPREAD;
+        // Village limbs droop below the source crown base, only beyond the dwelling radius.
+        const droop=a===1&&type==='village'?VILLAGE_DROOP.dropM:0;
+        // Village taper relief keeps limbs within the crown's widest reach (checked radially below).
+        if(type!=='village'||a===1){
+          assert.ok(seen.min.getComponent(a)>=crown.min.getComponent(a)*k-droop-1e-4,path+' crown minimum');
+          assert.ok(seen.max.getComponent(a)<=crown.max.getComponent(a)*k+1e-4,path+' crown maximum');
+        }
         assert.ok(seen.getSize(new T.Vector3()).getComponent(a)>crown.getSize(new T.Vector3()).getComponent(a)*.78,path+' crown size');
+      }
+      if(type==='village'){
+        const reach=VILLAGE_CROWN_SPREAD*Math.hypot(Math.max(-crown.min.x,crown.max.x),Math.max(-crown.min.z,crown.max.z));
+        for(let i=0;i<p.count;i++)if(k.getX(i)>.5){const r=Math.hypot(p.getX(i),p.getZ(i));
+          assert.ok(r<=reach+1e-3,path+' foliage stays within the crown reach');
+          if(r<VILLAGE_DROOP.clearM)assert.ok(p.getY(i)>=crown.min.y-1e-4,path+' foliage stays above the dwellings inside the clearance radius');}
       }
       assert.ok(g.index,'retain indexed needle topology instead of expanding every triangle');
       assert.ok(g.boundingBox.max.y<=whole.max.y+.001,path+' tree height');g.dispose();

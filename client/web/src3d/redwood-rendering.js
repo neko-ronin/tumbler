@@ -24,10 +24,38 @@ function boundsOf(primitives){const box=new T.Box3();for(const p of primitives)b
 // Seen from above the stand left the ground showing between crowns. The core's
 // crown reach (collision reads it, as a soft 90th-percentile hull) stays as
 // authored; only the drawn feral foliage spreads sideways about the bole.
-// The village crown holds dwellings inside its envelope, so it keeps its own.
-export const CROWN_SPREAD=1.28;
+// The village giants' source crown is a narrow 24 m cone on a 93 m tree, which
+// read as bare spires over the dwellings. Their crown starts above the top
+// dwelling (54 m), so it spreads wider sideways without enclosing a room.
+export const CROWN_SPREAD=1.28,VILLAGE_CROWN_SPREAD=1.8;
+// Village crowns are reshaped like an old giant's, after fitting:
+// - taper: the upper crown widens toward the base width (x(1+taper) at the
+//   top), saturating so no limb passes the footprint's reach;
+// - droop: nothing within the dwelling radius moves, then the drop grows with
+//   the square of reach and is strongest on the lowest limbs. Top dwelling
+//   roofs end about 11 m from the axis at 53 m.
+export const VILLAGE_DROOP={clearM:12,dropM:16,taper:1.6};
+function shapeVillageCrown({positions:p,normals:n},bounds,{clearM,dropM,taper}=VILLAGE_DROOP){
+  const R=Math.max(...[0,2].flatMap(a=>[-bounds.min[a],bounds.max[a]])),y0=bounds.min[1],height=bounds.max[1]-y0;
+  const map=(x,y,z)=>{
+    const h=Math.min(1,Math.max(0,(y-y0)/height)),m=1+taper*h,r=Math.hypot(x,z),g=m/(1+(m-1)*Math.min(1,r/R)),r1=r*g;
+    const u=Math.max(0,r1-clearM)/(R-clearM),low=.35+.65*(1-h);
+    return [x*g,y-dropM*u*u*low,z*g];
+  };
+  const e=.01,d=(x,y,z,dx,dy,dz)=>{const a=map(x+dx,y+dy,z+dz),b=map(x-dx,y-dy,z-dz);return [(a[0]-b[0])/(2*e),(a[1]-b[1])/(2*e),(a[2]-b[2])/(2*e)];};
+  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  for(let i=0;i<p.length;i+=3){
+    const [x,y,z]=[p[i],p[i+1],p[i+2]];
+    // Normals by the cofactor of the map's Jacobian (inverse transpose up to scale).
+    const cx=d(x,y,z,e,0,0),cy=d(x,y,z,0,e,0),cz=d(x,y,z,0,0,e),A=cross(cy,cz),B=cross(cz,cx),C=cross(cx,cy);
+    const v=[0,1,2].map(a=>n[i]*A[a]+n[i+1]*B[a]+n[i+2]*C[a]),l=Math.hypot(...v)||1;
+    for(let a=0;a<3;a++)n[i+a]=v[a]/l;
+    const q=map(x,y,z);p[i]=q[0];p[i+1]=q[1];p[i+2]=q[2];
+  }
+  return {positions:p,normals:n};
+}
 const TALLEST_TREE_M=70;
-const spreadBounds=box=>{const min=box.min.toArray(),max=box.max.toArray();for(const a of [0,2]){min[a]*=CROWN_SPREAD;max[a]*=CROWN_SPREAD;}return {min,max};};
+const spreadBounds=(box,spread)=>{const min=box.min.toArray(),max=box.max.toArray();for(const a of [0,2]){min[a]*=spread;max[a]*=spread;}return {min,max};};
 /** Browser capture policy. The shared plan still owns source geometry/recipes;
  * GPU representation, texture resolution and budgets belong to this client. */
 export function browserTreeStages(stages,kind){
@@ -53,7 +81,9 @@ export function fittedTreeGeometry(source,crown,stage,village=false,taper=.78,re
   for(const g of crownGeometries){crownBase.set(g.attributes.position.array,crownCount);crownCount+=g.attributes.position.count;}
   const joined=name=>{const out=new Float32Array(crownCount*3);for(const g of crownGeometries)out.set(g.attributes[name].array,crownBase.get(g.attributes.position.array)*3);return out;};
   const fit=stage.recipe.architecture==='feral'?fitForestCrown:fitCrown;
-  const fitted=fit(joined('position'),joined('normal'),...(stage.recipe.architecture==='feral'?[village?{min:box.min.toArray(),max:box.max.toArray()}:spreadBounds(box),[0,0],crown.extras?.fitBounds]:[stage.recipe,{min:box.min.toArray(),max:box.max.toArray()},taper]));
+  const feral=stage.recipe.architecture==='feral',bounds=spreadBounds(box,village?VILLAGE_CROWN_SPREAD:CROWN_SPREAD);
+  let fitted=fit(joined('position'),joined('normal'),...(feral?[bounds,[0,0],crown.extras?.fitBounds]:[stage.recipe,{min:box.min.toArray(),max:box.max.toArray()},taper]));
+  if(village&&feral)fitted=shapeVillageCrown(fitted,bounds);
   const solids=village?(stage.includeBole?source.primitives.filter(p=>p.materialName==='redwood_bark'):[]):source.primitives.filter(p=>!/foliage/.test(p.materialName));
   const solidVertices=solids.reduce((n,p)=>n+p.geometry.attributes.position.count,0),count=solidVertices+crownCount;
   const position=new Float32Array(count*3),normal=new Float32Array(count*3),color=new Float32Array(count*3),uv=new Float32Array(count*2),leaf=new Uint8Array(count),ao=new Uint8Array(count).fill(255),indices=[];
