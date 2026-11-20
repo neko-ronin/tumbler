@@ -79,7 +79,7 @@
     },
     {
       "path": "client/web/src3d/collision.js",
-      "sha256": "7341d22669f1e8d0f19b3b0ccdd399087bf241af208790a8b00045caffa4ca96"
+      "sha256": "c769054980f58d2242505476d5f5e88e51e1605a1e5aad9d8866088654591051"
     },
     {
       "path": "client/web/src3d/controls.js",
@@ -191,7 +191,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "e458814dd6f545061a1dc8ad7ee49c6f6f9cbe1b69bae3544993baaa2f569f5f"
+      "sha256": "8b589936bcfb2f65542cad419f28207e5c166aeeac811ae27dbd574ad43f4622"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -199,7 +199,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "835dc557c2bbfe5c8b1fb7c7a73b935404190782ff55368dd7d6b4daf2e63815"
+      "sha256": "e135aa170257c94a52b61c02da72874f7a17b09ad4e2da562621eca60e16e796"
     },
     {
       "path": "client/web/src3d/organoid-encounter.js",
@@ -255,7 +255,7 @@
     },
     {
       "path": "client/web/src3d/player-ui.js",
-      "sha256": "04c8a1fff7f6d548890aaa17680162933eaa71e8077a84930efc9a9f6e57cd47"
+      "sha256": "19222b964894c89245979d915fd0ac36739f53276c1c953b6f96141146aa2d95"
     },
     {
       "path": "client/web/src3d/player-visibility.js",
@@ -343,7 +343,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "7e5c4df565305c7fa8de01daad1bf525e0616cfa10b2c25b28454840f179c9ae"
+      "sha256": "33889b8d6d8fbeae966a7747872c5cec8689f2c2568fd905098c3826a3b5ad5c"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -395,11 +395,11 @@
     },
     {
       "path": "shared/activities/colliders.js",
-      "sha256": "374c71dd51d249a7a071c129afb7ebeb4730cd59644f565d33ecaf3c61e46b93"
+      "sha256": "1007723aa82f83f85223d88f4402177e13bb8ea8644a5b27b02c512cd3950e39"
     },
     {
       "path": "shared/activities/collision.js",
-      "sha256": "222607735a86a1e6791950a632943340efcf9f4ff28a248802b04536b3450a67"
+      "sha256": "b0477367abf28a413fbd5ff9d8e0a3d452320afed27715be6e70485af7907305"
     },
     {
       "path": "shared/activities/combat.js",
@@ -439,7 +439,7 @@
     },
     {
       "path": "shared/activities/moves.js",
-      "sha256": "66ac19653af34b1e8e10724a2c78b59c9d207cbfb3dfa3f6b1871f1ca1d43f3e"
+      "sha256": "fe032b6774a2366da3ceac05b50ef01d607d44175be66b57932cfc8107fbffdf"
     },
     {
       "path": "shared/activities/parakite-dynamics.js",
@@ -478,12 +478,16 @@
       "sha256": "1b3e32e2598d482d0f5637e666a1b90042e0cca87db33e562f09e29b281a33b8"
     },
     {
+      "path": "shared/activities/stairs.js",
+      "sha256": "ce3a927882ffebbfabb9c0ab65f74f3ebe064718895383c8e9a5a2a36d0bb196"
+    },
+    {
       "path": "shared/activities/swim.js",
       "sha256": "68293fd6f968cb8dc78d91ec081d5b21eff3199f907daf57c04b4690847a7b5a"
     },
     {
       "path": "shared/activities/walk.js",
-      "sha256": "bcb2e2900106fcefd48ebfe15132d94574cd44229172d3f2bcc208265c3f9c28"
+      "sha256": "641ba0afd25939ba2da693cd023062a95fb7909f79d020488e2aa3d7ac86c8d1"
     },
     {
       "path": "shared/characters/appearance.js",
@@ -491,7 +495,7 @@
     },
     {
       "path": "shared/characters/player.json",
-      "sha256": "449294476090bc321aa537a01469bc10b2d567b2bdcca8d8c9a27c9b886c1c5a"
+      "sha256": "3c02045fd3b2dcb975b47ac092d236c213d02bc46d9bc3e3566ad900db1822fd"
     },
     {
       "path": "shared/ecology/aquatic.js",
@@ -507,27 +511,31 @@
     },
     {
       "path": "shared/geometry/arboreal/skybridge_20.meshopt.glb",
-      "sha256": "a8622a4e42138352c546cb1204b87dffb0eed9ba01e9e91584b6cfaf28b10992"
+      "sha256": "bf23301605dfdb71928cc76bb1362b3916b33228a911a872aed5115cf508435c"
     },
     {
       "path": "shared/geometry/arboreal/skybridge_8.meshopt.glb",
-      "sha256": "3f87862c5742378613fd8f909ca10066a772a834b3bc2e5208857323401c927a"
+      "sha256": "24525073c7075cba4c9fba817218393e55ae3e60f5f773b4a692e2b7537232ec"
+    },
+    {
+      "path": "shared/geometry/arboreal/village_stairs.json",
+      "sha256": "34612a92aab91648dc09171ab4d19ea75b0393b05d801f5d74c2c6ad243d7ea0"
     },
     {
       "path": "shared/geometry/arboreal/village_tree.meshopt.glb",
-      "sha256": "3bb12c148b3b7bfd4a85a505b3e2701c5b3d14fd3fb7026b0d4a08e92fc5a9d7"
+      "sha256": "2fdfed6dddb30b1b608085e429b8e1767b229a07a5cc27918d778c657b621ea2"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_high.meshopt.glb",
-      "sha256": "5be0b818ffb0180c8fa33ce2a98332d84cd8edcbf151a306521167e85203d3ba"
+      "sha256": "0d89c1dd68a167ac5f87a09924d6395ea27893269af02c3cf55d4e6fe1efebb8"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_low.meshopt.glb",
-      "sha256": "2f443cb88a5a48bcc0fbd5f14c8cc27d1a8e49ed8d1faea8d25706f1951a6864"
+      "sha256": "de0f0fd385819ea0ceb19311df7b0d87741fb8f8307a0a4dbabe668b31b5946f"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_mid.meshopt.glb",
-      "sha256": "7b4f4c8ec9fd9a50dbc4b594b1c01708026a2a02d6ce855176d2bdb86c3b517e"
+      "sha256": "ab77500e2eed21fe5eccdc9c5ca72c195512e4144ffce9b56a924293698c03c8"
     },
     {
       "path": "shared/geometry/blimp/blimp.meshopt.glb",
@@ -571,7 +579,7 @@
     },
     {
       "path": "shared/geometry/cat-ronin/ronin.glb",
-      "sha256": "87a1898984be2ee894c1b5dcd9c7f97386436cb1a2c3cec5022e63ed0ffbc7c8"
+      "sha256": "0efe403fbd72308301c3744bdd49458c302e5199dff31d8599a92bdd5294defe"
     },
     {
       "path": "shared/geometry/dome/dome.meshopt.glb",
@@ -679,7 +687,7 @@
     },
     {
       "path": "shared/geometry/tree-design/adopted-redwoods.json",
-      "sha256": "3ef8521996903fe6f9023e6e63f1218b04e53231802806dd3cc9d75ab6f7bc2f"
+      "sha256": "b94b99e73f7b782f317c099a8ce40f021c094dc2582a9d5e9f8bc31b422583b6"
     },
     {
       "path": "shared/geometry/tree-design/branch-graphs.json",
@@ -936,7 +944,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "d0256105",
+  "commit": "7ef64145",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

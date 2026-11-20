@@ -102,6 +102,23 @@
       "stop_mps": 1.2,
       "duration_s": 1.1,
       "friction_mps2": 5
+    },
+    "stair": {
+      "walk_mps": 2.4,
+      "run_mps": 4.5,
+      "accel_mps2": 12,
+      "tap_s": 0.18,
+      "vault_s": 0.55,
+      "vault_out_m": 0.75,
+      "vault_rise_m": 1.35,
+      "vault_exit_mps": 2.6,
+      "rail_start_mps": 2,
+      "rail_mps": 9,
+      "rail_friction_mps2": 1.2,
+      "seat_m": 0.5,
+      "mount_s": 0.15,
+      "exit_reach": 2,
+      "cooldown_s": 0.35
     }
   },
   "tail_clips": {
@@ -179,6 +196,10 @@
   "fall_clips": {
     "bounce": "fall_bounce",
     "tumble": "fall_tumble"
+  },
+  "stair_clips": {
+    "vault": "stair_vault",
+    "rail": "rail_slide"
   },
   "swim_clips": {
     "tread": "swim_tread",

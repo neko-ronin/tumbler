@@ -51,6 +51,22 @@ function meshNearest(shape,point,radius){
   return {distance:best*scale,normal:n};
 }
 
+/** The highest floor face of a walkable mesh under (x, y) between world heights `bottom` and `top`, or null. */
+function meshFloor(shape,x,y,top,bottom){
+  const {asset,inverse,matrix}=shape.mesh,p=apply(inverse,[x,y,0]),cell=asset.cell_m,tri=asset.triangles;
+  let best=null;
+  for(const t of asset.floors.get(cellKey(Math.floor(p[0]/cell),0,Math.floor(p[2]/cell)))??[]){
+    const o=t*9,x0=tri[o],z0=tri[o+2],x1=tri[o+3],z1=tri[o+5],x2=tri[o+6],z2=tri[o+8];
+    const d=(z1-z2)*(x0-x2)+(x2-x1)*(z0-z2);if(Math.abs(d)<1e-12)continue;
+    const a=((z1-z2)*(p[0]-x2)+(x2-x1)*(p[2]-z2))/d,b=((z2-z0)*(p[0]-x2)+(x0-x2)*(p[2]-z2))/d,c=1-a-b;
+    if(a<-1e-9||b<-1e-9||c<-1e-9)continue;
+    // Local +Y is world up (meshShape checks), so world z is a straight map of local height.
+    const z=matrix[6]*(a*tri[o+1]+b*tri[o+4]+c*tri[o+7])+matrix[14];
+    if(z<=top&&z>=bottom&&(best===null||z>best))best=z;
+  }
+  return best;
+}
+
 const inTrunk=(t,z,radius)=>z>=t.base_z-radius&&z<=t.top_z+radius;
 
 /** Distance from `point` to a solid's surface: horizontal to the bark at that height
@@ -128,6 +144,17 @@ export function createCollisionIndex(shapes,cellM=64){
   hit.near=(point,radius)=>[...gather(point,point,radius)].filter(shape=>!shape.soft&&reaches(shape,point,point,radius)&&(
     shape.type==='trunk'?inTrunk(shape.trunk,point[2],radius)&&surfaceGap(shape,point)<=radius:
     shape.type==='mesh'?meshNearest(shape,point,radius)!==null:true));
+  /** The highest walkable floor (a deck, a gallery, a bridge: a walkable mesh's faces no steeper than
+   * 45 degrees) a vertical line at (x, y) meets between heights `bottom` and `top`, or null. */
+  hit.floor=(x,y,top,bottom=-Infinity)=>{
+    let best=null;
+    for(const shape of gather([x,y,0],[x,y,0],0)){
+      if(!shape.walkable||x<shape.min[0]||x>shape.max[0]||y<shape.min[1]||y>shape.max[1]||top<shape.min[2]||bottom>shape.max[2])continue;
+      const z=meshFloor(shape,x,y,top,best??bottom);
+      if(z!==null&&(best===null||z>best))best=z;
+    }
+    return best;
+  };
   /** Crowns a sphere overlaps, with depth = crown radius + `radius` − horizontal distance. */
   hit.soft=(point,radius)=>{
     const out=[];

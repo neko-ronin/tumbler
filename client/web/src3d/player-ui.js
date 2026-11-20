@@ -16,6 +16,10 @@ const CONTROLS={
     ['Jump',['Space'],['A']],['Tuck and roll, held',['Shift'],['LB']],['Dive in water, press to toggle',['Shift'],[]],['Slide',['Ctrl'],['R3']],
     ['Draw the katana',['F'],['Y']],['Slash',['Q','Click'],['B']],['Charge, held',['R'],['RT']],
     ['Grab a tree',['E'],['X']],['Launch from a giant redwood crown',['1','2','3'],['D-pad','X']],['First person',['V'],['L3']],['Board the gondola, on a station deck',['G'],['RB']],['Map',['Esc','M'],['Menu']]]},
+  stair:{title:'On a tree village stair',rows:[
+    ['Climb or go down the stair',['WASD'],['L stick']],['Step off at a gallery, at a gap in the rail',['WASD'],['L stick']],
+    ['Jump',['Space'],['A']],['Vault the handrail: a quick tap toward it',['Space'],['A']],['Slide down the handrail, held',['Shift'],['LB']],
+    ['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
   harness:{title:'Paramotor, on the ground',rows:[
     ['Start the take-off run',['Space'],['A']],['Steer',['A','D'],['L stick']],['Motor up, down',['R','F'],['RB','LB']],
     ['Unhook and walk',['E'],['X']],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
@@ -149,7 +153,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   }
   function renderControls(){
     controlsSheet.replaceChildren(el('h2',{className:'controls-title',textContent:'Controls'}),
-      el('div',{className:'controls-grid'},...['walk','parakite'].map(m=>el('div',{className:'controls-group'},el('h3',{textContent:CONTROLS[m].title}),legend(CONTROLS[m].rows)))),
+      el('div',{className:'controls-grid'},...['walk','stair','parakite'].map(m=>el('div',{className:'controls-group'},el('h3',{textContent:CONTROLS[m].title}),legend(CONTROLS[m].rows)))),
       legend(MENU_CONTROLS.controls,{caption:'This page'}));
   }
   function show(name){sheetName=name;sheet.hidden=name!=='map';controlsSheet.hidden=name!=='controls';if(name==='controls')renderControls();else{renderSide();layout();}}
@@ -176,7 +180,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   // so it is there when needed and out of the view the rest of the time.
   let cardKey='',foldTimer=0;
   const folded=()=>el('div',{className:'card-folded'},el('span',{textContent:'Map and all controls'}),el('span',{className:'control-keys'},glyph('Esc','key'),glyph('M','key')),el('span',{className:'control-pad'},glyph('Menu','pad')));
-  function cardState(){if(navigation.mode==='gondola')return 'gondola';if(navigation.mode==='paramotor'&&navigation.state?.grounded&&!navigation.state?.launching)return 'harness';return CONTROLS[navigation.mode]?navigation.mode:null;}
+  function cardState(){if(navigation.mode==='gondola')return 'gondola';if(navigation.mode==='walk'&&navigation.state?.mode==='stair')return 'stair';if(navigation.mode==='paramotor'&&navigation.state?.grounded&&!navigation.state?.launching)return 'harness';return CONTROLS[navigation.mode]?navigation.mode:null;}
   function renderCard(){const k=cardState();if(k===cardKey)return;cardKey=k;card.hidden=!k;clearTimeout(foldTimer);if(!k)return;
     card.classList.remove('folded');card.replaceChildren(el('h3',{textContent:CONTROLS[k].title}),legend(CONTROLS[k].rows));
     foldTimer=setTimeout(()=>{if(cardKey===k){card.classList.add('folded');card.replaceChildren(el('h3',{textContent:CONTROLS[k].title}),folded());}},12000);}

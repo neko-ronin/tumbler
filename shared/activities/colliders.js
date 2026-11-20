@@ -47,7 +47,7 @@ export const cellKey=(a,b,c)=>((a+1024)*2048+(b+1024))*2048+(c+1024);
  * their bounds so a query reads only the triangles near it. Shared by every
  * instance of the asset.
  */
-export function meshAsset(triangles,cell_m=2){
+export function meshAsset(triangles,cell_m=2,{floors=false}={}){
   const cells=new Map(),min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity],lo=[0,0,0],hi=[0,0,0];
   for(let t=0;t*9<triangles.length;t++){
     for(let a=0;a<3;a++){
@@ -60,14 +60,30 @@ export function meshAsset(triangles,cell_m=2){
       const key=cellKey(a,b,c),list=cells.get(key);if(list)list.push(t);else cells.set(key,[t]);
     }
   }
-  return {triangles,bounds:{min,max},cell_m,cells};
+  return {triangles,bounds:{min,max},cell_m,cells,floors:floors?floorCells(triangles,cell_m):null};
+}
+
+/** Faces something can stand on (no steeper than 45 degrees, either winding), binned by their
+ * plan (local x, z) bounds so a vertical probe reads one cell's list. */
+function floorCells(tri,cell_m){
+  const cells=new Map();
+  for(let t=0;t*9<tri.length;t++){
+    const o=t*9,ax=tri[o+3]-tri[o],ay=tri[o+4]-tri[o+1],az=tri[o+5]-tri[o+2],bx=tri[o+6]-tri[o],by=tri[o+7]-tri[o+1],bz=tri[o+8]-tri[o+2];
+    const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
+    if(Math.abs(ny)<Math.SQRT1_2*Math.hypot(nx,ny,nz))continue;
+    const xs=[tri[o],tri[o+3],tri[o+6]],zs=[tri[o+2],tri[o+5],tri[o+8]];
+    for(let a=Math.floor(Math.min(...xs)/cell_m);a<=Math.floor(Math.max(...xs)/cell_m);a++)for(let c=Math.floor(Math.min(...zs)/cell_m);c<=Math.floor(Math.max(...zs)/cell_m);c++){
+      const key=cellKey(a,0,c),list=cells.get(key);if(list)list.push(t);else cells.set(key,[t]);
+    }
+  }
+  return cells;
 }
 
 /** A solid instance of a meshAsset. `matrix` (column-major) maps glTF-local to
  * world and must be a rotation, a uniform scale and a translation, so a sphere
  * stays a sphere in local space.
  */
-export function meshShape({id,asset,matrix,kind}){
+export function meshShape({id,asset,matrix,kind,walkable=false}){
   const m=matrix,col=c=>[m[c*4],m[c*4+1],m[c*4+2]],cols=[0,1,2].map(col);
   const lengths=cols.map(v=>Math.hypot(...v)),scale=lengths[0];
   const dot=(u,v)=>u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
@@ -81,5 +97,8 @@ export function meshShape({id,asset,matrix,kind}){
   const {min:lo,max:hi}=asset.bounds,min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
   for(const x of [lo[0],hi[0]])for(const y of [lo[1],hi[1]])for(const z of [lo[2],hi[2]])
     for(let r=0;r<3;r++){const v=m[r]*x+m[4+r]*y+m[8+r]*z+m[12+r];min[r]=Math.min(min[r],v);max[r]=Math.max(max[r],v);}
-  return {id,type:'mesh',kind,min,max,mesh:{asset,matrix,inverse,scale}};
+  // A walkable mesh is also a floor (collision.js hit.floor): its asset must carry `floors`, and its
+  // local +Y must stay world up, as a placement's yaw-only turn keeps it.
+  if(walkable&&!(asset.floors&&Math.abs(m[6]-scale)<1e-6*scale))throw new Error(`${id}: a walkable mesh needs floor cells and an upright placement`);
+  return {id,type:'mesh',kind,walkable,min,max,mesh:{asset,matrix,inverse,scale}};
 }

@@ -75,7 +75,8 @@ export function safeWalkGround(x,y,config,height,hitTest,{dropOffs=false}={}){
   // beside a ledge reads as level; a wall face beside him still does not.
   if(dropOffs)samples=samples.map(h=>Number.isFinite(h)&&h>=z-config.max_step_m?h:z);
   if(!samples.every(Number.isFinite)||Math.hypot((samples[0]-samples[1])/(2*r),(samples[2]-samples[3])/(2*r))>rules(config).max_ground_grade)return null;
-  if(hitTest?.([x,y,z+r],[x,y,z+1.7-r],r))return null;
+  // A hair above the feet: on a deck the lowest sphere would otherwise graze the boards it stands on.
+  if(hitTest?.([x,y,z+r+.02],[x,y,z+1.7-r],r))return null;
   return z;
 }
 
@@ -104,6 +105,15 @@ export function gaitFor(speed,config,clips={}){
 export function stepWalk(state,input,dt,config,height,hitTest){
   if(!(dt>0)||!Number.isFinite(dt))return {...state};
   const j=rules(config),s={...state},duration=Math.min(dt,.05);
+  // The floor is the terrain, or a walkable structure (a deck, a gallery, a bridge: hitTest.floor)
+  // no more than a step above his feet, whichever is higher. Over a structure the knee sphere is
+  // left out: tread edges and slab lips are steps, and the floor already decides what is too high.
+  const terrain=height;
+  const deckAt=(x,y)=>{const t=terrain(x,y),d=hitTest?.floor?.(x,y,s.z+config.max_step_m,Number.isFinite(t)?t:-Infinity)??null;return d!==null&&!(d<=t)?d:null;};
+  height=(x,y)=>deckAt(x,y)??terrain(x,y);
+  const r=config.radius_m,ring=[[0,0],...[0,1,2,3,4,5,6,7].map(k=>[Math.cos(k*Math.PI/4)*(r+.05),Math.sin(k*Math.PI/4)*(r+.05)])];
+  const near=(x,y)=>ring.some(([dx,dy])=>deckAt(x+dx,y+dy)!==null);
+  const body=(...at)=>at.some(([x,y])=>near(x,y))?[.9,1.5]:[r,.9,1.5];
   s.grounded??=true;s.jumpPhase??='grounded';s.jumpTime??=0;s.jumpCount??=0;s.vz??=0;s.vx??=0;s.vy??=0;
   const magnitude=Math.hypot(input.x??0,input.y??0);
   // `run` is a held or toggled modifier. `run_amount` lets an analog client ask
@@ -138,20 +148,21 @@ export function stepWalk(state,input,dt,config,height,hitTest){
   const blocked=(x,y)=>{
     const z=height(x,y),distance=Math.hypot(x-s.x,y-s.y);
     return !Number.isFinite(z)||(s.grounded?Math.abs(z-s.z)>Math.max(config.max_step_m,distance*config.max_grade):z>s.z+config.max_step_m)
-      ||[config.radius_m,.9,1.5].some(h=>hitTest?.([s.x,s.y,s.z+h],[x,y,(s.grounded?z:s.z)+h],config.radius_m))
+      ||body([s.x,s.y],[x,y]).some(h=>hitTest?.([s.x,s.y,s.z+h],[x,y,(s.grounded?z:s.z)+h],config.radius_m))
       // The floor is terrain only, so passing over a structure in the air would
       // land him inside its box, where nothing can move him again. A trunk or mesh
       // he is already above (a flared trunk below a push-off) never stops him
       // moving: only a move that newly puts him over one does.
       ||(!s.grounded&&overSolid(x,y,z)&&!(overSolid.last.type&&overSolid(s.x,s.y,height(s.x,s.y))));
   };
-  function overSolid(x,y,z){overSolid.last=hitTest?.([x,y,s.z+config.radius_m],[x,y,z+config.radius_m],config.radius_m);return !!overSolid.last;}
+  // The sweep stops a hair above the floor, so a deck he would land on is not itself the solid in the way.
+  function overSolid(x,y,z){overSolid.last=hitTest?.([x,y,s.z+config.radius_m],[x,y,Math.min(s.z,z+.05)+config.radius_m],config.radius_m);return !!overSolid.last;}
   // Trunks and meshes slide on their true surface: the move is made, then pushed
   // back out across the ground along the contact normal (collision.js pushOut), so
   // he hugs what stopped him. Null leaves the move to the world-axis slide (untyped
   // boxes, terrain, older clients); {stuck} means no push clears him.
   const flush=(x,y)=>{
-    const z=s.grounded?height(x,y):s.z,out=hitTest?.pushOut?.([config.radius_m,.9,1.5].map(h=>[x,y,z+h]),config.radius_m,{horizontal:true});
+    const z=s.grounded?height(x,y):s.z,out=hitTest?.pushOut?.(body([x,y]).map(h=>[x,y,z+h]),config.radius_m,{horizontal:true});
     return out?.offset?{x:x+out.offset[0],y:y+out.offset[1],normals:out.normals}:out??null;
   };
   // Foliage (optional `foliage` contract): it slows the stride to `slow` of its
@@ -260,6 +271,8 @@ export function stepWalk(state,input,dt,config,height,hitTest){
     }
   }
   s.groundZ=height(s.x,s.y)??state.groundZ??state.z;
+  // On a structure's floor (for presentation: feet and shadow stand on it, not on the terrain below).
+  s.deck=deckAt(s.x,s.y)!==null;
   // Signed yaw rate (rad/s, positive turning left) for leaning and turn clips.
   const turn=s.heading-heading;s.turnRate=Math.atan2(Math.sin(turn),Math.cos(turn))/duration;
   s.jumpBuffer=Math.max(0,(s.jumpBuffer??0)-duration);s.chainLeft=Math.max(0,(s.chainLeft??0)-duration);

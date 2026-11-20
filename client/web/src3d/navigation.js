@@ -7,6 +7,7 @@ import {flightInput} from './flight-input.js';
 import {parakiteLessonLift,startParakiteLesson,stepParakiteLesson} from '../../../shared/activities/parakite-lesson.js';
 import {gaitFor,unharnessFlight,reharnessWalk,relaunchGround,relaunchRefusal,safeWalkGround,walkSpawn} from '../../../shared/activities/walk.js';
 import {stepMoves} from '../../../shared/activities/moves.js';
+import {stairFloor,stairPoint} from '../../../shared/activities/stairs.js';
 import {playTape} from '../../../shared/activities/balance.js';
 import {createFixedAirSampler} from './fixed-air.js';
 import {createFlightPosture} from './flight-posture.js';
@@ -321,6 +322,24 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     orbitAtCamera();
   }
+  // On a helix the chase boom swings into the bole: hold the camera behind him and out from the
+  // trunk instead, and turn the walk's yaw to match it so forward stays the way he faces.
+  // Behind is along the flight, the way he last went on it (down while on the rail): a vault faces him
+  // out over the rail, and behind *that* is the bole.
+  const stairEye=new T.Vector3(),stairLook=new T.Vector3();let stairEased=null,stairSign=1;
+  function stairCamera(dt){
+    const s=state,r=s.stair,ox=s.x-r.matrix[12],oy=s.y-r.matrix[13],o=Math.hypot(ox,oy)||1;
+    if(s.stairPhase==='rail')stairSign=-1;else if(s.stairPhase==='walk'&&Math.abs(s.stairV)>.05)stairSign=Math.sign(s.stairV);
+    const a=stairPoint(r,s.u-.5),b=stairPoint(r,s.u+.5),l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,fx=(b[0]-a[0])/l*stairSign,fy=(b[1]-a[1])/l*stairSign;
+    // Galleries and dwellings crowd the flight: walk the eye in from the target until the sight is clear.
+    // From head height, over the 1 m handrail beside him.
+    const look=[s.x,s.y,s.z+1.5],want=[s.x-fx*4.5+ox/o*3.5,s.y-fy*4.5+oy/o*3.5,s.z+1.8];let eye=look;
+    for(let k=1;k<=10;k++){const next=look.map((v,i)=>v+(want[i]-v)*k/10);if(hitTest?.(eye,next,.25))break;eye=next;}
+    stairEye.set(eye[0],eye[2],-eye[1]);
+    if(!stairEased||camera.position.distanceTo(stairEye)>12)stairEased=stairEye.clone();else stairEased.lerp(stairEye,1-Math.exp(-dt*4));
+    camera.position.copy(stairEased);stairLook.set(s.x,s.z+.9,-s.y);camera.lookAt(stairLook);
+    const d=stairLook.clone().sub(camera.position);yaw=Math.atan2(-d.x,-d.z);pitch=Math.atan2(d.y,Math.hypot(d.x,d.z));
+  }
   function follow(dt,distance,heading,lift=0,presentation={}){
     const {direct=false,introProgress=0,rangeEase,rangeStart=false,groundRange=false}=presentation;
     target.copy(character.object.position).add(new T.Vector3(0,(config.modes[mode]?2.7:1.1*characterConfig.scale)+lift,0));
@@ -395,7 +414,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // rotation cannot turn a straight run into a spiral. Manual look still steers it.
     if(movementYaw===null||Math.hypot(x-lastInput[0],y-lastInput[1])>.15||(!x&&!y))movementYaw=yaw;
     lastInput=[x,y];
-    const basis=view==='first'?yaw:movementYaw;
+    // On a stair the camera follows him round the bole, so forward is its live yaw, not the one held at the press.
+    const basis=view==='first'||state.mode==='stair'?yaw:movementYaw;
     forward.set(-Math.sin(basis),0,-Math.cos(basis));side.set(Math.cos(basis),0,-Math.sin(basis));
     const movement=forward.clone().multiplyScalar(y).addScaledVector(side,x);
     const before=state.speed??0,beforeMode=state.mode,fromX=state.x,fromY=state.y;
@@ -423,11 +443,18 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       character.object.quaternion.slerp(goal,1-Math.exp(-dt*14));
     }
     const jumping=state.jumpPhase&&state.jumpPhase!=='grounded';
+    // On a village stair: the treads under each foot, and the vault and handrail slide scrubbed by
+    // the core's own progress (the rail slide loops on its clock).
+    const stair=state.mode==='stair'?state:null,stairClips=characterConfig.stair_clips;
+    const stairName=stair&&stairClips?{vault:stairClips.vault,rail:stairClips.rail}[stair.stairPhase]:null,stairClip=character.actions?.[stairName]?stairName:null;
+    const clipLength=stairClip?character.actions[stairClip].getClip().duration:1;
+    const stairTime=!stairClip?undefined:stair.stairPhase==='vault'?(stair.stairProgress??0)*clipLength:stair.stairTime%clipLength;
+    const floorUnder=stair?(x,y)=>stair.stairPhase==='walk'?stairFloor(stair.stair,stair.u,x,y):stair.z-2:state.deck?()=>state.groundZ:characterHeight;
     const bal=state.balance,down=bal&&bal.phase!=='steady'&&bal.phase!=='stumble';
     if(bal){const p=options.balance.config.phases;bal.progress=bal.phase==='trip'?bal.t/p.trip_s:bal.phase==='recover'?bal.t/p.recover_s:0;}
     // The gait follows the speed the feet actually have, not a key.
     const gait=gaitFor(state.speed,characterConfig.walk,characterConfig.clips);
-    character.update(dt,onBark?'climb':swimming?'swim':down?'balance':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{balance:bal,slide:state.sliding?state:null,climb:onBark?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching?state.z:characterHeight(state.x,state.y),groundHeight:branching?()=>state.z:characterHeight,knock:state.knock,knockSide:state.knockSide});
+    character.update(dt,onBark?'climb':swimming?'swim':down?'balance':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{balance:bal,slide:state.sliding?state:null,climb:onBark?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching||stair?state.z:floorUnder(state.x,state.y),groundHeight:branching?()=>state.z:floorUnder,knock:state.knock,knockSide:state.knockSide,bodyClip:stairClip??undefined,bodyTime:stairTime});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);
     const profile=policy();let distanceFollow=false,distanceEase=0,distanceStart=false;
     if(view==='chase'){const auto=director.step(dt,yaw,pitch,state.heading-Math.PI/2,state.speed>.15&&!busy,profile,drag,climbing,Math.hypot(state.x-fromX,state.y-fromY));yaw=auto.yaw;pitch=auto.pitch;boom.rotate(auto.transport??0);distanceFollow=auto.distanceFollow??false;distanceEase=auto.distanceEase??0;distanceStart=auto.distanceStart??false;}
@@ -443,6 +470,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       framedDistance=snap||framedDistance===null?profile.distance:framedDistance+(profile.distance-framedDistance)*blend;
       framedLift=snap?profile.lift:framedLift+(profile.lift-framedLift)*blend;
       follow(dt,framedDistance*characterConfig.scale,Math.PI/2,framedLift*characterConfig.scale,{direct:distanceFollow,introProgress:distanceEase,groundRange:profile.follow_distance_m>0,rangeEase:distanceFollow?distanceEase:undefined,rangeStart:distanceStart});
+      if(state.mode==='stair')stairCamera(dt);else stairEased=null;
     }
     // Below the water's surface, the client tints and fogs the view (main.js).
     const overhead=water?.(camera.position.x,-camera.position.z);underwater=!!overhead&&camera.position.y<overhead.surface_z;

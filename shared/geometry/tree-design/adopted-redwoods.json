@@ -158,16 +158,16 @@
     }
   ],
   "silhouette": {
-    "rule": "Retain core envelopes, attachment positions, crown base, height and horizontal bounds. The 2026-10-24 village-bole refinement changes only the tree surface; residences, stairs, collars and bridges retain their original geometry. Seeded crown irregularity remains inside its original envelope.",
+    "rule": "Retain core envelopes, attachment positions, crown base, height and horizontal bounds. The 2026-10-24 village-bole refinement changes only the tree surface; residences, stairs, collars and bridges retain their original geometry. Seeded crown irregularity remains inside its original envelope. The 2026-11-19 traversal pass changes only dwellings, galleries and stair rails (walkways, bridge gates, galleries outside the helix); the bole and crown are bit-identical, so the fit stands.",
     "taper": 0.78,
     "lean": 0,
     "sourceSHA256": {
       "redwood/giant_redwood.glb": "40d4473e4b52709ca21114939752da2df05187e11805a520eedb20f34c425282",
       "redwood/redwood_canopy.glb": "1eede985faf236a720975636432189f33e2f02c1595352f16f1c66a83905d76e",
-      "arboreal/village_tree.glb": "a3c7c457412685be37ed523e7d1f47a1aae21e0f84960527fc530d480037b6b1",
-      "arboreal/village_tree_low.glb": "27793c31e30e848a8ff14c2bb83c2f36b72f63ccd2ca5293970d6a5d72099e57",
-      "arboreal/village_tree_mid.glb": "1f7902fd27de62e0b7876688c15055073a976365797be42a4f66f9e57d0c94ac",
-      "arboreal/village_tree_high.glb": "86bab61ab05e2e9b59219396f1990d7f3f8cc7be6c6f0e8451248d09e0234351",
+      "arboreal/village_tree.glb": "4bca5746c9948b05e0db4cf45c2049314c9c94af77f7084152d1d6c42bb04245",
+      "arboreal/village_tree_low.glb": "2ea010c4336924506968477022148ca47937b05db44e8a7c6b99396a4811d0b7",
+      "arboreal/village_tree_mid.glb": "b7444af8be05499d6165c557cf1d0e0b09ec9096a67c6d338153f44ce1860c5e",
+      "arboreal/village_tree_high.glb": "cf3a8e051a1f70ce97a700d30f188905287ed3aadae84bdf7c58d0d4a56cf67b",
       "redwood/mountain_pine.glb": "36945148e3f0224e4e6904c350a2be83513cdbac6d610f71d1d8ec9492226e5b",
       "redwood/silver_fir.glb": "f3165972dc778a6d067b4be8366694071cf12a9d747302d9eec3626959b0c68d"
     },

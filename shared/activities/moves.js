@@ -1,5 +1,5 @@
 /** Which movement mode the character is in, and when it changes: ground
- * (walk.js), climb (climb.js). `world = {height, hitTest}`; `input` is the
+ * (walk.js), climb (climb.js), stair (stairs.js). `world = {height, hitTest}`; `input` is the
  * walking input plus `stick: [right, forward]` (raw) and camera `pitch`.
  * A contract without `climb` tuning is plain walking, field for field.
  */
@@ -7,6 +7,7 @@ import {mountNearbyBranch,stepBranch,stepTreeJump,branchLanding} from './branche
 import {stepWalk} from './walk.js';
 import {findTrunk,attachClimb,stepClimb,pushOffTree,trunkGap} from './climb.js';
 import {stepSwim} from './swim.js';
+import {stepStair,findStair,attachStair} from './stairs.js';
 import {createBalance,stepBalance,senseGround,DOWN} from './balance.js';
 
 /** Walking spent against a balance budget (balance.js), when the world gives one:
@@ -21,7 +22,8 @@ export function stepGround(state,input,dt,config,world,height=world.height){
   const before=state.balance??createBalance();
   const onFeet=(state.grounded??true)&&['grounded',undefined].includes(state.jumpPhase);
   if(!onFeet&&!DOWN.has(before.phase))return {...stepWalk(state,input,dt,config,height,world.hitTest),balance:before};
-  const ground={...senseGround(height,state.x,state.y),surface:bal.surfaceAt(state.x,state.y)};
+  // On a deck the boards are level and timber, whatever the slope below them.
+  const ground=state.deck?{...senseGround(()=>state.z,state.x,state.y),surface:'granite'}:{...senseGround(height,state.x,state.y),surface:bal.surfaceAt(state.x,state.y)};
   const b=stepBalance(before,ground,{vx:state.vx??0,vy:state.vy??0},input,dt,bal.config);
   if(DOWN.has(b.phase)){
     // No traction: the legs neither push nor brake, so the balance's velocity carries
@@ -41,6 +43,7 @@ export function stepMoves(state,input,dt,config,world){
     return stepClimb(state,input,dt,config,world);
   }
   if(state.mode==='swim')return stepSwim(state,input,dt,config,world);
+  if(state.mode==='stair')return stepStair(state,input,dt,config,world);
   // With swimming, water is a surface he can walk or fall onto, and then swims in.
   // In water he walks (and falls) onto the bed. He starts swimming once it is
   // exit_depth_m deep where he stands, or as he passes the surface of water that
@@ -53,6 +56,11 @@ export function stepMoves(state,input,dt,config,world){
     s={...s,sliding:false,mode:'swim',balance:undefined,grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vz:0,swimPhase:'wade'};
   if(s.mode==='swim')return s;
   const landed=branchLanding(state,s,config,world);if(landed)return landed;
+  // Feet on a village helix's treads lock him to the flight.
+  if(config.stair&&world.hitTest?.stairs?.length){
+    s.stairCooldown=Math.max(0,(state.stairCooldown??0)-dt);
+    if(s.grounded&&!s.stairCooldown&&!s.sliding){const on=findStair(world.hitTest.stairs,s);if(on)return attachStair(s,on,config);}
+  }
   const c=config.climb;
   if(!c)return s;
   s.climbCooldown=Math.max(0,(state.climbCooldown??0)-dt);

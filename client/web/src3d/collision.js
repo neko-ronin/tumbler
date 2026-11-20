@@ -9,6 +9,7 @@ import {CROWN_SPREAD} from './redwood-rendering.js';
 import {instanceMatrix} from './world.js';
 import {createCollisionIndex} from '../../../shared/activities/collision.js';
 import {radialProfile,trunkShape,crownShape,meshAsset,meshShape} from '../../../shared/activities/colliders.js';
+import {stairRecord} from '../../../shared/activities/stairs.js';
 
 // Scene axes (y up, z south) to the core's (x east, y north, z up).
 const SCENE_TO_CORE=new T.Matrix4().set(1,0,0,0, 0,0,-1,0, 0,1,0,0, 0,0,0,1);
@@ -47,13 +48,14 @@ function readAsset(key,asset){
     return {trunk:radialProfile(positions(prims.filter(p=>!foliage(p))),{band_m:2,to_h:base}),top_h:base,climb_top_h:top,
       crown:radialProfile(leaves,{band_m:1,percentile:.9})};
   }
-  const tree=key.startsWith('arboreal/village_tree'),solid=tree?prims.filter(p=>!foliage(p)):prims;
-  return {crown:tree?radialProfile(positions(prims.filter(foliage)),{band_m:1,percentile:.9}):null,
-    mesh:meshAsset(triangles(solid)),boxes:solid.map(p=>({box:p.geometry.boundingBox,matrix:p.local}))};
+  // The tree village (its trees' decks, galleries and stairs, and the skybridges) is walked on, not only around.
+  const tree=key.startsWith('arboreal/village_tree'),solid=tree?prims.filter(p=>!foliage(p)):prims,walkable=key.startsWith('arboreal/');
+  return {crown:tree?radialProfile(positions(prims.filter(foliage)),{band_m:1,percentile:.9}):null,walkable,
+    mesh:meshAsset(triangles(solid),2,{floors:walkable}),boxes:solid.map(p=>({box:p.geometry.boundingBox,matrix:p.local}))};
 }
 
-export function buildWorldCollision(placement,assets,treePlan=null,branchData=null){
-  const read=new Map(),shapes=[],branchTrees=[],graphs=new Map();
+export function buildWorldCollision(placement,assets,treePlan=null,branchData=null,stairData=null){
+  const read=new Map(),shapes=[],branchTrees=[],graphs=new Map(),stairs=[];
   const graphFor=(asset)=>{
     if(graphs.has(asset))return graphs.get(asset);
     const source=branchData?.profiles?.[treePlan?.targets?.[asset]];if(!source)return null;
@@ -79,7 +81,10 @@ export function buildWorldCollision(placement,assets,treePlan=null,branchData=nu
     if(entry.crown?.length)shapes.push(crownShape({id:id('crown'),x,y,base_z:z,scale:s,profile:entry.crown}));
     const kind=i.kind==='blimp'?'generator':'structure';
     if(scale.every(v=>v===scale[0])){
-      shapes.push(meshShape({id:id('mesh'),asset:entry.mesh,kind,matrix:SCENE_TO_CORE.clone().multiply(instanceMatrix(i.position_m,i.yaw_deg,i.scale)).elements}));
+      const matrix=SCENE_TO_CORE.clone().multiply(instanceMatrix(i.position_m,i.yaw_deg,i.scale)).elements;
+      shapes.push(meshShape({id:id('mesh'),asset:entry.mesh,kind,matrix,walkable:entry.walkable}));
+      const stair=stairData?.assets?.[i.asset.split('/').pop()];
+      if(stair&&scale[0]===1)stairs.push(stairRecord({id:id('stair'),data:stair,matrix}));
       return;
     }
     // A stretched instance would turn a sphere into an ellipsoid: keep a box per part.
@@ -88,5 +93,5 @@ export function buildWorldCollision(placement,assets,treePlan=null,branchData=nu
       shapes.push({id:id(k),min:[b.min.x,-b.max.z,b.min.y],max:[b.max.x,-b.min.z,b.max.y],kind});
     });
   });
-  return Object.assign(createCollisionIndex(shapes),{branchesNear:createBranchIndex(branchTrees)});
+  return Object.assign(createCollisionIndex(shapes),{branchesNear:createBranchIndex(branchTrees),stairs});
 }

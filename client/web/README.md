@@ -1,3 +1,29 @@
+# The tree village is walked — web v0.8.6, 2026-11-19
+
+Decks, galleries, stair stubs and skybridges are floors now, not only walls: walkable meshes
+(everything under `arboreal/`) publish their faces no steeper than 45 degrees, and the walker
+stands on the highest of them within a step of his feet (`hit.floor`, `walk.js`). The helix is
+**stair mode** (`shared/activities/stairs.js`): on the treads he is locked to the flight and the
+stick climbs or descends it; he steps off at each gallery spur (stick out, where the rail is open)
+and at the foot. A jump tap shorter than 0.18 s with the stick across the handrail **vaults** it;
+a held press, or any press without that direction, is an ordinary **jump**; the tuck (Shift / LB)
+sits him on the handrail and he **slides** down it on his seat while held. Clips `stair_vault` and
+`rail_slide` are scrubbed by the core's phase; the camera on a stair sits behind him along the
+flight and out from the bole.
+
+The recipes were fixed so the village connects: each dwelling has a 1.2 m walkway beside its box
+to the stub (the old 0.3 m ledge was narrower than he is); stubs leave on the side that goes the
+short way round; galleries run outside the helix, which they used to roof with under a metre of
+headroom, and turn in on a spur through a gap in its handrail; balconies that a bridge docks to
+have a gate; the bridges' end landings lost their corner rails, which stood on the balcony.
+
+Checks: `node --test client/web/tests/village-traversal.test.mjs` walks every one of the 34
+dwellings from its trunk's foot, crosses three of the five bridges both ways, and the vault, jump,
+slide and foot exit. **Open:** the arrangement docks B1–B2 and B2–B3 on the same balcony of the
+low tree at (-695, 423), and each bridge's wall crosses the other's passage (a named `todo`);
+fixing it needs the arrangement re-solved or a bridge dropped. Full suite **836 passed, 4 skipped,
+0 failed** (844 tests, 4 todo). Released as web v0.8.6.
+
 # The journal is the door — local entry layer, 2026-11-12
 
 The load no longer hands off into the village→Cat Ronin camera pan. The journal stays

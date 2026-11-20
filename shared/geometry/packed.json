@@ -5,64 +5,64 @@
       "packed": "arboreal/skybridge.meshopt.glb",
       "mode": "float",
       "worst_mm": 0.397,
-      "source_bytes": 222088,
-      "source_sha256": "5636a1701dcea61b477316c2afee59619b8985cfba0f40ff54284102b475d902",
-      "bytes": 62680,
-      "sha256": "fcc0a11fee437c1d7f09127ed6046664cae048627ebe078c2dfde68c3cd51033"
+      "source_bytes": 198564,
+      "source_sha256": "2b0c4e474c40af3cfc9dfc7293c94d81cdcca8839da1915c9e2f5bf41b727237",
+      "bytes": 57064,
+      "sha256": "d57c2f088bbfb05b682d518bfef1b8a0f5e2f0c8538bc917da886bdb07c12565"
     },
     "arboreal/skybridge_20.glb": {
       "packed": "arboreal/skybridge_20.meshopt.glb",
       "mode": "float",
       "worst_mm": 0.502,
-      "source_bytes": 222096,
-      "source_sha256": "fd3d752cb63ee456c7bcadadd142e95db4203fc1875e11fffce5bedbbef4ab1e",
-      "bytes": 62948,
-      "sha256": "a8622a4e42138352c546cb1204b87dffb0eed9ba01e9e91584b6cfaf28b10992"
+      "source_bytes": 198572,
+      "source_sha256": "d8acf9258a933043435e063bf14895a241ec980a7ee0f2b190cbd317167e52eb",
+      "bytes": 57200,
+      "sha256": "bf23301605dfdb71928cc76bb1362b3916b33228a911a872aed5115cf508435c"
     },
     "arboreal/skybridge_8.glb": {
       "packed": "arboreal/skybridge_8.meshopt.glb",
       "mode": "float",
       "worst_mm": 0.251,
-      "source_bytes": 222092,
-      "source_sha256": "17336579ccfc3c480c056ce8adb80bb93ec785e52935f0e6de776a171198ef3a",
-      "bytes": 63224,
-      "sha256": "3f87862c5742378613fd8f909ca10066a772a834b3bc2e5208857323401c927a"
+      "source_bytes": 198568,
+      "source_sha256": "a6bc4b9008f7c9143cfcf3297a7db75ff566bbc7a2a4cd207ef466b8b4f797ea",
+      "bytes": 57568,
+      "sha256": "24525073c7075cba4c9fba817218393e55ae3e60f5f773b4a692e2b7537232ec"
     },
     "arboreal/village_tree.glb": {
       "packed": "arboreal/village_tree.meshopt.glb",
       "mode": "float",
       "worst_mm": 3.96,
-      "source_bytes": 5458352,
-      "source_sha256": "a3c7c457412685be37ed523e7d1f47a1aae21e0f84960527fc530d480037b6b1",
-      "bytes": 918008,
-      "sha256": "3bb12c148b3b7bfd4a85a505b3e2701c5b3d14fd3fb7026b0d4a08e92fc5a9d7"
+      "source_bytes": 5605524,
+      "source_sha256": "4bca5746c9948b05e0db4cf45c2049314c9c94af77f7084152d1d6c42bb04245",
+      "bytes": 932700,
+      "sha256": "2fdfed6dddb30b1b608085e429b8e1767b229a07a5cc27918d778c657b621ea2"
     },
     "arboreal/village_tree_high.glb": {
       "packed": "arboreal/village_tree_high.meshopt.glb",
       "mode": "float",
       "worst_mm": 3.96,
-      "source_bytes": 4975868,
-      "source_sha256": "86bab61ab05e2e9b59219396f1990d7f3f8cc7be6c6f0e8451248d09e0234351",
-      "bytes": 854432,
-      "sha256": "5be0b818ffb0180c8fa33ce2a98332d84cd8edcbf151a306521167e85203d3ba"
+      "source_bytes": 5056520,
+      "source_sha256": "cf3a8e051a1f70ce97a700d30f188905287ed3aadae84bdf7c58d0d4a56cf67b",
+      "bytes": 862812,
+      "sha256": "0d89c1dd68a167ac5f87a09924d6395ea27893269af02c3cf55d4e6fe1efebb8"
     },
     "arboreal/village_tree_low.glb": {
       "packed": "arboreal/village_tree_low.meshopt.glb",
       "mode": "float",
       "worst_mm": 3.96,
-      "source_bytes": 4637740,
-      "source_sha256": "27793c31e30e848a8ff14c2bb83c2f36b72f63ccd2ca5293970d6a5d72099e57",
-      "bytes": 812696,
-      "sha256": "2f443cb88a5a48bcc0fbd5f14c8cc27d1a8e49ed8d1faea8d25706f1951a6864"
+      "source_bytes": 4704292,
+      "source_sha256": "2ea010c4336924506968477022148ca47937b05db44e8a7c6b99396a4811d0b7",
+      "bytes": 819400,
+      "sha256": "de0f0fd385819ea0ceb19311df7b0d87741fb8f8307a0a4dbabe668b31b5946f"
     },
     "arboreal/village_tree_mid.glb": {
       "packed": "arboreal/village_tree_mid.meshopt.glb",
       "mode": "float",
       "worst_mm": 3.96,
-      "source_bytes": 4648416,
-      "source_sha256": "1f7902fd27de62e0b7876688c15055073a976365797be42a4f66f9e57d0c94ac",
-      "bytes": 811916,
-      "sha256": "7b4f4c8ec9fd9a50dbc4b594b1c01708026a2a02d6ce855176d2bdb86c3b517e"
+      "source_bytes": 4696816,
+      "source_sha256": "b7444af8be05499d6165c557cf1d0e0b09ec9096a67c6d338153f44ce1860c5e",
+      "bytes": 817172,
+      "sha256": "ab77500e2eed21fe5eccdc9c5ca72c195512e4144ffce9b56a924293698c03c8"
     },
     "blimp/blimp.glb": {
       "packed": "blimp/blimp.meshopt.glb",

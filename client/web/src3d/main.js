@@ -270,7 +270,8 @@ export async function main() {
   const rideMeshes=Object.fromEntries(Object.entries(rideConfig.modes).map(([name,m])=>{const merged=mergePrimitives(assets[m.asset].primitives,'opaque');const mesh=new T.Mesh(merged.geometry,merged.material);mesh.castShadow=true;mesh.visible=false;rideRig.add(mesh);return [name,mesh];}));
   scene.add(rideRig);
   const rideHeight=createRideHeight((x,y)=>ground.height(x,y)??0,trail);
-  const hitTest=buildWorldCollision(placement,assets,treePlan,branchData);
+  const stairData=await fetchData('shared/geometry/arboreal/village_stairs.json');checkVersion(stairData,1,'village stairs');
+  const hitTest=buildWorldCollision(placement,assets,treePlan,branchData,stairData);
   const character=createCharacter(assets[characterConfig.asset],characterConfig);scene.add(character.object);
   const firstPerson=createFirstPersonFlight(characterConfig,{compile:root=>{const target=renderer.getRenderTarget();try{renderer.setRenderTarget(cloudPass.opaque);return renderer.compileAsync(root,camera,scene);}finally{renderer.setRenderTarget(target);}}}),leftGrip=new T.Vector3(),rightGrip=new T.Vector3();scene.add(firstPerson.group);
   // The gondola's stations are floors to walk on: their decks and the ramps up to them.
@@ -925,7 +926,7 @@ export async function main() {
         ((flight.landingRunM??0)>.5?` · ${Math.round(flight.landingRunM)} m run`:''):'Landed';
       readout.textContent=rider?(rider.crashed?`Contact: ${rider.crashed} · Launch to go again`:
         `${rideConfig.modes[rider.mode].label} · ${(riderSpeed*3.6).toFixed(0)} km/h · ${Math.round(rider.startZ-rider.z)} m down · ${(rider.distance/1000).toFixed(2)} km · ${rider.grounded?rider.surface:'airborne'}`):
-        !airborne?(navigation.mode==='walk'?(navigation.message||(flight.mode==='climb'?(flight.launchReady?'Crown perch · E / X: launch para':'Climbing · E / X: step onto a nearby branch · Space / A: jump off'):flight.mode==='branch'?'On branch · move along limb · Space / A: leap toward another tree · E / X near trunk: climb':flight.mode==='tree-jump'?'Leaping to branch':null)||`On foot · V: ${navigation.view==='first'?'chase view':'first person'} · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
+        !airborne?(navigation.mode==='walk'?(navigation.message||(flight.mode==='climb'?(flight.launchReady?'Crown perch · E / X: launch para':'Climbing · E / X: step onto a nearby branch · Space / A: jump off'):flight.mode==='stair'?(flight.stairPhase==='rail'?'Sliding the handrail · let go of Shift / LB to stop · Space / A: jump off':'Stair · tap Space / A toward the rail: vault · Space / A: jump · Shift / LB: slide the handrail'):flight.mode==='branch'?'On branch · move along limb · Space / A: leap toward another tree · E / X near trunk: climb':flight.mode==='tree-jump'?'Leaping to branch':null)||`On foot · V: ${navigation.view==='first'?'chase view':'first person'} · Space / A: ${flight.jumpPhase==='airborne'?flight.jumpStyle.replace('_',' '):'jump'}${flight.harnessMode?' · E / X: reharness':''}`):''):
         flight.launching?`${flight.launchStage==='running'?'Running for takeoff':'Inflating the wing'} · ${Math.round((flight.launchProgress??0)*100)}%\n${(flight.speed*3.6).toFixed(0)} km/h · E / X: cancel and unhook`:
         flight.grounded?`${flight.launchAborted?flight.figure:touchdown}${flight.impact?` · Contact with ${flight.impact}`:''}\n${lessonActive?'Space / A: retry from the bench':navigation.message||'E / X: unhook · Space / A: launch here'}`:
         `${flightConfig.modes[flight.mode].label}  /  ${flightConfig.weather[navigation.weather].label}\n`+
