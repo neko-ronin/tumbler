@@ -95,7 +95,7 @@
     },
     {
       "path": "client/web/src3d/first-person-flight.js",
-      "sha256": "792f94157a66aeb2aa3b8f2df233e844f9eb43c8d34e525b1c5a231bb5129404"
+      "sha256": "786d6cc52788915fc01e3fed698b06f9ae931be24b6b36b249d2e54100627a55"
     },
     {
       "path": "client/web/src3d/first-person-head.js",
@@ -191,7 +191,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "32e6f152229746f34585b577fb439829e4b59a0883c4f88f23ecfaf53b4ab3a5"
+      "sha256": "587e36be056aa0bf0c2ebfcab5bfb2536ac631c96a518e390607c0bf017f5024"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -199,7 +199,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "719c0d28b19f819ade05aee20a89cc51e72f92aa0f2b93f66edfb2c81f7bb5b7"
+      "sha256": "14976204b404f33f603dae676c6206c0138547166bcfd1539bf64c33d8e27bb3"
     },
     {
       "path": "client/web/src3d/organoid-encounter.js",
@@ -244,6 +244,14 @@
     {
       "path": "client/web/src3d/parakite-tour.js",
       "sha256": "61b56b2c61bfe1539b19982a603be6cd4372432917044dc81ae1c9678ca3af7d"
+    },
+    {
+      "path": "client/web/src3d/paw-groom.js",
+      "sha256": "72c3401a5bca38f2b921a51c674afbdbfa825c024246cac1a2aac11f97fe82d1"
+    },
+    {
+      "path": "client/web/src3d/paw-undercoat.js",
+      "sha256": "970b90407707ad4abc55bd4ce1bf0c67b209b1dfdba1ecbba5a87162b560bee1"
     },
     {
       "path": "client/web/src3d/placements.js",
@@ -587,7 +595,7 @@
     },
     {
       "path": "shared/geometry/first-person/recipe.js",
-      "sha256": "e2caceb3170a34bda2aefcf932edd45bb566e76ae16edea5df5583ff1e136a15"
+      "sha256": "e2c9e10cf6da8a0caea50ecaf866dad9aa3c4b94972d6ae7e23ed05b056faa95"
     },
     {
       "path": "shared/geometry/flight/bee.meshopt.glb",
@@ -944,7 +952,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "a612d78c",
+  "commit": "313e4907",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

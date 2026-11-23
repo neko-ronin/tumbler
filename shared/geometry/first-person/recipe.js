@@ -3,7 +3,7 @@
  * Geometry, material channels and posed surfaces can be consumed by any
  * engine; the browser batches rigid parts and updates the garment surface. No physics state is modified. */
 import {validateAppearance,DEFAULT_APPEARANCE,CHARACTER_BASES} from '../../characters/appearance.js';
-export const GENERATOR_VERSION=6;
+export const GENERATOR_VERSION=7;
 // Encloses the shirt's upper closure (all rings at and above y = .975).
 const COLLAR_BOUNDS=Object.freeze({centre:Object.freeze([0,.99,-.108]),radius:.164,halfSize:Object.freeze([.163,.018,.087])});
 export const FELID=Object.freeze({collarBounds:COLLAR_BOUNDS,id:'felid-biped-v1',eye:Object.freeze([0,1.28,-.20]),hip:Object.freeze([0,.65,0]),upperArm:.18,forearm:.18,digits:4});
@@ -125,11 +125,17 @@ function shirtTorso(){
 }
 
 function hakama(hip,knee,hem,side){
+ const thigh=sub(knee,hip),shin=sub(hem,knee);
+ const bend=1-dot(unit(thigh),unit(shin));
  return garment(16,20,bentCentre(hip,knee,hem),[-side,0,0],(t,angle)=>{
-  const pleats=.008*(1-t*.6)*Math.cos(5*angle+.25);
+  const kneePanel=Math.exp(-((t-.50)**2)/.015);
+  const pleats=.007*(1-t*.6)*(1-.72*kneePanel)*Math.cos(5*angle+.25);
   const hipFit=Math.min(1,.60+t*5);
-  const width=(.142-.083*t+pleats)*hipFit;
-  const depth=(.105-.048*t+pleats+.005*Math.sin(28*t+1.2*Math.cos(angle))*Math.sin(Math.PI*t))*hipFit;
+  const front=Math.max(0,-side*Math.sin(angle));
+  const back=Math.max(0,side*Math.sin(angle));
+  const kneeFold=.035*bend*back*Math.cos(88*(t-.5));
+  const width=(.139-.081*t+.010*kneePanel+pleats)*hipFit;
+  const depth=(.104-.047*t+(.006+.014*front+kneeFold)*kneePanel+pleats)*hipFit;
   return [width,depth];
  },[.76,.55]);
 }
@@ -174,29 +180,45 @@ export function generateFirstPerson(design){
   torso:shirtTorso(),
  };
 }
-const STILL_LEGS=Object.freeze([0,0]);
+const STILL_LEG=Object.freeze({sweep:0,hipPitch:0,kneeFlex:0});
+const STILL_LEGS=Object.freeze([STILL_LEG,STILL_LEG]);
 const limit=(v,min,max)=>Math.max(min,Math.min(max,v));
+const THIGH_M=.439, SHIN_M=.453;
 
-/** Passive presentation only. Apparent acceleration and air drag set a target;
- * the underdamped response carries the feet past it on a brake release. */
+/** Per-leg angles around a seated rest pose. Steering shifts the inside leg
+ * first. Apparent acceleration and airflow then move both free lower legs,
+ * whose angular rates carry through changes in load. */
 export function createSeatedLegSwing(){
- const angles=[0,0],rates=[0,0];
+ const legs=[{...STILL_LEG},{...STILL_LEG}],rates=legs.map(()=>({...STILL_LEG}));
+ const channels=[
+  ['sweep',7,7],
+  ['hipPitch',10,8],
+  ['kneeFlex',5.5,8],
+ ];
  return {
-  reset(){angles.fill(0);rates.fill(0);},
-  update(dt,{lateral=0,forward=0,sideAir=0,headwind=0,bank=0}={}){
-   if(!(dt>0))return angles;
-   const t=Math.min(dt,.05),decay=5.5,frequency=8,loss=Math.exp(-decay*t);
-   const c=Math.cos(frequency*t),sn=Math.sin(frequency*t);
-   const drive=[
-    limit(-lateral*.017+sideAir*.0028-bank*.075,-.20,.20),
-    limit(forward*.023+headwind*Math.abs(headwind)*.00012,-.17,.22),
-   ];
-   for(let i=0;i<angles.length;i++){
-    const error=angles[i]-drive[i],v=rates[i];
-    angles[i]=drive[i]+loss*(error*c+(v+decay*error)*sn/frequency);
-    rates[i]=loss*(v*c-(frequency**2*error+decay*(v+decay*error))*sn/frequency);
+  reset(){
+   for(const leg of [...legs,...rates])Object.assign(leg,STILL_LEG);
+  },
+  update(dt,{lean=0,lateral=0,vertical=0,forward=0,sideAir=0,headwind=0}={}){
+   if(!(dt>0))return legs;
+   const t=Math.min(dt,.05);
+   const drift=limit(-lateral*.023+sideAir*.004,-.20,.20);
+   const drag=headwind*Math.abs(headwind)*.00010;
+   const pitch=limit(forward*.009+vertical*.011+drag*.25,-.13,.17);
+   const flex=limit(forward*.031+vertical*.016+drag,-.37,.36);
+   const shift=limit(lean,-1,1);
+   for(const [key,decay,frequency] of channels){
+    const loss=Math.exp(-decay*t),c=Math.cos(frequency*t),sn=Math.sin(frequency*t);
+    for(let i=0;i<legs.length;i++){
+     const inside=(i===0?1:-1)*shift;
+     const target=key==='sweep'?drift+shift*.075:key==='hipPitch'?pitch+inside*.12:flex+inside*.25;
+     const error=legs[i][key]-target,rate=rates[i][key];
+     const impulse=rate+decay*error;
+     legs[i][key]=target+loss*(error*c+impulse*sn/frequency);
+     rates[i][key]=loss*(rate*c-(frequency*error+decay*impulse/frequency)*sn);
+    }
    }
-   return angles;
+   return legs;
   },
  };
 }
@@ -214,7 +236,7 @@ function turnLeg(vector,[x,y,z,w]){
 /** Curved sleeves and overlapping rounded paws/digits share a solved pose.
  * No permanent third-person mesh, animation state or force is shared. */
 export function firstPersonPose(recipe,state,grips,time=0,{body=true,pilotScale=1,legSwing=STILL_LEGS}={}){
- const parts=[],joints=[];let coatOrigin=[0,0,0],instrument=null;
+ const parts=[],joints=[],legJoints=[];let coatOrigin=[0,0,0],instrument=null;
  // The sail keeps its world size when the character is small, so the riser tops
  // stay put in the world: undo the hip-centred scale this frame is drawn under.
  const worldFixed=p=>add(FELID.hip,mul(sub(p,FELID.hip),1/pilotScale));
@@ -242,10 +264,16 @@ export function firstPersonPose(recipe,state,grips,time=0,{body=true,pilotScale=
   const thumb=add(grip,[-side*.041,-.011,-.042]),thumbJoint=add(grip,[-side*.052,-.033,-.015]),thumbTip=add(grip,[-side*.028,-.036,.022]);
   beam(prefix+'_thumb_a','coat',thumb,thumbJoint,.020);beam(prefix+'_thumb_b','coat',thumbJoint,thumbTip,.017);
   ball(prefix+'_thumb_pad','pads',add(thumbTip,[0,.008,0]),[.016,.007,.013]);
-  const hip=[side*.116,.653,-.022],restKnee=[side*.144,.49,.385],restAnkle=[side*.187,.346,.812];
-  const [sweep,fold]=legSwing;
-  const knee=add(hip,turnLeg(sub(restKnee,hip),legRotation(sweep*.42,fold*.32)));
-  const ankle=add(knee,turnLeg(sub(restAnkle,restKnee),legRotation(sweep,fold)));
+  const hip=[side*.116,.653,-.022];
+  const {sweep,hipPitch,kneeFlex}=legSwing[side>0?0:1];
+  // The shin hinges in the thigh's plane. Hip rotation carries the whole
+  // chain, and independent knee flexion never changes either bone length.
+  const yaw=side*.12+sweep,thighPitch=.14+hipPitch;
+  const flexion=limit(.52+kneeFlex,.20,1.25);
+  const shinPitch=thighPitch+flexion;
+  const knee=add(hip,turnLeg([0,0,THIGH_M],legRotation(yaw,thighPitch)));
+  const ankle=add(knee,turnLeg([0,0,SHIN_M],legRotation(yaw,shinPitch)));
+  legJoints.push({side,hip,knee,ankle,flexion});
   const trouserHem=mix(knee,ankle,.89);
   parts.push({id:prefix+'_hakama',material:'hakama',position:[0,0,0],scale:[1,1,1],quaternion:identity,surface:hakama(hip,knee,trouserHem,side)});
   coatOrigin=ankle;
@@ -287,7 +315,7 @@ export function firstPersonPose(recipe,state,grips,time=0,{body=true,pilotScale=
    strap('waist_buckle',[-.036,.70,.135],[.036,.70,.135],.046,.014,APPARATUS.buckle,[0,.1,1]);
    parts.push({id:'seat',material:'strap',tint:APPARATUS.seat,position:[0,.510,.108],scale:[.218,.012,.176],quaternion:[0,0,0,1]});
   }
-  const pawRotation=legRotation(sweep*.83-side*.09,fold*.72-.09);
+  const pawRotation=legRotation(yaw-side*.17,-.09+(shinPitch-.66)*.66);
   const pawAt=offset=>add(ankle,turnLeg(offset,pawRotation));
   beam(prefix+'_ankle','coat',mix(knee,ankle,.81),pawAt([0,-.022,.037]),.043,.042);
   ball(prefix+'_foot','coat',pawAt([0,-.025,.038]),[.073,.053,.078],pawRotation);
@@ -302,5 +330,5 @@ export function firstPersonPose(recipe,state,grips,time=0,{body=true,pilotScale=
   for(let i=0;i<4;i++)beam(prefix+`_toggle_${i}`,'webbing',add(grip,corners[i]),add(grip,corners[(i+1)%4]),.0055,.0075);
   beam(prefix+'_grip_bar','webbing',add(grip,[-.065,0,0]),add(grip,[.065,0,0]),.010,.012);
  }
- return {parts,joints,instrument};
+ return {parts,joints,legJoints,instrument};
 }

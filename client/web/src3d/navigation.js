@@ -313,7 +313,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
         if(flightLesson)stepParakiteLesson(flightLesson.progress,previousFlight,state,input,1/120,height);
         time+=1/120;accumulator-=1/120;
       }
-      updateFlightPresentation(dt,flightPose());
+      updateFlightPresentation(dt,flightPose(),input.turn);
       feedbackTime+=dt;
       if(options.haptics?.()!==false&&effects&&feedbackTime>.12&&pad?.vibrationActuator?.playEffect){
         feedbackTime=0;const strength=state.grounded?0:Math.min(.45,Math.abs(state.turbulence)*.07+Math.max(0,state.load-1)*.15);
@@ -509,7 +509,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     return pose;
   }
-  function updateFlightPresentation(dt,pose=state){
+  function updateFlightPresentation(dt,pose=state,turn=0){
     const resetBody=dt===0&&snap;
     const frame=flightFrame(pose,config);
     const coupled=pose.coupled&&!pose.grounded&&!pose.collapsed;
@@ -589,7 +589,12 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     const lineSagDirection=coupled?new T.Vector3(0,-1,0).transformDirection(new T.Matrix4().copy(flightMatrix).invert()).toArray():undefined;
     rig.userData.flightUpdate?.(dt,{...pose,harnessed:true},{pilotScale:characterConfig.scale,pilotAttachment:attachment?.position_m,pilotOffset,pilotTransform:coupled?pilotTransform:undefined,lineSagDirection,closeView:view==='first'&&coupled});
-    options.firstPersonBody?.({active:!pose.grounded&&!pose.collapsed&&!pose.launching,view,pilotMatrix,pilotScale:characterConfig.scale,state:pose,dt,reset:resetBody});
+    const pilotVelocity=pose.coupled?.pilotVelocity;
+    const previousVelocity=pose!==state?previousFlight?.coupled?.pilotVelocity:null;
+    const velocity=previousVelocity&&pilotVelocity?
+      pilotVelocity.map((value,i)=>previousVelocity[i]+(value-previousVelocity[i])*accumulator*120):pilotVelocity;
+    options.firstPersonBody?.({active:!pose.grounded&&!pose.collapsed&&!pose.launching,view,pilotMatrix,
+      pilotScale:characterConfig.scale,state:pose,dt,reset:resetBody,velocity,lean:-(pose.weightShift??turn)});
   }
   /** Steer, pedal or pole, brake, tuck and hop; a chase camera, or first person on V / Y. */
   function updateRide(dt,pad,x,y){
