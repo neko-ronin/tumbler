@@ -1,3 +1,21 @@
+# River and lake — web v0.9.0, 2026-11-23
+
+The valley has a real river and lake: a layered water surface with reflections baked into probes, an underwater
+look with 20 m alpine visibility, clouds through Snell's window, water life, swimming and the water's sound
+(phases 1-14, `docs/plans/river-and-lake/`). The river's seams at the block edge are closed. Homes sit on level,
+logistical ground instead of tall slabs; the spawn and every Look around view are framed from clear ground; the
+folk are doubled to sixteen cats, and Juno waits on load for the parakite tutorial.
+
+Trees: the outer forest now follows soil, water and rock to a budget (mountains at main's count, the outer valley
+floor at half, that half moved into the meadow as grove clumps), and the forest slope thins with height, by rock and
+on dry crests, easing into the outer forest at the block edge. Trees hidden behind ridges are not drawn, and the
+sharp near sun shadows are drawn only on foot or below tree height. 106,464 trees against 105,505 before.
+
+**Open:** the tree work is not settled. The frame-rate gain is unproven (triangles are 18-42% lower), the meadow
+groves read as an even scatter, and the shadow switch is untested in flight. See `docs/plans/trees/REVISIT.md`
+and `docs/plans/river-and-lake/OPEN.md`. Web suite 885 of 886; the miss is a timing test that only fails under
+full parallel load. Released as web v0.9.0.
+
 # The tree village is walked — web v0.8.6, 2026-11-19
 
 Decks, galleries, stair stubs and skybridges are floors now, not only walls: walkable meshes
