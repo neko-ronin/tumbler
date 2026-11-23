@@ -7,16 +7,48 @@ import {createOrganoidWake} from '../src3d/organoid-wake.js';
 import {closeSampleBudget,detailAt} from '../src3d/organoid-material.js';
 import {buildWorldCollision} from '../src3d/collision.js';
 import {parseGLB} from '../src3d/glb.js';
+import {pickCoverTree} from '../src3d/organoid-encounter.js';
+import {HeightGrid,GroundSampler} from '../src3d/heights.js';
+import {createGeologySampler,applyGeologyTerrain} from '../../../shared/geometry/granite/surface.js';
+import {createRiverGranite} from '../../../shared/activities/river-surface.js';
+import {createWalkHeight} from '../../../shared/activities/walk.js';
 
 const read = path => readFileSync(new URL(path,import.meta.url));
-const config = JSON.parse(read('../../../shared/npc/organoid.json'));
-const material = JSON.parse(read('../../../shared/geometry/organoid/material.json'));
+const json = path => JSON.parse(read('../../../'+path));
+const authored = json('shared/npc/organoid.json');
+const material = json('shared/geometry/organoid/material.json');
+const placement = json('shared/world/out/placement.json');
+const hill = json('shared/play/tumble-hill.json').fall_line_xy_m;
+// The real ground and water the game walks on, as camera-traversal.test.mjs builds them.
+const world = json('shared/world/worldmap.json'), manifest = json('client/web/data/viewer.json'), geology = json(world.mountains.geology);
+const grid = key => {const d=manifest.height_grids[key];return new HeightGrid({...d,values:applyGeologyTerrain(new Float32Array(Uint8Array.from(read('../../../'+d.file)).buffer),d,geology.terrain[key])});};
+const ground = new GroundSampler(grid('block'),grid('far_field'),createRiverGranite(json('shared/world/out/river_granite.json')).height,createGeologySampler(geology));
+const walk = createWalkHeight(world,(x,y)=>ground.height(x,y));
+// Collision for the redwoods the pick can reach, from their real meshes.
+const anchor = authored.cover_anchor_xy_m;
+const nearby = placement.instances.filter(i=>i.kind==='redwood'&&Math.hypot(i.position_m[0]-anchor[0],i.position_m[1]-anchor[1])<150);
+const meshes = Object.fromEntries([...new Set(nearby.map(i=>i.asset))].map(a=>[a,parseGLB(read('../../../shared/geometry/'+a))]));
+const forestHit = buildWorldCollision({instances:nearby},meshes);
+const pick = instances => pickCoverTree(authored,instances,{height:walk,hit:forestHit,waterAt:walk.waterAt,hill});
+const picked = pick(placement.instances);
+const config = {...authored,...picked};
 const tree = config.cover_tree_xy_m;
 const [x,y] = config.approach_xy_m;
 const player = {x,y,z:145,heading:-1};
 
+test('the encounter picks the redwood nearest its anchor from the placement, and the next one when that tree is gone',()=>{
+  assert.ok(picked,'a redwood near the anchor qualifies');
+  assert.ok(picked.distance<60,'the pick stays near the anchor');
+  assert.ok(!walk.waterAt(x,y) && hill.some(([hx,hy])=>Math.hypot(hx-x,hy-y)<=60),'approach dry and inside the tutor radius');
+  assert.deepEqual(config.approach_xy_m,tree.map((v,i)=>v+authored.approach_offset_m[i]));
+  const gone=pick(placement.instances.filter(i=>!(i.kind==='redwood'&&i.position_m[0]===tree[0]&&i.position_m[1]===tree[1])));
+  assert.ok(gone&&gone.distance>=picked.distance);
+  assert.notDeepEqual(gone.cover_tree_xy_m,tree);
+  const wet=pickCoverTree(authored,placement.instances,{height:walk,hit:forestHit,waterAt:(px,py)=>px===x&&py===y,hill});
+  assert.deepEqual(wet.cover_tree_xy_m,gone.cover_tree_xy_m,'an approach on water is passed over for the next tree');
+});
+
 test('the authored encounter uses a real valley tree and goes around it behind the first camera plane',()=>{
-  const placement=JSON.parse(read('../../../shared/world/out/placement.json'));
   const cover=placement.instances.find(i=>i.kind==='redwood'&&i.position_m[0]===tree[0]&&i.position_m[1]===tree[1]);
   assert.ok(cover);
   const asset=parseGLB(read('../../../shared/geometry/'+cover.asset));
@@ -130,7 +162,7 @@ test('the source hull, density levels and spoken cues match the encounter contra
 });
 
 test('the gondola tip fires only on a station deck, where a cabin can be boarded',()=>{
-  const gondola=JSON.parse(read('../../../shared/activities/gondola.json'));
+  const gondola=json('shared/activities/gondola.json');
   assert.equal(config.tutor.tips.find(t=>t.id==='gondola').radius_m,gondola.board_m);
 });
 

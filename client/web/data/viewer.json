@@ -18,8 +18,28 @@
       "sha256": "fac691d5f02a8693643e48fd8217c8568ca84d4926570331c32ac632b5e83451"
     },
     {
+      "path": "client/web/data/reflections/probes-day.webp",
+      "sha256": "c2fef5ce69e3b4d5a057d4c6295248e6ea6dedf57974ed08f2fed40506eae1ae"
+    },
+    {
+      "path": "client/web/data/reflections/probes-distance.png",
+      "sha256": "c5910768c8ed63097324fcd584bb55440111eb90c61a88cdb3939d4425aa71b5"
+    },
+    {
+      "path": "client/web/data/reflections/probes-dusk.webp",
+      "sha256": "d168a6202d2114f7ed0ad614c38f26e78fbcc21ca5a7d51c1597e679af569883"
+    },
+    {
+      "path": "client/web/data/reflections/probes-golden.webp",
+      "sha256": "78608fb0124b35262354291da76c472d3d1696cdbf3f16a8f5aa083d1ffb973b"
+    },
+    {
+      "path": "client/web/data/reflections/probes.json",
+      "sha256": "21db09698d7f4a4b4eb3af929ab8485acf38c67ad4e66e7c1e7d881304eed407"
+    },
+    {
       "path": "client/web/scene.html",
-      "sha256": "4bc68027f09c9a3189a0f6346066c149ffa39ea9758d1ec18744aa6e4f54ed14"
+      "sha256": "512cd81fdebaac73f457426c4a531947e787e1ebd3956f8dc8a89cefc24b5c2c"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -39,7 +59,7 @@
     },
     {
       "path": "client/web/src3d/audio.js",
-      "sha256": "26f8097a161848f8c9f351e00b435732de0b7ff78867867541dd5a18b0fa4f8d"
+      "sha256": "7f853847e45940339f8984b6b1e10c838d74400b312c0b5362615f1222994b82"
     },
     {
       "path": "client/web/src3d/canopy-light.js",
@@ -75,7 +95,7 @@
     },
     {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "c8d6fbb778bad50c9875c1d44e1a183c2dd31003f08ea9c893dd27466160d718"
+      "sha256": "87df043e8f37c1be0d5964043573a7d377d27439d68e7c26c0022d59f62b573e"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -91,7 +111,11 @@
     },
     {
       "path": "client/web/src3d/ecology.js",
-      "sha256": "5069308c0445756cc963669d2584adff7e458a27cf7ef2926a1e2461e1613bd7"
+      "sha256": "1706f51e76bd2fd2d947b6e90d98839c6ce0e12ab6997215875dac16581a1142"
+    },
+    {
+      "path": "client/web/src3d/falls.js",
+      "sha256": "78af822c3526ebfef4d3d6a4edb8007a98a3603a38db95815a7df21c669bbd1e"
     },
     {
       "path": "client/web/src3d/first-person-flight.js",
@@ -191,19 +215,23 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "587e36be056aa0bf0c2ebfcab5bfb2536ac631c96a518e390607c0bf017f5024"
+      "sha256": "47376615a34492f79baf6ada9cf51bc5f4b2b90e43cebe5abba4a62f660fbfbf"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
       "sha256": "e4e15a7ef1a3c0b3bd2b9f44806596645211c8194d7199dc06df6d3e6a0de483"
     },
     {
+      "path": "client/web/src3d/mirror.js",
+      "sha256": "1135c4b50b03fb38d629e1d13ad821630aa39f23924a88b5bdf3cc3b658d07b5"
+    },
+    {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "14976204b404f33f603dae676c6206c0138547166bcfd1539bf64c33d8e27bb3"
+      "sha256": "61a7c9423bd0ba3e4e97d9943909d640238e2ee9d707cd7260101fc8e5d4bfed"
     },
     {
       "path": "client/web/src3d/organoid-encounter.js",
-      "sha256": "a700cc7c515cf1d705dbf20a8d1e6d621ccca360b812fd4185f7ee894e651ad8"
+      "sha256": "df02a7c18a858c697c0e51aa6f2739ffb4b7f89cf5d43ff65251b418df588bab"
     },
     {
       "path": "client/web/src3d/organoid-material.js",
@@ -255,7 +283,7 @@
     },
     {
       "path": "client/web/src3d/placements.js",
-      "sha256": "9783fe4fa80ceebb9001df17ba73ed08f66ef3c095c19124953d349d82e32508"
+      "sha256": "88cb881359d228fbf94959bf4d298762f55411eb43656f2e4b81b3a5ba25df4a"
     },
     {
       "path": "client/web/src3d/play-props.js",
@@ -263,7 +291,7 @@
     },
     {
       "path": "client/web/src3d/player-ui.js",
-      "sha256": "fa7a736467ae4fad322d01741d8a8032405a4dff12e0d2682606438e9b6bf6d8"
+      "sha256": "9dce57bc79c427b98ae169f6f4d6251ee3f5f284f6fa0801440e9fda2c89eddd"
     },
     {
       "path": "client/web/src3d/player-visibility.js",
@@ -275,7 +303,15 @@
     },
     {
       "path": "client/web/src3d/redwood-rendering.js",
-      "sha256": "74c114475e5ad7ca0b797b2d13080e0eceda4a7b5a8aac019af9ebba907af01f"
+      "sha256": "7a70f07d2382b55161f61ae5d8d1b90918ed46a4053d3ba35b7ce02b044b7fc0"
+    },
+    {
+      "path": "client/web/src3d/reflections.js",
+      "sha256": "4e97898bab9abfeb3f814140380de8794b5462b41296ec86e3cca4019db63289"
+    },
+    {
+      "path": "client/web/src3d/ridge-cull.js",
+      "sha256": "7e013c8eeac71c645d2447ed38537ecaa058c3ca066f44b03b9c2e0cdf33fc9e"
     },
     {
       "path": "client/web/src3d/river-granite.js",
@@ -283,11 +319,11 @@
     },
     {
       "path": "client/web/src3d/rock-lod.js",
-      "sha256": "7110e518b4bbb25836af6d636cd4addababc5e23c00c6d1e6faf3ccb77aee91a"
+      "sha256": "7c9e7cbc70717a6aa7214103f7da9dc9939064acebe3a20b85afbce84e9b53bd"
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "74a8422975cb4c9c11bd8b865860c108837bfd814d79f0d03210a04b17f727ab"
+      "sha256": "5887307639592ea831b3163ce581ddce529ba9a947f340e3100f82735cd7d5a7"
     },
     {
       "path": "client/web/src3d/sun-pcf.js",
@@ -303,7 +339,7 @@
     },
     {
       "path": "client/web/src3d/terrain.js",
-      "sha256": "e9ef3aebb95d087fe8d45517bd6a38c705e6e73927fc638eba9684c48b3f7375"
+      "sha256": "9b8d50cd38e154723a7606b115e6147b630f3f36973d6a6a29edbe0b2d8ba6ce"
     },
     {
       "path": "client/web/src3d/tree-atlas.js",
@@ -335,7 +371,7 @@
     },
     {
       "path": "client/web/src3d/tree-shadows.js",
-      "sha256": "cc00602bd4a3b7ee9d5e12f66cdc492a1d2b812124093a9ef3442aafe0a5f321"
+      "sha256": "a4759a6b7772922349685156b9f58b82603a045ab427531307ea802b62e50eae"
     },
     {
       "path": "client/web/src3d/tree-slices.js",
@@ -350,12 +386,20 @@
       "sha256": "7c6e7f93e749da0506692723af5243488b24b039a6b0b2de389b19bb01cf9634"
     },
     {
+      "path": "client/web/src3d/underwater.js",
+      "sha256": "1d93161585499819aa7a27d7202e87bb4a94cb884d71d74597933138849ab3ec"
+    },
+    {
       "path": "client/web/src3d/version.js",
       "sha256": "33889b8d6d8fbeae966a7747872c5cec8689f2c2568fd905098c3826a3b5ad5c"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
       "sha256": "3457acdef543132535e85b1aa0d275feabe9910f71c55e05c409ff979b8b6f6d"
+    },
+    {
+      "path": "client/web/src3d/water-audio.js",
+      "sha256": "592d7245d40cf4c3c7b62e8a560a0ef20f8c634ddcbede403391e9a4313fbabd"
     },
     {
       "path": "client/web/src3d/world.js",
@@ -423,7 +467,7 @@
     },
     {
       "path": "shared/activities/flight.json",
-      "sha256": "2ddc7ad7e90b61cdaae66dff52ef9186b39d8519de5d958df41503f41491ba28"
+      "sha256": "c356df0f4c29b2dd322115801b960ebc7d1d97530d2bdf0ea5c3c8649efff48c"
     },
     {
       "path": "shared/activities/forest-spacing.js",
@@ -439,7 +483,7 @@
     },
     {
       "path": "shared/activities/gondola.js",
-      "sha256": "856b8eae02a6e7ba6c46bae110ffeb64a6d0f1b43737e06d4c0457e291ef2921"
+      "sha256": "12a518e57976dea63ad30ffdaa6d883053b791a7af7eb91d6885785d747d277f"
     },
     {
       "path": "shared/activities/gondola.json",
@@ -447,7 +491,7 @@
     },
     {
       "path": "shared/activities/moves.js",
-      "sha256": "fe032b6774a2366da3ceac05b50ef01d607d44175be66b57932cfc8107fbffdf"
+      "sha256": "657a55b359639c4947b08adf6f55f7a32d13178fd1d298a18e8d5ac62a722cd2"
     },
     {
       "path": "shared/activities/parakite-dynamics.js",
@@ -491,11 +535,15 @@
     },
     {
       "path": "shared/activities/swim.js",
-      "sha256": "68293fd6f968cb8dc78d91ec081d5b21eff3199f907daf57c04b4690847a7b5a"
+      "sha256": "46d9fa1c816fbebe6fc11cbcd647ad9eb1ec54433f5cafe8855727053b74f19e"
     },
     {
       "path": "shared/activities/walk.js",
-      "sha256": "641ba0afd25939ba2da693cd023062a95fb7909f79d020488e2aa3d7ac86c8d1"
+      "sha256": "6649a4fe76774d9465ac97bb295e10a28408f7b46bec13a3a03e0942ec4be11e"
+    },
+    {
+      "path": "shared/activities/water.js",
+      "sha256": "57bcfd1443b34aa9404ff016ee42dc026110c4697a7cffeb178a89b56dace80f"
     },
     {
       "path": "shared/characters/appearance.js",
@@ -507,19 +555,23 @@
     },
     {
       "path": "shared/ecology/aquatic.js",
-      "sha256": "a8c039e3c15df53f58c6411e43ef917c2616ce360617c78862a73b154e69af75"
+      "sha256": "f439801fefddf49ace733d959cefa167910616547a9519bbe72824b3581bb922"
+    },
+    {
+      "path": "shared/ecology/aquatic.json",
+      "sha256": "4c3f3ead695e7179cc87c9b34ca205e56d81c6271ceaeeb1ac4d7f34414b8ae3"
     },
     {
       "path": "shared/ecology/habitats.json",
-      "sha256": "ffdc5061566134f172c3f81c7e331f1b3d94fba97408720f3243361098a2978a"
+      "sha256": "84374f65439af19b6d7efca0147cb33b5f2bf0417307fda009dffd952ebb9d9f"
     },
     {
       "path": "shared/ecology/meadow.json",
       "sha256": "c3139bc801ef267688e5ca01541200a6de731768acd74483da10e7eb5cc361c9"
     },
     {
-      "path": "shared/geometry/arboreal/skybridge_20.meshopt.glb",
-      "sha256": "bf23301605dfdb71928cc76bb1362b3916b33228a911a872aed5115cf508435c"
+      "path": "shared/geometry/arboreal/skybridge.meshopt.glb",
+      "sha256": "d57c2f088bbfb05b682d518bfef1b8a0f5e2f0c8538bc917da886bdb07c12565"
     },
     {
       "path": "shared/geometry/arboreal/skybridge_8.meshopt.glb",
@@ -531,15 +583,15 @@
     },
     {
       "path": "shared/geometry/arboreal/village_tree.meshopt.glb",
-      "sha256": "2fdfed6dddb30b1b608085e429b8e1767b229a07a5cc27918d778c657b621ea2"
+      "sha256": "e9aad0598c9dc5b76bb68d36db7b1c047bab232fdb34d7261b4a9c82d277e9ce"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_high.meshopt.glb",
-      "sha256": "0d89c1dd68a167ac5f87a09924d6395ea27893269af02c3cf55d4e6fe1efebb8"
+      "sha256": "821bbb6cf8b19a149fb1e28ce82e66556aab2c53ce15fe0c8fb1b57545ee4a3b"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_low.meshopt.glb",
-      "sha256": "de0f0fd385819ea0ceb19311df7b0d87741fb8f8307a0a4dbabe668b31b5946f"
+      "sha256": "4539d3f6c31b658356ed462aa4d34f1a14f9fc0b462212826cccb25cfbdb7f6a"
     },
     {
       "path": "shared/geometry/arboreal/village_tree_mid.meshopt.glb",
@@ -554,6 +606,22 @@
       "sha256": "fe02247e1a989077b5c01768278dfd2b26ffe625a9fec6fe46d085ec86bf6bf9"
     },
     {
+      "path": "shared/geometry/cat-folk/cinematic/bree.meshopt.glb",
+      "sha256": "84f93e1246e498765b180e89c17e44727627efcdd30175b1defd234c24ffaa1b"
+    },
+    {
+      "path": "shared/geometry/cat-folk/cinematic/clem.meshopt.glb",
+      "sha256": "e469e359c22bd39a084db3419bdae997720b00c706b5b2e466ecae097807ac67"
+    },
+    {
+      "path": "shared/geometry/cat-folk/cinematic/dot.meshopt.glb",
+      "sha256": "706d6e48be341409fe81eecae3ac5a4769f7f33a1a41c797565b44ac6257832d"
+    },
+    {
+      "path": "shared/geometry/cat-folk/cinematic/hollis.meshopt.glb",
+      "sha256": "5d4d1bea1272508fec4bf912988a0cdcb0a3ddb54901e4d094e215e3128b3635"
+    },
+    {
       "path": "shared/geometry/cat-folk/cinematic/juno.meshopt.glb",
       "sha256": "108e284ddedc2357613ee948a58faeef5a04b470053220096da1345391e2235c"
     },
@@ -566,8 +634,24 @@
       "sha256": "feb695448280cabeb988a78ac8e5a04f26a343c3cee2a1222711cfad53f44770"
     },
     {
+      "path": "shared/geometry/cat-folk/cinematic/marlo.meshopt.glb",
+      "sha256": "86f2951778da84963fb7c22ba29efac678077a2348b5be193dac8419a972fab6"
+    },
+    {
+      "path": "shared/geometry/cat-folk/cinematic/nubs.meshopt.glb",
+      "sha256": "0a31a74303ef4f0b9b2fa293835b2e3f0def5dd6c3fa14adf239eefa2262678f"
+    },
+    {
       "path": "shared/geometry/cat-folk/cinematic/pip.meshopt.glb",
       "sha256": "d177c06b41b2ec5719e8ee0ee1648ed9374267c3995cfbb01d27566f38483fca"
+    },
+    {
+      "path": "shared/geometry/cat-folk/cinematic/rowan.meshopt.glb",
+      "sha256": "0b7bac44d749388b9dffa4d6a10eb20e3e8b686335a56db2b88f924d59afc194"
+    },
+    {
+      "path": "shared/geometry/cat-folk/cinematic/sable.meshopt.glb",
+      "sha256": "6603b42b5c033d633bceb06ad471dc0a1c47387cbdbd75a9e45d00ff0602b3f3"
     },
     {
       "path": "shared/geometry/cat-folk/cinematic/saffi.meshopt.glb",
@@ -583,7 +667,7 @@
     },
     {
       "path": "shared/geometry/cat-folk/models.json",
-      "sha256": "4d08012bc1ec7ae22f2da6a89e7e6a0ad04c4efc6982bf7c9625db1684c0f0f5"
+      "sha256": "0854755401ff4c864fa6118e31800274a3c77b71ff09a656fa7228c22e09b686"
     },
     {
       "path": "shared/geometry/cat-ronin/ronin.glb",
@@ -622,8 +706,36 @@
       "sha256": "243332b1fdddf05c744bbdca2698a31624580ea256d4c9014e2c316f84af6c24"
     },
     {
+      "path": "shared/geometry/granite/bedrock_-1_0.glb",
+      "sha256": "19b255179d1d43c31d5555f36ba763786e9940b67a775d81243d7c37c66c0e21"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-1_1.glb",
+      "sha256": "8a1c981dc3650bbebdddaa4cd9b5efa7ae4e9cc45b07b5b1f1ee9d2b9ef19b4c"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-2_0.glb",
+      "sha256": "c2e7dd527f3c72f89546b52818fba9b823358c41cbc79ef460a7dddfae32a73a"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_-3_0.glb",
+      "sha256": "d11083d40f70f1050dfb4912fd38c920122857582f59f22b180f71ff24a5b05e"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_0_-1.glb",
+      "sha256": "619f9f254c00a7ad0ab6d251ce2cff9580958522441d99e4ed1cf128e081f60f"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_0_0.glb",
+      "sha256": "e3de25cc15db10bce8d9ea0a27296606adae1e5c02320df32809d4c19a0d3fd5"
+    },
+    {
+      "path": "shared/geometry/granite/bedrock_1_0.glb",
+      "sha256": "d4bbd819d6ccc6885a8450c96e2a61de98b846ef3ca5059f9e4dcfc13b274fda"
+    },
+    {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "1d83c2176f60df42d368cd96ed912c6dd0bef5ed7f6807d6ae4b0213956503cf"
+      "sha256": "b50e13af3bed57ba089c48ecabcf598114b49f10adbc8907e7432ca54c247419"
     },
     {
       "path": "shared/geometry/granite/surface.js",
@@ -631,7 +743,7 @@
     },
     {
       "path": "shared/geometry/granite/terrain_patch.meshopt.glb",
-      "sha256": "f3eb5b7cd6c069286c0fba5226547aa1731dee596024e01bd677772d5fe89c2e"
+      "sha256": "57074727135af102164023f2fa11d1ab5363d82d2232610d0c94943f172a9a19"
     },
     {
       "path": "shared/geometry/homestead/homestead.meshopt.glb",
@@ -679,7 +791,7 @@
     },
     {
       "path": "shared/geometry/river-granite/river_granite.glb",
-      "sha256": "424b04735c3c1618c98b7e4ef705e08586964608814551ed203456896da99db6"
+      "sha256": "6f9ccae2dddccdcbab362ec97b7c3b2aca077a54fe95d8ae3058da2cfb96e400"
     },
     {
       "path": "shared/geometry/sports/bicycle.meshopt.glb",
@@ -695,7 +807,7 @@
     },
     {
       "path": "shared/geometry/tree-design/adopted-redwoods.json",
-      "sha256": "b94b99e73f7b782f317c099a8ce40f021c094dc2582a9d5e9f8bc31b422583b6"
+      "sha256": "32613b3be4c4a810597b766bece169bd53650025bedbc7a20426c622788d0c26"
     },
     {
       "path": "shared/geometry/tree-design/branch-graphs.json",
@@ -774,12 +886,28 @@
       "sha256": "865aa13690b55e5f51f63dce9560295b6df7490d02cebc4451ca574ef7afda16"
     },
     {
+      "path": "shared/geometry/waterside/crowfoot.meshopt.glb",
+      "sha256": "858470538887e28b3821003dc391e5801ce7fda36a74d5ed010b5d5f2bc81e63"
+    },
+    {
       "path": "shared/geometry/waterside/dragonfly.meshopt.glb",
       "sha256": "ba1dc9c16520cad504cd3ba26e1eb25dc4aa316bbb654f1f8d664b6d100e104f"
     },
     {
       "path": "shared/geometry/waterside/dragonfly_wings.meshopt.glb",
       "sha256": "4edc07e2d36b9a29173b39b2e07520729f97157e7019b12460f02484aa6a7bad"
+    },
+    {
+      "path": "shared/geometry/waterside/drift_log.meshopt.glb",
+      "sha256": "36e422f00a270da80aeda29b6115506d09bcf2a115c623864ec1fc779cb8b11d"
+    },
+    {
+      "path": "shared/geometry/waterside/drift_log_rooted.meshopt.glb",
+      "sha256": "3b40627e26ab4cd15ad9446a35562476847921f03e83f289dcd4ac023d366406"
+    },
+    {
+      "path": "shared/geometry/waterside/duck.meshopt.glb",
+      "sha256": "8fdb19eec1e31f32949d4417a83ba4930b2a6e098e311295f5a8aa1e698dc213"
     },
     {
       "path": "shared/geometry/waterside/fish_tail.meshopt.glb",
@@ -796,6 +924,10 @@
     {
       "path": "shared/geometry/waterside/lilies.meshopt.glb",
       "sha256": "0a873a7e433c587546e7800b25690270982fe776f20779624fa98965f5135ffb"
+    },
+    {
+      "path": "shared/geometry/waterside/pondweed.meshopt.glb",
+      "sha256": "fa622a346e6c423a6cde982b56540a395dc8bba83ed3dc82930ef1f0255e2788"
     },
     {
       "path": "shared/geometry/waterside/reeds.meshopt.glb",
@@ -815,11 +947,11 @@
     },
     {
       "path": "shared/npc/folk.js",
-      "sha256": "8c7b392e6d26177b5bd255b3ed6e2681b7fd57b605048f13e46b51a89318380e"
+      "sha256": "21dc974b7c5a65842221c3a8f333935b41032cad40d4ec6b42427e71217de216"
     },
     {
       "path": "shared/npc/folk.json",
-      "sha256": "be5bc493b749aa98eeeae84aa92086f3316b9ee39ec5b6882e20ba8365944a94"
+      "sha256": "8684ea0040f92705ffa67f215abb7459019e26d6f8584ce7e3e40d7f552e95ad"
     },
     {
       "path": "shared/npc/mind.js",
@@ -831,11 +963,11 @@
     },
     {
       "path": "shared/npc/organoid.json",
-      "sha256": "e81a90d21041b3e8e34ce6139db2427e2ab332f2106153131160825f51544168"
+      "sha256": "3471d0b9fade5e2ed706ecb0f0fb861668c6825d422f3277d03adb8036c26e75"
     },
     {
       "path": "shared/play/places.json",
-      "sha256": "bfbd18de2bbdbe2a2ffbb7aa8e05ad7f0eeaf3b135d68fde785e01338fcefc23"
+      "sha256": "60e13e08a687f6a39fd9b4c6e7ec1b043178b09f0c45372044a9c262286263d8"
     },
     {
       "path": "shared/play/reactions.js",
@@ -847,35 +979,35 @@
     },
     {
       "path": "shared/play/tumble-hill.json",
-      "sha256": "93cf387a6bebe89ebd36ca52ebe4abeabf915ec1e64b4f66be492c00e0961744"
+      "sha256": "e0ac5238b23ced590ab13477509dfa9142711c38c5cb08c1db54bc0be43615a2"
     },
     {
       "path": "shared/world/out/forest_floor.json",
-      "sha256": "9161643c1c91f90f059d902e270fd60a7dc85e6a449ece09a673cb5b4dcb09f1"
+      "sha256": "ced64880d28e10b6c9d8c4b78d233a5503d1debb734ddf3d01096fbc49a92689"
     },
     {
       "path": "shared/world/out/ground_cover.json",
-      "sha256": "40a02fd487e02eb4c6e723ab06036ba9d79c9d30890910091f8df96934526fc4"
+      "sha256": "974cd2d3e81b20fe530734cbc7a32e32e28fdb0bbae908c317d3b4d1eb30015d"
     },
     {
       "path": "shared/world/out/horizon_map.png",
-      "sha256": "875b38a61938d8789239338ade68b2846ec974fa10f01370604d5222523d4d15"
+      "sha256": "eb799a0e9b49bf63ce11974af7bdbcdb9a952aadd3ccd488a2873a0222237ae0"
     },
     {
       "path": "shared/world/out/horizon_range.json",
-      "sha256": "fed1b01816a1fc87e573e8aa800352d1783a17a34796b0cae1f01a66e6ee2a8c"
+      "sha256": "2ff0e42cc4087ca3033e7d62e4c35a32530913d0bf46d110a51fc5329f1b8ee9"
     },
     {
       "path": "shared/world/out/landscape_transition.json",
-      "sha256": "e484625ce06bcee99cec618677ecc312038a3f65d6edd6fd9648f2b1bf4c5632"
+      "sha256": "40dd9179d9019891ae533c181f17701ea06701c64860242aa9a40b9bdb4c1a9b"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "759154f9d5cffce4632e8bcb59d751e895d2e736a9607480e4700823cdb63ec7"
+      "sha256": "3d9c714a419daedc41904997bfc9971d178e82d4da406b2ba49f8c66bad3595e"
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "8eca3d128cab92426f84ea27e8c3c9699bd3f04db41796716ab810addad3e5e3"
+      "sha256": "4b17e5b6bb569db531911f89578b07ea3faaa6bf571f9f845866bada24baefd4"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -883,19 +1015,19 @@
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "82a70c2cd95881d256ddc9b500e314b1c16f46d1d091f7f88e8f1b8d45b81df6"
+      "sha256": "e8033ca4fc499abe6731b9562c4d01511346c9b00a233b2ab278373089d1ce0b"
     },
     {
       "path": "client/web/data/heightmap.f32",
-      "sha256": "c9b1d59f60a6df6a77d7f993a7d9160212347c7210b7cf6aa85840d678ae33c8"
+      "sha256": "4d32d4a4765fda05aa051e295b38def3847bab02a823d43bacbd919b569feff5"
     },
     {
       "path": "client/web/data/farfield.f32",
-      "sha256": "07aa371d058e54f7be6c317069bb8e9cac4af8ff7e96940e355de87950cf7b85"
+      "sha256": "9c8b8539d26970b392ef410bece780351d8c0de0d02e7836338ffe5e7ed79ada"
     }
   ],
   "packed": {
-    "shared/geometry/arboreal/skybridge_20.glb": "shared/geometry/arboreal/skybridge_20.meshopt.glb",
+    "shared/geometry/arboreal/skybridge.glb": "shared/geometry/arboreal/skybridge.meshopt.glb",
     "shared/geometry/arboreal/skybridge_8.glb": "shared/geometry/arboreal/skybridge_8.meshopt.glb",
     "shared/geometry/arboreal/village_tree.glb": "shared/geometry/arboreal/village_tree.meshopt.glb",
     "shared/geometry/arboreal/village_tree_high.glb": "shared/geometry/arboreal/village_tree_high.meshopt.glb",
@@ -903,10 +1035,18 @@
     "shared/geometry/arboreal/village_tree_mid.glb": "shared/geometry/arboreal/village_tree_mid.meshopt.glb",
     "shared/geometry/blimp/blimp.glb": "shared/geometry/blimp/blimp.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/ash.glb": "shared/geometry/cat-folk/cinematic/ash.meshopt.glb",
+    "shared/geometry/cat-folk/cinematic/bree.glb": "shared/geometry/cat-folk/cinematic/bree.meshopt.glb",
+    "shared/geometry/cat-folk/cinematic/clem.glb": "shared/geometry/cat-folk/cinematic/clem.meshopt.glb",
+    "shared/geometry/cat-folk/cinematic/dot.glb": "shared/geometry/cat-folk/cinematic/dot.meshopt.glb",
+    "shared/geometry/cat-folk/cinematic/hollis.glb": "shared/geometry/cat-folk/cinematic/hollis.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/juno.glb": "shared/geometry/cat-folk/cinematic/juno.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/kiri.glb": "shared/geometry/cat-folk/cinematic/kiri.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/mabel.glb": "shared/geometry/cat-folk/cinematic/mabel.meshopt.glb",
+    "shared/geometry/cat-folk/cinematic/marlo.glb": "shared/geometry/cat-folk/cinematic/marlo.meshopt.glb",
+    "shared/geometry/cat-folk/cinematic/nubs.glb": "shared/geometry/cat-folk/cinematic/nubs.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/pip.glb": "shared/geometry/cat-folk/cinematic/pip.meshopt.glb",
+    "shared/geometry/cat-folk/cinematic/rowan.glb": "shared/geometry/cat-folk/cinematic/rowan.meshopt.glb",
+    "shared/geometry/cat-folk/cinematic/sable.glb": "shared/geometry/cat-folk/cinematic/sable.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/saffi.glb": "shared/geometry/cat-folk/cinematic/saffi.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/tobu.glb": "shared/geometry/cat-folk/cinematic/tobu.meshopt.glb",
     "shared/geometry/cat-folk/cinematic/ume.glb": "shared/geometry/cat-folk/cinematic/ume.meshopt.glb",
@@ -940,28 +1080,33 @@
     "shared/geometry/village/shop_home.glb": "shared/geometry/village/shop_home.meshopt.glb",
     "shared/geometry/village/workshop.glb": "shared/geometry/village/workshop.meshopt.glb",
     "shared/geometry/water/water.glb": "shared/geometry/water/water.meshopt.glb",
+    "shared/geometry/waterside/crowfoot.glb": "shared/geometry/waterside/crowfoot.meshopt.glb",
     "shared/geometry/waterside/dragonfly.glb": "shared/geometry/waterside/dragonfly.meshopt.glb",
     "shared/geometry/waterside/dragonfly_wings.glb": "shared/geometry/waterside/dragonfly_wings.meshopt.glb",
+    "shared/geometry/waterside/drift_log.glb": "shared/geometry/waterside/drift_log.meshopt.glb",
+    "shared/geometry/waterside/drift_log_rooted.glb": "shared/geometry/waterside/drift_log_rooted.meshopt.glb",
+    "shared/geometry/waterside/duck.glb": "shared/geometry/waterside/duck.meshopt.glb",
     "shared/geometry/waterside/fish_tail.glb": "shared/geometry/waterside/fish_tail.meshopt.glb",
     "shared/geometry/waterside/frog.glb": "shared/geometry/waterside/frog.meshopt.glb",
     "shared/geometry/waterside/gravel.glb": "shared/geometry/waterside/gravel.meshopt.glb",
     "shared/geometry/waterside/lilies.glb": "shared/geometry/waterside/lilies.meshopt.glb",
+    "shared/geometry/waterside/pondweed.glb": "shared/geometry/waterside/pondweed.meshopt.glb",
     "shared/geometry/waterside/reeds.glb": "shared/geometry/waterside/reeds.meshopt.glb",
     "shared/geometry/waterside/river_fish.glb": "shared/geometry/waterside/river_fish.meshopt.glb",
     "shared/geometry/waterside/river_rock.glb": "shared/geometry/waterside/river_rock.meshopt.glb",
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "313e4907",
+  "commit": "d9ac3eb7",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "82a70c2cd958"
+      "sha256_12": "e8033ca4fc49"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "759154f9d5cf"
+      "sha256_12": "3d9c714a419d"
     },
     {
       "path": "shared/world/out/fields_albedo.png",
@@ -969,15 +1114,15 @@
     },
     {
       "path": "shared/world/out/water_mask.png",
-      "sha256_12": "482a8cdf92be"
+      "sha256_12": "fbb42beead89"
     },
     {
       "path": "shared/world/out/heightmap.png",
-      "sha256_12": "908b8e53318c"
+      "sha256_12": "758f8e1dac3a"
     },
     {
       "path": "shared/world/out/farfield_height.png",
-      "sha256_12": "71b105f89f21"
+      "sha256_12": "14eac9ef39d0"
     },
     {
       "path": "shared/geometry/granite/clearances.json",
@@ -997,8 +1142,8 @@
     "height_resolution": 512
   },
   "heights": {
-    "min_m": 11.975280384527352,
-    "max_m": 1133.916227969787,
+    "min_m": 6.317235065232318,
+    "max_m": 1138.420691233692,
     "encode_min_m": 0.0,
     "encode_max_m": 3600.0
   },
@@ -1024,8 +1169,8 @@
         -2044.0,
         -2044.0
       ],
-      "min_m": 11.975280384527352,
-      "max_m": 1133.916227969787,
+      "min_m": 6.317235065232318,
+      "max_m": 1138.420691233692,
       "row_0": "min_y",
       "source": "shared/world/out/heightmap.png, decoded by shared.terrain.heightmap.load_heightfield"
     },
@@ -1037,7 +1182,7 @@
         -12036,
         -12036
       ],
-      "min_m": 11.975280384527352,
+      "min_m": 6.317235065232318,
       "max_m": 3210.6385900663768,
       "row_0": "min_y",
       "source": "shared/world/out/massif.f32, written by shared/terrain/massif.mjs"

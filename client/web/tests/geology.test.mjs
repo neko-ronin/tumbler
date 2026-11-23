@@ -18,7 +18,7 @@ test('convex roofs intersect all halfspaces, including slanted sides and lower f
  const empty={...box,planes:[...box.planes,[0,0,-1,-3]]};assert.equal(solidRoof(empty,2,1),null);
 });
 
-test('collision roofs match independent vertical rays against the actual published GLB triangles',{skip:!data.counts.bedrock&&'no outcrops are published: the sculpted ground is the rock'},()=>{
+test('collision roofs match independent vertical rays against the actual published GLB triangles',{skip:!data.solids.length&&'no granite solids are published'},()=>{
  const triangles=new Map();
  for(const asset of Object.values(assets))for(const primitive of asset.primitives){
   const p=primitive.geometry.attributes.position,ids=primitive.geometry.index;
@@ -48,7 +48,7 @@ test('collision roofs match independent vertical rays against the actual publish
  assert.ok(checked>500);
 });
 
-test('published rock shells are closed and outward, with an economical fixed source budget',{skip:!data.counts.bedrock&&'no outcrops are published: the sculpted ground is the rock'},()=>{
+test('published rock shells are closed and outward, with an economical fixed source budget',{skip:!data.solids.length&&'no granite solids are published'},()=>{
  let total=0,volume=0;
  for(const asset of Object.values(assets)){
   const edges=new Map();
@@ -65,7 +65,7 @@ test('published rock shells are closed and outward, with an economical fixed sou
  const scene=buildGeology(data,assets);try{assert.equal(scene.stats.triangles,total);assert.ok(scene.stats.batches<32);}finally{scene.dispose();}
 });
 
-test('ground sampling adds the shared roof and retains all unoccupied geography',{skip:!data.counts.bedrock&&'no outcrops are published: the sculpted ground is the rock'},()=>{
+test('ground sampling adds the shared roof and retains all unoccupied geography',{skip:!data.solids.length&&'no granite solids are published'},()=>{
  const manifest=JSON.parse(read('client/web/data/viewer.json'));
  const grid=key=>new HeightGrid({...manifest.height_grids[key],values:new Float32Array(Uint8Array.from(read(manifest.height_grids[key].file)).buffer)});
  const base=new GroundSampler(grid('block'),grid('far_field')),sample=createGeologySampler(data);
@@ -80,7 +80,10 @@ test('ground sampling adds the shared roof and retains all unoccupied geography'
  for(const track of worldmap.tracks)for(const [x,y]of track.polyline)assert.equal(refined.height(x,y),base.height(x,y),'every authored route stays on its original floor');
  const individuals=[...JSON.parse(read('shared/world/out/placement.json')).instances,...JSON.parse(read('shared/world/out/landscape_transition.json')).instances,...JSON.parse(read('shared/ecology/habitats.json')).plantings];
  for(const p of individuals){const [x,y]=p.position_m;assert.equal(refined.height(x,y),base.height(x,y),'existing individual floor '+p.asset);}
- for(let y=-2000;y<1000;y+=40)for(let x=-2000;x<2000;x+=40)assert.equal(refined.height(x,y),base.height(x,y));
+ // Off the solids, the ground is untouched. Shore talus covers only a sliver of the block.
+ let covered=0;
+ for(let y=-2000;y<1000;y+=40)for(let x=-2000;x<2000;x+=40){if(sample(x,y)!==null){covered++;continue;}assert.equal(refined.height(x,y),base.height(x,y));}
+ assert.ok(covered<40,`${covered} grid points under rock`);
  const flight=JSON.parse(read('shared/activities/flight.json'));
  for(const launch of flight.launches.filter(l=>l.terrain_protection!==false))for(let y=-60;y<=60;y+=12)for(let x=-60;x<=60;x+=12){const [a,b]=launch.xy_m;assert.equal(refined.height(a+x,b+y),base.height(a+x,b+y),'launch neighbourhood');}
 });
@@ -112,4 +115,26 @@ test('published terrain refinements preserve source boundaries and the existing 
  const n=65,grid=new HeightGrid({resolution:n,quad_size_m:8,offset_xy_m:[0,0],values:Float32Array.from({length:n*n},(_,i)=>Math.sin(i%n*.15)*38+Math.cos(Math.floor(i/n)*.1)*60)});
  const lod=buildTerrainLod(grid,{batchTiles:2}),camera=new T.PerspectiveCamera(62,1.6,.1,10000);
  try{for(const h of [100,1500,5000]){camera.position.set(200,h,800);lod.update(camera,900);assert.ok(lod.stats.maxProjectedError<=2.3);}}finally{lod.dispose();}
+});
+
+test('shore talus keeps clear of the falls curtain, trails, placements, the gondola line and deep water',()=>{
+ const worldmap=JSON.parse(read('shared/world/worldmap.json')),gondola=JSON.parse(read('shared/activities/gondola.json'));
+ const lake=worldmap.water.bodies.find(b=>b.kind==='lake'),form=worldmap.water.form;
+ const seg=(x,y,[ax,ay],[bx,by])=>{const vx=bx-ax,vy=by-ay,t=Math.max(0,Math.min(1,((x-ax)*vx+(y-ay)*vy)/(vx*vx+vy*vy||1)));return Math.hypot(x-ax-vx*t,y-ay-vy*t);};
+ const [lip,rope]=[form.stream_xy_m.at(-1),gondola.stations.map(s=>s.xy_m)];
+ const individuals=[...JSON.parse(read('shared/world/out/placement.json')).instances,...JSON.parse(read('shared/ecology/habitats.json')).plantings]
+  .filter(p=>!['river','lake','blimp','arboreal_skybridge'].includes(p.kind));
+ const manifest=JSON.parse(read('client/web/data/viewer.json'));
+ const grid=key=>new HeightGrid({...manifest.height_grids[key],values:new Float32Array(Uint8Array.from(read(manifest.height_grids[key].file)).buffer)});
+ const ground=new GroundSampler(grid('block'),grid('far_field'));
+ const shore=data.solids.filter(s=>s.kind==='talus'&&s.bounds_m[1][2]<lake.surface_z_m+20);
+ assert.ok(shore.length>=200,`${shore.length} shore blocks`);
+ for(const s of shore){const [x,y]=s.centre_xy_m,r=s.radius_m;
+  assert.ok(Math.hypot(x-lip[0],y-lip[1])>form.falls_face_width_m/2+r,`curtain ${x},${y}`);
+  assert.ok(seg(x,y,rope[0],rope[1])>gondola.corridor_m+r,`gondola ${x},${y}`);
+  for(const t of worldmap.tracks)for(let i=1;i<t.polyline.length;i++)assert.ok(seg(x,y,t.polyline[i-1],t.polyline[i])>r,`trail ${t.id} ${x},${y}`);
+  assert.ok(ground.height(x,y)>=lake.surface_z_m-2.01,`more than 2 m under water at ${x},${y}`);
+ }
+ const sample=createGeologySampler(data);
+ for(const p of individuals){const [x,y]=p.position_m;if(Math.hypot(x+300,y-350)<1400)assert.equal(sample(x,y),null,'under rock: '+p.asset);}
 });

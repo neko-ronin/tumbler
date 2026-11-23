@@ -282,6 +282,7 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     }
     for(const pool of distant.values())for(const lod of [2,3])pool.meshes[lod].boundingSphere.copy(pool.bounds);
   }
+  stats.meanTreeHeightM=records.reduce((sum,item)=>sum+item.height,0)/Math.max(1,records.length);
   stats.tiles=batches.length;stats.drawBatches=beautyMeshes.length;stats.textureBytes=kits.reduce((sum,kit)=>sum+(kit.textureBytes??0),0);let requestedBudgets=[...stats.budgets];let lastKey='',bakedLight=lightKey(),fading=false,lastLive=new Set(),lastVisible=new Set();
   const frustum=new T.Frustum(),matrix=new T.Matrix4(),lastPosition=new T.Vector3(Infinity,Infinity,Infinity),lastAnchor=lastPosition.clone(),lastDirection=new T.Vector3(),direction=new T.Vector3();
   function updateShadowCasters(lightFrustum){
@@ -303,23 +304,47 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     }
     stats.shadowProxies=proxies;stats.shadowTriangles=triangles;
   }
+  // Ridge culling (ridge-cull.js): a slice of the tiles is tested each update, and when a sweep ends the frozen far
+  // pools whose tiles changed are refilled without the hidden ones. A jump restarts the sweep with everything shown.
+  let ridge=options.ridge;const sweepFrom=new T.Vector3(Infinity,0,0),changedPools=new Set();let cursor=0;stats.ridgeHidden=0;
+  function cullRidges(eye){
+    if(!ridge){const done=new Set(changedPools);changedPools.clear();return done;}
+    if(sweepFrom.distanceToSquared(eye)>200*200){
+      for(const b of batches)if(b.hidden){b.hidden=false;changedPools.add(b.pool);}
+      cursor=0;sweepFrom.copy(eye);
+    }
+    const aggressive=ridge.aggressive(),end=Math.min(batches.length,cursor+(options.ridgeSlice??2500));
+    for(;cursor<end;cursor++){
+      const b=batches[cursor],c=b.bounds.center,hidden=ridge.hidden(eye,c.x,c.y+b.bounds.radius,c.z,aggressive);
+      if(hidden!==!!b.hidden){b.hidden=hidden;changedPools.add(b.pool);}
+    }
+    if(cursor<batches.length)return new Set();
+    cursor=0;sweepFrom.copy(eye);stats.ridgeHidden=batches.reduce((n,b)=>n+(b.hidden?b.items.length:0),0);
+    const done=new Set(changedPools);changedPools.clear();return done;
+  }
+  function fillFrozen(pool){
+    let n=0;const far=pool.meshes[3];
+    for(const b of pool.batches)if(!b.hidden)for(const item of b.items){far.setMatrixAt(n,item.matrix);far.geometry.attributes.forestInterval.setXY(n++,0,1);}
+    setCount(far,n);far.instanceMatrix.needsUpdate=true;far.geometry.attributes.forestInterval.needsUpdate=true;
+  }
   function update(camera,anchor=camera.position){
     camera.getWorldDirection(direction);const size=renderer.getSize(new T.Vector2()),key=[camera.fov,camera.aspect,size.y].join(',');
-    if(!fading&&key===lastKey&&lastPosition.distanceToSquared(camera.position)<.25&&lastAnchor.distanceToSquared(anchor)<.25&&direction.dot(lastDirection)>.9999)return;
+    if(!fading&&(!ridge||cursor===0)&&key===lastKey&&lastPosition.distanceToSquared(camera.position)<.25&&lastAnchor.distanceToSquared(anchor)<.25&&direction.dot(lastDirection)>.9999)return;
     const start=performance.now();lastKey=key;lastPosition.copy(camera.position);lastAnchor.copy(anchor);lastDirection.copy(direction);
     camera.updateMatrixWorld();frustum.setFromProjectionMatrix(matrix.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
     // A pool wholly too far for any tree to reach the farthest stage's 24 pixels stops being
     // chosen per tree: it holds that stage until the camera comes back. What it draws is what
     // the selection would have picked, without visiting tens of thousands of trees a frame.
     const freezeM=TALLEST_TREE_M*size.y/(2*Math.tan(camera.fov*Math.PI/360)*20);let frozenTrees=0,frozenTriangles=0;
+    const refill=cullRidges(camera.position);
     for(const pool of pools){
       const clear=Math.min(camera.position.distanceTo(pool.bounds.center),anchor.distanceTo(pool.bounds.center))-pool.bounds.radius,freeze=clear>(pool.frozen?freezeM:freezeM+80);
       if(freeze&&!pool.frozen){
-        let n=0;const far=pool.meshes[3];pool.frozen=true;setCount(pool.meshes[2],0);
-        for(const b of pool.batches){for(const lod of [0,1])setCount(b.meshes[lod],0);
-          for(const item of b.items){item.previous=-1;item.from=-1;far.setMatrixAt(n,item.matrix);far.geometry.attributes.forestInterval.setXY(n++,0,1);}}
-        setCount(far,n);far.instanceMatrix.needsUpdate=true;far.geometry.attributes.forestInterval.needsUpdate=true;
-      }else if(!freeze&&pool.frozen){
+        pool.frozen=true;setCount(pool.meshes[2],0);
+        for(const b of pool.batches){for(const lod of [0,1])setCount(b.meshes[lod],0);for(const item of b.items){item.previous=-1;item.from=-1;}}
+        fillFrozen(pool);
+      }else if(pool.frozen&&refill.has(pool))fillFrozen(pool);
+      else if(!freeze&&pool.frozen){
         pool.frozen=false;
         // A pool can re-enter outside the frustum. Clear the retained far
         // draw even when no member is selected on this frame.
@@ -328,7 +353,7 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
       if(pool.frozen){frozenTrees+=pool.meshes[3].count;frozenTriangles+=pool.meshes[3].count*(pool.batches[0]?.items[0]?.costs[3]??0);}
     }
     const visible=[],selected=new Set(),projection=2*Math.tan(camera.fov*Math.PI/360);
-    for(const b of batches){if(b.pool.frozen||!frustum.intersectsSphere(b.bounds))continue;
+    for(const b of batches){if(b.pool.frozen||b.hidden||!frustum.intersectsSphere(b.bounds))continue;
       for(const item of b.items)if(frustum.intersectsBox(item.visibleBox)){
         item.clearance=Math.min(item.box.distanceToPoint(camera.position),item.box.distanceToPoint(anchor));
         item.pixels=item.height*size.y/(projection*Math.max(1,camera.position.distanceTo(item.bound.center)));item.priority=item.pixels+800/(1+item.clearance);visible.push(item);selected.add(item);
@@ -361,7 +386,10 @@ export function buildAdoptedRedwoods(placement,assets,renderer,plan,options={}) 
     if(kit.shadowCapture)kit.shadowCapture.map.value=next.target.texture;
     next.geometry.dispose();next.material.dispose();next.material.studioMaskMaterial?.dispose();
   };
-  return {group,stats,distantShadowGroup,distantShadowBounds,update,updateShadowCasters,shadowCrowns,setQuality(quality){requestedBudgets=options.budgets??treeBudgetsForQuality(quality);stats.quality=quality;lastKey='';},invalidateShadows(){stats.shadowRevision++;lastKey='';},
+  return {group,stats,distantShadowGroup,distantShadowBounds,update,updateShadowCasters,shadowCrowns,
+    // For review: off shows every tile again on the next update.
+    setRidgeCulling(on){ridge=on?options.ridge:null;if(!on)for(const b of batches)if(b.hidden){b.hidden=false;changedPools.add(b.pool);}cursor=0;lastKey='';},
+    setQuality(quality){requestedBudgets=options.budgets??treeBudgetsForQuality(quality);stats.quality=quality;lastKey='';},invalidateShadows(){stats.shadowRevision++;lastKey='';},
     rebuildImpostors(direction){
       const key=lightKey();if(direction&&key===bakedLight)return;
       for(const kit of kits)rebake(kit);

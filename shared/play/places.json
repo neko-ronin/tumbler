@@ -8,43 +8,54 @@
       "kind": "village",
       "about": "The homes in the redwoods, and the gondola up the north wall.",
       "arrive_xy_m": [
-        -672.0,
-        442.0
+        -660.0,
+        480.0
       ],
-      "facing_deg": 321
+      "facing_deg": 305
     },
     {
       "id": "homestead",
       "label": "The homestead",
       "kind": "home",
-      "about": "A farmstead on the valley floor, with its blimp moored beside it.",
+      "about": "A farmstead on the valley floor, with its blimp moored beside it: the first homestead, the one the Homestead view frames, between its mooring mast and the blimp.",
       "arrive_xy_m": [
-        -1698.0,
-        -564.0
+        1852.0,
+        -1028.0
       ],
-      "facing_deg": 51
+      "facing_deg": 0
     },
     {
       "id": "river-bend",
       "label": "The river bend",
       "kind": "water",
-      "about": "Where the river swings through the meadows below the village.",
+      "about": "The outside bank where the river, just out of the lake, swings hard south; look upstream to the outlet and the lake.",
       "arrive_xy_m": [
-        -640.0,
-        -40.0
+        936.0,
+        180.0
       ],
-      "facing_deg": 354
+      "facing_deg": 292
     },
     {
       "id": "lake-shore",
       "label": "The lake",
       "kind": "water",
-      "about": "The still water at the west end of the meadows.",
+      "about": "The lake's open south shore, looking north across the water to the falls and the north wall.",
       "arrive_xy_m": [
-        -1050.0,
-        -820.0
+        -388.0,
+        -248.0
       ],
-      "facing_deg": 266
+      "facing_deg": 0
+    },
+    {
+      "id": "falls",
+      "label": "The falls",
+      "kind": "water",
+      "about": "The bench at the cove under the falls, looking up at the lip where the snowmelt drops into the lake.",
+      "arrive_xy_m": [
+        -484.0,
+        746.0
+      ],
+      "facing_deg": 40
     },
     {
       "id": "landing-meadow",
@@ -63,10 +74,10 @@
       "kind": "play",
       "about": "A long open slope for tucking, rolling and tumbling.",
       "arrive_xy_m": [
-        -928.0,
-        976.0
+        -936.0,
+        958.0
       ],
-      "facing_deg": 212
+      "facing_deg": 266
     },
     {
       "id": "north-wall",

@@ -5,18 +5,22 @@ import {buildStylizedForest} from './forest.js';
 import {buildRockLod,isRock} from './rock-lod.js';
 import {style} from './style.js';
 import {createVisit,FLEE,fleeStep} from './insect-visits.js';
-import {createSchool,stepSchool} from '../../../shared/ecology/aquatic.js';
+import {createSchool,stepSchool,createRaft,stepRaft} from '../../../shared/ecology/aquatic.js';
 export function buildEcology(habitats,meadowData,assets,ground,cover,renderer,sampleAir){
   const group=new T.Group();group.name='living_habitats';
   const MOTES=Math.min(150,Math.ceil(meadowData.windborne.per_hectare*2.3));
   const schools=new Map(habitats.habitats.map(h=>[h.id,createSchool(h)]));let lastTime=0;
+  // Phase 11 (shared/ecology/aquatic.json, merged in by main.js): trout over the deep basin and rafts of ducks.
+  const deepSchools=(habitats.deep_schools??[]).map(h=>({h,school:createSchool(h)}));
+  const rafts=(habitats.rafts??[]).map(r=>({r,raft:createRaft(r)}));
   const matrix=new T.Matrix4(),position=new T.Vector3(),quat=new T.Quaternion(),scale=new T.Vector3(),up=new T.Vector3(0,1,0),tint=new T.Color();
   const make=(path,count)=>{const merged=mergePrimitives(assets[path].primitives,'opaque');merged.material.side=T.DoubleSide;const m=new T.InstancedMesh(merged.geometry,merged.material,count);m.name=path;m.count=0;m.frustumCulled=false;group.add(m);return m;};
-  const fish=make('waterside/river_fish.glb',habitats.habitats.reduce((n,h)=>n+h.fish_count,0));
+  const fish=make('waterside/river_fish.glb',[...habitats.habitats,...habitats.deep_schools??[]].reduce((n,h)=>n+h.fish_count,0));
   const tail=make('waterside/fish_tail.glb',fish.instanceMatrix.count);
   const frog=make('waterside/frog.glb',habitats.habitats.length*2);
   const dragon=make('waterside/dragonfly.glb',habitats.habitats.length*3);
   const wings=make('waterside/dragonfly_wings.glb',habitats.habitats.length*3);
+  const duck=rafts.length?make('waterside/duck.glb',rafts.reduce((n,x)=>n+x.r.count,0)):null;
   const plantRecords=habitats.plantings.map(p=>({...p,scale:[p.scale,p.scale,p.scale]}));
   const bankForest=buildStylizedForest({instances:plantRecords},assets,renderer,{filter:r=>!isRock(r),name:'bank_plantings',tileM:128,enterM:85,leaveM:110});group.add(bankForest.group);
   const rocks=buildRockLod(plantRecords.filter(isRock),assets);group.add(rocks.group);
@@ -117,15 +121,14 @@ float band(float z,float lo,float hi){return smoothstep(lo-.0025,lo+.0025,z)*(1.
     bankForest.update(camera);rocks.update(camera);
     const dt=Math.min(.05,time-lastTime);lastTime=time;
     const watcher=player??{active:false,top:visits.bee.v.pos,nose:visits.butterfly.v.pos};
-    visits.bee.tick(dt,watcher,time);visits.butterfly.tick(dt,watcher,time);let nf=0,nd=0,nr=0;
-    for(const h of habitats.habitats){
-      const [cx,cy,surface]=h.centre_m;
-      if(Math.hypot(cx-camera.position.x,-cy-camera.position.z)>230||camera.position.y>surface+150)continue;
-      const [tx,ty]=h.along;
-      const school=schools.get(h.id);
+    visits.bee.tick(dt,watcher,time);visits.butterfly.tick(dt,watcher,time);let nf=0,nd=0,nr=0,nk=0;
+    const near=([cx,cy,surface])=>Math.hypot(cx-camera.position.x,-cy-camera.position.z)<=230&&camera.position.y<=surface+150;
+    // One school's fish onto the shared fish meshes, from its local frame (X along `h.along`).
+    const swim=(h,school)=>{
+      const [cx,cy,surface]=h.centre_m,[tx,ty]=h.along;
       const dx=camera.position.x-cx,dy=-camera.position.z-cy;
       stepSchool(school,dt,[dx*tx+dy*ty,-dx*ty+dy*tx,camera.position.y-surface]);
-      school.fish.forEach((f,i)=>{
+      school.fish.forEach(f=>{
         const x=cx+tx*f.p[0]-ty*f.p[1],y=cy+ty*f.p[0]+tx*f.p[1];
         const floor=ground.height(x,y)??surface-2;
         const z=Math.max(floor+.10,surface+f.p[2]);if(z>surface-.1)return;
@@ -133,6 +136,11 @@ float band(float z,float lo,float hi){return smoothstep(lo-.0025,lo+.0025,z)*(1.
         const heading=Math.atan2(vx,-vy);
         place(fish,nf,x,y,z,heading,f.size);place(tail,nf,x,y,z,heading+Math.sin(time*(8+Math.hypot(...f.v)*8)+f.phase)*.3,f.size);nf++;
       });
+    };
+    for(const h of habitats.habitats){
+      const [cx,cy,surface]=h.centre_m;
+      if(Math.hypot(cx-camera.position.x,-cy-camera.position.z)>230||camera.position.y>surface+150)continue;
+      swim(h,schools.get(h.id));
       for(let i=0;i<3;i++){
         const [x,y,z]=h.shore_m;const phase=time*.7+h.seed+i*2.1;
         const px=x+Math.sin(phase)*3,py=y+Math.cos(phase*.73)*2,pz=z+1.0+Math.sin(phase*1.7)*.35;
@@ -143,7 +151,14 @@ float band(float z,float lo,float hi){return smoothstep(lo-.0025,lo+.0025,z)*(1.
         place(frog,nr++,p[0],p[1],p[2]+hop,Math.sin(h.seed+i)*3,1);
       }
     }
-    for(const [mesh,n] of [[fish,nf],[tail,nf],[dragon,nd],[wings,nd],[frog,nr]]){mesh.count=n;mesh.instanceMatrix.needsUpdate=true;}
+    for(const {h,school} of deepSchools)if(near(h.centre_m))swim(h,school);
+    for(const {r,raft} of rafts){
+      if(!near(r.centre_m))continue;
+      const [cx,cy,surface]=r.centre_m;
+      stepRaft(raft,dt,[camera.position.x-cx,-camera.position.z-cy,camera.position.y-surface]);
+      for(const d of raft.ducks)place(duck,nk++,cx+d.p[0],cy+d.p[1],surface+.012*Math.sin(time*1.3+d.phase),Math.atan2(d.v[0],-d.v[1]),d.size);
+    }
+    for(const [mesh,n] of [[fish,nf],[tail,nf],[dragon,nd],[wings,nd],[frog,nr],...(duck?[[duck,nk]]:[])]){mesh.count=n;mesh.instanceMatrix.needsUpdate=true;}
     for(const {species,mesh} of meadowMeshes){
       let n=0,nf=0;const butterfly=species.kind==='butterfly',seed=mesh.geometry.getAttribute('aSeed'),calmAttr=mesh.geometry.getAttribute('aCalm'),ids=species.ids;
       const size=90,cx=Math.floor(camera.position.x/size)*size,cy=Math.floor(-camera.position.z/size)*size;

@@ -68,8 +68,9 @@ test('the river beyond the block lies on far-field ground the core lowered for i
     const p = ribbon.geometry.attributes.position;
     // Each row is a left/right pair; its midpoint is the reach centreline.
     const start = [(p.getX(0) + p.getX(1)) / 2, p.getY(0), -(p.getZ(0) + p.getZ(1)) / 2];
-    assert.ok(river.polyline.some(([x, y]) => Math.hypot(x - start[0], y - start[2]) < 1e-3), 'a reach starts where the block river ends');
-    assert.equal(start[1], river.surface_z_m);
+    const end = river.polyline_xyz_m.find(([x, y]) => Math.hypot(x - start[0], y - start[2]) < 1e-3);
+    assert.ok(end, 'a reach starts where the block river ends');
+    assert.equal(start[1], end[2], 'at the falling river\'s own level there');
     for (let row = 0; row < p.count; row += 2) {
       const x = (p.getX(row) + p.getX(row + 1)) / 2, y = -(p.getZ(row) + p.getZ(row + 1)) / 2;
       if (Math.max(Math.abs(x), Math.abs(y)) < far.maxX / 2 + 112) continue;

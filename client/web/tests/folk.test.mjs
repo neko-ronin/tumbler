@@ -149,3 +149,33 @@ test('each cat the game loads keeps its clips and gait speeds',async()=>{
     for(const gait of ['stroll','walk','run'])assert.ok(clips[gait].userData.ground_speed_mps>0,`${m.id} ${gait} lost ground_speed_mps`);
   }
 });
+
+test('a swimmer walks into the lake, swims, and walks home; a wader stays in the shallows',async()=>{
+  const {createWater}=await import('../../../shared/activities/water.js');
+  // A basin carved under the lake's outline: 30.5 m ashore, falling 0.1 m per metre from the shore to 5 m deep.
+  const ring=worldmap.water.bodies.find(b=>b.kind==='lake').outline_xy_m;
+  const inside=(x,y)=>{let c=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [xi,yi]=ring[i],[xj,yj]=ring[j];if((yi>y)!==(yj>y)&&x<xi+(xj-xi)*(y-yi)/(yj-yi))c=!c;}return c;};
+  const shore=(x,y)=>{let m=Infinity;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [ax,ay]=ring[j],[bx,by]=ring[i],vx=bx-ax,vy=by-ay,t=Math.max(0,Math.min(1,((x-ax)*vx+(y-ay)*vy)/(vx*vx+vy*vy||1)));m=Math.min(m,Math.hypot(x-ax-vx*t,y-ay-vy*t));}return m;};
+  const terrain=(x,y)=>inside(x,y)?30-Math.min(5,shore(x,y)*.1):30.5,water=createWater(worldmap,terrain).waterAt;
+  const walkable=(x,y)=>water(x,y)?null:terrain(x,y);walkable.waterAt=water;
+  const events=[],w=createFolkWorld({config,worldmap,placement,flight,walk,height:walkable,ground:terrain,onEvent:e=>events.push(e)});createFolk(w,models,{seed:7});
+  const pip=w.cats.find(c=>c.id==='pip');
+  assert.ok(pip.places.lake,'pip lives near enough to swim');assert.ok(water(...pip.places.lake).depth>=1.6);
+  // Start on dry land a short walk from the swimming spot (its home may be hundreds of metres away).
+  {const [lx,ly]=pip.places.lake,[hx,hy]=pip.places.home,d=Math.hypot(hx-lx,hy-ly);
+   for(let m=25;m<d;m+=5){const x=lx+(hx-lx)/d*m,y=ly+(hy-ly)/d*m;if(!water(x,y)){pip.body.state={...pip.body.state,x,y,z:terrain(x,y)};break;}}}
+  setController(w,pip,'agent');assert.equal(command(w,pip,{verb:'do',activity:'swim'}).ok,true);
+  let swam=false,floated=null;
+  for(let t=0;t<400&&!events.some(e=>e.cat==='pip'&&e.event==='done');t+=.1){
+    stepFolk(w,.1,[pip.body.state.x,pip.body.state.y]);
+    const s=pip.body.state;if(s.mode==='swim'&&s.swimPhase!=='wade'){swam=true;floated=s.z-water(s.x,s.y).surface_z;}
+  }
+  assert.ok(swam,'it swam');assert.ok(Math.abs(floated+walk.swim.float_draft_m)<.05,`floats with its feet ${-floated} m down`);
+  assert.equal(command(w,pip,{verb:'go_to',place:'home'}).ok,true);
+  for(let t=0;t<400&&pip.body.state.mode==='swim';t+=.1)stepFolk(w,.1,[pip.body.state.x,pip.body.state.y]);
+  assert.notEqual(pip.body.state.mode,'swim','it walked out');
+  const tobu=w.cats.find(c=>c.id==='tobu');
+  if(tobu.places.shallows){const d=water(...tobu.places.shallows)?.depth;assert.ok(d>=.25&&d<=.45,`wades in ${d} m`);}
+  // A cat with no swim skill is never offered the lake.
+  assert.ok(!suggest(w,w.cats.find(c=>c.id==='ash')).some(o=>o.activity==='swim'));
+});

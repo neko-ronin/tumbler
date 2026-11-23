@@ -135,7 +135,12 @@ test('the opening pan still arrives at the pose recorded before the timing chang
  f.nav.select('walk');
  let frames=0;while(f.nav.shotActive&&frames<200){f.nav.update(1/30);frames++;}
  assert.ok(frames>=SHOT_FRAMES&&frames<=SHOT_FRAMES+2,`the shot ran ${frames} frames`);
- const pos=[-668.7233338790853,56.529278901792225,-437.9041673488567];
+ // Height re-recorded after the river-and-lake re-sculpt lowered the village ground: x, z and the
+ // quaternion came out unchanged to the last digit, only y dropped 1.77 m with the ground.
+ // Re-recorded again on the 2026-11-20 ground (fresh terrain solve), navigation unchanged: x, z and
+ // the quaternion again identical to the last digit; y rose 0.446 m where the ground under the
+ // arrival rose 0.443 m (51.001 -> 51.445).
+ const pos=[-668.7233338790853,55.20117297527855,-437.9041673488567];
  const q=[0.024461544171433813,0.33089570530035856,-0.008580646377993287,0.9433112092932338];
  f.camera.position.toArray().forEach((v,i)=>assert.ok(Math.abs(v-pos[i])<.01,`arrival x${i}: ${v} vs ${pos[i]}`));
  f.camera.quaternion.toArray().forEach((v,i)=>assert.ok(Math.abs(v-q[i])<1e-3,`arrival q${i}: ${v} vs ${q[i]}`));

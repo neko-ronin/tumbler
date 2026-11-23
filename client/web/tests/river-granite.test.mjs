@@ -73,7 +73,7 @@ test('published outer water flows downhill at both ends and exposes dry granite 
 test('a real downstream bank can be walked into, swum, dived and walked back out',()=>{
  const x=3400,reachY=worldmap.mountains.enclosure.river_reaches.find(r=>r.id==='downstream').polyline_xyz_m.reduce((best,p)=>Math.abs(p[0]-x)<Math.abs(best[0]-x)?p:best)[1],startY=reachY-90;let s={x,y:startY,z:ground.height(x,startY),heading:Math.PI/2,speed:0,grounded:true},modes=new Set(),maxRise=0,previous=s.z;
  const run=(seconds,input)=>{for(let i=0;i<seconds*60;i++){s=stepMoves(s,input,1/60,walk,physics);modes.add(s.mode??'ground');maxRise=Math.max(maxRise,Math.abs(s.z-previous));previous=s.z;assert.ok(s.z>=ground.height(s.x,s.y)-1e-5);}};
- run(19,{x:0,y:1});assert.equal(s.mode,'swim');const z=s.z;run(1,{x:0,y:0,run:true,pitch:-1});assert.ok(s.z<z-.2);run(3,{x:0,y:0});run(30,{x:0,y:-1});
+ run(19,{x:0,y:1});assert.equal(s.mode,'swim');const z=s.z;run(1,{x:0,y:1,run:true,pitch:-1});/* under, he swims where he looks (phase 12) */assert.ok(s.z<z-.2);run(3,{x:0,y:0});run(30,{x:0,y:-1});
  assert.equal(s.mode,'ground');assert.ok(s.y<startY+50);assert.ok(modes.has('ground')&&modes.has('swim'));assert.ok(maxRise<.15,`frame height change ${maxRise}`);
 });
 

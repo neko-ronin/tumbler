@@ -2,314 +2,366 @@
   "version": 1,
   "id": "tumble-hill",
   "label": "Tumble Hill",
-  "about": "A named place: the open south-west-facing apron below the north wall, about 500 m from the tree village: a level ledge at 150 m, then about 260 m of fall line at a mean grade near 0.38 and never steeper than 0.54, down to the meadow. Re-surveyed on 2026-11-07 for the grown valley, whose walls are too steep and whose high ground is snow from top to bottom; the old site became a cliff. The props keep their places along and across the fall line; the three snow piles are pine cones, since no snow lies this low in late spring. Its props are core-owned because the place has a name (AGENTS.md); they are toys for the reaction table, not plantings, and nothing about them is persisted. The placement keeps trees off `fall_line_xy_m`.",
+  "about": "A named place: a level ledge at 259 m on the rock step's west shoulder, then about 390 m of fall line at a mean grade near 0.38 and never steeper than 0.52, down to the gentle apron below the shoulder. Re-surveyed on 2026-11-16: the site moved onto the rock step's west shoulder at the human's choice, and the run is longer than the old 260 m because the shoulder's south face is a cliff. The props keep their places along and across the fall line; the three snow piles are pine cones, since no snow lies this low in late spring. Its props are core-owned because the place has a name (AGENTS.md); they are toys for the reaction table, not plantings, and nothing about them is persisted. The placement keeps trees off `fall_line_xy_m`.",
   "top_xy_m": [
-    -928.0,
-    976.0
+    -936.0,
+    958.0
   ],
-  "facing_deg": 212,
+  "facing_deg": 266,
   "props": [
     {
       "id": "pine_cone-3",
       "kind": "pine_cone",
       "xy_m": [
-        -919.0,
-        970.4
+        -935.2,
+        947.4
       ]
     },
     {
       "id": "pine_cone-4",
       "kind": "pine_cone",
       "xy_m": [
-        -929.1,
-        976.7
+        -936.1,
+        959.3
       ]
     },
     {
       "id": "pine_cone-5",
       "kind": "pine_cone",
       "xy_m": [
-        -920.5,
-        971.3
+        -935.4,
+        949.2
       ]
     },
     {
       "id": "hanging_bell-4",
       "kind": "hanging_bell",
       "xy_m": [
-        -928.2,
-        976.1
+        -936.0,
+        958.2
       ]
     },
     {
       "id": "straw_target-5",
       "kind": "straw_target",
       "xy_m": [
-        -916.6,
-        968.9
+        -935.0,
+        944.6
       ]
     },
     {
       "id": "scarecrow-6",
       "kind": "scarecrow",
       "xy_m": [
-        -925.8,
-        974.6
+        -935.9,
+        955.4
       ]
     },
     {
       "id": "tall_grass-7",
       "kind": "tall_grass",
       "xy_m": [
-        -919.1,
-        970.5
+        -935.2,
+        947.6
       ]
     },
     {
       "id": "tall_grass-8",
       "kind": "tall_grass",
       "xy_m": [
-        -925.2,
-        974.3
+        -935.7,
+        954.7
       ]
     },
     {
       "id": "dandelion-9",
       "kind": "dandelion",
       "xy_m": [
-        -916.8,
-        969.1
+        -935.0,
+        944.9
       ]
     },
     {
       "id": "fern-10",
       "kind": "fern",
       "xy_m": [
-        -930.1,
-        977.3
+        -936.2,
+        960.5
       ]
     },
     {
       "id": "tall_grass-11",
       "kind": "tall_grass",
       "xy_m": [
-        -926.1,
-        974.8
+        -935.9,
+        955.8
       ]
     },
     {
       "id": "melon-12",
       "kind": "melon",
       "xy_m": [
-        -937.4,
-        981.8
+        -936.9,
+        969.0
       ]
     },
     {
       "id": "mushroom-13",
       "kind": "mushroom",
       "xy_m": [
-        -928.2,
-        976.1
+        -936.0,
+        958.2
       ]
     },
     {
       "id": "tall_grass-14",
       "kind": "tall_grass",
       "xy_m": [
-        -937.2,
-        981.7
+        -936.8,
+        968.8
       ]
     },
     {
       "id": "fern-15",
       "kind": "fern",
       "xy_m": [
-        -932.6,
-        978.9
+        -936.3,
+        963.4
       ]
     },
     {
       "id": "dandelion-16",
       "kind": "dandelion",
       "xy_m": [
-        -947.6,
-        988.2
+        -937.7,
+        981.0
       ]
     },
     {
       "id": "tall_grass-17",
       "kind": "tall_grass",
       "xy_m": [
-        -945.2,
-        986.7
+        -937.5,
+        978.2
       ]
     },
     {
       "id": "melon-18",
       "kind": "melon",
       "xy_m": [
-        -954.7,
-        992.6
+        -938.3,
+        989.4
       ]
     },
     {
       "id": "pine_cone-19",
       "kind": "pine_cone",
       "xy_m": [
-        -953.0,
-        991.5
+        -938.2,
+        987.3
       ]
     },
     {
       "id": "pine_cone-20",
       "kind": "pine_cone",
       "xy_m": [
-        -955.2,
-        992.9
+        -938.4,
+        989.9
       ]
     },
     {
       "id": "mushroom-21",
       "kind": "mushroom",
       "xy_m": [
-        -967.1,
-        1000.3
+        -939.4,
+        1003.9
       ]
     },
     {
       "id": "dandelion-22",
       "kind": "dandelion",
       "xy_m": [
-        -967.8,
-        1000.7
+        -939.5,
+        1004.7
       ]
     },
     {
       "id": "fern-23",
       "kind": "fern",
       "xy_m": [
-        -979.0,
-        1007.7
+        -940.4,
+        1017.9
       ]
     },
     {
       "id": "tall_grass-24",
       "kind": "tall_grass",
       "xy_m": [
-        -971.9,
-        1003.2
+        -939.9,
+        1009.5
       ]
     }
   ],
   "fall_line_xy_m": [
     [
-      -928.0,
-      976.0
+      -936.0,
+      958.0
     ],
     [
-      -933.3,
-      967.5
+      -945.3,
+      961.7
     ],
     [
-      -941.4,
-      961.6
+      -954.8,
+      958.5
     ],
     [
-      -950.9,
-      958.6
+      -964.5,
+      956.1
     ],
     [
-      -960.8,
-      957.0
+      -974.2,
+      953.6
     ],
     [
-      -970.7,
-      956.2
+      -983.9,
+      951.2
     ],
     [
-      -980.7,
-      956.0
+      -993.6,
+      948.7
     ],
     [
-      -990.7,
-      956.3
+      -1003.3,
+      946.3
     ],
     [
-      -1000.7,
-      957.0
+      -1012.9,
+      943.7
     ],
     [
-      -1010.6,
-      958.4
+      -1022.6,
+      941.1
     ],
     [
-      -1020.4,
-      960.2
+      -1032.3,
+      938.5
     ],
     [
-      -1030.2,
-      962.3
+      -1041.9,
+      935.8
     ],
     [
-      -1039.9,
-      964.9
+      -1051.5,
+      933.0
     ],
     [
-      -1049.4,
-      967.8
+      -1061.1,
+      930.2
     ],
     [
-      -1058.9,
-      970.9
+      -1070.6,
+      927.1
     ],
     [
-      -1068.3,
-      974.3
+      -1080.1,
+      924.0
     ],
     [
-      -1077.7,
-      977.8
+      -1089.6,
+      920.8
     ],
     [
-      -1087.0,
-      981.6
+      -1099.0,
+      917.4
     ],
     [
-      -1096.3,
-      985.3
+      -1108.3,
+      913.8
     ],
     [
-      -1105.7,
-      988.5
+      -1117.6,
+      910.1
     ],
     [
-      -1115.4,
-      990.9
+      -1126.8,
+      906.2
     ],
     [
-      -1125.4,
-      991.3
+      -1135.9,
+      902.0
     ],
     [
-      -1131.9,
-      983.7
+      -1144.8,
+      897.6
     ],
     [
-      -1140.6,
-      978.6
+      -1153.6,
+      892.8
     ],
     [
-      -1141.0,
-      968.7
+      -1162.3,
+      887.8
     ],
     [
-      -1150.8,
-      970.9
+      -1170.7,
+      882.4
     ],
     [
-      -1148.3,
-      961.2
+      -1178.8,
+      876.6
+    ],
+    [
+      -1186.6,
+      870.3
+    ],
+    [
+      -1194.0,
+      863.6
+    ],
+    [
+      -1200.6,
+      856.0
+    ],
+    [
+      -1204.5,
+      846.8
+    ],
+    [
+      -1207.9,
+      837.4
+    ],
+    [
+      -1210.3,
+      827.7
+    ],
+    [
+      -1212.0,
+      817.9
+    ],
+    [
+      -1212.9,
+      807.9
+    ],
+    [
+      -1213.8,
+      797.9
+    ],
+    [
+      -1214.8,
+      788.0
+    ],
+    [
+      -1215.8,
+      778.0
+    ],
+    [
+      -1216.8,
+      768.1
+    ],
+    [
+      -1217.7,
+      758.1
     ]
   ]
 }

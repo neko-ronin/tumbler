@@ -17,8 +17,9 @@
  */
 import {reharnessWalk,relaunchGround,relaunchRefusal,unharnessFlight,safeWalkGround} from '../activities/walk.js';
 import {launchFlight,stepFlight,sampleAir,canopySegment,canopyTouches} from '../activities/flight.js';
+import {createWater} from '../activities/water.js';
 import {boardGondola,rideAt} from '../activities/gondola.js';
-import {stepGround} from '../activities/moves.js';
+import {stepGround,stepWater} from '../activities/moves.js';
 import {DOWN} from '../activities/balance.js';
 import {createMind,perceive,moodOf,feel,remember,features,describe,lineFor,FEATURES} from './mind.js';
 
@@ -31,6 +32,7 @@ const NEEDS=['energy','social','fun','purpose','thrill'];
 const PACES=['stroll','walk','run'];
 const FLIGHT_STEP=1/120;
 const EVENT_RING=64;
+const WET=['lake','shallows'];  // places in the water (phase 12)
 
 /** The verbs an agent may send. Arguments marked ? are optional. */
 export const VERBS=Object.freeze({
@@ -59,7 +61,9 @@ export function createFolkWorld({config,worldmap,placement,flight,walk,height,gr
   const river=(worldmap.water?.bodies??[]).find(b=>b.kind==='river');
   // `player` is the client's player on foot ({x, y, speed}) or null: the one the cats play with.
   // `balance` (balance.js: {config, surfaceAt}) lets a cat slip and tumble on the same ground he does.
-  return {config,worldmap,flight,walk,height,ground,hitTest,gondola,balance,onEvent,homes,green,river,time:0,focus:null,player:null,cats:[],things:Object.create(null),decider:null};
+  // The water query the walker already carries, else the same one built from the map.
+  const waterAt=height.waterAt??createWater(worldmap,height).waterAt;
+  return {config,worldmap,flight,walk,height,waterAt,ground,hitTest,gondola,balance,onEvent,homes,green,river,time:0,focus:null,player:null,cats:[],things:Object.create(null),decider:null};
 }
 
 /** The nearest dry bank point of the river to p, standing back from the water's edge. */
@@ -71,10 +75,40 @@ function riverBank(world,p){
     const t=clamp(((p[0]-a[0])*ab[0]+(p[1]-a[1])*ab[1])/l),q=[a[0]+ab[0]*t,a[1]+ab[1]*t],d=dist(p,q);
     if(!best||d<best.d)best={d,q,i,t,ab:ab.map(v=>v/Math.sqrt(l))};
   }
-  const width=r.width_start_m+(r.width_end_m-r.width_start_m)*(best.i+best.t)/(line.length-1);
   let n=[-best.ab[1],best.ab[0]];if((p[0]-best.q[0])*n[0]+(p[1]-best.q[1])*n[1]<0)n=n.map(v=>-v);
-  const back=width/2+(r.bank_m??0)+4;  // walk.js counts the bank as water
+  // Step outward from the nearest water point until the water query says dry, then stand 4 m back.
+  let back=0;while(back<400&&world.waterAt(best.q[0]+n[0]*back,best.q[1]+n[1]*back))back+=1;
+  back+=4;
   return [best.q[0]+n[0]*back,best.q[1]+n[1]*back];
+}
+
+/** Where a cat wades the river (phase 12): from the river's line toward home, the first point 0.25-0.45 m deep.
+ * The nearest stretch to home is on home's side, so no cat crosses deep water to reach it. */
+function riverShallows(world,p){
+  const bank=riverBank(world,p);if(!bank)return null;
+  const r=world.river.polyline;let q=null,best=Infinity;
+  for(const v of r){const d=dist(p,v);if(d<best){best=d;q=v;}}
+  const length=dist(q,bank),u=[(bank[0]-q[0])/length,(bank[1]-q[1])/length];
+  for(let m=0;m<length;m+=.5){
+    const x=q[0]+u[0]*m,y=q[1]+u[1]*m,w=world.waterAt(x,y);
+    if(w&&w.depth>=.25&&w.depth<=.45)return [x,y];
+  }
+  return null;
+}
+
+/** Where a cat swims in the lake (phase 12): off the shore nearest home, out to 1.6-3 m of water. Only for homes
+ * within 900 m of the lake; null otherwise. */
+function lakeSwim(world,p){
+  const lake=(world.worldmap.water?.bodies??[]).find(b=>b.kind==='lake'&&b.outline_xy_m);if(!lake)return null;
+  const ring=lake.outline_xy_m,centre=ring.reduce((a,v)=>[a[0]+v[0]/ring.length,a[1]+v[1]/ring.length],[0,0]);
+  const shore=ring.reduce((a,v)=>dist(p,v)<dist(p,a)?v:a);
+  if(dist(p,shore)>900)return null;
+  const d=dist(shore,centre),u=[(centre[0]-shore[0])/d,(centre[1]-shore[1])/d];
+  for(let m=2;m<60;m+=1){
+    const x=shore[0]+u[0]*m,y=shore[1]+u[1]*m,w=world.waterAt(x,y);
+    if(w&&w.depth>=1.6)return w.depth<=3?[x,y]:null;
+  }
+  return null;
 }
 
 function emit(world,cat,event,data={}){
@@ -124,7 +158,7 @@ export function createFolk(world,models,{seed=1,aloft=false}={}){
     let view=at(toGreen+Math.PI,40),viewZ=-Infinity;
     for(let k=0;k<12;k++){const p=at(k/12*Math.PI*2,90+60*random()),h=world.height(...p);if(Number.isFinite(h)&&h>viewZ){view=p;viewZ=h;}}
     const cat={id:f.id,name:model.name,bio:f.bio,model:model.asset,height_m:model.height_m,gaits:model.ground_speed_mps,traits:f.traits,skills:f.skills,pace:f.pace??1,flightPlan:f.flight??null,
-      places:{home:spot,garden:openSpot(world,home,toGreen+Math.PI/2,14),view,river:riverBank(world,home),green:world.green,launch:null,
+      places:{home:spot,garden:openSpot(world,home,toGreen+Math.PI/2,14),view,river:riverBank(world,home),shallows:riverShallows(world,home),lake:lakeSwim(world,home),green:world.green,launch:null,
         gondola:world.gondola?.stations[0].xy_m.slice()??null},
       needs:Object.fromEntries(NEEDS.map(k=>[k,.45+.4*random()])),
       body:{mode:'walk',state:{x:spot[0],y:spot[1],z,heading:toGreen+Math.PI,speed:0,grounded:true,jumpPhase:'grounded'},clip:'idle',clipSpeed:0,face:null},
@@ -310,7 +344,8 @@ function planFor(world,cat,id,options={}){
     return [{kind:'go',to:friend.id,pace:'walk',within:1.8},{kind:'do',clip:a.clip,seconds,effects:a.effects,face:friend.id,activity:id,with:friend.id}];
   }
   const steps=[];
-  if(a.place!=='here')steps.push({kind:'go',to:a.place==='green'?placePoint(world,cat,'green'):a.place,pace:a.place==='home'&&cat.needs.energy<.25?'stroll':'walk'});
+  // Only a walk into the lake or the shallows may enter water; anywhere else, water stays a wall.
+  if(a.place!=='here')steps.push({kind:'go',to:a.place==='green'?placePoint(world,cat,'green'):a.place,pace:a.place==='home'&&cat.needs.energy<.25?'stroll':'walk',...(WET.includes(a.place)?{wet:true}:{})});
   steps.push({kind:'do',clip:a.clip,seconds,effects:a.effects,activity:id});
   // Nobody springs straight up from a nap.
   if(id==='nap')steps.push({kind:'do',clip:'stretch',seconds:world.config.activities.stretch.seconds[0],effects:world.config.activities.stretch.effects,activity:'stretch'});
@@ -538,13 +573,20 @@ function walkTo(world,cat,step,dt){
     if(od>1e-3&&push>0){ux+=(ox/od+Math.sin(angle)*.6)*push;uy+=(oy/od-Math.cos(angle)*.6)*push;}
   }
   const um=Math.hypot(ux,uy);if(um>1e-6){ux/=um;uy/=um;}
+  // In the water, or on the way into it: the player's own wading and swimming (stepWater), never his run.
+  const wet=!!step.wet||s.mode==='swim';
   if(isNear(world,here)){
-    const run=speed>world.walk.walk_mps,mag=clamp(speed/(run?world.walk.run_mps:world.walk.walk_mps));
-    cat.body.state=stepGround(s,{x:ux*mag,y:uy*mag,run},dt,world.walk,groundOf(world));
+    const run=!wet&&speed>world.walk.walk_mps,mag=clamp(speed/(run?world.walk.run_mps:world.walk.walk_mps));
+    cat.body.state=wet?stepWater(s,{x:ux*mag,y:uy*mag,run:false},dt,world.walk,{...groundOf(world),floorHeight:world.ground,waterAt:world.waterAt})
+      :stepGround(s,{x:ux*mag,y:uy*mag,run},dt,world.walk,groundOf(world));
   }else{
     // ponytail: kinematic far walk ignores colliders; nobody can see it, and it keeps 8 cats cheap.
-    const travel=Math.min(speed*dt,d),x=s.x+ux*travel,y=s.y+uy*travel,z=world.height(x,y);
-    cat.body.state=Number.isFinite(z)?{...s,x,y,z,heading:Math.atan2(uy,ux),speed,vx:ux*speed,vy:uy*speed}:{...s,speed:0};
+    const travel=Math.min(speed*dt,d),x=s.x+ux*travel,y=s.y+uy*travel;
+    let z=world.height(x,y),mode=s.mode==='swim'?'ground':s.mode;
+    // Far off, a cat in or bound for the water floats at the swimmer's draft where it is deep, else stands on the bed.
+    const w=wet&&!Number.isFinite(z)?world.waterAt(x,y):null;
+    if(w){const c=world.walk.swim;z=w.depth>=c.swim_depth_m?Math.max(world.ground(x,y),w.surface_z-c.float_draft_m):world.ground(x,y);mode='swim';}
+    cat.body.state=Number.isFinite(z)?{...s,x,y,z,mode,heading:Math.atan2(uy,ux),speed,vx:ux*speed,vy:uy*speed}:{...s,speed:0};
   }
   return false;
 }
@@ -586,7 +628,8 @@ const isNear=(world,p)=>!world.focus||dist(p,world.focus)<world.config.walk.near
  * or a wall: step it out to the nearest open ground before the full rules take over. */
 function settle(world,cat){
   const s=cat.body.state,near=isNear(world,[s.x,s.y]),was=cat.far;cat.far=!near;
-  if(!was||!near||cat.body.mode!=='walk'||safeWalkGround(s.x,s.y,world.walk,world.height,world.hitTest)!==null)return;
+  // A swimmer is where it should be: the water is no wall to step out of.
+  if(!was||!near||cat.body.mode!=='walk'||s.mode==='swim'||safeWalkGround(s.x,s.y,world.walk,world.height,world.hitTest)!==null)return;
   const [x,y]=openSpot(world,[s.x,s.y],s.heading??0,2);
   cat.body.state={...s,x,y,z:world.height(x,y),speed:0,vx:0,vy:0};
   emit(world,cat,'settled',{from:[Math.round(s.x),Math.round(s.y)],to:[Math.round(x),Math.round(y)]});
@@ -776,6 +819,8 @@ function clipFor(world,cat){
   if((step?.kind==='do'||step?.kind==='use')&&!(s.speed>.2))return step.clip;
   const speed=s.speed??0,cadence=world.config.walk.cadence;
   if(speed<.15)return 'idle';
+  // Afloat it kicks slowly (there is no swim clip); wading keeps its gaits.
+  if(s.mode==='swim'&&s.swimPhase!=='wade')return 'stroll';
   // The gait whose natural pace is nearest, by ratio: the client scales playback by what is left over.
   return PACES.reduce((a,b)=>Math.abs(Math.log(speed/(cat.gaits[b]*cadence)))<Math.abs(Math.log(speed/(cat.gaits[a]*cadence)))?b:a);
 }

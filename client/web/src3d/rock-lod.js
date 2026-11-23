@@ -1,11 +1,11 @@
-/** Three spatial mesh LODs of the core's existing river rocks and gravel.
+/** Three spatial mesh LODs of the core's river rocks, gravel and drift logs.
  * Distant stones keep volume; transforms and moss stay source-derived.
  */
 import * as T from '../vendor/three.module.min.js';
 import {mergePrimitives} from './glb.js';
 import {clusteredTreeGeometry,treeLodWeights,intervalMaterial} from './forest.js';
 import {instanceMatrix} from './world.js';
-export const isRock=record=>/\/(river_rock|gravel)\.glb$/.test(record.asset);
+export const isRock=record=>/\/(river_rock|gravel|drift_log(_rooted)?)\.glb$/.test(record.asset);
 export function buildRockLod(records,assets){
  const group=new T.Group();group.name='granite_rocks';const byAsset=new Map(),batches=[],resources=new Set();
  const stats={rocks:records.length,lodCounts:[0,0,0],triangles:0,sourceTriangles:0,levels:{}};

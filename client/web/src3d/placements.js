@@ -18,10 +18,11 @@
  * applying their own `position_m` would float them at twice the surface height.
  */
 
-import { Group, InstancedMesh, Float32BufferAttribute } from "../vendor/three.module.min.js";
+import { Box3, BoxGeometry, Color, Group, InstancedMesh, Float32BufferAttribute, Matrix4 } from "../vendor/three.module.min.js";
 import { mergePrimitives } from "./glb.js";
 import { instanceMatrix } from "./world.js";
 import {villageBarkMaterial} from "./tree-material.js";
+import { toonMaterial } from "./style.js";
 
 /** The instances of `placement.json`, grouped by the asset they name. */
 export function groupByAsset(placement) {
@@ -162,8 +163,73 @@ export function buildPlacements(placement, assets, options = {}) {
       }
     }
   }
+  // The plinths meet the ground, so they belong to the world build, the one
+  // caller that passes the ground. Bare builds compare dwelling meshes
+  // one-for-one and stay as they were.
+  if (options.ground) {
+    const foundations = buildFoundations(placement, assets);
+    if (foundations) {
+      group.add(foundations);
+      stats.drawCalls += 1;
+      stats.foundations = foundations.count;
+    }
+  }
   group.userData = stats;
   return { group, stats };
+}
+
+/* The foundation under every raised home, so no house floats on a slope.
+ *
+ * The core (`shared/placement/derive.py` `_level_homes`) seats each homestead
+ * and dome on a level floor at the highest of five footprint ground samples,
+ * and writes the drop to the lowest as `foundation_m`. This draws one stone
+ * plinth per such instance: the model's own x/z bounds turned by its yaw, top
+ * 2 cm under the floor, bottom `foundation_m + 0.4` m under it so it is buried
+ * on the downhill side. All plinths are one `InstancedMesh`: one draw call.
+ */
+
+export const PLINTH_TOP_M = 0.02;
+export const PLINTH_BURY_M = 0.4;
+// The houses' own `village_stone` / `homestead_stone` base colour, so the GLB's
+// shallow plinth and this one read as a single block.
+const STONE = [0.27, 0.25, 0.202];
+
+/** An asset's x/z footprint in model space, over every primitive at its node. */
+export function footprintOf(asset) {
+  const box = new Box3();
+  for (const p of asset.primitives) {
+    if (!p.geometry.boundingBox) p.geometry.computeBoundingBox();
+    box.union(p.geometry.boundingBox.clone().applyMatrix4(p.local));
+  }
+  return box;
+}
+
+/** The plinth's local matrix: a unit box stretched to the footprint and depth. */
+export function plinthLocal(box, foundationM, verticalScale = 1) {
+  const top = -PLINTH_TOP_M / verticalScale, bottom = -(foundationM + PLINTH_BURY_M) / verticalScale;
+  return new Matrix4()
+    .makeTranslation((box.min.x + box.max.x) / 2, (top + bottom) / 2, (box.min.z + box.max.z) / 2)
+    .scale({ x: box.max.x - box.min.x, y: top - bottom, z: box.max.z - box.min.z });
+}
+
+/** One instanced mesh of plinths for every raised instance, or null if none is raised. */
+export function buildFoundations(placement, assets) {
+  const raised = (placement.instances ?? []).filter((i) => i.foundation_m && assets[i.asset]);
+  if (!raised.length) return null;
+  const boxes = new Map();
+  const material = toonMaterial({ name: "foundation_stone", color: new Color(...STONE) });
+  const mesh = new InstancedMesh(new BoxGeometry(1, 1, 1), material, raised.length);
+  mesh.name = "foundations";
+  mesh.userData.instances = raised;
+  raised.forEach((i, k) => {
+    if (!boxes.has(i.asset)) boxes.set(i.asset, footprintOf(assets[i.asset]));
+    const local = plinthLocal(boxes.get(i.asset), i.foundation_m, i.scale?.[2] ?? 1);
+    mesh.setMatrixAt(k, instanceMatrix(i.position_m, i.yaw_deg, i.scale, local));
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.matrixAutoUpdate = false;
+  return mesh;
 }
 
 export { buildStylizedForest as buildForest } from "./forest.js";

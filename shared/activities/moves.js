@@ -35,6 +35,21 @@ export function stepGround(state,input,dt,config,world,height=world.height){
   return {...stepWalk(state,{...input,x:(input.x??0)*k,y:(input.y??0)*k,jump:b.phase==='steady'&&input.jump},dt,config,height,world.hitTest),balance:b};
 }
 
+/** On foot or in the water, and nothing else (no trees, stairs or branches): the player's moves use it, and so
+ * do the folk on their way into the lake or the river's shallows. With swimming, water is a surface he can walk
+ * or fall onto, and then swims in. In water he walks (and falls) onto the bed. He starts swimming once it is
+ * exit_depth_m deep where he stands, or as he passes the surface of water that deep, and only stops on dry land:
+ * the gap keeps a ragged shore from flipping him between the two at every crossing. */
+export function stepWater(state,input,dt,config,world){
+  if(state.mode==='swim')return stepSwim(state,input,dt,config,world);
+  const swims=config.swim&&world.waterAt,bed=(x,y)=>world.waterAt(x,y)?world.floorHeight(x,y):world.height(x,y);
+  let s=stepGround(state,input,dt,config,world,swims?bed:world.height);
+  const water=swims&&world.waterAt(s.x,s.y);
+  if(water&&water.depth>=config.swim.exit_depth_m&&(s.grounded||s.z<=water.surface_z+1e-6||s.jumpPhase==='bounce'))
+    s={...s,sliding:false,mode:'swim',balance:undefined,grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vz:0,swimPhase:'wade'};
+  return s;
+}
+
 export function stepMoves(state,input,dt,config,world){
   if(state.mode==='branch')return stepBranch(state,input,dt,config,world);
   if(state.mode==='tree-jump')return stepTreeJump(state,input,dt,config,world);
@@ -44,16 +59,7 @@ export function stepMoves(state,input,dt,config,world){
   }
   if(state.mode==='swim')return stepSwim(state,input,dt,config,world);
   if(state.mode==='stair')return stepStair(state,input,dt,config,world);
-  // With swimming, water is a surface he can walk or fall onto, and then swims in.
-  // In water he walks (and falls) onto the bed. He starts swimming once it is
-  // exit_depth_m deep where he stands, or as he passes the surface of water that
-  // deep, and only stops on dry land: the gap keeps a ragged shore from flipping
-  // him between the two at every crossing.
-  const swims=config.swim&&world.waterAt,bed=(x,y)=>world.waterAt(x,y)?world.floorHeight(x,y):world.height(x,y);
-  let s=stepGround(state,input,dt,config,world,swims?bed:world.height);
-  const water=swims&&world.waterAt(s.x,s.y);
-  if(water&&water.depth>=config.swim.exit_depth_m&&(s.grounded||s.z<=water.surface_z+1e-6||s.jumpPhase==='bounce'))
-    s={...s,sliding:false,mode:'swim',balance:undefined,grounded:false,jumpPhase:'grounded',jumpTime:0,jumpBuffer:0,chainLeft:0,vz:0,swimPhase:'wade'};
+  const s=stepWater(state,input,dt,config,world);
   if(s.mode==='swim')return s;
   const landed=branchLanding(state,s,config,world);if(landed)return landed;
   // Feet on a village helix's treads lock him to the flight.

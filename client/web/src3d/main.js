@@ -21,10 +21,15 @@ import {setMountainMap,mountainMapStats} from './granite-shading.js';
 import {createGeologySampler,applyGeologyTerrain} from '../../../shared/geometry/granite/surface.js';
 import { buildHorizonRange, buildWater, buildRiverReaches } from './terrain.js';
 import { buildPlacements, buildForest } from './placements.js';
+import {buildFalls} from './falls.js';
+import {createMirror} from './mirror.js';
+import {createReflections,createMovers,loadProbes,PROBE_FILE,MOVERS_LAYER,DEPTH_LAYER} from './reflections.js';
+import {createUnderwater} from './underwater.js';
 import { buildTreeGroundShadows } from './forest.js';
 import {instanceMatrix} from './world.js';
 import {setTreeLighting} from './tree-surface.js';
-import {createDistantTreeShadows,updateTreeSunShadow,bindTreeSunShadow,setTreeShadowFocus,SCENERY_SHADOW_SPAN,SCENERY_SHADOW_RESOLUTION} from './tree-shadows.js';
+import {createDistantTreeShadows,updateTreeSunShadow,bindTreeSunShadow,setTreeShadowFocus,setNearTreeShadows,SCENERY_SHADOW_SPAN,SCENERY_SHADOW_RESOLUTION} from './tree-shadows.js';
+import {createRidgeCull} from './ridge-cull.js';
 import {buildForestField,forestField} from './forest-field.js';
 import {buildForestFloor} from './forest-floor.js';
 import {buildAdoptedRedwoods,releaseCrownSources} from './redwood-rendering.js';
@@ -60,6 +65,7 @@ import {fetchAssetBytes} from './asset-bytes.js';
 import {VERSION} from './version.js';
 import { createSnowSampler, createTrailSampler, createSurfaceSampler, createRideHeight } from '../../../shared/activities/ride.js';
 import { createWalkHeight, walkSpawn } from '../../../shared/activities/walk.js';
+import { setController, stageFlightGuide, command } from '../../../shared/npc/folk.js';
 import {createLoadingScreen,warmScene,finishGpu,nextPaint} from './loading.js';
 
 const root = new URL('../../../', import.meta.url);
@@ -96,7 +102,7 @@ export async function main() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
-  renderer.debug.onShaderError=()=>{throw new Error('The light could not be prepared on this graphics device. Please try again.');};
+  renderer.debug.onShaderError=(gl,program,vertex,fragment)=>{console.error('shader compile',gl.getShaderInfoLog(vertex)||'',gl.getShaderInfoLog(fragment)||'',gl.getProgramInfoLog(program)||'');throw new Error('The light could not be prepared on this graphics device. Please try again.');};
   const scene = new T.Scene();
   scene.background = new T.Color('#dcdcc1');
   scene.fog = new T.Fog('#dcdcc1', 2500, 11500);
@@ -135,6 +141,8 @@ export async function main() {
   observed.delete('client/web/data/viewer.json');  // the manifest cannot list its own hash
   packed=manifest.packed??{};
   const transition=await fetchData('shared/world/out/landscape_transition.json');checkVersion(transition,1,'landscape transition');
+  // Life in the water (phase 11): its own file, built after the granite so it never moves the rocks.
+  const aquatic=await fetchData('shared/ecology/aquatic.json');checkVersion(aquatic,1,'water life');
   const geologyData=worldmap.mountains.geology?await fetchData(worldmap.mountains.geology):null;
   if(geologyData)checkVersion(geologyData,1,'mountain geology');
   const speedflying=worldmap.activities.speedflying?await fetchData(worldmap.activities.speedflying):null;
@@ -171,7 +179,7 @@ export async function main() {
   loading.phase('Unpacking the meadow, homes and trees…',1);
   // Bounded parallel loading avoids a serial network waterfall and limits peak
   // parsing memory. Source bytes fall out of scope as each asset is decoded.
-  const paths = [...new Set([...placement.instances.map(i => i.asset),...habitats.plantings.map(i=>i.asset),...meadowData.species.map(i=>i.asset),'waterside/river_fish.glb','waterside/fish_tail.glb','waterside/frog.glb','waterside/dragonfly_wings.glb',flightConfig.wing_asset,flightConfig.motor_asset,...Object.values(flightConfig.modes).map(m=>m.wing_asset).filter(Boolean),...Object.values(rideConfig.modes).map(m=>m.asset)])];
+  const paths = [...new Set([...placement.instances.map(i => i.asset),...habitats.plantings.map(i=>i.asset),...aquatic.plantings.map(i=>i.asset),'waterside/duck.glb',...meadowData.species.map(i=>i.asset),'waterside/river_fish.glb','waterside/fish_tail.glb','waterside/frog.glb','waterside/dragonfly_wings.glb',flightConfig.wing_asset,flightConfig.motor_asset,...Object.values(flightConfig.modes).map(m=>m.wing_asset).filter(Boolean),...Object.values(rideConfig.modes).map(m=>m.asset)])];
   for(const path of [characterConfig.asset,...treePlan.stages.map(stage=>stage.asset),...Object.values(treePlan.profiles??{}).flatMap(p=>p.stages.map(s=>s.asset))])if(!paths.includes(path))paths.push(path);
   paths.push(riverData.geometry);
   const assets = {};
@@ -214,6 +222,10 @@ export async function main() {
   const riverGranite=buildRiverGranite(riverSurface,assets[riverData.geometry],terrain,assets,landscapeGrid);scene.add(riverGranite.group);
   const water = buildWater(placement.instances.filter(i => i.kind === 'river' || i.kind === 'lake'), assets, blockGrid,worldmap);
   scene.add(water, buildRiverReaches(worldmap, farGrid, riverSurface));
+  const fallsWidth=+new URLSearchParams(location.search).get('falls_width');
+  // The two other water looks, for the final comparison (phase 14): ?water_look=clear or ?water_look=deep.
+  style.waterLook.value={clear:1,deep:2}[new URLSearchParams(location.search).get('water_look')]??0;
+  const falls=worldmap.water.form?buildFalls(worldmap,ground,fallsWidth>0?{width:fallsWidth}:{}):null;if(falls)scene.add(falls.group);
   const placements = buildPlacements(placement, assets, { ground,crownAssets:new Set(Object.keys(treePlan.targets)) }); scene.add(placements.group);
   // Set the initial sun before expensive atlas bakes; the first preset then
   // reuses them instead of immediately paying for a second bake.
@@ -226,10 +238,13 @@ export async function main() {
   style.sun.value.set(-.64,.48,-.55).normalize();
   const forestSoil=buildForestField(placement,assets,forestCover.habitat,{stamp:forestCover,span:farGrid.maxX*2,resolution:2048});
   const legacyForest=buildForest(placement,assets,renderer,{filter:i=>i.asset.startsWith('redwood/')&&!treePlan.targets[i.asset]});
-  const adoptedForest=buildAdoptedRedwoods(placement,assets,renderer,treePlan,{detachEmpty:true});
+  // On foot the ridge culling is aggressive; flying and the free camera keep the cautious test (ridge-cull.js).
+  const groundModes=new Set(['walk','ski','bike']);let onFoot=()=>false;
+  const adoptedForest=buildAdoptedRedwoods(placement,assets,renderer,treePlan,{detachEmpty:true,ridge:{...createRidgeCull(farGrid),aggressive:()=>onFoot()}});
   adoptedForest.stats.releasedSourceBytes=releaseCrownSources(assets,treePlan);
   const forest={group:new T.Group(),stats:{},update(camera,anchor){legacyForest.update(camera,anchor);adoptedForest.update(camera,controls.target);this.refreshStats();},
     refreshStats(){for(const key of ['trees','near','mid','far','tiles','shadowProxies','shadowRevision'])this.stats[key]=(legacyForest.stats[key]??0)+(adoptedForest.stats[key]??0);this.stats.adopted=adoptedForest.stats;},
+    setRidgeCulling(on){adoptedForest.setRidgeCulling(on);},
     invalidateShadows(){legacyForest.invalidateShadows();adoptedForest.invalidateShadows();this.refreshStats();},
     rebuildImpostors(direction){legacyForest.rebuildImpostors(direction);adoptedForest.rebuildImpostors(direction);this.refreshStats();},
     dispose(){legacyForest.dispose();adoptedForest.dispose();}};
@@ -262,7 +277,7 @@ export async function main() {
   const meadow = buildGrassCanopy(grassCover,ground,{samples:grassGl.getParameter(grassGl.SAMPLES),batchTiles:6});
   scene.add(meadow.group);
   const closeMeadow = buildCloseMeadow(grassCover,ground,{flowerMix:stampData.density.flower_colour_mix});scene.add(closeMeadow.mesh);
-  const ecology=buildEcology(habitats,meadowData,assets,ground,closeMeadow,renderer,(x,y,z)=>navigation.sampleEnvironment(x,y,z));scene.add(ecology.group);
+  const ecology=buildEcology({...habitats,plantings:[...habitats.plantings,...aquatic.plantings],deep_schools:aquatic.deep_schools,rafts:aquatic.rafts},meadowData,assets,ground,closeMeadow,renderer,(x,y,z)=>navigation.sampleEnvironment(x,y,z));scene.add(ecology.group);
   scene.add(buildTethers(placement,assets),buildTrails(worldmap,ground));
   const flightRig=createFlightRig(assets,flightConfig),rig=flightRig.group;
   scene.add(rig);
@@ -299,6 +314,7 @@ export async function main() {
   const practiceSite=practiceLaunch?flightConfig.launches.length+parakiteSites.length-1:-1;
   const playerFlight={...flightConfig,experimentalParakite,launches:[...flightConfig.launches,...parakiteSites]};
   const navigation=createNavigation(camera,canvas,controls,ground,playerFlight,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,balance:{config:balanceConfig,surfaceAt:balanceSurface},firstPersonEye:()=>firstPerson.eye,firstPersonCollar:()=>firstPerson.collarBounds,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z)}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>{const sample=paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view);paraStreaks.update(sample,camera,view,effects);return sample;},haptics:()=>document.getElementById('haptics').checked});
+  onFoot=()=>groundModes.has(navigation.mode);
   // The world's generators turn in the same air the wing does. They are not
   // decoration on a timer: calm air slows them and the afternoon's up-valley
   // breeze slows them again, because both come from the shared field through
@@ -319,6 +335,10 @@ export async function main() {
   checkVersion(organoidConfig,1,'Organoid encounter');
   checkVersion(organoidMaterial,1,'Organoid material');
   const organoidActor=await createOrganoid(organoidMaterial,parseGLB(organoidMesh).primitives[0].geometry,organoidLow,organoidHigh);
+  // The lake's baked reflection probes (reflections.js); a bake older than the world it shows is not used.
+  const probeManifest=await fetchData(PROBE_FILE).catch(()=>null);
+  const probeData=probeManifest?await loadProbes(probeManifest,path=>fetchData(path,false),new Map(manifest.fetched.map(e=>[e.path,e.sha256]))):null;
+  if(probeData?.stale.length)console.warn(`Lake reflection probes are stale (${probeData.stale.join(', ')}); rerun client/web/tools/bake-reflections.cjs`);
   // After the last fetchData, so each loaded file is checked against the bytes used.
   status.textContent='Checking world bytes…';
   const verifiedFiles=await verifyFetched(manifest.fetched,observed);
@@ -345,13 +365,13 @@ export async function main() {
       return y;
     })});
   };
-  const soundscape=createSoundscape(habitats,treeSpots(placement.instances),chargeBytes,organoidVoice),cameraShake=new T.Vector3();
+  const soundscape=createSoundscape(habitats,treeSpots(placement.instances),chargeBytes,organoidVoice,{worldmap,rafts:aquatic.rafts}),cameraShake=new T.Vector3();
   // Tumble Hill: its props answer a katana blow (on the blade's swish) and a body running,
   // tumbling or rolling into them (shared/play/reactions.json).
   const play=createPlayProps({hill:tumbleHill,table:reactionTable,height:characterHeight,scene,cue:name=>soundscape.cue(name)});
   const organoid=stageOrganoid({config:organoidConfig,clips:organoidCues,actor:organoidActor,scene,camera,canvas,
     navigation,character,characterScale:()=>characterConfig.scale,height:characterHeight,hit:hitTest,waterAt:walkHeight.waterAt,
-    playProps:play.props,sun:style.sun.value,soundscape,panel:document.getElementById('organoid-scene')});
+    instances:placement.instances,hill:tumbleHill.fall_line_xy_m,playProps:play.props,sun:style.sun.value,soundscape,panel:document.getElementById('organoid-scene')});
   // The Organoid as guide: tips about the thing the player is standing near, on the ground only.
   const tutor=stageOrganoidTutor({config:organoidConfig,organoid,soundscape,clip:organoidCues[organoidConfig.tutor.call.clip],
     panel:document.getElementById('organoid-tip'),navigation,characterScale:()=>characterConfig.scale,
@@ -466,10 +486,35 @@ export async function main() {
   const pilotPostureSelect=document.getElementById('pilot-posture');
   pilotPostureSelect.addEventListener('change',()=>navigation.setPilotMotion(pilotPostureSelect.value));
   const cloudPass=createCloudPass(renderer,scene,camera,worldmap.atmosphere,ground);
+  // The lake mirrors what stands around it. Field notes chooses how: off (the painted
+  // reflection), Mirror (the world redrawn upside down, mirror.js) or Layered (reflections.js).
+  const lakeMesh=water.getObjectByName('lake'),lakeLevel=worldmap.water.bodies.find(b=>b.kind==='lake')?.surface_z_m;
+  const reflectionSelect=document.getElementById('lake-reflections');
+  const mirrorKeep=[horizonRange,terrain.group,geology?.group,riverGranite.group,falls?.group,placements.group,forest.group];
+  const mirror=lakeMesh&&lakeLevel!=null?createMirror(renderer,{level:lakeLevel,lake:lakeMesh,sky,clouds:cloudPass.volumes,trees:forest.group,keep:mirrorKeep}):null;
+  // Movers reflect as stand-ins in a small live pass; everything else static comes from the screen and the probes.
+  const folkGroup=scene.getObjectByName('cat_folk'),cabins=scene.getObjectByName('gondola_cabins');
+  const insects=ecology.group.children.filter(m=>m.isInstancedMesh&&!/river_fish|fish_tail|frog/.test(m.name));
+  // Glass (domes, skybridges) is drawn after the snapshot and left out of the bake: the live pass draws it.
+  const glass=[];placements.group.traverse(o=>{if(o.isMesh&&o.material.transparent)glass.push(o);});
+  const wingsOf=root=>{const found=[];root?.traverse(o=>{if(o.isMesh&&/_fabric$/.test(o.name))found.push(o);});return found;};
+  const movers=createMovers({
+    figures:()=>[character.object,...(folkGroup?.children.filter(o=>o.name!=='player_parafoil')??[])],
+    wings:()=>[...wingsOf(flightRig.group),...wingsOf(folkGroup)],
+    instanced:()=>insects.filter(m=>m.name==='flight/bee.glb'),
+    live:[cabins,rideRig,falls?.group,...glass,...insects.filter(m=>m.name!=='flight/bee.glb'&&!(m.name===''&&!m.material.transparent))],
+    roots:()=>[character.object,flightRig.group,rideRig,folkGroup,cabins,...insects],
+  });
+  const layered=lakeMesh&&lakeLevel!=null?createReflections(renderer,{level:lakeLevel,lake:lakeMesh,sky,clouds:cloudPass.volumes,opaque:cloudPass.opaque,movers}):null;
+  if(layered){scene.add(layered.snapshot.marker);layered.setProbes(probeData&&!probeData.stale.length?probeData:null);}
+  const renderMirror=()=>{
+    const mode=underwater.active?'off':reflectionSelect.value;
+    mirror?.update(scene,camera,mode==='mirror');layered?.update(scene,camera,mode==='layered');
+  };
   document.getElementById('save-view').addEventListener('click',()=>{
     const presentation=paraSignals.sample,para=paraPass.supported&&presentation.active&&Number(motionSelect.value)>0&&(presentation.smear>.001||presentation.lens>.001);
     if(para)paraPass.prepare();
-    cloudPass.render({strength:Number(motionSelect.value),target:para?paraPass.target:null});
+    cloudPass.render({strength:Number(motionSelect.value),submerged:underwater.active,target:para?paraPass.target:null});
     if(para)paraPass.render(cloudPass.opaque.depthTexture,presentation);
     canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`tumbler-${navigation.mode}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');
   });
@@ -481,16 +526,28 @@ export async function main() {
   sun.shadow.camera.updateProjectionMatrix();
   sun.shadow.mapSize.set(SCENERY_SHADOW_RESOLUTION, SCENERY_SHADOW_RESOLUTION);
   sun.shadow.bias = -.00015; sun.shadow.normalBias = .7;
-  scene.add(sun, sun.target);bindTreeSunShadow(sun);
+  scene.add(sun, sun.target);bindTreeSunShadow(sun);sun.layers.enable(MOVERS_LAYER);sun.layers.enable(DEPTH_LAYER);
   const distantTreeShadows=createDistantTreeShadows(renderer,adoptedForest.distantShadowGroup,adoptedForest.distantShadowBounds);
   treeShadows.group.visible=false;
-  const hemisphere = new T.HemisphereLight('#afd7e3', '#7a8452', 2.0); scene.add(hemisphere);
+  const hemisphere = new T.HemisphereLight('#afd7e3', '#7a8452', 2.0); scene.add(hemisphere);hemisphere.layers.enable(MOVERS_LAYER);hemisphere.layers.enable(DEPTH_LAYER);
   const actorShadows=createActorShadows(renderer,[rig,character.object,rideRig],style);
   const actorFocus=new T.Vector3();
   const shadowCentre = new T.Vector3(Infinity, Infinity, Infinity);
   let shadowRevision=-1,lastShadowTime=0,guidedShadowLead=null;
   const shadowFocus=new T.Vector3(Infinity,Infinity,Infinity),groundShadowFocus=new T.Vector3(),shadowAim=new T.Vector3();
+  // The sharp sun map round the player is for walking, and for flight or the free camera only below the average
+  // tree's height (2026-11-23, the human). Above that the static world map carries every shadow and the near map
+  // is not redrawn.
+  let nearShadows=true;
+  function nearShadowsWanted(){
+    if(onFoot())return true;
+    const p=camera.position,g=ground.height(p.x,-p.z);
+    return g!==null&&p.y-g<adoptedForest.stats.meanTreeHeightM;
+  }
   function updateShadow(force = false,forestSelected = false) {
+    const near=nearShadowsWanted();
+    if(near!==nearShadows){nearShadows=near;setNearTreeShadows(near);force=true;}
+    if(!near&&!force){if(forestSelected){legacyForest.update(camera,shadowCentre);forest.refreshStats();}return;}
     const aim=controls.target;
     // Keep the scenery footprint on the landscape through aerial descents.
     const target=groundShadowFocus.set(aim.x,ground.height(aim.x,-aim.z)??aim.y,aim.z);
@@ -527,19 +584,11 @@ export async function main() {
     shadowRevision=forest.stats.shadowRevision;
     renderer.shadowMap.needsUpdate = true;
   }
-  // Under the water's surface: a short teal fog and a tint over the view.
-  // Surfacing restores the fog the light preset set. Presentation only.
-  const underwaterTint=document.createElement('div');
-  Object.assign(underwaterTint.style,{position:'fixed',inset:'0',background:'rgba(30,92,100,.3)',pointerEvents:'none',display:'none'});
-  renderer.domElement.insertAdjacentElement('afterend',underwaterTint);
-  let underwaterView=false,airFog=null;
-  function applyUnderwater(under){
-    if(under===underwaterView)return;underwaterView=under;underwaterTint.style.display=under?'block':'none';
-    if(under){airFog={color:scene.fog.color.clone(),near:scene.fog.near,far:scene.fog.far};scene.fog.color.set('#2c6f73');scene.fog.near=1;scene.fog.far=28;scene.background.copy(scene.fog.color);}
-    else if(airFog){scene.fog.color.copy(airFog.color);scene.fog.near=airFog.near;scene.fog.far=airFog.far;scene.background.copy(airFog.color);}
-  }
+  // Under the water's surface (underwater.js): fog by depth and light, shafts, motes, the bed's caustics.
+  let lightName='golden';
+  const underwater=createUnderwater({scene,camera,waterAt:walkHeight.waterAt,sky,overlayAfter:renderer.domElement});
   function setLight(name) {
-    const p = lightPresets[name];
+    const p = lightPresets[name];lightName=name;
     // The light preset also says which phase of the day it depicts, and the
     // core's own diurnal table turns that into the valley's breeze. The client
     // names the phase; it never decides what the wind does with it.
@@ -547,7 +596,7 @@ export async function main() {
     setTreeLighting({...p,sun:p.color,ground:'#7a8452'});
     style.sun.value.fromArray(p.direction).normalize(); style.warmth.value = p.warmth;
     // Each time of day carries its own clouds (worldmap atmosphere.times).
-    cloudPass.setSky(name);
+    cloudPass.setSky(name);layered?.setTime(name);
     sun.color.set(p.color); sun.intensity = p.intensity;
     hemisphere.color.set(p.fill); hemisphere.intensity = p.ambient;
     scene.fog.color.set(p.fog); scene.background.copy(scene.fog.color);
@@ -576,10 +625,46 @@ export async function main() {
   // behind and above, the player map arrives at it on foot. One list, so the two cannot drift apart.
   const placeById=Object.fromEntries(places.places.map(p=>[p.id,p]));
   const bearing=deg=>[Math.sin(deg*Math.PI/180),Math.cos(deg*Math.PI/180)];
-  // The first load opens on foot at the top of the village street, the chase camera in front of him
-  // looking back down through the bridges. Set up by hand in the game and read from it on 2026-11-19:
-  // x/y metres (east, north), heading and yaw in radians as navigation.js keeps them.
-  const OPENING_ARRIVAL={x:-703.8497,y:505.8483,heading:1.5699,yaw:3.1407,pitch:-.072};
+  // The first load opens on foot beside the tree village, facing it (2026-11-22: the hand-set pose on the village
+  // street stood inside a stair once the village was re-solved, "cat ronin spawns inside of a tree"). Derived, so it
+  // follows the world: the walkable ground nearest the village's place that is 10 m clear of the village trunks
+  // and 5 m of every other tree. Heading and yaw in radians as navigation.js keeps them (yaw = heading + pi/2).
+  // Walkable ground nearest (x, y), 10 m clear of the village's trunks and 5 m of every other tree: where anyone is
+  // set down on foot (the opening, a place's arrival), so the world moving its trees never stands him inside one.
+  const standClear=placement.instances.filter(i=>i.kind==='arboreal_tree'||i.kind==='redwood'||i.kind==='forest_tree')
+    .map(i=>[i.position_m[0],i.position_m[1],i.kind==='arboreal_tree'?10:5]);
+  function clearSpot(ax,ay){
+    for(let r=0;r<=120;r+=6)for(let k=0,n=Math.max(1,Math.round(r/3));k<n;k++){
+      const a=k/n*2*Math.PI,x=ax+Math.cos(a)*r,y=ay+Math.sin(a)*r;
+      if(standClear.every(([tx,ty,c])=>Math.hypot(x-tx,y-ty)>=c)&&walkSpawn(x,y,characterConfig.walk,walkHeight,hitTest,0))return [x,y];
+    }
+    return [ax,ay];
+  }
+  const OPENING_ARRIVAL=openingArrival(placeById['tree-village'],[-705,465]);
+  function openingArrival(place,[fx,fy]){
+    // He faces away from the village: the opening's chase camera stands in front of him looking back, so the
+    // village (and Juno, staged behind him) fill the frame beyond him.
+    const [x,y]=clearSpot(...place.arrive_xy_m),heading=Math.atan2(y-fy,x-fx);
+    return {x,y,heading,yaw:heading+Math.PI/2,pitch:-.072};
+  }
+  // Juno waits on open ground a few metres ahead of him on load, in the first view, so the parakite lessons are
+  // easy to find ("Make sure Juno is well placed on-load"). She is a pilot who started in the air; she lands
+  // here, then her own brain takes her on after a wait. The tour's first-visit offer stages her beside him again.
+  {
+    const juno=folk.api.world.cats.find(c=>c.id==='juno');
+    if(juno){
+      const world=folk.api.world;
+      for(const [d,side] of [[9,.5],[9,-.5],[12,.4],[12,-.4],[7,.8],[7,-.8],[15,.3],[15,-.3]]){
+        const a=OPENING_ARRIVAL.heading+Math.PI+side,x=OPENING_ARRIVAL.x+Math.cos(a)*d,y=OPENING_ARRIVAL.y+Math.sin(a)*d;
+        const z=walkSpawn(x,y,characterConfig.walk,walkHeight,hitTest,0);
+        if(!z)continue;
+        setController(world,juno,'agent');
+        stageFlightGuide(world,juno,{x,y,z:z[2],heading:Math.atan2(OPENING_ARRIVAL.y-y,OPENING_ARRIVAL.x-x)});
+        setController(world,juno,'auto');command(world,juno,{verb:'wait',seconds:600});
+        break;
+      }
+    }
+  }
   // The first load tours the village: it opens south of it looking up into the decks, swings west and
   // north round the outside of the trunks (7 m or more from every tree, checked by ray against the scene
   // on 2026-11-19) and settles in front of him. Points are [east, north, up] metres; the last leg ends
@@ -598,10 +683,44 @@ export async function main() {
     // Framed by hand in the game on 2026-11-19 (Fly camera; target 60 m along its look).
     if(place.id==='tree-village')return {position:[-723.2534,99.2090,-543.9767],target:[-704.3150,93.8070,-487.3008]};
     if(place.id==='homestead')return {position:homeCamera,target:[hx,hz+3,-hy]};
-    const [x,y]=place.arrive_xy_m,[dx,dy]=bearing(place.facing_deg),ex=x-dx*40,ey=y-dy*40,tx=x+dx*260,ty=y+dy*260;
+    // The first framing, from behind and above, that sees the place: nothing within 14 m of the eye, no crown across
+    // the first 120 m of the line of sight, and the line clear of the ground (2026-11-22: the views had drifted into
+    // trees and slopes as the world moved: "the different look-around views were disturbed into non-aesthetic views").
+    const [x,y]=place.arrive_xy_m,base=place.facing_deg;
+    const near=viewTrees.filter(([tx,ty])=>Math.hypot(tx-x,ty-y)<320);
+    let room=14;  // how far the nearest trunk must stand from the eye; relaxed when no framing allows it
+    const line=(ex,ey,ez,tx,ty,tz,reach)=>{
+      const lx=tx-ex,ly=ty-ey,lz=tz-ez,l=Math.hypot(lx,ly)||1;
+      for(let s=.05;s<=Math.min(1,reach/l);s+=.05){const px=ex+lx*s,py=ey+ly*s;if(ez+lz*s<ground.height(px,py)+2)return false;}
+      for(const [tx_,ty_,top] of near){
+        const s=Math.max(0,Math.min(Math.min(1,120/l),((tx_-ex)*lx+(ty_-ey)*ly)/(l*l))),d=Math.hypot(ex+lx*s-tx_,ey+ly*s-ty_);
+        if(Math.hypot(tx_-ex,ty_-ey)<room||(d<6&&ez+lz*s<top))return false;
+      }
+      return true;
+    };
+    // The frame, not only its centre: three lines across it, each clear of trees and masts for 120 m, and the
+    // centre clear of rising ground for 200 m toward where the view looks.
+    const sees=(ex,ey,ez,tx,ty,tz)=>{
+      const a=Math.atan2(ty-ey,tx-ex),l=Math.hypot(tx-ex,ty-ey);
+      return [0,.35,-.35].every(o=>line(ex,ey,ez,ex+Math.cos(a+o)*l,ey+Math.sin(a+o)*l,tz,120));
+    };
+    // The place's own facing matters more than a perfect frame: small turns first, strict then relaxed, and only
+    // then a wide turn (one pass turned the falls view 90 degrees off the falls for a stricter frame).
+    for(const [turns,space] of [[[0,15,-15,30,-30],14],[[0,15,-15,30,-30],8],[[50,-50,70,-70,90,-90],8]]){
+      room=space;
+      for(const turn of turns)for(const back of [40,60,85,30])for(const lift of [14,24,36]){
+        const [dx,dy]=bearing(base+turn),ex=x-dx*back,ey=y-dy*back,tx=x+dx*260,ty=y+dy*260;
+        const eye=Math.max(ground.height(ex,ey),ground.height(x,y))+lift,aim=Math.max(ground.height(tx,ty)+10,eye-60);
+        if(sees(ex,ey,eye,x,y,ground.height(x,y)+2)&&line(ex,ey,eye,tx,ty,aim,200))return {position:[ex,eye,-ey],target:[tx,aim,-ty]};
+      }
+    }
+    const [dx,dy]=bearing(base),ex=x-dx*40,ey=y-dy*40,tx=x+dx*260,ty=y+dy*260;
     const eye=Math.max(ground.height(ex,ey),ground.height(x,y))+14;
     return {position:[ex,eye,-ey],target:[tx,Math.max(ground.height(tx,ty)+10,eye-60),-ty]};
   }
+  // Trees a Look around view must see past: [east, north, crown top].
+  var viewTrees=placement.instances.filter(i=>['arboreal_tree','redwood','forest_tree','mooring_mast','turbine'].includes(i.kind))
+    .map(i=>{const sc=Array.isArray(i.scale)?i.scale[1]:i.scale??1;return [i.position_m[0],i.position_m[1],i.position_m[2]+({forest_tree:28,mooring_mast:60,turbine:40}[i.kind]??45)*sc];});
   const views=Object.fromEntries(places.places.map(p=>[p.id,placeView(p)]));
   // Not a place anyone travels to: the close framing the tree reviews open with (?view=redwood-canopy).
   views['redwood-canopy']={position:heroCentre.clone().add(new T.Vector3(heroRadius*2.1,8,heroRadius*2.3)).toArray(),target:heroCentre.toArray()};
@@ -625,7 +744,7 @@ export async function main() {
   function arriveAt(place,{passesTime=true}={}){
     if(organoid.active)return;
     if(navigation.mode!=='orbit')setActivity('orbit');
-    const [x,y]=place.arrive_xy_m,[dx,dy]=bearing(place.facing_deg),bx=x-dx*24,by=y-dy*24;
+    const [x,y]=clearSpot(...place.arrive_xy_m),[dx,dy]=bearing(place.facing_deg),bx=x-dx*24,by=y-dy*24;
     camera.position.set(bx,ground.height(bx,by)+12,-by);camera.lookAt(x,ground.height(x,y)+1,-y);camera.updateMatrixWorld();setActivity('walk');
     navigation.placeOnFoot(x,y,place.facing_deg*Math.PI/180);
     document.querySelectorAll('button[data-view]').forEach(b=>b.setAttribute('aria-pressed','false'));canvas.focus();updateShadow(true);
@@ -723,7 +842,8 @@ export async function main() {
   // Read-only inspection hook used for repeatable visual/performance checks.
   const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
-  window.tumbler = { organoid,tutor,parakiteTour,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+  window.tumbler = { underwater, mirror:{get enabled(){return reflectionSelect.value!=='off';},set enabled(on){reflectionSelect.value=on?'layered':'off';},
+    get mode(){return reflectionSelect.value;},set mode(v){if(['off','mirror','layered'].includes(v))reflectionSelect.value=v;},layered,movers,probes:probeData,keep:mirrorKeep,get stats(){return reflectionSelect.value==='layered'?layered?.stats:mirror?.stats;},get target(){return mirror?.target;},get scale(){return mirror?.scale;},set scale(v){if(mirror)mirror.scale=v;},get reach(){return mirror?.reach;},set reach(v){if(mirror)mirror.reach=v;}},falls,organoid,tutor,parakiteTour,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;startup.rendered=false;startup.playing=false;
     loading.show();status.textContent='Letting the light settle…';
@@ -750,7 +870,8 @@ export async function main() {
         const pilot=navigation.state;
         actorFocus.set(pilot?.x??camera.position.x,pilot?.z??camera.position.y,-(pilot?.y??-camera.position.z));
         actorShadows.update(actorFocus,style.sun.value);
-        cloudPass.render({strength:Number(motionSelect.value),target:paraPass.supported?paraPass.target:null});
+        renderMirror();
+        cloudPass.render({strength:Number(motionSelect.value),submerged:underwater.active,target:paraPass.supported?paraPass.target:null});
         if(paraPass.supported)paraPass.render(cloudPass.opaque.depthTexture,{smear:0,lens:0,velocity:[0,0,0]});
       },
       signature:()=>JSON.stringify([renderer.info.memory,renderer.info.programs.length,forest.stats.adopted.lodCounts,meadow.stats.tiles,forestFloor.stats.plants]),
@@ -907,7 +1028,7 @@ export async function main() {
     tutor.update(Math.min(delta,150)/1000,onFoot);
     organoid.update(Math.min(delta,150)/1000,onFoot);
     playerVisibility.update(character.object.position.clone().add(new T.Vector3(0,1.1*characterConfig.scale,0)),spotlight&&!organoid.active&&navigation.mode!=='orbit'&&navigation.mode!=='fly'&&navigation.view==='chase',characterConfig.scale,treePlay);
-    applyUnderwater(navigation.underwater);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
+    underwater.update(Math.min(delta,50)/1000,{...lightPresets[lightName],name:lightName},canvas.height);soundscape.setUnderwater(underwater.depth);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
     generators.update(Math.min(delta,50)/1000);
     terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow(false,true);meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);play.update(Math.min(delta,50)/1000,camera,[...(onFoot?[onFoot]:[]),...folk.api.world.cats.filter(c=>c.body.mode==='walk').map(c=>({...c.body.state,radius:.25}))]);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit),paraSignals.sample);updateFoley(Math.min(delta,50)/1000);
 
@@ -982,7 +1103,8 @@ export async function main() {
       actorShadows.update(actorFocus,style.sun.value);
       const presentation=paraSignals.sample,para=paraPass.supported&&airborne&&presentation.active&&Number(motionSelect.value)>0&&(presentation.smear>.001||presentation.lens>.001);
       if(para)paraPass.prepare();
-      cloudPass.render({strength:Number(motionSelect.value),target:para?paraPass.target:null});
+      renderMirror();
+      cloudPass.render({strength:Number(motionSelect.value),submerged:underwater.active,target:para?paraPass.target:null});
       if(para)paraPass.render(cloudPass.opaque.depthTexture,presentation);
     }
     catch (error) { stopped = true;presenting=false;loading.fail(error);status.textContent = `Render error: ${error.message}`; console.error(error); return; }
@@ -1005,13 +1127,13 @@ export async function main() {
     try { contextLost=false;cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();distantTreeShadows.update(style.sun.value,true);ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
     catch(error){stopped=true;loading.fail(error);console.error(error);}
   });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();distantTreeShadows.dispose();forest.dispose();treeShadows.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();tutor.dispose();parakiteTour.dispose();organoid.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();geology?.dispose();terrain.dispose();distantTreeShadows.dispose();forest.dispose();treeShadows.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();tutor.dispose();parakiteTour.dispose();organoid.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();mirror?.dispose();layered?.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
   if(requestedOrganoid){
     toTumbleHill();
     navigation.cancelShot();
     const player=navigation.state;
-    const [x,y]=organoidConfig.approach_xy_m;
+    const [x,y]=organoid.approach;
     navigation.placeOnFoot(player.x,player.y,Math.atan2(y-player.y,x-player.x));
   }
   // The default opening is the journal's ready state: the world is drawn behind

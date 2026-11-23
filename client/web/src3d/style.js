@@ -30,6 +30,21 @@ export const style = {
   wind: { value: new T.Vector2(1, 0) },
   // Regional cloud detail must not change when the observer enters a local gust.
   cloudWind:{value:new T.Vector2(1,0)},
+  // Water surface level (r) and distance to the nearest water (g) over the block, from
+  // the map's water bodies (terrain.js buildWaterBodies); w=1 once it is set.
+  waterLevel:{value:null},waterLevelGrid:{value:new T.Vector4(0,0,1,0)},
+  // The lake's planar reflection (mirror.js): its texture, world-to-uv matrix, the lake's
+  // level, and 1 on frames that drew it (0 falls back to the painted reflection).
+  mirror:{value:null},mirrorMatrix:{value:new T.Matrix4()},mirrorLevel:{value:0},mirrorOn:{value:0},
+  // 1 while the camera is under the water's surface (underwater.js): the bed's caustics and absorption.
+  underwater:{value:0},
+  // The lake's baked probes (reflections.js fills them): the water's underside looks up the sky, clouds and
+  // shore through Snell's window in the nearest one. Colour atlas, (count, rows, sin_min, scale), points.
+  cloudDome:{value:null},cloudDomeMatrix:{value:new T.Matrix4()},cloudDomeOn:{value:0},
+  probeColour:{value:null},probeDistance:{value:null},probeInfo:{value:new T.Vector4(0,1,-.02,1)},probePoints:{value:Array.from({length:8},()=>new T.Vector3())},
+  // The water's look (phase 14 comparison, `?water_look=`): 0 the chosen clear alpine deepening to blue-green,
+  // 1 clear throughout (Horizon), 2 deep blue-green throughout (Subnautica). Water only.
+  waterLook:{value:0},
 };
 // Shared air samples packed as scene (east, south) velocity, lift, roughness.
 const AIR_GLSL=`uniform sampler2D uAir;uniform vec4 uAirGrid;uniform vec2 uWind;
@@ -92,6 +107,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     if(canopy)shader.uniforms.uCanopyStart={value:new T.Vector2(...canopyStart)};
     if(terrain)Object.assign(shader.uniforms,forestUniforms());
     if(terrain||granite)Object.assign(shader.uniforms,mountainUniforms,graniteTextures());
+    if(terrain){shader.uniforms.uWaterLevel=style.waterLevel;shader.uniforms.uWaterLevelGrid=style.waterLevelGrid;shader.uniforms.uUnderwater=style.underwater;}
     if(terrain||meadow){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;shader.uniforms.uSnowGrid=style.snowGrid;}
     shader.vertexShader = (canopy?'uniform vec2 uCanopyStart;varying vec2 vGrassUv;varying float vGrassSeed;\n':'')+((terrain||meadow)?MEADOW_AIR_GLSL:'')+AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? MEADOW_BEND_GLSL+'uniform vec2 uMeadowRange;uniform vec3 uMeadowFocus; varying float vMeadowFade; attribute float petal; attribute vec3 flowerTint; attribute vec3 bladeRoot; attribute float flex; attribute float plant; attribute vec3 meadowTraits; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.vertexShader;
     if(meadow)shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
@@ -152,7 +168,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       ${terrain ? 'vUp = normalize(mat3(modelMatrix) * objectNormal);' : ''}
       #include <project_vertex>
     `);
-    shader.fragmentShader = ((terrain||granite)?GRANITE_GLSL:'')+(canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;uniform vec4 uSnowGrid;\n':'')+(terrain?'varying vec3 vUp;\n'+FOREST_FIELD_GLSL+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
+    shader.fragmentShader = ((terrain||granite)?GRANITE_GLSL:'')+(canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;uniform vec4 uSnowGrid;\n':'')+(terrain?'varying vec3 vUp;uniform sampler2D uWaterLevel;uniform vec4 uWaterLevelGrid;uniform float uUnderwater;\n'+FOREST_FIELD_GLSL+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
     shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
       #include <color_fragment>
       ${meadow ? `if(vMeadowFade<=.001||vPlant<.5)discard;
@@ -200,30 +216,71 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       // the high ground that is flat enough to hold it.
       float steep=length(vUp.xz)/max(.05,vUp.y);
       float slopeMask=smoothstep(.5,.78,steep+(clump-.5)*.4+(drift-.5)*.25);
-      // Low steep ground is a cut bank of earth under turf, not granite.
-      float lowland=1.-smoothstep(38.,70.,vPlace.y+(drift-.5)*20.);
+      // The nearest water's own surface (the lake at 30 m, the river falling
+      // 31 to 20 m) and how near it is, for the walls and the banks below.
+      vec4 waterAt=texture2D(uWaterLevel,clamp((ground-uWaterLevelGrid.xy)/uWaterLevelGrid.z,0.,1.));
+      float waterLevel=mix(20.,waterAt.r,uWaterLevelGrid.w),nearWater=mix(1.,1.-smoothstep(40.,90.,waterAt.g),uWaterLevelGrid.w);
+      // Low steep ground is a cut bank of earth under turf, not granite. A
+      // wall is rock to the water: the lake's shaped walls rise at about 3 to 1,
+      // while the banks of the narrows and the river stand under 0.6, so ground
+      // steeper than about 1 to 1 keeps its granite however low it stands, with
+      // the same ragged edge. The wall's lowest 8 m triangle reaches down to the
+      // flat shelf, so its smoothed normal reads gentle; its own facet reads
+      // 0.4 to 1.3 there (banks' waterline facets: mostly under 0.3), so in the
+      // first metres over the water the facet alone is enough.
+      vec3 facetUp=cross(dFdx(vPlace),dFdy(vPlace));
+      float facetSteep=length(facetUp.xz)/max(.05*length(facetUp),abs(facetUp.y)),ragged=(clump-.5)*.4+(drift-.5)*.25;
+      float wall=max(smoothstep(.75,1.25,max(steep,facetSteep)+ragged),
+        smoothstep(.4,.7,facetSteep+ragged*.5)*(1.-smoothstep(1.5,3.5,vPlace.y-waterLevel))*nearWater);
+      float low=1.-smoothstep(38.,70.,vPlace.y+(drift-.5)*20.),lowland=low*(1.-wall);
       diffuseColor.rgb=mix(diffuseColor.rgb,EARTH*mix(.8,1.1,clump),slopeMask*lowland*smoothstep(.35,.7,grain*.4+clump*.6+.15));
-      float rockMask=max(slopeMask*(1.-lowland),smoothstep(1620.,1980.,vPlace.y+(drift-.5)*160.));
+      float rockMask=max(max(slopeMask*(1.-lowland),wall*low),smoothstep(1620.,1980.,vPlace.y+(drift-.5)*160.));
       GraniteSurface granite=GraniteSurface(vec3(0.),0.,.96,0.,0.,vec3(0.),1.);
       if(rockMask>.001)granite=graniteSurface(vPlace,normalize(vUp),footprint);
       diffuseColor.rgb=mix(diffuseColor.rgb,granite.color,rockMask);
       float snowMask=smoothstep(1010.,1110.,vPlace.y+(clump-.5)*70.+(drift-.5)*90.)*(1.-smoothstep(.62,1.,steep+(clump-.5)*.35))*(1.-knownGround);
       diffuseColor.rgb=mix(diffuseColor.rgb,SNOW,snowMask);
-      // Inside the block every water body stands at 20 m and no dry ground
-      // away from them is below 25 m, so height alone finds the banks: a silty
-      // bed, a wet line and a fringe of darker sedge, each edge broken by
-      // noise. The far field's lowland lies below 20 m, so it is left out.
-      float shoreline=vPlace.y-20.+(clump-.5)*.9+(grain-.5)*.25;
-      vec3 bank=mix(SILT*mix(.75,1.1,grain),WETSOIL*mix(.85,1.1,clump),smoothstep(-.6,.1,shoreline));
-      bank=mix(bank,SEDGE*mix(.8,1.1,clump),smoothstep(.5,1.4,shoreline));
-      diffuseColor.rgb=mix(diffuseColor.rgb,bank,(1.-smoothstep(1.4,3.4,shoreline))*knownGround);
+      // The banks, measured from the nearest water's own surface: a pebbly silt
+      // bed under the water, a damp dark band just above it and a fringe of
+      // darker sedge, each edge broken by noise. Ground far from any water keeps
+      // its own colour.
+      // Only a gentle wobble in the waterline: stronger noise here spotted the
+      // gentle shelf with dark patches a few metres across.
+      float shoreline=vPlace.y-waterLevel+(drift-.5)*.18+(grain-.5)*.06;
+      // Under the water a pale sand-and-pebble bed with a faint, fine grain; the
+      // water itself tints and darkens it with depth.
+      vec3 bed=SILT*vec3(1.2,1.22,1.1)*mix(.92,1.05,grain);
+      // Above it the bank keeps its own ground, with a fringe of sedge.
+      vec3 bank=mix(diffuseColor.rgb,SEDGE*mix(.85,1.08,drift),.45*smoothstep(.25,.6,shoreline)*(1.-smoothstep(1.2,2.4,shoreline))*(1.-rockMask));
+      bank=mix(bed,bank,smoothstep(-.06,.03,shoreline));
+      diffuseColor.rgb=mix(diffuseColor.rgb,bank,(1.-smoothstep(1.6,2.6,shoreline))*knownGround*nearWater);
+      // Splash zone: the ground's own colour, wet (darker, a little richer), over
+      // the first thirty-odd centimetres above the water.
+      float damp=(1.-smoothstep(.05,.35,shoreline))*smoothstep(-.06,.01,shoreline)*knownGround*nearWater;
+      // Rock stays wet higher, to about 0.8 m: its top edge wanders in streaks
+      // a metre or so wide, which on a steep face run down it, and it is glossy.
+      float wetTop=.62+.5*(vnoise(ground*1.1)-.5)+.25*(clump-.5);
+      float wetRock=rockMask*(1.-smoothstep(wetTop-.12,wetTop+.06,shoreline))*smoothstep(-.06,.01,shoreline)*knownGround*nearWater;
+      damp=max(damp,wetRock);
+      diffuseColor.rgb*=mix(vec3(1.),vec3(.52,.55,.5),damp);
+      // Seen from under the surface (phase 10): light reaching the bed loses its red first with
+      // depth, and the rippled surface focuses it into a drifting net of caustics. From above,
+      // the water's own shader already draws both, so this applies only with the eye under.
+      float submerged=(waterLevel-vPlace.y)*uUnderwater*knownGround*nearWater;
+      if(submerged>0.){
+        vec2 cp=ground*1.35;
+        float c1=1.-abs(vnoise(cp+vec2(uTime*.23,uTime*.17))*2.-1.),c2=1.-abs(vnoise(cp*1.37-vec2(uTime*.19,-uTime*.21)+5.3)*2.-1.);
+        float caustic=pow(c1*c2,5.)*(1.-smoothstep(.08,.5,footprint))*smoothstep(0.,.4,submerged)*exp(-submerged*.09);
+        diffuseColor.rgb*=mix(vec3(1.),vec3(.42,.76,.8),1.-exp(-submerged*.08));
+        diffuseColor.rgb*=1.+caustic*2.4;
+      }
       // Core snow stamp (the original block grid; depth/max in red) is the snow
       // riders feel, so on the block it replaces the height rule above.
       float coreSnow=smoothstep(.03,.14,texture2D(uSnow,clamp(snowUv,0.,1.)).r*snowInside+(drift-.5)*.04)*knownGround;
       diffuseColor.rgb=mix(diffuseColor.rgb,SNOW*mix(.97,1.03,grain),coreSnow);
       // Only the core grass stamp receives sward detail and wind. Banks,
       // snow, rocky faces and the world beyond the stamp keep their material.
-      float sward=stamped*(1.-coreSnow)*(1.-rockMask)*(1.-snowMask)*smoothstep(22.,24.,vPlace.y);
+      float sward=stamped*(1.-coreSnow)*(1.-rockMask)*(1.-snowMask)*smoothstep(22.,24.,vPlace.y)*mix(1.,smoothstep(1.,3.,shoreline),nearWater);
       vec4 grassAir=meadowAir(vPlace.xz);
       vec3 grass=meadowSurface(vPlace.xz,normalize(vUp),footprint,grassAir);
       // Match the average canopy tone beneath the blade coverage fade.
@@ -259,6 +316,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     if(terrain||granite){
       shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
         roughnessFactor=mix(roughnessFactor,granite.roughness,${terrain?'rockMask*(1.-coreSnow)':'stone'});
+        ${terrain?'roughnessFactor=mix(roughnessFactor,.34,wetRock*(1.-coreSnow));':''}
       `);
       // Bump the lighting normal by the same relief, so rock catches the sun.
       shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
@@ -312,7 +370,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-granite-v20:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
+  material.customProgramCacheKey = () => `cozy-granite-v21:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
   return material;
 }
 
@@ -352,32 +410,102 @@ export function makeSky() {
 }
 
 /** One opaque water pass; depth is sampled from the same core height grid. */
-export function waterMaterial(grid, river, polyline=null, { ribbon = false, riverSurface = null } = {}) {
+/** Surface speed in m/s at each polyline point, Manning-like: it grows with the square root of the fall (z per
+ * metre, over a 120 m window) and is faster where the channel narrows. The lake-level reach creeps, the outlet
+ * runs. The water's look and its voice (water-audio.js) both read it. */
+export function surfaceSpeeds(polyline,halfWidths=null){
+  return (polyline??[]).map((p,i)=>{
+    if(p.length<3)return .6;
+    let a=i,b=i,run=0;
+    while(run<120&&(a>0||b<polyline.length-1)){if(a>0)run+=Math.hypot(polyline[a][0]-polyline[a-1][0],polyline[a][1]-polyline[a-1][1]),a--;if(b<polyline.length-1)run+=Math.hypot(polyline[b+1][0]-polyline[b][0],polyline[b+1][1]-polyline[b][1]),b++;}
+    const slope=Math.max(0,(polyline[a][2]-polyline[b][2])/Math.max(1,run));
+    const narrow=Math.min(1.4,Math.max(.7,Math.sqrt(30/(halfWidths?.[i]??30))));
+    return Math.min(3,.3+19*Math.sqrt(slope)*narrow);
+  });
+}
+
+/** Surface speeds for the block's river and each outer reach, computed once over the whole river (upstream reach,
+ * block, downstream reach) so the current is continuous where they meet; each piece alone gave 0.3 against 0.9 m/s
+ * at the west edge and 1.1 against 0.5 at the east (2026-11-22). Returns {block, [reach id]: speeds}. */
+export function riverSpeeds(worldmap){
+  const block=worldmap.water?.bodies?.find(b=>b.kind==='river'&&b.polyline_xyz_m);
+  const reaches=worldmap.mountains?.enclosure?.river_reaches??[];
+  if(!block)return {};
+  const near=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])<1;
+  const line=block.polyline_xyz_m,widths=block.half_widths_m??line.map(()=>30);
+  const up=reaches.find(r=>near(r.polyline_xyz_m[0],line[0])),down=reaches.find(r=>near(r.polyline_xyz_m[0],line.at(-1)));
+  const widthsOf=r=>r.half_widths_m??r.polyline_xyz_m.map(()=>r.half_width_m);
+  const upLine=up?up.polyline_xyz_m.slice(1).reverse():[],upW=up?widthsOf(up).slice(1).reverse():[];
+  const downLine=down?down.polyline_xyz_m.slice(1):[],downW=down?widthsOf(down).slice(1):[];
+  const all=surfaceSpeeds([...upLine,...line,...downLine],[...upW,...widths,...downW]);
+  const out={block:all.slice(upLine.length,upLine.length+line.length)};
+  // The block's line carried on into each reach for about 200 m: its current's coordinates (flow and channel
+  // textures) then run straight through the block edge instead of radiating from its last point.
+  const reach=(points,max=200)=>{let run=0,k=0;while(k<points.length&&run<max){run+=k?Math.hypot(points[k][0]-points[k-1][0],points[k][1]-points[k-1][1]):0;k++;}return k;};
+  const a=reach([...upLine].reverse()),b=reach(downLine);
+  const from=upLine.length-a,to=upLine.length+line.length+b;
+  const joined=[...upLine,...line,...downLine],joinedW=[...upW,...widths,...downW];
+  out.extended={line:joined.slice(from,to),widths:joinedW.slice(from,to),speeds:all.slice(from,to)};
+  if(up)out[up.id]=[out.block[0],...all.slice(0,upLine.length).reverse()];
+  if(down)out[down.id]=[out.block.at(-1),...all.slice(upLine.length+line.length)];
+  return out;
+}
+
+export function waterMaterial(grid, river, polyline=null, { ribbon = false, riverSurface = null, halfWidths = null, speeds = null } = {}) {
   const heights = new T.DataTexture(grid.values, grid.resolution, grid.resolution, T.RedFormat, T.FloatType);
   heights.minFilter = heights.magFilter = T.LinearFilter;
   heights.needsUpdate = true;
   const flowSize=128,flowBytes=new Uint8Array(flowSize*flowSize*4);
+  // `speeds`: the whole river's (riverSpeeds), so a piece's current runs on across the block edge.
+  const fall=speeds??surfaceSpeeds(polyline,halfWidths);
+  // Seconds the current takes to reach each polyline point: patterns drawn in this time ride at
+  // the local speed and never shear, however long the clock runs.
+  const seconds=[0];for(let i=1;i<fall.length;i++)seconds.push(seconds[i-1]+Math.hypot(polyline[i][0]-polyline[i-1][0],polyline[i][1]-polyline[i-1][1])*2/(fall[i-1]+fall[i]));
   for(let row=0;row<flowSize;row++)for(let col=0;col<flowSize;col++){
     const x=grid.offsetX+(col+.5)/flowSize*grid.quad*(grid.resolution-1),y=grid.offsetY+(row+.5)/flowSize*grid.quad*(grid.resolution-1);
-    let distance=Infinity,dx=1,dy=0;
+    let distance=Infinity,dx=1,dy=0,speed=.35;
     if(river&&polyline)for(let i=1;i<polyline.length;i++){
       const a=polyline[i-1],b=polyline[i],vx=b[0]-a[0],vy=b[1]-a[1],length=vx*vx+vy*vy;
       const t=Math.max(0,Math.min(1,((x-a[0])*vx+(y-a[1])*vy)/length));
       const d=(x-a[0]-vx*t)**2+(y-a[1]-vy*t)**2;
-      if(d<distance){distance=d;dx=vx/Math.sqrt(length);dy=-vy/Math.sqrt(length);}
+      if(d<distance){distance=d;dx=vx/Math.sqrt(length);dy=-vy/Math.sqrt(length);speed=fall[i-1]*(1-t)+fall[i]*t;}
     }
-    const at=(row*flowSize+col)*4;flowBytes[at]=(dx*.5+.5)*255;flowBytes[at+1]=(dy*.5+.5)*255;flowBytes[at+3]=255;
+    const at=(row*flowSize+col)*4;flowBytes[at]=(dx*.5+.5)*255;flowBytes[at+1]=(dy*.5+.5)*255;flowBytes[at+2]=Math.min(1,speed/3)*255;flowBytes[at+3]=255;
   }
   const flow=new T.DataTexture(flowBytes,flowSize,flowSize);flow.minFilter=flow.magFilter=T.LinearFilter;flow.needsUpdate=true;
+  // The current's own coordinates per texel (16 m on the block): that time, and the signed distance (m)
+  // left of the river's line, rounded so at bends they turn smoothly. Only texels within `reach` of
+  // the line are filled.
+  const channelSize=river&&polyline?.length>1?256:1,channel=new Float32Array(channelSize*channelSize*2),nearest=new Float32Array(channelSize*channelSize).fill(Infinity);
+  if(channelSize>1){
+    // Smoothed over about 70 m: the map's line turns tighter than the river is wide at some bends,
+    // and coordinates taken from such a corner fold into chevrons on its inside.
+    let line=polyline.map((p,i)=>[p[0],p[1],seconds[i]]);
+    for(let k=0;k<24;k++)line=line.map((p,i)=>i===0||i===line.length-1?p:p.map((v,j)=>(line[i-1][j]+2*v+line[i+1][j])/4));
+    for(let k=0;k<2;k++)line=[line[0],...line.slice(1).flatMap((b,i)=>{const a=line[i];return [a.map((v,j)=>v*.75+b[j]*.25),a.map((v,j)=>v*.25+b[j]*.75)];}),line.at(-1)];
+    const cell=grid.quad*grid.resolution/channelSize,x0=grid.offsetX-grid.quad/2,y0=grid.offsetY-grid.quad/2,reach=160;
+    const index=(v,o)=>Math.floor((v-o)/cell-.5);
+    for(let i=1;i<line.length;i++){
+      const a=line[i-1],b=line[i],vx=b[0]-a[0],vy=b[1]-a[1],length=vx*vx+vy*vy;if(!length)continue;
+      const c0=Math.max(0,index(Math.min(a[0],b[0])-reach,x0)),c1=Math.min(channelSize-1,index(Math.max(a[0],b[0])+reach,x0)+1);
+      const r0=Math.max(0,index(Math.min(a[1],b[1])-reach,y0)),r1=Math.min(channelSize-1,index(Math.max(a[1],b[1])+reach,y0)+1);
+      for(let row=r0;row<=r1;row++)for(let col=c0;col<=c1;col++){
+        const x=x0+(col+.5)*cell,y=y0+(row+.5)*cell,t=Math.max(0,Math.min(1,((x-a[0])*vx+(y-a[1])*vy)/length));
+        const d=(x-a[0]-vx*t)**2+(y-a[1]-vy*t)**2,at=row*channelSize+col;
+        if(d<nearest[at]){nearest[at]=d;channel[at*2]=a[2]+(b[2]-a[2])*t;channel[at*2+1]=(vx*(y-a[1])-vy*(x-a[0]))/Math.sqrt(length);}
+      }
+    }
+  }
+  const current=new T.DataTexture(channel,channelSize,channelSize,T.RGFormat,T.FloatType);current.minFilter=current.magFilter=T.LinearFilter;current.needsUpdate=true;
   let riverBed=null;
   if(riverSurface){const g=riverSurface.data.grid;riverBed=new T.DataTexture(Float32Array.from(g.heights_m),g.columns,g.rows,T.RedFormat,T.FloatType);riverBed.minFilter=riverBed.magFilter=T.NearestFilter;riverBed.needsUpdate=true;}
   return new T.ShaderMaterial({
-    name: ribbon ? 'river_reach_optical' : river ? 'river_optical' : 'reservoir_optical', transparent: true, depthWrite: false,
+    name: ribbon ? 'river_reach_optical' : river ? 'river_optical' : 'reservoir_optical', transparent: true, depthWrite: false, premultipliedAlpha: true, side: T.DoubleSide,
     defines: {...(ribbon?{RIBBON:''}:{}),...(riverSurface?{RIVER_BED:''}:{})},
-    uniforms: { ...sunShadowUniforms(),uTime: style.time, uSun: style.sun, uHeights: { value: heights },
+    uniforms: { ...sunShadowUniforms(),uTime: style.time, uSun: style.sun, uWarmth: style.warmth, uHeights: { value: heights },
       uRiverBed:{value:riverBed},uRiverOrigin:{value:new T.Vector3(...(riverSurface?.data.grid.offset_xy_m??[0,0]),riverSurface?.data.grid.sample_m??4)},uRiverSize:{value:new T.Vector2(riverSurface?.data.grid.columns??1,riverSurface?.data.grid.rows??1)},
       uGrid: { value: new T.Vector4(grid.offsetX, grid.offsetY, grid.quad, grid.resolution) },
-      uAir:style.air,uAirGrid:style.airGrid,uWind:style.wind,uFlow:{value:flow},uRiver: { value: river ? 1 : 0 }, ...T.UniformsUtils.merge([T.UniformsLib.fog]) },
+      uLook:style.waterLook,uCloudDome:style.cloudDome,uCloudDomeMatrix:style.cloudDomeMatrix,uCloudDomeOn:style.cloudDomeOn,uProbeColour:style.probeColour,uProbeDistance:style.probeDistance,uProbeInfo:style.probeInfo,uProbePoints:style.probePoints,uMirror:style.mirror,uMirrorMatrix:style.mirrorMatrix,uMirrorLevel:style.mirrorLevel,uMirrorOn:style.mirrorOn,uAir:style.air,uAirGrid:style.airGrid,uWind:style.wind,uFlow:{value:flow},uChannel:{value:current},uRiver: { value: river ? 1 : 0 }, ...T.UniformsUtils.merge([T.UniformsLib.fog]) },
     fog: true,
     vertexShader: `varying vec3 vPlace; varying vec3 vView;
       #ifdef RIBBON
@@ -391,9 +519,12 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false, rive
       vec4 mvPosition=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mvPosition;
       #include <fog_vertex>
       }`,
-    fragmentShader: TREE_SHADOW_GLSL+ACTOR_SHADOW_GLSL+CLOUD_GROUND_LIGHT_GLSL+AIR_GLSL+`
+    fragmentShader: TREE_SHADOW_GLSL+ACTOR_SHADOW_GLSL+CLOUD_GROUND_LIGHT_GLSL+AIR_GLSL+ATMOSPHERE_SKY_GLSL+`
+      uniform float uWarmth;
+      uniform sampler2D uMirror;uniform mat4 uMirrorMatrix;uniform float uMirrorLevel,uMirrorOn;
       uniform sampler2D uRiverBed;uniform vec3 uRiverOrigin;uniform vec2 uRiverSize;
-      uniform float uTime; uniform float uRiver; uniform vec3 uSun; uniform sampler2D uHeights; uniform sampler2D uFlow; uniform vec4 uGrid;
+      uniform sampler2D uProbeColour,uProbeDistance,uCloudDome; uniform mat4 uCloudDomeMatrix; uniform float uCloudDomeOn; uniform vec4 uProbeInfo; uniform vec3 uProbePoints[8];
+      uniform float uTime; uniform float uLook; uniform float uRiver; uniform vec3 uSun; uniform sampler2D uHeights; uniform sampler2D uFlow; uniform sampler2D uChannel; uniform vec4 uGrid;
       varying vec3 vPlace; varying vec3 vView;
       #ifdef RIBBON
         varying float vAcross;
@@ -422,70 +553,161 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false, rive
           e=texture2D(uHeights,(c+vec2(.5,1.5))/r).r,d=texture2D(uHeights,(c+1.5)/r).r;
         return f.x>=f.y?a+(b-a)*f.x+(d-b)*f.y:a+(e-a)*f.y+(d-e)*f.x;}
       // Ripple slope, advected along the current by two crossfaded phases so
-      // the pattern drifts without stretching. Each octave fades out before it
-      // is finer than a pixel, which removes the distant moire stripes.
-      vec2 ripples(vec2 p,vec2 flow,float footprint,out float calm){
-        float speed=mix(.35,1.6,uRiver),gust=noised(p*.012+vec2(uTime*.021,-uTime*.013)).x;
-        calm=smoothstep(.15,.85,gust);
+      // the pattern drifts without stretching, at the river's own surface
+      // speed (m/s). Running water's ripples are drawn out along the current
+      // in proportion to that speed. Each octave fades out before it is finer
+      // than a pixel, which removes the distant moire stripes.
+      vec2 ripples(vec2 p,vec2 flow,float speed,float footprint,out float calm,out float streak){
+        float gust=noised(p*.012+vec2(uTime*.021,-uTime*.013)).x;
+        calm=smoothstep(.15,.85,gust);streak=0.;
+        vec2 across=vec2(-flow.y,flow.x);float drawn=1./(1.+1.6*speed*uRiver);
         vec2 slope=vec2(0.);
         for(int phase=0;phase<2;phase++){
           float t=fract(uTime*.09+float(phase)*.5),w=1.-abs(t*2.-1.);
           vec2 q=p-flow*speed*(t-.5)*11.+float(phase)*vec2(17.3,-9.1);
-          float freq=.11,amp=.045;
-          for(int octave=0;octave<7;octave++){
+          // Coordinates along and across the current; the along axis is stretched.
+          vec2 u=vec2(dot(q,flow)*drawn,dot(q,across));
+          float freq=.11,amp=.032;
+          for(int octave=0;octave<6;octave++){
             float fade=1.-smoothstep(.12,.45,footprint*freq);
-            slope+=noised(q*freq+float(octave)*vec2(3.7,8.1)).yz*amp*fade*w;
-            freq*=2.1;amp*=.84;q=mat2(.8,.6,-.6,.8)*q;
+            vec2 g=noised(u*freq+float(octave)*vec2(3.7,8.1)).yz*amp*fade*w;
+            slope+=flow*drawn*g.x+across*g.y;
+            freq*=2.1;amp*=.84;u=mat2(.96,.28,-.28,.96)*u;
           }
+          // Slick lines and flecks riding the current.
+          streak+=smoothstep(.62,.92,noised(vec2(u.x*.09,u.y*.55)+vec2(5.,1.)).x)*w*(1.-smoothstep(.2,1.,footprint*.55));
         }
-        return slope*mix(.45,1.15,calm);
+        return slope*mix(.45,1.15,calm)*mix(1.,1.3,uRiver*smoothstep(.8,2.2,speed));
       }
       void main(){
         vec2 world=vec2(vPlace.x,-vPlace.z);
         vec2 uv=((world-uGrid.xy)/uGrid.z+.5)/uGrid.w;
         float depth=max(0.,vPlace.y-bed(world));
         vec2 p=vPlace.xz;
-        vec2 flow=texture2D(uFlow,uv).rg*2.-1.;
+        vec3 current=texture2D(uFlow,uv).rgb;
+        vec2 flow=normalize(current.rg*2.-1.+vec2(1e-4,0.));
+        float speed=current.b*3.;
         // Mean of the two pixel axes: the long axis alone flattens grazing water.
-        vec2 axes=vec2(length(dFdx(p)),length(dFdy(p)));float footprint=(axes.x+axes.y)*.5,calm;
-        vec2 slope=ripples(p,flow,footprint,calm);
+        vec2 axes=vec2(length(dFdx(p)),length(dFdy(p)));float footprint=(axes.x+axes.y)*.5,calm,streak;
+        vec2 slope=ripples(p,flow,speed,footprint,calm,streak);
         vec4 air=localAir(p);float windSpeed=length(air.xy);
         vec2 down=air.xy/max(.01,windSpeed),across=vec2(-down.y,down.x);
         float windRipple=sin(dot(p,down)*3.-uTime*windSpeed*1.7+sin(dot(p,across)*.16));
-        slope+=down*windRipple*min(.045,windSpeed*.004)*(1.-smoothstep(.25,1.2,footprint));
+        slope+=down*windRipple*min(.045,windSpeed*.004)*(1.-smoothstep(.25,1.2,footprint))*(1.-.7*uRiver);
         vec3 n=normalize(vec3(-slope.x,1.,-slope.y));
         vec3 eye=normalize(vView);
+        if(cameraPosition.y<vPlace.y){
+          // From below (phase 10): Snell's window. Rays from the eye within 48.6 deg of straight up
+          // leave into the sky, squeezed toward the rim where the shore's forest and walls stand;
+          // beyond it the surface mirrors the water under it (total internal reflection).
+          // A third of the ripples' tilt: the full tilt frays the window's rim into cloud-like fringes.
+          vec3 calmN=normalize(mix(vec3(0.,1.,0.),n,.35)),up=-eye,leaving=refract(up,-calmN,1.333);
+          float through=smoothstep(.645,.73,dot(up,calmN));
+          vec3 sky=clearSky(normalize(vec3(leaving.x,max(leaving.y,.015),leaving.z)),uSun,uWarmth,vPlace.y);
+          if(uProbeInfo.x>.5){
+            // The nearest baked probe (taken just over the lake): the real walls and forest around the rim, the
+            // whole hemisphere squeezed into the window as it is from below.
+            int n=int(uProbeInfo.x),k=0;float best=1e12;
+            for(int i=0;i<8;i++){if(i>=n)break;vec2 o=uProbePoints[i].xz-vPlace.xz;float d=dot(o,o);if(d<best){best=d;k=i;}}
+            vec3 dir=normalize(vec3(leaving.x,max(leaving.y,0.),leaving.z));
+            float v=clamp((dir.y-uProbeInfo.z)/(1.-uProbeInfo.z),.5/uProbeInfo.y,1.-.5/uProbeInfo.y);
+            vec2 uv=vec2(atan(dir.z,dir.x)*.15915494+.5,(float(k)+v)/uProbeInfo.x);
+            // Open sky in the probe (distance code 4095) keeps the painted sky; the clouds come from the cloud pass.
+            vec4 e=texture2D(uProbeDistance,uv);
+            if((e.r*4080.+e.g*15.9375)/4095.<.99999)sky=texture2D(uProbeColour,uv).rgb*uProbeInfo.w;
+          }else{
+            float rise=leaving.y+.015*noised(vec2(atan(leaving.z,leaving.x)*9.,0.)).x;
+            // No probes: the valley's forest and granite walls (to about 15 deg) as a dark ring at the rim.
+            sky=mix(sky,mix(vec3(.024,.046,.032),vec3(.11,.13,.125),smoothstep(.03,.14,rise)),(1.-smoothstep(.12,.3,rise))*.9);
+          }
+          // The clouds, from the cloud pass's upward dome, at the refracted direction (premultiplied).
+          if(uCloudDomeOn>.5&&leaving.y>.05){
+            vec4 clip=uCloudDomeMatrix*vec4(cameraPosition+leaving*20000.,1.);vec2 duv=clip.xy/clip.w*.5+.5;
+            if(clip.w>0.&&duv.x>0.&&duv.y>0.&&duv.x<1.&&duv.y<1.){vec4 c=texture2D(uCloudDome,duv);sky=sky*(1.-c.a)+c.rgb;}
+          }
+          float toSun=max(0.,dot(normalize(leaving+vec3(0.,1e-4,0.)),uSun));
+          sky+=vec3(1.,.95,.82)*(pow(toSun,400.)*5.+pow(toSun,12.)*.3)*cloudObjectLight(vPlace,uSun);
+          gl_FragColor=vec4(mix(fogColor*.9,sky*.92,through),1.);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+          #include <fog_fragment>
+          return;
+        }
         float fresnel=.02+.98*pow(1.-max(0.,dot(n,eye)),5.);
-        float sediment=clamp(depth/8.,0.,1.);
-        vec3 water=mix(vec3(.15,.31,.18),vec3(.025,.115,.095),sediment);
-        #ifdef RIVER_BED
-          water=mix(vec3(.095,.34,.275),vec3(.018,.13,.12),sediment);
-        #endif
-        vec3 reflected=reflect(-eye,n);
-        vec3 sky=mix(vec3(.51,.64,.64),vec3(.16,.39,.59),clamp(reflected.y,0.,1.));
+        // Clear alpine water: the bed shows through the shallows tinted
+        // turquoise, the shelf's edge turns blue-green and the basin is deep
+        // blue-green.
+        vec3 water=mix(vec3(.045,.27,.23),vec3(.014,.16,.145),smoothstep(.3,4.5,depth));
+        water=mix(water,vec3(.005,.068,.066),smoothstep(3.,18.,depth));
+        // The two looks the human asked to compare near the end: clear throughout keeps the shallows' tint
+        // to the basin and lets light further down; deep blue-green throughout closes over even the shelf.
+        float absorb=.13;
+        if(uLook>.5&&uLook<1.5){water=mix(vec3(.05,.29,.25),vec3(.025,.21,.19),smoothstep(.5,18.,depth));absorb=.065;}
+        else if(uLook>1.5){water=mix(vec3(.012,.13,.14),vec3(.004,.05,.075),smoothstep(.5,10.,depth));absorb=.24;}
+        // The reflection is the painted sky's own colour; rays that leave the
+        // water low meet the valley's forested walls, a dark band broken by the ripples.
+        vec3 reflected=reflect(-eye,n);reflected.y=abs(reflected.y);
+        vec3 sky=clearSky(normalize(vec3(reflected.x,max(reflected.y,.015),reflected.z)),uSun,uWarmth,cameraPosition.y);
+        // Half the ripple's tilt: the walls stand where the calm surface would show them.
+        float rise=mix(eye.y,reflected.y,.35)+.015*noised(vec2(atan(reflected.z,reflected.x)*9.,0.)).x;
+        // Forest at the waterline, shaded granite above it, sky over the rim.
+        vec3 walls=mix(vec3(.024,.046,.032),vec3(.11,.13,.125),smoothstep(.015,.07,rise));
+        sky=mix(sky,walls,(1.-smoothstep(.05,.16,rise))*.85);
+        // Where a mirror was drawn and this surface lies at the lake's level, the reflection is
+        // the scene itself, its lookup bent by the ripples' slope.
+        float mirrored=uMirrorOn*(1.-smoothstep(.25,.5,abs(vPlace.y-uMirrorLevel)));
+        if(mirrored>0.){
+          vec4 m=uMirrorMatrix*vec4(vPlace.x,uMirrorLevel,vPlace.z,1.);
+          sky=mix(sky,texture2D(uMirror,m.xy/m.w+vec2(slope.x,-slope.y)*.15).rgb,mirrored);
+        }
         float facing=max(0.,dot(reflect(-uSun,n),eye));
         // A broad sun path broken by gusts, plus small glints that only
         // appear where a ripple faces the sun exactly and the pixel is small
         // enough to hold one; distant water keeps the soft path only.
         float sheen=pow(facing,mix(28.,90.,calm))*mix(.06,.16,calm);
-        float glint=smoothstep(.8,.97,noised(p*6.3+flow*uTime*.6+vec2(0.,uTime*.35)).x)*pow(facing,900.)*(1.-smoothstep(.03,.2,footprint));
+        float glint=smoothstep(.8,.97,noised(p*6.3+flow*speed*uTime*.6+vec2(0.,uTime*.35)).x)*pow(facing,900.)*(1.-smoothstep(.03,.2,footprint));
         float sunlight=cloudObjectLight(vPlace,uSun)*actorSunLight(vPlace);
         #ifdef RIVER_BED
           sunlight*=scenerySunLight(vPlace,vec3(0.,1.,0.));
         #endif
-        vec3 col=mix(water*mix(.65,1.,sunlight),sky,fresnel*.86)+vec3(1.,.94,.78)*(sheen+glint*4.)*sunlight;
-        float caustic=pow(1.-abs(noised(p*.55+vec2(uTime*.11,-uTime*.07)).x*2.-1.),7.)*.05*exp(-depth*.65);
-        col+=vec3(.31,.43,.19)*caustic*sunlight;
+        // A rippled surface's reflection is a little blurred and dimmed; the body colour holds through it.
+        vec3 col=mix(water*mix(.6,1.,sunlight),sky,fresnel*.82);
+        vec3 light=vec3(1.,.94,.78)*(sheen+glint*4.)*sunlight;
+        // Caustics on the shallow bed, added after blending (premultiplied) so
+        // they show however clear the water is.
+        float caustic=pow(1.-abs(noised(p*.55+flow*speed*uTime*.4+vec2(uTime*.11,-uTime*.07)).x*2.-1.),6.)*exp(-depth*.5)*smoothstep(0.,.25,depth)*sunlight;
+        // Slicks and flecks on running water, only where it runs.
+        col=mix(col,mix(sky,vec3(.62,.68,.66),.4),streak*.16*uRiver*smoothstep(.7,2.,speed));
+        // Running water read from afar: foam lines and broad aerated bands carried down the current,
+        // and riffles where the river falls fastest. Drawn in the current's own coordinates (seconds
+        // of flow, metres across), each fades before a pixel spans it across the current, and none
+        // shows up close, where the ripples already carry the flow.
+        float carried=0.;
+        if(uRiver>.5){
+          vec2 ch=texture2D(uChannel,uv).rg;
+          float running=smoothstep(.8,1.2,speed)*smoothstep(.06,.3,footprint),wide=fwidth(ch.y)+.01,go=ch.x-uTime;
+          // Foam lines: thin, long, nearly parallel to the banks (twenty times longer than their spacing).
+          float lines=smoothstep(.86,.98,1.-abs(noised(vec2(go/100.,ch.y/6.)+vec2(3.1,0.)).x*2.-1.))*(1.-smoothstep(.25,.7,wide/6.));
+          lines*=smoothstep(.35,.65,noised(vec2(go/160.,ch.y/20.)+vec2(1.7,9.)).x);
+          float bands=smoothstep(.45,.85,noised(vec2(go/90.,ch.y/26.)+vec2(11.,4.)).x)*(1.-smoothstep(.3,.8,wide/26.));
+          float riffle=smoothstep(.55,.85,noised(vec2(ch.x/22.,ch.y/16.)+vec2(7.,2.)).x)*smoothstep(.9,1.6,speed)*(1.-smoothstep(.3,.8,wide/16.));
+          float broken=smoothstep(.45,.8,noised(vec2(go/8.,ch.y/3.)+vec2(2.,5.)).x)*(1.-smoothstep(.25,.7,wide/3.));
+          carried=running*clamp(lines*.32+bands*.1+riffle*(.18+.3*broken),0.,1.);
+          col=mix(col,mix(sky,vec3(.74,.8,.78),.6),carried);
+        }
         // Lapping foam only where the water thins, travelling up the shore.
-        float shore=1.-smoothstep(.03,.38,depth);
-        float foam=shore*smoothstep(.45,.95,noised(p*.9+vec2(uTime*.13,0.)).x+.15*sin(uTime*1.1-depth*16.));
-        col=mix(col,vec3(.71,.77,.65),foam*.22);
-        // Optical path grows with depth AND grazing angle: dense green pools,
-        // clear shallow water over the actual stones and fish below. The last
-        // few decimetres fade to nothing, so the bank shows no drawn edge.
-        float opacity=clamp(1.-exp(-depth*.17/max(.16,eye.y)),.16,.94);
-        opacity=max(opacity,fresnel*.90)*smoothstep(0.,.32,depth);
-        opacity=max(opacity,foam*.3*smoothstep(0.,.08,depth));
+        float shore=1.-smoothstep(.03,.3,depth);
+        float foam=shore*smoothstep(.5,.95,noised(p*.9+vec2(uTime*.13,0.)).x+.15*sin(uTime*1.1-depth*16.));
+        col=mix(col,vec3(.62,.68,.6),foam*.18);
+        // Optical path grows with depth AND grazing angle: the shallows stay
+        // clear over the stones, the deep water closes over. The reflection
+        // fades in over the last 0.7 m too, so the bank shows no drawn edge.
+        float edge=smoothstep(0.,.7,depth);
+        float opacity=clamp(1.-exp(-depth*absorb/max(.16,eye.y)),.14,.95);
+        // Over the shelf the bed outshines the reflection; it closes over with depth.
+        opacity=max(opacity,fresnel*.94*mix(.5,1.,smoothstep(.5,3.5,depth)))*edge;
+        opacity=max(opacity,foam*.25*smoothstep(0.,.08,depth));
+        opacity=max(opacity,carried*.8*edge);
         #ifdef RIBBON
           // A reach on the coarse far-field grid has no bank fine enough to
           // end it, so the ribbon's own edges fade instead.
@@ -493,10 +715,12 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false, rive
           opacity*=1.-smoothstep(.55,1.,abs(vAcross));
           #endif
         #endif
+        col+=light*edge/max(opacity,.3);
         gl_FragColor=vec4(col,opacity);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
         #include <fog_fragment>
+        gl_FragColor.rgb=gl_FragColor.rgb*gl_FragColor.a+vec3(.8,.9,.75)*caustic*.09*(1.-opacity);
       }`
   });
 }

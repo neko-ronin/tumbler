@@ -33,27 +33,27 @@
       "mode": "float",
       "worst_mm": 3.96,
       "source_bytes": 5605524,
-      "source_sha256": "4bca5746c9948b05e0db4cf45c2049314c9c94af77f7084152d1d6c42bb04245",
-      "bytes": 932700,
-      "sha256": "2fdfed6dddb30b1b608085e429b8e1767b229a07a5cc27918d778c657b621ea2"
+      "source_sha256": "f6aa2cef3311c3b2e7ef0de27909dafb841a8d38f617a95d0ae58312cf4cf308",
+      "bytes": 932764,
+      "sha256": "e9aad0598c9dc5b76bb68d36db7b1c047bab232fdb34d7261b4a9c82d277e9ce"
     },
     "arboreal/village_tree_high.glb": {
       "packed": "arboreal/village_tree_high.meshopt.glb",
       "mode": "float",
       "worst_mm": 3.96,
       "source_bytes": 5056520,
-      "source_sha256": "cf3a8e051a1f70ce97a700d30f188905287ed3aadae84bdf7c58d0d4a56cf67b",
-      "bytes": 862812,
-      "sha256": "0d89c1dd68a167ac5f87a09924d6395ea27893269af02c3cf55d4e6fe1efebb8"
+      "source_sha256": "35128f1b389cc733f8839452b025038662bb7f0655ac2780e5dd1a6666e33911",
+      "bytes": 862824,
+      "sha256": "821bbb6cf8b19a149fb1e28ce82e66556aab2c53ce15fe0c8fb1b57545ee4a3b"
     },
     "arboreal/village_tree_low.glb": {
       "packed": "arboreal/village_tree_low.meshopt.glb",
       "mode": "float",
       "worst_mm": 3.96,
       "source_bytes": 4704292,
-      "source_sha256": "2ea010c4336924506968477022148ca47937b05db44e8a7c6b99396a4811d0b7",
-      "bytes": 819400,
-      "sha256": "de0f0fd385819ea0ceb19311df7b0d87741fb8f8307a0a4dbabe668b31b5946f"
+      "source_sha256": "34a3ceb5c50cf17b8bf6fcf2cd7f7c7b209a695c6c213d51f1f6eec8071e8601",
+      "bytes": 819508,
+      "sha256": "4539d3f6c31b658356ed462aa4d34f1a14f9fc0b462212826cccb25cfbdb7f6a"
     },
     "arboreal/village_tree_mid.glb": {
       "packed": "arboreal/village_tree_mid.meshopt.glb",
@@ -73,6 +73,15 @@
       "bytes": 211640,
       "sha256": "2ff16666ec66b552eb43feb34e0c9bcbe6ac8db9200b1f8a10195cf2bd4e7893"
     },
+    "cat-folk/bree.glb": {
+      "packed": "cat-folk/bree.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.061,
+      "source_bytes": 896904,
+      "source_sha256": "bb0ed33cf7bbedb11643b9c011fd9c1aa0e9284c0590c3bb5c2946ad71ec5364",
+      "bytes": 327528,
+      "sha256": "b6d417fc638a6cf0a90284551c61bddfe52a598d7e45ee23e8a0d83202a3c481"
+    },
     "cat-folk/cinematic/ash.glb": {
       "packed": "cat-folk/cinematic/ash.meshopt.glb",
       "mode": "float",
@@ -81,6 +90,42 @@
       "source_sha256": "2048bce469cd2f9e7254541238ce4b9a4bee7ffb510facc78c4c0a1e7fb8d817",
       "bytes": 1044336,
       "sha256": "fe02247e1a989077b5c01768278dfd2b26ffe625a9fec6fe46d085ec86bf6bf9"
+    },
+    "cat-folk/cinematic/bree.glb": {
+      "packed": "cat-folk/cinematic/bree.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.063,
+      "source_bytes": 4908740,
+      "source_sha256": "377d8b5b290fbcb2bfb962491b121d985711b7a26c9e9ecd99f7d67244a3a3b6",
+      "bytes": 1053544,
+      "sha256": "84f93e1246e498765b180e89c17e44727627efcdd30175b1defd234c24ffaa1b"
+    },
+    "cat-folk/cinematic/clem.glb": {
+      "packed": "cat-folk/cinematic/clem.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.063,
+      "source_bytes": 4821388,
+      "source_sha256": "1bba8be1e719034b2545de8fdf1ee6274bb52abf75e5e24750593445cc4a96e9",
+      "bytes": 1046676,
+      "sha256": "e469e359c22bd39a084db3419bdae997720b00c706b5b2e466ecae097807ac67"
+    },
+    "cat-folk/cinematic/dot.glb": {
+      "packed": "cat-folk/cinematic/dot.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.032,
+      "source_bytes": 4453820,
+      "source_sha256": "21de3b904daa6ed7f823353c9b4aff3929dc9bcc190b4e6536730dbe9c806b14",
+      "bytes": 958580,
+      "sha256": "706d6e48be341409fe81eecae3ac5a4769f7f33a1a41c797565b44ac6257832d"
+    },
+    "cat-folk/cinematic/hollis.glb": {
+      "packed": "cat-folk/cinematic/hollis.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.081,
+      "source_bytes": 4343552,
+      "source_sha256": "92ad8c315cbf3b6666226a132c384abddcd9853fbbce1090c2ddee3b57e9a213",
+      "bytes": 983004,
+      "sha256": "5d4d1bea1272508fec4bf912988a0cdcb0a3ddb54901e4d094e215e3128b3635"
     },
     "cat-folk/cinematic/juno.glb": {
       "packed": "cat-folk/cinematic/juno.meshopt.glb",
@@ -109,6 +154,24 @@
       "bytes": 1060984,
       "sha256": "feb695448280cabeb988a78ac8e5a04f26a343c3cee2a1222711cfad53f44770"
     },
+    "cat-folk/cinematic/marlo.glb": {
+      "packed": "cat-folk/cinematic/marlo.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.126,
+      "source_bytes": 4500708,
+      "source_sha256": "cc2bf6cf5cc69c6a2c7059eaa81cc9f5c04ce678ee9dc3b48853b84f7dfabb81",
+      "bytes": 1002244,
+      "sha256": "86f2951778da84963fb7c22ba29efac678077a2348b5be193dac8419a972fab6"
+    },
+    "cat-folk/cinematic/nubs.glb": {
+      "packed": "cat-folk/cinematic/nubs.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.061,
+      "source_bytes": 4431168,
+      "source_sha256": "5872032109fda943650a090e5df7eaf7ac5224e9bf71fbf65e882b0629c3896c",
+      "bytes": 892428,
+      "sha256": "0a31a74303ef4f0b9b2fa293835b2e3f0def5dd6c3fa14adf239eefa2262678f"
+    },
     "cat-folk/cinematic/pip.glb": {
       "packed": "cat-folk/cinematic/pip.meshopt.glb",
       "mode": "float",
@@ -117,6 +180,24 @@
       "source_sha256": "d7b962609eaa08882d5ec4fc2986042edb3a4ff4bdcf4849268e8b4f84355c20",
       "bytes": 941864,
       "sha256": "d177c06b41b2ec5719e8ee0ee1648ed9374267c3995cfbb01d27566f38483fca"
+    },
+    "cat-folk/cinematic/rowan.glb": {
+      "packed": "cat-folk/cinematic/rowan.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.064,
+      "source_bytes": 4633844,
+      "source_sha256": "17f4a5cecd5f406e37f5ca9882387c08a37bc7522f6331d81460947ee7bbe2db",
+      "bytes": 1012468,
+      "sha256": "0b7bac44d749388b9dffa4d6a10eb20e3e8b686335a56db2b88f924d59afc194"
+    },
+    "cat-folk/cinematic/sable.glb": {
+      "packed": "cat-folk/cinematic/sable.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.064,
+      "source_bytes": 5008744,
+      "source_sha256": "c15f1329268d90006d81e577695d2df25ad78168fdaeaa8d41c01b6878b65c89",
+      "bytes": 1086836,
+      "sha256": "6603b42b5c033d633bceb06ad471dc0a1c47387cbdbd75a9e45d00ff0602b3f3"
     },
     "cat-folk/cinematic/saffi.glb": {
       "packed": "cat-folk/cinematic/saffi.meshopt.glb",
@@ -144,6 +225,69 @@
       "source_sha256": "99a7fab60f0e66ea0c0ec3eb931c794ecdf7d39be1248c510e1676b65fd24876",
       "bytes": 971156,
       "sha256": "d579bb870306839ca6557cb913f6cdbe62ecb510855645fcf7b2f6303630cca2"
+    },
+    "cat-folk/clem.glb": {
+      "packed": "cat-folk/clem.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.062,
+      "source_bytes": 934784,
+      "source_sha256": "a94aa8514387b2270bee0443073d4bf5487b5ee28b812b2a983430ac8882ce94",
+      "bytes": 327424,
+      "sha256": "9000f71074712967f774cb8388a1118511266c82661410f714e9883b1e84ef92"
+    },
+    "cat-folk/dot.glb": {
+      "packed": "cat-folk/dot.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.031,
+      "source_bytes": 799000,
+      "source_sha256": "e0000c45635e5fe60a7e7c04b8d91a82924fc3a5af1ed0bdc4b205bcc0b193e6",
+      "bytes": 295192,
+      "sha256": "a98650add57839741a773125cc73ea5bcf5d67e0d5cb6c7918469d2b254678fe"
+    },
+    "cat-folk/hollis.glb": {
+      "packed": "cat-folk/hollis.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.081,
+      "source_bytes": 909740,
+      "source_sha256": "fa16f705e263290c2f12b290881ec1b70473d834412473cc4ffccd4ad9ed9822",
+      "bytes": 333004,
+      "sha256": "a9d54b2a358c6e4136ecfe63760c59d6460c5729d9d82529dfecc675132a8790"
+    },
+    "cat-folk/marlo.glb": {
+      "packed": "cat-folk/marlo.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.126,
+      "source_bytes": 889660,
+      "source_sha256": "284aae3dc7a933915d7eefe709a64dc44a0fc9f92730502e75109e785f3ffce3",
+      "bytes": 325876,
+      "sha256": "09f1cdff9d1cdbedb31e8ac68f05ad951a3f7c499b357b3cf295522ec77de212"
+    },
+    "cat-folk/nubs.glb": {
+      "packed": "cat-folk/nubs.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.061,
+      "source_bytes": 794644,
+      "source_sha256": "82093b16dd81d92ad6eedee47a4970aa3e239a3c50c80c429c34847c70e8b6ce",
+      "bytes": 286636,
+      "sha256": "095132426725871890d166e018c2506268575eccd8cd6d6d96b50bdf2e5dc11a"
+    },
+    "cat-folk/rowan.glb": {
+      "packed": "cat-folk/rowan.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.063,
+      "source_bytes": 914924,
+      "source_sha256": "b8379bd3775229965e9007f9e4ccb149ee0d942b6e333a2f28aaea0686913341",
+      "bytes": 330216,
+      "sha256": "d890b3a48e1af511706347e09216af2cd0ad1ac0ec4091b00d704ac926cd6eca"
+    },
+    "cat-folk/sable.glb": {
+      "packed": "cat-folk/sable.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.063,
+      "source_bytes": 906004,
+      "source_sha256": "80aefff5bf46535ca46f353e936d2497df564d7604626e42cc52f730ef49fa09",
+      "bytes": 327328,
+      "sha256": "f1c13a4c52733dd116b968f8dc40f9574c8ac22895056615d9f7f626536d9402"
     },
     "dome/dome.glb": {
       "packed": "dome/dome.meshopt.glb",
@@ -392,10 +536,10 @@
       "packed": "granite/terrain_patch.meshopt.glb",
       "mode": "exact",
       "worst_mm": 0,
-      "source_bytes": 20897412,
-      "source_sha256": "d2bb401fb8e75300102aa584b5eb323eeaf2afa4bb84b464d8da10d087b7e137",
-      "bytes": 7297416,
-      "sha256": "f3eb5b7cd6c069286c0fba5226547aa1731dee596024e01bd677772d5fe89c2e"
+      "source_bytes": 21091792,
+      "source_sha256": "75b44857d7a73e2175518a9f4fbd2e549bf89489fd7d4519924db29ec7812040",
+      "bytes": 7363368,
+      "sha256": "57074727135af102164023f2fa11d1ab5363d82d2232610d0c94943f172a9a19"
     },
     "homestead/homestead.glb": {
       "packed": "homestead/homestead.meshopt.glb",
@@ -613,6 +757,15 @@
       "bytes": 369916,
       "sha256": "865aa13690b55e5f51f63dce9560295b6df7490d02cebc4451ca574ef7afda16"
     },
+    "waterside/crowfoot.glb": {
+      "packed": "waterside/crowfoot.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.042,
+      "source_bytes": 27996,
+      "source_sha256": "0829d9c8bb2dba10f5844fe51879e5adf8af54794d46ab6a6b296b979b95cbfa",
+      "bytes": 8192,
+      "sha256": "858470538887e28b3821003dc391e5801ce7fda36a74d5ed010b5d5f2bc81e63"
+    },
     "waterside/dragonfly.glb": {
       "packed": "waterside/dragonfly.meshopt.glb",
       "mode": "float",
@@ -630,6 +783,33 @@
       "source_sha256": "f5bbc591199010e726789578cf5bc3bab62a2ebe3a6abf1ef268fe7debaaa897",
       "bytes": 8980,
       "sha256": "4edc07e2d36b9a29173b39b2e07520729f97157e7019b12460f02484aa6a7bad"
+    },
+    "waterside/drift_log.glb": {
+      "packed": "waterside/drift_log.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.245,
+      "source_bytes": 77432,
+      "source_sha256": "1643d273c3ce33370b45e17aa938e39c29d9b38e12e2159f5979506595d0643e",
+      "bytes": 17496,
+      "sha256": "36e422f00a270da80aeda29b6115506d09bcf2a115c623864ec1fc779cb8b11d"
+    },
+    "waterside/drift_log_rooted.glb": {
+      "packed": "waterside/drift_log_rooted.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.251,
+      "source_bytes": 98108,
+      "source_sha256": "caa0af7ad07ff1f9c5cc3bec214a95eac6b590d494d00757b546df4aaacaa18d",
+      "bytes": 22640,
+      "sha256": "3b40627e26ab4cd15ad9446a35562476847921f03e83f289dcd4ac023d366406"
+    },
+    "waterside/duck.glb": {
+      "packed": "waterside/duck.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.016,
+      "source_bytes": 114744,
+      "source_sha256": "a4099374cfebeead0872654922ee91da6893347fde964319a0f94953078fedfd",
+      "bytes": 14416,
+      "sha256": "8fdb19eec1e31f32949d4417a83ba4930b2a6e098e311295f5a8aa1e698dc213"
     },
     "waterside/fish_tail.glb": {
       "packed": "waterside/fish_tail.meshopt.glb",
@@ -666,6 +846,15 @@
       "source_sha256": "937a92bb90a19aead2d696c57b5a2c7cb809a228314cd54ea032434807df4e0c",
       "bytes": 30128,
       "sha256": "0a873a7e433c587546e7800b25690270982fe776f20779624fa98965f5135ffb"
+    },
+    "waterside/pondweed.glb": {
+      "packed": "waterside/pondweed.meshopt.glb",
+      "mode": "float",
+      "worst_mm": 0.129,
+      "source_bytes": 94648,
+      "source_sha256": "883aa78ec9b2a6fc85782afc809c4e7fef970270fb8f5c63619ea0ecb44b689b",
+      "bytes": 20668,
+      "sha256": "fa622a346e6c423a6cde982b56540a395dc8bba83ed3dc82930ef1f0255e2788"
     },
     "waterside/reeds.glb": {
       "packed": "waterside/reeds.meshopt.glb",
@@ -707,7 +896,12 @@
   "unpacked": {
     "cat-ronin/ronin.glb": "float: parts differ, clips differ; exact: parts differ, clips differ",
     "city/tower.glb": "saves under 10% compressed",
+    "granite/bedrock_-1_0.glb": "saves under 10% compressed",
+    "granite/bedrock_-1_1.glb": "saves under 10% compressed",
     "granite/bedrock_-1_4.glb": "saves under 10% compressed",
+    "granite/bedrock_-2_0.glb": "saves under 10% compressed",
+    "granite/bedrock_0_0.glb": "saves under 10% compressed",
+    "granite/bedrock_1_0.glb": "saves under 10% compressed",
     "granite/bedrock_1_3.glb": "saves under 10% compressed",
     "river-granite/river_granite.glb": "river-granite.js reads it as a row-major vertex grid",
     "structures/greenhouse.glb": "saves under 10% compressed",

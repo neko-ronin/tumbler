@@ -148,6 +148,21 @@ export function createCloudPass(renderer,scene,camera,atmosphereByTime,ground){
     sky.shadows.activate();sky.lighting.update(true);sky.shadows.update(true);marchWarm=false;
   }
   const fullscreen=new T.Scene(),quadCamera=new T.OrthographicCamera(-1,1,1,-1,0,1);
+  // Under the water the clouds are seen only through Snell's window, at refracted angles: a small dome looking
+  // straight up (150 deg) is marched instead of the full view, and the water's underside looks up into it
+  // (style.cloudDome). With no depth of its own, nothing hides a cloud in it: overhead, nothing does.
+  const DOME=256,dome=new T.WebGLRenderTarget(DOME,DOME,{depthBuffer:false}),domeCamera=new T.PerspectiveCamera(150,1,1,60000);
+  domeCamera.up.set(0,0,-1);dome.texture.colorSpace=T.LinearSRGBColorSpace;style.cloudDome.value=dome.texture;
+  const open=new T.WebGLRenderTarget(1,1,{depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)}),domeSize=new T.Vector2(DOME,DOME),viewSize=new T.Vector2();
+  function renderDome(){
+    renderer.setRenderTarget(open);renderer.clear();  // depth 1 everywhere: open sky
+    domeCamera.position.copy(camera.position);domeCamera.lookAt(camera.position.x,camera.position.y+1,camera.position.z);domeCamera.updateMatrixWorld();
+    style.cloudDomeMatrix.value.multiplyMatrices(domeCamera.projectionMatrix,domeCamera.matrixWorldInverse);
+    const view=forward.value.clone();forward.value.set(0,1,0);viewSize.copy(size);size.copy(domeSize);
+    const depths=volumes.children.map(b=>{const u=b.material.uniforms;if(!u.uDepth)return null;const d=u.uDepth.value;u.uDepth.value=open.depthTexture;return d;});
+    renderer.setRenderTarget(dome);renderer.clear();renderer.render(volumes,domeCamera);
+    volumes.children.forEach((b,i)=>{if(depths[i])b.material.uniforms.uDepth.value=depths[i];});forward.value.copy(view);size.copy(viewSize);
+  }
   const rays=createSunRays(opaque.depthTexture,cloudy.texture,opaque.texture);
   fullscreen.add(new T.Mesh(new T.PlaneGeometry(2,2),new T.ShaderMaterial({depthWrite:false,depthTest:false,
     uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uRays:{value:rays.target.texture},uRayStrength:rays.strength,uRayDepth:{value:new T.Vector2(camera.near,camera.far)},uWarmth:style.warmth},
@@ -181,7 +196,10 @@ export function createCloudPass(renderer,scene,camera,atmosphereByTime,ground){
     const above=camera.position.y>sky.atmosphere.cloud_top_m;
     for(const box of volumes.children)box.material=box.userData.cloudMarch[above?'skip':'full'];
   }
-  function render({strength=1,target=null}={}){
+  // `submerged`: the eye is under water. The surface writes no depth, so the full view's clouds would paint over
+  // it from below: the dome is marched instead, and sun rays skipped (underwater.js draws its own shafts).
+  function render({strength=1,target=null,submerged=false}={}){
+    style.cloudDomeOn.value=submerged?1:0;
     style.sunEffects.value=strength;
     renderer.getDrawingBufferSize(dimensions);
     if(opaque.width!==dimensions.x||opaque.height!==dimensions.y){opaque.setSize(dimensions.x,dimensions.y);cloudy.setSize(Math.ceil(dimensions.x*.5),Math.ceil(dimensions.y*.5));size.set(cloudy.width,cloudy.height);}
@@ -200,8 +218,8 @@ export function createCloudPass(renderer,scene,camera,atmosphereByTime,ground){
       for(const box of volumes.children)box.material=box.userData.cloudMarch.skip;
       renderer.render(volumes,camera);marchWarm=true;selectMarch();
     }
-    renderer.render(volumes,camera);
-    rays.render(renderer,camera,dimensions.x,dimensions.y,strength);
+    if(submerged)renderDome();else renderer.render(volumes,camera);
+    rays.render(renderer,camera,dimensions.x,dimensions.y,submerged?0:strength);
     renderer.setClearColor(color,alpha);renderer.setRenderTarget(target);renderer.render(fullscreen,quadCamera);
   }
   return {render,rays,volumes,opaque,cloudy,setSky,get sky(){return sky.atmosphere;},get shadows(){return sky.shadows;},get lighting(){return sky.lighting;},dispose(){renderer.domElement.removeEventListener('webglcontextrestored',resetMarch);for(const b of built.values()){b.lighting.dispose();b.shadows.dispose();}rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});[...built.values()].flatMap(b=>b.boxes).forEach(m=>{m.userData.cloudMarch.full.dispose();m.userData.cloudMarch.skip.dispose();});}};

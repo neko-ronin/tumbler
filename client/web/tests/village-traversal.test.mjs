@@ -170,7 +170,7 @@ test('the tuck slides him down the handrail while held',()=>{
 test('every skybridge docks through a balcony gate',()=>{
   // build_village_tree.py GATES opens a dwelling's front where arrangement.py lands a bridge: a re-solve
   // that moves a bridge onto a closed balcony fails here, not in a player's hands.
-  const gates={village_tree:[3,6,8],village_tree_low:[2],village_tree_mid:[2,4],village_tree_high:[8]};
+  const gates={village_tree:[3,5,6,7],village_tree_low:[0,1,3],village_tree_mid:[2,4],village_tree_high:[7]};
   for(const b of bridges){
     const half=b.asset.includes('_8')?4:b.asset.includes('_20')?10:7;
     for(const k of [-1,1]){

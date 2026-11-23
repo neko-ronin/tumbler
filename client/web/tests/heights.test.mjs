@@ -118,7 +118,9 @@ test("interpolation is interpolation: between two samples, halfway is halfway", 
   // test's own arithmetic.
   const x0 = -2044 + 381 * 8;
   const x1 = x0 + 8;
-  const y = -700;
+  // Rows -700 and then -604 each went level (to one 0.05 m height step) in a re-sculpt; 836 is the published
+  // row 360, on a slope that drops 3.5 m across these two columns on the 2026-11-20 ground.
+  const y = 836;
   assert.equal(block.sample(x0, y), block.at(Math.round((y + 2044) / 8), Math.round((x0 + 2044) / 8)));
   const h0 = block.sample(x0, y);
   const h1 = block.sample(x1, y);

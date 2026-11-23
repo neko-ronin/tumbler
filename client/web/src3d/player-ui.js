@@ -14,7 +14,7 @@ const TIME_LABELS={golden:'Golden hour',dusk:'Evening',day:'Morning'};
 const CONTROLS={
   walk:{title:'On foot',rows:[
     ['Walk, runs by default',['WASD'],['L stick, push fully to run']],['Look',['Drag','Arrows'],['R stick']],
-    ['Jump',['Space'],['A']],['Tuck and roll, held',['Shift'],['LB']],['Dive in water, press to toggle',['Shift'],[]],['Slide',['Ctrl'],['R3']],
+    ['Jump',['Space'],['A']],['Tuck and roll, held',['Shift'],['LB']],['Dive in water, press to toggle; under, swim where you look and Space rises',['Shift'],['LB']],['Slide',['Ctrl'],['R3']],
     ['Draw the katana',['F'],['Y']],['Slash',['Q','Click'],['B']],['Charge, held',['R'],['RT']],
     ['Grab a tree',['E'],['X']],['Launch from a giant redwood crown',['1','2','3'],['D-pad','X']],['First person',['V'],['L3']],['Board the gondola, on a station deck',['G'],['RB']],['Map',['Esc','M'],['Menu']]]},
   stair:{title:'On a tree village stair',rows:[
@@ -104,7 +104,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
     const river=worldmap.water.bodies.find(b=>b.id==='river'),lake=worldmap.water.bodies.find(b=>b.id==='lake');
     for(const r of worldmap.mountains?.enclosure?.river_reaches??[])line(r.polyline_xyz_m,4,'#3e7fa8');
     if(river)line(river.polyline,4,'#3e7fa8');
-    if(lake){const [lx,ly]=toPx(lake.centre_xy_m);g.beginPath();g.ellipse(lx,ly,lake.size_m[0]/2/scale,lake.size_m[1]/2/scale,0,0,Math.PI*2);g.fillStyle='#9cc4dd';g.fill();g.strokeStyle='#3e7fa8';g.lineWidth=1.5;g.stroke();}
+    if(lake){g.beginPath();if(lake.outline_xy_m?.length>2){lake.outline_xy_m.forEach((p,i)=>{const [px,py]=toPx(p);i?g.lineTo(px,py):g.moveTo(px,py);});g.closePath();}else{const [lx,ly]=toPx(lake.centre_xy_m);g.ellipse(lx,ly,lake.size_m[0]/2/scale,lake.size_m[1]/2/scale,0,0,Math.PI*2);}g.fillStyle='#9cc4dd';g.fill();g.strokeStyle='#3e7fa8';g.lineWidth=1.5;g.stroke();}
     // The parakite route, as a trail is printed: red dashes.
     line(course.control_xy_m,3,'#c2302a',[9,6]);
     drawn=c;return c;

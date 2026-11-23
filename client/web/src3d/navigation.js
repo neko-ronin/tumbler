@@ -73,7 +73,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const cockpitForward=new T.Quaternion(0,1,0,0),headAttitude=new T.Quaternion();
   let pilotMotion=options.pilotMotion??'steady';
   let treeFraming=0,framedDistance=null,framedLift=0,framedLower=null;
-  let presentedGrounded=null,landingClipLeft=0,carried=null,tuckHeld=false,tape=null;
+  let presentedGrounded=null,landingClipLeft=0,carried=null,tuckHeld=false,padDiveHeld=false,tape=null;
   function frameMatrix(frame,out){
     flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
     flightUp.set(frame.up[0],frame.up[2],-frame.up[1]);
@@ -297,6 +297,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(mode==='walk'){
       time+=Math.min(dt,.05);
       tuckHeld=keys.has('ShiftLeft')||keys.has('ShiftRight')||(pad?.buttons[4]?.pressed??false);
+      // LB toggles the dive while swimming, as Shift does on the keyboard.
+      const padDive=pad?.buttons[4]?.pressed??false;if(padDive&&!padDiveHeld&&state?.mode==='swim')runToggled=!runToggled;padDiveHeld=padDive;
       // Keyboard movement runs by default; the stick ramps from a walk to a run.
       const keyed=['KeyW','KeyA','KeyS','KeyD'].some(code=>keys.has(code));
       runStick=keyed?1:Math.min(1,Math.hypot(lx,ly));

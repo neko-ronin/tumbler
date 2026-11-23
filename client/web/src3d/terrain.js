@@ -23,9 +23,9 @@
  * blending, no seam, nothing to look wrong.
  */
 
-import { toonMaterial, waterMaterial } from "./style.js";
+import { style, toonMaterial, waterMaterial, riverSpeeds } from "./style.js";
 
-import { BufferGeometry, Color, Float32BufferAttribute, Mesh, Group } from "../vendor/three.module.min.js";
+import { BufferGeometry, Color, DataTexture, DataUtils, Float32BufferAttribute, HalfFloatType, LinearFilter, Mesh, Group, RGFormat, ShapeUtils, Vector2 } from "../vendor/three.module.min.js";
 
 /** Deterministic jitter in [0, 1): variety in the ground without noise. */
 function hash(x, y) {
@@ -239,6 +239,11 @@ export function buildWater(waterInstances, parsedAssets, grid = null, worldmap=n
   const group = new Group();
   group.name = "water";
   const drawn = new Set();
+  // The adopted map carries its own shapes; the GLB still holds the old ones.
+  if (worldmap?.water?.bodies?.some(b => b.polyline_xyz_m || b.outline_xy_m)) {
+    for (const mesh of buildWaterBodies(worldmap, grid)) { group.add(mesh); drawn.add(mesh.name); }
+    waterInstances = [];
+  }
   for (const instance of waterInstances) {
     const asset = parsedAssets[instance.asset];
     if (!asset) throw new Error(`no GLB parsed for ${instance.asset}`);
@@ -260,6 +265,171 @@ export function buildWater(waterInstances, parsedAssets, grid = null, worldmap=n
   return group;
 }
 
+/** Whether (x, y) lies inside a closed [[x, y], ...] outline (even-odd). */
+function insideOutline(outline, x, y) {
+  let inside = false;
+  for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+    const [ax, ay] = outline[i], [bx, by] = outline[j];
+    if ((ay > y) !== (by > y) && x < ax + (bx - ax) * (y - ay) / (by - ay)) inside = !inside;
+  }
+  return inside;
+}
+
+/** Flip any triangle whose face points down, so FrontSide shows it from above. */
+function faceUp(positions, indices) {
+  for (let t = 0; t < indices.length; t += 3) {
+    const [a, b, c] = [indices[t] * 3, indices[t + 1] * 3, indices[t + 2] * 3];
+    const ux = positions[b] - positions[a], uz = positions[b + 2] - positions[a + 2];
+    const vx = positions[c] - positions[a], vz = positions[c + 2] - positions[a + 2];
+    if (uz * vx - ux * vz < 0) [indices[t + 1], indices[t + 2]] = [indices[t + 2], indices[t + 1]];
+  }
+}
+
+function waterMesh(name, positions, indices, material) {
+  faceUp(positions, indices);
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeBoundingSphere();
+  const mesh = new Mesh(geometry, material);
+  mesh.name = name;
+  return mesh;
+}
+
+/**
+ * The lake and the block river, built from the adopted map's own shapes.
+ *
+ * The lake is its `outline_xy_m` triangulated at `surface_z_m`, each vertex
+ * pushed 20 m outward along its corner's mean normal so the edge is buried
+ * under the bank. The river is the same ribbon `buildRiverReaches` makes,
+ * from `polyline_xyz_m` and `half_widths_m`, each side widened by 24 m (the wet
+ * channel runs 5 to 10 m past the map's half width) for the same reason, its surface at each point's own level. Ribbon quads whose two
+ * centre points both lie in the lake are left out so the two transparent
+ * surfaces do not stack over open water.
+ */
+/** On a bend, which side (-1 or 1, as the row's offsets) is the inside, and how far an offset may go there
+ * before the row crosses its neighbours: 90% of the local turning radius, never under the declared half width
+ * plus 4 m. A wide row on a tight bend folded the water over itself, three layers deep, and their flow
+ * patterns crossed in a bright star (2026-11-22). */
+function bendInside(line, i, t, declared) {
+  const a = line[Math.max(0, i - 1)], b = line[i], c = line[i + 1], d = line[Math.min(line.length - 1, i + 2)];
+  const [p, q, r] = t < .5 ? [a, b, c] : [b, c, d];
+  const ux = q[0] - p[0], uy = q[1] - p[1], vx = r[0] - q[0], vy = r[1] - q[1];
+  const lu = Math.hypot(ux, uy) || 1, lv = Math.hypot(vx, vy) || 1;
+  const cross = (ux * vy - uy * vx) / (lu * lv), turn = Math.acos(Math.max(-1, Math.min(1, (ux * vx + uy * vy) / (lu * lv))));
+  if (turn < 1e-3) return { side: 0, limit: Infinity };
+  const radius = Math.min(lu, lv) / (2 * Math.sin(turn / 2));
+  // The offsets' normal (-dy, dx) points left of the flow, so a left turn (cross > 0) has its inside at side 1.
+  return { side: cross > 0 ? 1 : -1, limit: Math.max(declared + 4, .9 * radius) };
+}
+
+// The block's river is drawn this much wider than declared on each bank, so its edge tucks under the terrain
+// and the depth fade, not a drawn line, ends it. The outer reaches take the same, so the two meet at one width.
+const RIVER_BANK_OVERLAP_M = 24;
+
+export function buildWaterBodies(worldmap, grid = null) {
+  const bodies = worldmap.water.bodies, meshes = [];
+  const river = bodies.find(b => b.kind === "river" && b.polyline_xyz_m);
+  const lake = bodies.find(b => b.kind === "lake" && b.outline_xy_m);
+  const speeds = riverSpeeds(worldmap), extended = speeds.extended;
+  // The river's material reads the line carried into the outer reaches (riverSpeeds), so its current's textures
+  // continue through the block edge; the lake's keeps the block line, as before.
+  const material = isRiver => grid ? waterMaterial(grid, isRiver, isRiver && extended ? extended.line : river?.polyline_xyz_m ?? river?.polyline,
+    { halfWidths: isRiver && extended ? extended.widths : river?.half_widths_m, speeds: isRiver && extended ? extended.speeds : null }) : toonMaterial({ color: "#55aa9f" });
+  if (grid) waterLevelField(grid, lake, river);
+  if (lake) {
+    const ring = lake.outline_xy_m, n = ring.length;
+    let area = 0;
+    for (let i = 0; i < n; i += 1) area += ring[i][0] * ring[(i + 1) % n][1] - ring[(i + 1) % n][0] * ring[i][1];
+    const out = area > 0 ? 1 : -1; // counter-clockwise: the right-hand normal points out
+    const grown = ring.map(([x, y], i) => {
+      const [px, py] = ring[(i + n - 1) % n], [qx, qy] = ring[(i + 1) % n];
+      const length = Math.hypot(qx - px, qy - py) || 1;
+      return [x + (qy - py) / length * 20 * out, y - (qx - px) / length * 20 * out];
+    });
+    const positions = grown.flatMap(([x, y]) => [x, lake.surface_z_m, -y]);
+    const indices = ShapeUtils.triangulateShape(grown.map(([x, y]) => new Vector2(x, y)), []).flat();
+    meshes.push(waterMesh("lake", positions, indices, material(false)));
+  }
+  if (river) {
+    const line = river.polyline_xyz_m, halves = river.half_widths_m, positions = [], wet = [], indices = [];
+    const joints = (worldmap.mountains?.enclosure?.river_reaches ?? []).map(r => r.polyline_xyz_m[0]);
+    for (let i = 0; i + 1 < line.length; i += 1) {
+      const [ax, ay, az] = line[i], [bx, by, bz] = line[i + 1];
+      const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 20));
+      for (let k = i ? 1 : 0; k <= steps; k += 1) {
+        const t = k / steps, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, z = az + (bz - az) * t;
+        let half = halves[i] + (halves[i + 1] - halves[i]) * t + RIVER_BANK_OVERLAP_M;
+        const [px, py] = line[Math.max(0, t === 0 ? i - 1 : i)], [qx, qy] = line[Math.min(line.length - 1, t === 1 ? i + 2 : i + 1)];
+        const length = Math.hypot(qx - px, qy - py);
+        let nx = -(qy - py) / length, ny = (qx - px) / length;
+        // An end that meets an outer reach lies on the block's edge (x = const), as the reach's first row does.
+        const end = (i === 0 && k === 0) || (i === line.length - 2 && k === steps);
+        if (end && joints.some(([jx, jy]) => Math.hypot(jx - x, jy - y) < 1)) { half /= Math.max(.3, Math.abs((qx - px) / length)); nx = 0; ny = 1; }
+        // Near a joint, no corner of a wide diagonal row may cross the block's edge into the reach's water.
+        const joint = joints.find(([jx, jy]) => Math.hypot(jx - x, jy - y) < 150);
+        const keep = vx => joint ? (joint[0] > x || (joint[0] === x && joint[0] > 0) ? Math.min(vx, joint[0]) : Math.max(vx, joint[0])) : vx;
+        const inner = bendInside(line, i, t, halves[i] + (halves[i + 1] - halves[i]) * t);
+        for (const side of [-1, 1]) {
+          const reach = side === inner.side ? Math.min(half, inner.limit) : half;
+          positions.push(keep(x + nx * reach * side), z, -(y + ny * reach * side));
+        }
+        wet.push(lake ? insideOutline(lake.outline_xy_m, x, y) : false);
+      }
+    }
+    for (let row = 0; row + 1 < wet.length; row += 1) {
+      if (wet[row] && wet[row + 1]) continue;
+      const a = row * 2, b = a + 1, c = a + 2, d = a + 3;
+      indices.push(a, c, b, b, c, d);
+    }
+    meshes.push(waterMesh("river", positions, indices, material(true)));
+  }
+  return meshes;
+}
+
+/** Distance from (x, y) to segment a-b; `along.t` receives how far along it the closest point lies. */
+const along = { t: 0 };
+function toSegment(x, y, a, b) {
+  const ax = a[0], ay = a[1], vx = b[0] - ax, vy = b[1] - ay;
+  const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1)));
+  const dx = x - ax - vx * t, dy = y - ay - vy * t;
+  along.t = t;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * The nearest water's surface level (r) and the distance to its edge (g) over
+ * the block at 32 m, for the terrain shader's banks: the bed under the water,
+ * the damp band above it. Read through `style.waterLevel`.
+ */
+function waterLevelField(grid, lake, river) {
+  const size = 128, span = grid.quad * (grid.resolution - 1), data = new Float32Array(size * size * 2);
+  for (let row = 0; row < size; row += 1) for (let col = 0; col < size; col += 1) {
+    const x = grid.offsetX + (col + .5) / size * span, y = grid.offsetY + (row + .5) / size * span;
+    let level = 20, distance = Infinity;
+    if (lake) {
+      const ring = lake.outline_xy_m;
+      for (let i = 0; i < ring.length; i += 1) distance = Math.min(distance, toSegment(x, y, ring[i], ring[(i + 1) % ring.length]));
+      if (insideOutline(ring, x, y)) distance = 0;
+      level = lake.surface_z_m;
+    }
+    if (river) {
+      const line = river.polyline_xyz_m, halves = river.half_widths_m;
+      for (let i = 1; i < line.length; i += 1) {
+        const d = toSegment(x, y, line[i - 1], line[i]), t = along.t, edge = Math.max(0, d - (halves[i - 1] + (halves[i] - halves[i - 1]) * t));
+        if (edge < distance) { distance = edge; level = line[i - 1][2] + (line[i][2] - line[i - 1][2]) * t; }
+      }
+    }
+    data[(row * size + col) * 2] = level; data[(row * size + col) * 2 + 1] = distance;
+  }
+  // Half floats filter bilinearly on every WebGL2 device; 32-bit floats need an
+  // extension, and without it the 32 m cells would show as hard steps.
+  const texture = new DataTexture(Uint16Array.from(data, v => DataUtils.toHalfFloat(Math.min(v, 6e4))), size, size, RGFormat, HalfFloatType);
+  texture.minFilter = texture.magFilter = LinearFilter; texture.needsUpdate = true;
+  style.waterLevel.value = texture;
+  style.waterLevelGrid.value.set(grid.offsetX, grid.offsetY, span, 1);
+}
+
 /**
  * The river beyond the block, as the map's reaches describe it.
  *
@@ -272,20 +442,34 @@ export function buildWater(waterInstances, parsedAssets, grid = null, worldmap=n
 export function buildRiverReaches(worldmap, farGrid, riverSurface = null) {
   const group = new Group();
   group.name = "river_reaches";
+  const block = worldmap.water?.bodies?.find(b => b.kind === "river" && b.polyline_xyz_m);
   for (const reach of worldmap.mountains?.enclosure?.river_reaches ?? []) {
     const line = reach.polyline_xyz_m, halves = reach.half_widths_m;
+    // Where the reach leaves the block's river: its x, and the block river's half width there.
+    const ends = block ? [[block.polyline_xyz_m[0], block.half_widths_m?.[0]], [block.polyline_xyz_m.at(-1), block.half_widths_m?.at(-1)]] : [];
+    const joint = ends.find(([p]) => Math.hypot(p[0] - line[0][0], p[1] - line[0][1]) < 1);
+    const edgeX = joint ? line[0][0] : null, startHalf = joint?.[1] ?? null;
     const positions = [], across = [], indices = [];
     for (let i = 0; i + 1 < line.length; i += 1) {
       const [ax, ay, az] = line[i], [bx, by, bz] = line[i + 1];
-      const halfA = halves?.[i] ?? reach.half_width_m, halfB = halves?.[i + 1] ?? reach.half_width_m;
+      // The first segment eases from the block river's width to the reach's own, so the banks do not jog.
+      const halfA = i === 0 && startHalf ? startHalf : halves?.[i] ?? reach.half_width_m, halfB = halves?.[i + 1] ?? reach.half_width_m;
       const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 20));
       for (let k = i ? 1 : 0; k <= steps; k += 1) {
         const t = k / steps, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, z = az + (bz - az) * t, half = halfA + (halfB - halfA) * t;
         // Offsets follow the mean of the two neighbouring segments' normals.
         const [px, py] = line[Math.max(0, t === 0 ? i - 1 : i)], [qx, qy] = line[Math.min(line.length - 1, t === 1 ? i + 2 : i + 1)];
-        const length = Math.hypot(qx - px, qy - py), nx = -(qy - py) / length, ny = (qx - px) / length;
+        const length = Math.hypot(qx - px, qy - py);
+        let nx = -(qy - py) / length, ny = (qx - px) / length, span = half;
+        // The reach's first cross-section lies on the block's edge (x = const), where the block's own river ends,
+        // so the two surfaces meet without a wedge of overlap on one bank and a gap on the other (2026-11-22).
+        if (i === 0 && k === 0 && edgeX !== null && Math.abs(x - edgeX) < 1) { nx = 0; ny = 1; span = (half + RIVER_BANK_OVERLAP_M) / Math.max(.3, Math.abs((qx - px) / length)); }
+        else if (joint) span = half + RIVER_BANK_OVERLAP_M * (i === 0 ? 1 - .5 * t : .5);
+        // Near the joint, no corner of a wide row may cross back over the block's edge into the block's water.
+        const near = edgeX !== null && Math.abs(x - edgeX) < 150;
+        const keep = vx => near ? (edgeX > 0 ? Math.max(vx, edgeX) : Math.min(vx, edgeX)) : vx;
         for (const side of [-1, 1]) {
-          positions.push(x + nx * half * side, z, -(y + ny * half * side));
+          positions.push(keep(x + nx * span * side), z, -(y + ny * span * side));
           across.push(side);
         }
       }
@@ -299,7 +483,7 @@ export function buildRiverReaches(worldmap, farGrid, riverSurface = null) {
     geometry.setAttribute("across", new Float32BufferAttribute(across, 1));
     geometry.setIndex(indices);
     geometry.computeBoundingSphere();
-    const mesh = new Mesh(geometry, waterMaterial(farGrid, true, line, { ribbon: true, riverSurface:reach.id===riverSurface?.data.reach_id?riverSurface:null }));
+    const mesh = new Mesh(geometry, waterMaterial(farGrid, true, line, { ribbon: true, halfWidths: halves ?? line.map(() => reach.half_width_m), speeds: riverSpeeds(worldmap)[reach.id] ?? null, riverSurface:reach.id===riverSurface?.data.reach_id?riverSurface:null }));
     mesh.name = `river_reach_${reach.id}`;
     group.add(mesh);
   }

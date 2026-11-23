@@ -146,7 +146,9 @@ test("every generator the world places has a rotor the core describes", () => {
   const turbines = machines.filter((i) => i.kind === "turbine");
   const blimps = machines.filter((i) => i.kind === "blimp");
   assert.equal(turbines.length, worldmap.turbines.count, "the ridge fleet is the world map's own count");
-  assert.ok(blimps.length >= 24, "the flying hulls are placed, plus one per collection of homes");
+  // 16 since the homes were sited on level ground (2026-11-22): 2 district hulls and 14 home collections (20 before,
+  // 24 before the river-and-lake re-siting). Homes on the flat bench gather into fewer collections.
+  assert.ok(blimps.length >= 14, "the flying hulls are placed, plus one per collection of homes");
   for (const instance of machines) {
     const rotor = config.rotors[instance.kind];
     assert.equal(rotor.asset, instance.asset, `${instance.kind} rotor names the asset the placement draws`);

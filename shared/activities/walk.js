@@ -5,6 +5,7 @@
 import {launchFlight,canopySegment,canopyTouches} from './flight.js';
 import {createTrailSampler} from './ride.js';
 import {knockDirection} from './collision.js';
+import {createWater} from './water.js';
 // The optional chain, release, apex, buffer and lift fields default to the
 // original single fixed-height jump under constant gravity.
 const jumpDefaults={gravity_mps2:10.8,takeoff_mps:4.8,hop_mps:3.8,takeoff_s:.12,landing_s:.18,air_control_mps2:2.4,max_ground_grade:1,
@@ -18,47 +19,15 @@ const landingTime=(s,j)=>j.landing_s*Math.min(2.8,Math.max(1,1+((s.landingSpeed?
  * envelope. Height decides the shoreline inside that envelope, as for carving.
  */
 export function createWalkHeight(worldmap,height){
-  const bodies=worldmap.water?.bodies??[];
   const trailAt=createTrailSampler({...worldmap,tracks:worldmap.tracks??[]});
   // The published 8 m grid cannot hold every narrow tread. The declared
   // profile remains a physical surface for any activity, including landing.
   const floorHeight=(x,y)=>{const z=height(x,y);if(!Number.isFinite(z))return null;const t=trailAt(x,y);return t?.beyond===0?Math.max(z,t.z):z;};
   /** The water at a point, or null: its surface, the depth over the floor, and
    * the river's flow direction (unit, along its polyline; lakes are still). */
-  const waterAt=(x,y)=>{
-    const z=floorHeight(x,y);if(!Number.isFinite(z))return null;
-    // Outer reaches already have published course, width and falling levels.
-    // The same footprint now participates in walking/swimming and diving.
-    for(const reach of worldmap.mountains?.enclosure?.river_reaches??[]){
-      const line=reach.polyline_xyz_m;
-      // The block's own body wins inside its boundary; beyond the junction
-      // the reach wins over the old body's round endpoint envelope.
-      if((x-line[0][0])*(line.at(-1)[0]-line[0][0])<0)continue;
-      let nearest=null;
-      for(let i=1;i<line.length;i++){
-        const a=line[i-1],b=line[i],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);
-        const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(length*length)));
-        const surface=a[2]+(b[2]-a[2])*t;
-        const distance=Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t);
-        const half=reach.half_widths_m?reach.half_widths_m[i-1]+(reach.half_widths_m[i]-reach.half_widths_m[i-1])*t:reach.half_width_m;
-        if(distance>half||distance>=(nearest?.distance??Infinity))continue;
-        const sign=b[2]>a[2]?-1:1;
-        nearest={distance,surface,flow:[dx/length*sign,dy/length*sign]};
-      }
-      if(nearest)return z<nearest.surface+.05?{surface_z:nearest.surface,depth:Math.max(0,nearest.surface-z),flow:nearest.flow}:null;
-    }
-    for(const b of bodies){
-      if(z>=b.surface_z_m+.05)continue;
-      const water=flow=>({surface_z:b.surface_z_m,depth:Math.max(0,b.surface_z_m-z),flow});
-      if(b.kind==='lake'&&Math.hypot((x-b.centre_xy_m[0])/(b.size_m[0]/2+b.bank_m),(y-b.centre_xy_m[1])/(b.size_m[1]/2+b.bank_m))<=1)return water([0,0]);
-      if(b.kind==='river')for(let i=1;i<b.polyline.length;i++){
-        const a=b.polyline[i-1],c=b.polyline[i],dx=c[0]-a[0],dy=c[1]-a[1];
-        const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy||1)));
-        if(Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t)<=Math.max(b.width_start_m,b.width_end_m)/2+b.bank_m)return water([dx/Math.hypot(dx,dy),dy/Math.hypot(dx,dy)]);
-      }
-    }
-    return null;
-  };
+  const water=createWater(worldmap,floorHeight);
+  // Today's three fields only: swim and parity tests deepEqual this shape.
+  const waterAt=(x,y)=>{const w=water.waterAt(x,y);return w&&{surface_z:w.surface_z,depth:w.depth,flow:w.flow};};
   const walkHeight=(x,y)=>{const z=floorHeight(x,y);return !Number.isFinite(z)||waterAt(x,y)?null:z;};
   return Object.assign(walkHeight,{floorHeight,trailAt,waterAt});
 }

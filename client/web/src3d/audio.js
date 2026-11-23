@@ -4,8 +4,12 @@ import {createFoleyPlayer} from './character-foley.js';
 /** Browser presentation of the existing habitats, wind and flight motor.
  * Original procedural sound, enabled by default and resumed after the first user gesture if autoplay is blocked.
  */
-export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=null,dialogueBytes=null){
-  let context=null,birds=null,beeVoices=[],water=null,motor=null,wind=null,vario=null,cues=null,characterBus=null,paraVoice=null,windWaterBus=null,windWaterEnabled=true,enabled=true,ambienceStarted=false;
+import {createWaterVoices} from './water-audio.js';
+
+/** `water` ({worldmap, rafts}) voices the river, falls, lake and the swimmer (water-audio.js); without it only the
+ * old water noise at the nearest habitat plays. */
+export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=null,dialogueBytes=null,water=null){
+  let context=null,birds=null,beeVoices=[],waterNoise=null,waterVoices=null,muffle=null,submerged=0,lastUpdate=null,motor=null,wind=null,vario=null,cues=null,characterBus=null,paraVoice=null,windWaterBus=null,windWaterEnabled=true,enabled=true,ambienceStarted=false;
   let dialogueBuffer=null, dialogueSource=null, dialogueActive=false, chargeBuffer=null, chargeReady=null;
   function stopDialogue(){
     if(!dialogueSource)return;
@@ -38,7 +42,9 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     const length=context.sampleRate*3;
     const buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);
     let last=0;for(let i=0;i<length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;data[i]=last*3.5;}
-    characterBus=context.createPanner();characterBus.panningModel='HRTF';characterBus.distanceModel='inverse';characterBus.refDistance=5;characterBus.rolloffFactor=1;characterBus.maxDistance=100;characterBus.connect(context.destination);
+    // Everything heard through the air passes `muffle`: under the water it closes to a dull low-pass (setUnderwater).
+    muffle=context.createBiquadFilter();muffle.type='lowpass';muffle.frequency.value=20000;muffle.connect(context.destination);
+    characterBus=context.createPanner();characterBus.panningModel='HRTF';characterBus.distanceModel='inverse';characterBus.refDistance=5;characterBus.rolloffFactor=1;characterBus.maxDistance=100;characterBus.connect(muffle);
     function installCues(sample){
       if(context.state==='closed')return;
       chargeBuffer=sample;
@@ -50,15 +56,16 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
         installCues(null);
       });
     }else installCues(null);
-    birds=createBirds(context,createTreeIndex(trees));beeVoices=Array.from({length:3},()=>createBeeVoice(context));
-    windWaterBus=context.createGain();windWaterBus.gain.value=0;windWaterBus.connect(context.destination);
+    birds=createBirds(context,createTreeIndex(trees),{out:muffle});beeVoices=Array.from({length:3},()=>createBeeVoice(context));
+    windWaterBus=context.createGain();windWaterBus.gain.value=0;windWaterBus.connect(muffle);
     function noise(frequency,gain,spatial=false){const source=context.createBufferSource();source.buffer=buffer;source.loop=true;
       const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=frequency;
       const level=context.createGain();level.gain.value=gain;source.connect(filter).connect(level);
       let panner=null;if(spatial){panner=context.createPanner();panner.panningModel='HRTF';panner.distanceModel='inverse';panner.refDistance=10;panner.maxDistance=260;level.connect(panner).connect(windWaterBus);}else level.connect(windWaterBus);
       source.start();return {source,filter,level,panner};}
     const tone=context.createOscillator(),toneLevel=context.createGain();tone.type='sine';tone.frequency.value=700;toneLevel.gain.value=0;tone.connect(toneLevel).connect(context.destination);tone.start();vario={tone,level:toneLevel};
-    wind=noise(550,.055);water=noise(1400,.3,true);paraVoice=createParaVoice(context,context.destination,windWaterBus);
+    wind=noise(550,.055);waterNoise=noise(1400,.3,true);paraVoice=createParaVoice(context,context.destination,windWaterBus);
+    if(water)waterVoices=createWaterVoices(context,{bus:windWaterBus,foley:characterBus,river:waterNoise,buffer},{worldmap:water.worldmap,habitats:habitats.habitats,rafts:water.rafts??[]});
     const oscillator=context.createOscillator();oscillator.type='sawtooth';oscillator.frequency.value=85;const level=context.createGain();level.gain.value=0;const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=350;oscillator.connect(filter).connect(level).connect(context.destination);oscillator.start();motor={oscillator,level};
   }
   // Open the audio device and build its graph while the journal is still loading.
@@ -113,7 +120,9 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     const actor=navigation.state;if(actor&&characterBus){characterBus.positionX.setValueAtTime(actor.x,t);characterBus.positionY.setValueAtTime(actor.z+.9,t);characterBus.positionZ.setValueAtTime(-actor.y,t);}
     birds.update(position);
     let nearest=null,distance=Infinity;for(const h of habitats.habitats){const [x,y,z]=h.centre_m;const d=(x-position.x)**2+(-y-position.z)**2+(z-position.y)**2;if(d<distance){distance=d;nearest=h;}}
-    if(nearest){const [x,y,z]=nearest.centre_m;water.panner.positionX.setValueAtTime(x,t);water.panner.positionY.setValueAtTime(z,t);water.panner.positionZ.setValueAtTime(-y,t);}
+    if(waterVoices){const dt=lastUpdate===null?0:Math.min(.1,t-lastUpdate);waterVoices.update(t,dt,{x:position.x,y:-position.z,z:position.y},navigation.mode==='walk'?navigation.state:null,submerged);}
+    else if(nearest){const [x,y,z]=nearest.centre_m;waterNoise.panner.positionX.setValueAtTime(x,t);waterNoise.panner.positionY.setValueAtTime(z,t);waterNoise.panner.positionZ.setValueAtTime(-y,t);}
+    lastUpdate=t;
     const flying=['paraglider','parakite','paramotor'].includes(navigation.mode)&&!navigation.state?.grounded;
     const speed=flying?(presentation?.active?presentation.airSpeed:navigation.state.speed):0,turbulence=flying?Math.abs(navigation.state.turbulence??0):0;
     wind.level.gain.setTargetAtTime(flying?Math.min(.28,.055+speed*.005+turbulence*.012):.055,t,.2);
@@ -139,7 +148,12 @@ export function createSoundscape(habitats,trees=new Float32Array(0),chargeBytes=
     });
     motor.level.gain.setTargetAtTime(throttle*.032,t,.1);motor.oscillator.frequency.setTargetAtTime(65+throttle*65,t,.1);
   }
-  return {prepare,toggle,unlock,update,meow,setWindWaterEnabled,playDialogue,stopDialogue,setDialogueActive,get windWaterEnabled(){return windWaterEnabled;},cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},get paraTargets(){return paraVoice?.targets;},dispose(){paraVoice?.dispose();context?.close();}};
+  /** The eye's depth under the water's surface (0 or null above it): the air's sounds close to a dull low-pass. */
+  function setUnderwater(depth){
+    submerged=Math.max(0,depth??0);if(!muffle)return;
+    muffle.frequency.setTargetAtTime(submerged>0?Math.max(260,520-submerged*12):20000,context.currentTime,.08);
+  }
+  return {prepare,toggle,unlock,update,meow,setWindWaterEnabled,setUnderwater,playDialogue,stopDialogue,setDialogueActive,get windWaterEnabled(){return windWaterEnabled;},cue:name=>{if(enabled&&context?.state==='running')cues?.(name);},get paraTargets(){return paraVoice?.targets;},dispose(){paraVoice?.dispose();context?.close();}};
 }
 /** One bumblebee: a soft low buzz (saw plus an octave-down triangle, low-passed) that wanders in pitch and pulses
  * lazily, with a breath of wing air, placed in space by an HRTF panner. Silent until its gain is raised. */
@@ -296,19 +310,19 @@ export function birdPhrase(context,dest,song,t0,random=Math.random){
  * Recruiting is chance-weighted by how many trees are near, so a lone tree is almost silent, a forest is lively and
  * open meadow is quiet. Singers stay put, and are released when the listener leaves them behind. Distance also darkens
  * the voice (air absorbs highs) and a short forest-tail reverb sits behind it. */
-export function createBirds(context,index,{random=Math.random,reach=75,level=.05}={}){
+export function createBirds(context,index,{random=Math.random,reach=75,level=.05,out=context.destination}={}){
   const singers=[],voices=[];let recruitAt=0;
   const tail=context.createBuffer(2,context.sampleRate*1.8,context.sampleRate);
   for(let c=0;c<2;c++){const d=tail.getChannelData(c);for(let i=0;i<d.length;i++)d[i]=(random()*2-1)*Math.exp(-i/context.sampleRate*3.2);}
   const verb=context.createConvolver(),wet=context.createGain(),soften=context.createBiquadFilter();verb.buffer=tail;wet.gain.value=.5;soften.type='lowpass';soften.frequency.value=3500;
-  const bus=context.createGain();bus.connect(soften).connect(verb).connect(wet).connect(context.destination);
+  const bus=context.createGain();bus.connect(soften).connect(verb).connect(wet).connect(out);
   function sing(s,d,t){
     const song=SONGS[s.song],panner=context.createPanner(),air=context.createBiquadFilter(),gain=context.createGain();
     panner.panningModel='HRTF';panner.distanceModel='inverse';panner.refDistance=8;panner.rolloffFactor=1.2;panner.maxDistance=reach+20;
     panner.positionX.value=s.x;panner.positionY.value=s.y;panner.positionZ.value=s.z;
     air.type='lowpass';air.frequency.value=Math.max(2800,12000-d*110);
     gain.gain.value=level*Math.max(0,Math.min(1,(reach-d)/25));
-    gain.connect(air).connect(panner);panner.connect(context.destination);panner.connect(bus);
+    gain.connect(air).connect(panner);panner.connect(out);panner.connect(bus);
     voices.push({panner,end:t+birdPhrase(context,gain,song,t+.02,random)+.1});
   }
   return {singers,update(position){

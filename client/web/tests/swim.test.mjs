@@ -23,8 +23,8 @@ const afloat=world=>{const s=run(ashore(),{x:1,y:0},4,world);return run(s,{x:0,y
 
 test('the shared sampler reports depth and river flow exactly where walking stops',()=>{
  const sampler=createWalkHeight(worldmap,()=>14),lake=worldmap.water.bodies.find(b=>b.kind==='lake'),river=worldmap.water.bodies.find(b=>b.kind==='river');
- assert.deepEqual(sampler.waterAt(...lake.centre_xy_m),{surface_z:20,depth:6,flow:[0,0]});
- const water=sampler.waterAt(...river.polyline[10]);assert.equal(water.depth,6);
+ assert.deepEqual(sampler.waterAt(...lake.centre_xy_m),{surface_z:lake.surface_z_m,depth:lake.surface_z_m-14,flow:[0,0]});
+ const water=sampler.waterAt(...river.polyline[10]);assert.ok(Math.abs(water.depth-(river.polyline_xyz_m[10][2]-14))<1e-9,'the falling river is its own level deep over the bed');
  assert.ok(Math.abs(Math.hypot(...water.flow)-1)<1e-9,'river flow is a unit direction along the polyline');
  for(let x=-2100;x<0;x+=37)for(let y=-1300;y<300;y+=41)assert.equal(sampler(x,y)===null,sampler.waterAt(x,y)!==null);
 });
@@ -43,7 +43,7 @@ test('the stick paddles at 1.2 m/s; Shift dives along the camera at 4 m/s, never
  s=run(s,{x:1,y:0,run:true,pitch:-.6},1.5,world);
  assert.equal(s.swimPhase,'dive');assert.ok(Math.abs(Math.hypot(s.speed,s.vz)-c.dive_mps)<.05,`dives at ${Math.hypot(s.speed,s.vz)}`);
  assert.ok(s.vz<0,'looking down dives down');
- s=run(s,{x:0,y:0,run:true,pitch:-1.2},3,world,w,s=>assert.ok(s.z>=world.floorHeight(s.x,s.y)+c.floor_clear_m-1e-9,'clear of the bed'));
+ s=run(s,{x:1,y:0,run:true,pitch:-1.2},3,world,w,s=>assert.ok(s.z>=world.floorHeight(s.x,s.y)+c.floor_clear_m-1e-9,'clear of the bed'));
  const deep=s.z;s=run(s,{x:0,y:0},.5,world);assert.ok(Math.abs(s.z-deep-c.rise_mps*.5)<.05,`rises ${s.z-deep} m in 0.5 s`);
  s=run(s,{x:0,y:0},3,world);assert.ok(Math.abs(s.z+c.float_draft_m)<.01);
 });
@@ -142,4 +142,18 @@ test('a wavy shoreline does not flip him between walking and swimming at every c
  let s={x:0,y:0,z:.05,heading:0,speed:0},flips=0,mode='ground';
  for(let i=0;i<600;i++){s=stepMoves(s,{x:1,y:0},1/60,w,world);const m=s.mode??'ground';if(m!==mode){flips++;mode=m;}}
  assert.ok(flips<=2,`flipped ${flips} times in 10 s along the shore`);
+});
+
+test('under water he swims freely: hovers at his depth, rises on jump, sinks looking down, and keeps breath as data',()=>{
+ const world=pool({depth:6});let s=afloat(world);
+ assert.equal(s.under,false);assert.equal(s.breath_s,0);
+ s=run(s,{x:0,y:1,run:true,pitch:-.8},1,world);assert.equal(s.swimPhase,'dive');
+ s=run(s,{x:0,y:0,run:true,pitch:-.8},1.5,world);const held=s.z;  // the dive's glide eases out first
+ s=run(s,{x:0,y:0,run:true,pitch:-.8},3,world);
+ assert.equal(s.swimPhase,'hover');assert.ok(Math.abs(s.z-held)<.02,`hovers: moved ${s.z-held} m in 3 s`);
+ assert.equal(s.under,true);assert.ok(s.breath_s>3,'counts the seconds under');
+ const before=s.z;s=run(s,{x:0,y:0,run:true,jump:true},1,world);assert.ok(Math.abs(s.z-before-c.rise_mps*(1-1/6))<.05,`jump rises ${s.z-before} m in 1 s (easing in over 1/6 s)`);
+ s=run(s,{x:0,y:0,run:true},1,world);const top=s.z;s=run(s,{x:0,y:1,run:true,pitch:-1.2,tuck:true},1,world);assert.ok(top-s.z>2.5,`looking down sinks ${top-s.z} m in 1 s`);
+ s=run(s,{x:0,y:0},6,world);assert.ok(Math.abs(s.z+c.float_draft_m)<.01,'run off: back at the surface');
+ assert.equal(s.under,false);assert.equal(s.breath_s,0);
 });

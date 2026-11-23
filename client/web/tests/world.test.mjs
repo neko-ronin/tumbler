@@ -124,7 +124,9 @@ test("an instance's position lands in scene metres, up on y", () => {
   assert.ok(Math.abs(position.x - ex) < 1e-9);
   assert.ok(Math.abs(position.y - up) < 1e-9, `scene y must be height, got ${position.y} for ${up}`);
   assert.ok(Math.abs(position.z + ny) < 1e-9, `scene z must be -north, got ${position.z} for ${ny}`);
-  assert.ok(Math.abs(position.y - homestead.ground_z_m) < 1e-6, "the instance stands on the published ground");
+  // A home on sloping ground stands on a level foundation: its floor is at most `foundation_m` above the centre's ground.
+  const raise = position.y - homestead.ground_z_m;
+  assert.ok(raise > -1e-6 && raise < (homestead.foundation_m ?? 0) + 1e-6, `the instance stands on the published ground or its foundation, raised ${raise}`);
 });
 
 test("a non-uniform scale is applied on the world's own axes", () => {

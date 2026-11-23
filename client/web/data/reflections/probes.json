@@ -1,0 +1,74 @@
+{
+ "version": 1,
+ "generator": "client/web/tools/bake-reflections.cjs",
+ "points": [
+  [
+   -1001,
+   30.1,
+   -127
+  ],
+  [
+   -673,
+   30.1,
+   79
+  ],
+  [
+   -630,
+   30.1,
+   -240
+  ],
+  [
+   -375,
+   30.1,
+   -496
+  ],
+  [
+   -309,
+   30.1,
+   -13
+  ],
+  [
+   -55,
+   30.1,
+   -220
+  ],
+  [
+   306,
+   30.1,
+   -274
+  ],
+  [
+   531,
+   30.1,
+   -143
+  ]
+ ],
+ "width": 1024,
+ "height": 256,
+ "face": 1024,
+ "sin_min": -0.02,
+ "colour": {
+  "day": "probes-day.webp",
+  "golden": "probes-golden.webp",
+  "dusk": "probes-dusk.webp"
+ },
+ "scale": {
+  "day": 1,
+  "golden": 1,
+  "dusk": 1
+ },
+ "distance": "probes-distance.png",
+ "inputs": {
+  "shared/world/worldmap.json": "e8033ca4fc499abe6731b9562c4d01511346c9b00a233b2ab278373089d1ce0b",
+  "shared/world/out/placement.json": "3d9c714a419daedc41904997bfc9971d178e82d4da406b2ba49f8c66bad3595e",
+  "client/web/data/heightmap.f32": "4d32d4a4765fda05aa051e295b38def3847bab02a823d43bacbd919b569feff5",
+  "client/web/data/farfield.f32": "9c8b8539d26970b392ef410bece780351d8c0de0d02e7836338ffe5e7ed79ada",
+  "shared/world/out/horizon_range.json": "2ff0e42cc4087ca3033e7d62e4c35a32530913d0bf46d110a51fc5329f1b8ee9",
+  "shared/world/out/horizon_map.png": "eb799a0e9b49bf63ce11974af7bdbcdb9a952aadd3ccd488a2873a0222237ae0",
+  "shared/world/out/river_granite.json": "4b17e5b6bb569db531911f89578b07ea3faaa6bf571f9f845866bada24baefd4",
+  "shared/world/out/landscape_transition.json": "40dd9179d9019891ae533c181f17701ea06701c64860242aa9a40b9bdb4c1a9b",
+  "shared/geometry/granite/geology.json": "b50e13af3bed57ba089c48ecabcf598114b49f10adbc8907e7432ca54c247419",
+  "shared/geometry/tree-design/adopted-redwoods.json": "32613b3be4c4a810597b766bece169bd53650025bedbc7a20426c622788d0c26"
+ },
+ "bake_seconds": 275
+}

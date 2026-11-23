@@ -121,7 +121,9 @@ export function boardGondola(line,station,t){
     const wait=into<D-margin?0:P-into;
     if(!best||wait<best.wait_s)best={cabin:i,wait_s:wait,into};
   }
-  const departs=t+best.wait_s,inAt=best.wait_s?0:best.into;
+  // A waited-for cabin's tau at departure is P minus rounding, which reads as the end of 'down':
+  // nudge past the wrap, as arrive_t nudges past the far dwell.
+  const departs=t+best.wait_s+(best.wait_s?1e-6:0),inAt=best.wait_s?0:best.into;
   return {cabin:best.cabin,from,to:1-from,wait_s:best.wait_s,board_t:departs,arrive_t:departs+(D-inAt)+U+1e-6,fast:false};
 }
 

@@ -27,6 +27,9 @@ const distantShadow={map:{value:null},matrix:{value:new T.Matrix4()},fromNear:{v
 let light=null;
 export function bindTreeSunShadow(sun){light=sun;treeShadow.focus.value.w=0;updateTreeSunShadow();}
 export function setTreeShadowFocus(point){treeShadow.focus.value.set(point.x,point.y,point.z,1);}
+// Off: every receiver reads the static world map, as if outside the near map's footprint (main.js nearShadowsWanted).
+let nearDetail=true;
+export function setNearTreeShadows(on){nearDetail=on;updateTreeSunShadow();}
 
 export function updateTreeSunShadow(){
  const shadow=light?.shadow;
@@ -34,7 +37,7 @@ export function updateTreeSunShadow(){
  treeShadow.map.value=shadow.map.depthTexture;treeShadow.matrix.value=shadow.matrix;
  treeShadow.texel.value.set(1/shadow.map.width,1/shadow.map.height);
  treeShadow.bias.value=shadow.bias;treeShadow.normalBias.value=shadow.normalBias;treeShadow.ready.value=1;
- treeShadow.coverageScale.value=(shadow.camera.right-shadow.camera.left)/SHADOW_COVERAGE_SPAN;
+ treeShadow.coverageScale.value=nearDetail?(shadow.camera.right-shadow.camera.left)/SHADOW_COVERAGE_SPAN:1e6;
  distantShadow.fromNear.value.copy(shadow.matrix).invert().premultiply(distantShadow.matrix.value);
 }
 export function treeShadowUniforms(){return {uTreeFarMap:distantShadow.map,uTreeFarFromNear:distantShadow.fromNear,uTreeFarMatrix:distantShadow.matrix,uTreeFarReady:distantShadow.ready,uTreeShadowFocus:treeShadow.focus,uTreeShadowCoverageScale:treeShadow.coverageScale,uTreeSunMap:treeShadow.map,uTreeSunMatrix:treeShadow.matrix,uTreeSunTexel:treeShadow.texel,uTreeSunBias:treeShadow.bias,uTreeSunNormalBias:treeShadow.normalBias,uTreeSunReady:treeShadow.ready};}

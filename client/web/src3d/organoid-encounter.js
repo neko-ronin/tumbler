@@ -19,8 +19,38 @@ export function steadyOnFoot(navigation, onFoot) {
     (!onFoot?.jumpPhase || onFoot.jumpPhase === 'grounded') && !onFoot?.sliding;
 }
 
+/** The encounter's cover tree, chosen from the placement it is given so it survives a rebuild
+ * that reshuffles the forest: the redwood nearest `cover_anchor_xy_m` whose approach (the tree
+ * plus `approach_offset_m`) is dry, inside the tutor's Tumble Hill radius, no steeper than the
+ * wake's step (0.8 m over 2.8 m toward the tree), and clear for the encounter's own route sweep;
+ * otherwise the next nearest. Null when none qualifies. */
+export function pickCoverTree(config, instances, {height, hit, waterAt, hill}) {
+  const [ax,ay] = config.cover_anchor_xy_m, [ox,oy] = config.approach_offset_m;
+  const reach = Math.max(...config.tutor.tips.filter(t => t.near === config.place).map(t => t.radius_m));
+  const step = 2.8 / Math.hypot(ox,oy);
+  const trees = instances.filter(i => i.kind === 'redwood')
+    .map(i => [Math.hypot(i.position_m[0]-ax,i.position_m[1]-ay), i.position_m[0], i.position_m[1]])
+    .sort((a,b) => a[0]-b[0]);
+  for(const [distance,x,y] of trees){
+    const [px,py] = [x+ox,y+oy];
+    if(waterAt?.(px,py) || !hill.some(([hx,hy]) => Math.hypot(hx-px,hy-py) <= reach))continue;
+    const z = height(px,py), ahead = height(px-ox*step,py-oy*step);
+    if(!Number.isFinite(z) || !Number.isFinite(ahead) || Math.abs(ahead-z) > .8)continue;
+    const cover = {cover_tree_xy_m:[x,y], approach_xy_m:[px,py]};
+    const probe = createOrganoidEncounter({...config,...cover},{height,hit});
+    if(probe.update(0,{x:px,y:py,z,heading:Math.atan2(-oy,-ox)}) === 'start')return {...cover, distance};
+  }
+  return null;
+}
+
 export function stageOrganoid({config, clips, actor, scene, camera, canvas, navigation, character,
-  characterScale, height, hit, waterAt, playProps = [], sun, soundscape, panel}) {
+  characterScale, height, hit, waterAt, instances, hill, playProps = [], sun, soundscape, panel}) {
+  const cover = pickCoverTree(config, instances, {height, hit, waterAt, hill});
+  if(!cover)console.warn(JSON.stringify({ts:new Date().toISOString(),level:'warn',component:'organoid-encounter',
+    event:'cover_tree_missing',anchor:config.cover_anchor_xy_m}));
+  // ponytail: with no qualifying redwood the encounter waits at the bare anchor; the scene is dormant today.
+  config = {...config, ...(cover ?? {cover_tree_xy_m:config.cover_anchor_xy_m,
+    approach_xy_m:config.cover_anchor_xy_m.map((v,i) => v+config.approach_offset_m[i])})};
   const rules = createOrganoidEncounter(config, {height, hit});
   const speaker = panel.querySelector('[data-speaker]');
   const words = panel.querySelector('[data-words]');
@@ -430,6 +460,7 @@ export function stageOrganoid({config, clips, actor, scene, camera, canvas, navi
   return {
     update,
     skip: skipNow,
+    approach: config.approach_xy_m,
     get active() { return active; },
     set guest(pose) { guest = pose; },
     get state() {
