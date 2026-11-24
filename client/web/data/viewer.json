@@ -39,7 +39,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "8eac7a3b681e026a6924dc8f80e57c622770b9a43d197a1218f225b92c055d1a"
+      "sha256": "772d928baf5b3cf8c743502e4b4b57acde37f802e987bf890cc1d3ede2f002ad"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -95,7 +95,7 @@
     },
     {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "87df043e8f37c1be0d5964043573a7d377d27439d68e7c26c0022d59f62b573e"
+      "sha256": "243111b5ddabb63b43196e35562825200aab112cc8a63c6cf5906fde93068f1f"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -215,7 +215,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "7d914e1de0ad4f6da53bd368f92822014a36342facb104fcdc60269fff1ff045"
+      "sha256": "2b3fad7d5ef0abd4b5284cbae7be93472e03a53149b7d1b78f4c006766e1f931"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -295,7 +295,7 @@
     },
     {
       "path": "client/web/src3d/player-ui.js",
-      "sha256": "9dce57bc79c427b98ae169f6f4d6251ee3f5f284f6fa0801440e9fda2c89eddd"
+      "sha256": "ef64ef2b200b9a830879d3ab927890338599c8ff04c34d6f296882240e5f58c9"
     },
     {
       "path": "client/web/src3d/player-visibility.js",
@@ -395,7 +395,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "fda2e1cc8f2aa9599d3feb15f2f4d9bb33340c8f099579eace67ed09dc9b3fa9"
+      "sha256": "e4995799b9802dcddf0d7f13f50697131e3236cd283930f288f930a711624006"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -1096,7 +1096,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "3f38f4d9",
+  "commit": "ace8889e",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

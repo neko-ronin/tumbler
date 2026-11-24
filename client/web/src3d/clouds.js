@@ -164,11 +164,18 @@ export function createCloudPass(renderer,scene,camera,atmosphereByTime,ground){
     volumes.children.forEach((b,i)=>{if(depths[i])b.material.uniforms.uDepth.value=depths[i];});forward.value.copy(view);size.copy(viewSize);
   }
   const rays=createSunRays(opaque.depthTexture,cloudy.texture,opaque.texture);
+  // A screen rectangle (uv x0,y0,x1,y1) the clouds thin out of by `clear` (0..1): the map menu looks
+  // through them at the ground it charts.
+  const clearRect={value:new T.Vector4(0,0,1,1)},clear={value:0};
   fullscreen.add(new T.Mesh(new T.PlaneGeometry(2,2),new T.ShaderMaterial({depthWrite:false,depthTest:false,
-    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uRays:{value:rays.target.texture},uRayStrength:rays.strength,uRayDepth:{value:new T.Vector2(camera.near,camera.far)},uWarmth:style.warmth},
+    uniforms:{uWorld:{value:opaque.texture},uCloud:{value:cloudy.texture},uDepth:{value:opaque.depthTexture},uRays:{value:rays.target.texture},uRayStrength:rays.strength,uRayDepth:{value:new T.Vector2(camera.near,camera.far)},uWarmth:style.warmth,uClearRect:clearRect,uClear:clear},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
-    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth,uRays;uniform float uRayStrength,uWarmth;uniform vec2 uRayDepth;varying vec2 vUv;
-      vec3 composite(vec2 uv){vec4 c=texture2D(uCloud,uv);return texture2D(uWorld,uv).rgb*(1.-c.a)+c.rgb;}
+    fragmentShader:`uniform sampler2D uWorld,uCloud,uDepth,uRays;uniform float uRayStrength,uWarmth,uClear;uniform vec2 uRayDepth;uniform vec4 uClearRect;varying vec2 vUv;
+      vec3 composite(vec2 uv){vec4 c=texture2D(uCloud,uv);
+        // Feathered outward, so the rectangle itself stays clear; wider as the clouds return, so no edge shows.
+        vec2 e=vec2(mix(.06,.4,1.-uClear));vec2 inside=smoothstep(uClearRect.xy-e,uClearRect.xy,uv)*(1.-smoothstep(uClearRect.zw,uClearRect.zw+e,uv));
+        c*=1.-uClear*inside.x*inside.y;  // premultiplied: colour and cover thin together
+        return texture2D(uWorld,uv).rgb*(1.-c.a)+c.rgb;}
       void main(){
         vec3 color=composite(vUv);
         // A small amount of aerial scattering is visible in front of distant
@@ -222,5 +229,5 @@ export function createCloudPass(renderer,scene,camera,atmosphereByTime,ground){
     rays.render(renderer,camera,dimensions.x,dimensions.y,submerged?0:strength);
     renderer.setClearColor(color,alpha);renderer.setRenderTarget(target);renderer.render(fullscreen,quadCamera);
   }
-  return {render,rays,volumes,opaque,cloudy,setSky,get sky(){return sky.atmosphere;},get shadows(){return sky.shadows;},get lighting(){return sky.lighting;},dispose(){renderer.domElement.removeEventListener('webglcontextrestored',resetMarch);for(const b of built.values()){b.lighting.dispose();b.shadows.dispose();}rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});[...built.values()].flatMap(b=>b.boxes).forEach(m=>{m.userData.cloudMarch.full.dispose();m.userData.cloudMarch.skip.dispose();});}};
+  return {render,rays,volumes,opaque,cloudy,setSky,clearRect,clear,get sky(){return sky.atmosphere;},get shadows(){return sky.shadows;},get lighting(){return sky.lighting;},dispose(){renderer.domElement.removeEventListener('webglcontextrestored',resetMarch);for(const b of built.values()){b.lighting.dispose();b.shadows.dispose();}rays.dispose();opaque.dispose();cloudy.dispose();texture.dispose();geometry.dispose();fullscreen.children.forEach(m=>{m.geometry.dispose();m.material.dispose();});[...built.values()].flatMap(b=>b.boxes).forEach(m=>{m.userData.cloudMarch.full.dispose();m.userData.cloudMarch.skip.dispose();});}};
 }

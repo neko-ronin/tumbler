@@ -1,3 +1,14 @@
+# Map over the valley — web v0.10.0, 2026-11-23
+
+The trail map and the overhead view of the valley are one view: the menu always shows the game camera
+looking straight down, with the paper map laid over it at 60% and the clouds cleared over the map
+(feathered outward so its interior stays clear). The Map/Scene toggle (V, LB) is gone. Choosing a place
+fades the menu out in 250 ms while the clouds close back in, timed to the pan down.
+
+**Open:** the map is flat and the camera has perspective, so high ground near the map's edge sits slightly off
+its contours. Cloud shadows still fall under the map. Fast travel blocks the main thread about 0.4 s in
+`arriveAt` (pre-existing); the fade starts after it. Released as web v0.10.0.
+
 # Ground seams — web v0.9.1, 2026-11-23
 
 The green ground and the grass blades now agree. Every grass stamp was read half a cell (4 m) off the
