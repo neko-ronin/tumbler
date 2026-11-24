@@ -11465,24 +11465,24 @@
     {
       "id": "B1",
       "mast_height_m": 45.0,
-      "hardstanding": true,
+      "hardstanding": false,
       "position_xy_m": [
         -620.0,
         490.0
       ],
-      "note": "2026-11-16: moved from (-700, 150), now under the new lake, to dry level ground 85 m east of the tree village's trunks and clear of the gondola's ropeway, where it powers the village and the gondola's base station. North of the flight path by roughly 900 m. Weathervaning: head into the wind, hull downwind of the mast. 2026-10-05: flying, not moored. An airborne wind turbine on a 330 m tether at 64 deg, tied under the hull's head, so the hull's centre rides ~370 m above the ground and its keel ~250 m above the tallest redwoods, downwind of its mast.",
+      "note": "2026-11-23: no hardstanding. The ground under its 52 m pad varies 14.3 m, so the flat cement disc floated over the slope on one side and sank into it on the other; the mast stands on its own footing. 2026-11-16: moved from (-700, 150), now under the new lake, to dry level ground 85 m east of the tree village's trunks and clear of the gondola's ropeway, where it powers the village and the gondola's base station. North of the flight path by roughly 900 m. Weathervaning: head into the wind, hull downwind of the mast. 2026-10-05: flying, not moored. An airborne wind turbine on a 330 m tether at 64 deg, tied under the hull's head, so the hull's centre rides ~370 m above the ground and its keel ~250 m above the tallest redwoods, downwind of its mast.",
       "tether_m": 330.0,
       "tether_elevation_deg": 64.0
     },
     {
       "id": "B2",
       "mast_height_m": 45.0,
-      "hardstanding": true,
+      "hardstanding": false,
       "position_xy_m": [
         850.0,
         350.0
       ],
-      "note": "North of the flight path by roughly 690 m, on the valley floor near FS5. 2026-10-05: flying, not moored. An airborne wind turbine on a 330 m tether at 64 deg, tied under the hull's head, so the hull's centre rides ~370 m above the ground and its keel ~250 m above the tallest redwoods, downwind of its mast.",
+      "note": "2026-11-23: no hardstanding. The ground under its 52 m pad varies 7.5 m, so the flat cement disc floated over the slope on one side and sank into it on the other; the mast stands on its own footing. North of the flight path by roughly 690 m, on the valley floor near FS5. 2026-10-05: flying, not moored. An airborne wind turbine on a 330 m tether at 64 deg, tied under the hull's head, so the hull's centre rides ~370 m above the ground and its keel ~250 m above the tallest redwoods, downwind of its mast.",
       "tether_m": 330.0,
       "tether_elevation_deg": 64.0
     }

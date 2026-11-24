@@ -28,6 +28,7 @@ const poses={
  edgeSouth:{at:[-1300,-1990,6],look:[-1300,-2140,0]},         // finding 6 on land: grass across the south block edge (y = -2048)
  topSeamSouth:{at:[-1300,-2048,120],look:[-1300,-2048.1,0]},  // finding 6: straight down on that edge
  mooring:{at:[-560,430,25],look:[-620,490,0]},                // finding 8 (corrected): the blimp mooring hardstanding
+ mooringB2:{at:[800,290,25],look:[850,350,0]},                // the B2 district mast; its pad was refused on 7.5 m of relief (2026-11-23)
  dome05:{at:[1840,-640,30],look:[1910.3,-575.3,4]},            // DOME05 re-sited 2026-11-23 out of the river (was 2039.2, -413.8)
  fallsBay:{eye:[-380,34,-250],target:[-390,80,-860]},          // lake walls must keep their granite (review-water.cjs pose)
 };

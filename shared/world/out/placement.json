@@ -4,12 +4,11 @@
     "arboreal_tree": 6,
     "blimp": 15,
     "dome": 5,
-    "forest_tree": 14236,
-    "hardstanding": 2,
+    "forest_tree": 14244,
     "homestead": 27,
     "lake": 1,
     "mooring_mast": 15,
-    "redwood": 7108,
+    "redwood": 7111,
     "river": 1,
     "turbine": 11
   },
@@ -2037,37 +2036,6 @@
       "yaw_deg": 0.0
     },
     {
-      "asset": "mooring/hardstanding.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 65.7542,
-      "kind": "hardstanding",
-      "parts": [
-        {
-          "mesh": "hardstanding",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        -620.0,
-        490.0,
-        65.7542
-      ],
-      "scale": [
-        26.0,
-        26.0,
-        1.0
-      ],
-      "tags": [
-        "B1"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
       "asset": "blimp/blimp.glb",
       "facing_bearing_deg": 275.0,
       "ground_z_m": null,
@@ -2130,37 +2098,6 @@
       "scale": [
         1.0,
         1.0,
-        1.0
-      ],
-      "tags": [
-        "B2"
-      ],
-      "version": 3,
-      "yaw_deg": 0.0
-    },
-    {
-      "asset": "mooring/hardstanding.glb",
-      "facing_bearing_deg": null,
-      "ground_z_m": 42.8645,
-      "kind": "hardstanding",
-      "parts": [
-        {
-          "mesh": "hardstanding",
-          "offset_m": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      ],
-      "position_m": [
-        850.0,
-        350.0,
-        42.8645
-      ],
-      "scale": [
-        26.0,
-        26.0,
         1.0
       ],
       "tags": [
@@ -348157,6 +348094,74 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/silver_fir.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 41.1315,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "silver_fir",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        839.0686,
+        317.7781,
+        41.1315
+      ],
+      "scale": [
+        0.692027,
+        0.692027,
+        0.692027
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "silver_fir"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 38.6323,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        855.9613,
+        315.6392,
+        38.6323
+      ],
+      "scale": [
+        0.623513,
+        0.623513,
+        0.623513
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/redwood_canopy.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 41.7014,
@@ -349342,6 +349347,40 @@
         "forest_slope",
         "forest",
         "redwood_canopy"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 46.6445,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        816.6124,
+        337.1738,
+        46.6445
+      ],
+      "scale": [
+        0.528614,
+        0.528614,
+        0.528614
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "mountain_pine"
       ],
       "version": 3,
       "yaw_deg": 0.0
@@ -350845,6 +350884,40 @@
     {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
+      "ground_z_m": 46.4517,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        823.7306,
+        352.5051,
+        46.4517
+      ],
+      "scale": [
+        0.626714,
+        0.626714,
+        0.626714
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
       "ground_z_m": 45.8137,
       "kind": "forest_tree",
       "parts": [
@@ -352334,6 +352407,40 @@
         "forest_slope",
         "forest",
         "silver_fir"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 48.8519,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        817.0305,
+        366.8971,
+        48.8519
+      ],
+      "scale": [
+        0.697785,
+        0.697785,
+        0.697785
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "mountain_pine"
       ],
       "version": 3,
       "yaw_deg": 0.0
@@ -354170,6 +354277,40 @@
         "forest_slope",
         "forest",
         "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/redwood_canopy.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 47.7242,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "redwood_canopy",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        855.0985,
+        383.8832,
+        47.7242
+      ],
+      "scale": [
+        0.53638,
+        0.53638,
+        0.53638
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "redwood_canopy"
       ],
       "version": 3,
       "yaw_deg": 0.0
@@ -363799,6 +363940,40 @@
     {
       "asset": "redwood/redwood_canopy.glb",
       "facing_bearing_deg": null,
+      "ground_z_m": 57.1463,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "redwood_canopy",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -649.019,
+        458.4867,
+        57.1463
+      ],
+      "scale": [
+        0.644065,
+        0.644065,
+        0.644065
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "redwood_canopy"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/redwood_canopy.glb",
+      "facing_bearing_deg": null,
       "ground_z_m": 53.7302,
       "kind": "redwood",
       "parts": [
@@ -365939,6 +366114,40 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/mountain_pine.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 59.3859,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "mountain_pine",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -582.2348,
+        471.5771,
+        59.3859
+      ],
+      "scale": [
+        0.512028,
+        0.512028,
+        0.512028
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "mountain_pine"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/redwood_canopy.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 67.4956,
@@ -368047,6 +368256,40 @@
       "yaw_deg": 0.0
     },
     {
+      "asset": "redwood/silver_fir.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 65.7711,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "silver_fir",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -642.7968,
+        487.12,
+        65.7711
+      ],
+      "scale": [
+        0.589586,
+        0.589586,
+        0.589586
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "silver_fir"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
       "asset": "redwood/mountain_pine.glb",
       "facing_bearing_deg": null,
       "ground_z_m": 64.4918,
@@ -370114,6 +370357,74 @@
       "tags": [
         "understory",
         "meadow_edge",
+        "forest",
+        "redwood_canopy"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/silver_fir.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 69.316,
+      "kind": "forest_tree",
+      "parts": [
+        {
+          "mesh": "silver_fir",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -616.3186,
+        504.6553,
+        69.316
+      ],
+      "scale": [
+        0.534117,
+        0.534117,
+        0.534117
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
+        "forest",
+        "silver_fir"
+      ],
+      "version": 3,
+      "yaw_deg": 0.0
+    },
+    {
+      "asset": "redwood/redwood_canopy.glb",
+      "facing_bearing_deg": null,
+      "ground_z_m": 68.6662,
+      "kind": "redwood",
+      "parts": [
+        {
+          "mesh": "redwood_canopy",
+          "offset_m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "position_m": [
+        -597.8314,
+        504.7573,
+        68.6662
+      ],
+      "scale": [
+        0.532729,
+        0.532729,
+        0.532729
+      ],
+      "tags": [
+        "understory",
+        "forest_slope",
         "forest",
         "redwood_canopy"
       ],
@@ -728867,7 +729178,7 @@
     "version": 3
   },
   "worldmap": {
-    "sha256": "be480e6350d3220b2f852b953b2f3c8d6e55bca85dca95a0375b9e8d5c6e4c61",
+    "sha256": "bf99121bf42cdfc65e780c3cfe81d94c3504afd56cd28c6d6b83c72d5cba54c3",
     "source": "shared/world/worldmap.json"
   }
 }
