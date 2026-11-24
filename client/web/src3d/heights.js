@@ -164,7 +164,12 @@ export function decodeGroundCover(stamp) {
   if (!rowOrder.includes("MINIMUM y")) {
     throw new Error(`ground_cover.json declares row_0 "${grid.row_order}", which is not the convention this reader was written for`);
   }
-  const [offsetX, offsetY] = grid.offset_xy_m;
+  // The core samples each value AT a grid vertex: `y = offset_xy_m[1] + row * quad_size_m`
+  // (WEB-CLIENT-READ-CONTRACT.md; build_ground_cover.py and build_landscape_transition.py both
+  // call vertex_x/vertex_y). So the cell a value speaks for is centred on that vertex, and
+  // its south-west corner is half a cell below it. Every reader here (floor() lookups,
+  // centre(), the shader's texel centres) then lands on the published sample point.
+  const offsetX = Number(grid.offset_xy_m[0]) - quad / 2, offsetY = Number(grid.offset_xy_m[1]) - quad / 2;
   const total = resolution * resolution;
   const covered = new Uint8Array(total);
   let index = 0;
@@ -195,7 +200,7 @@ export function decodeGroundCover(stamp) {
     offsetX,
     offsetY,
     stampedCells: painted,
-    /** The world coordinate of a cell's centre. */
+    /** The world coordinate of a cell's centre: the core's own sample point. */
     centre: (row, column) => [offsetX + (column + 0.5) * quad, offsetY + (row + 0.5) * quad],
     /** Every stamped cell's centre, row-major from the south-west corner. */
     stamped: function* stamped() {
@@ -208,23 +213,41 @@ export function decodeGroundCover(stamp) {
   };
 }
 
-/** One presentation mask from two core-owned habitat grids. The primary grid
- * wins throughout its domain, including its bare cells (paths, water, homes).
- * The coarser continuation is sampled, never extended past its published mask.
+/** A cover's value at (x, y), bilinear between its sample points: exactly what the
+ * terrain shader's linearly filtered cover texture shows there. `amount` (0..255) is read
+ * when present, else the 0/1 `covered` mask. 0 off the grid, never extrapolated.
+ */
+export function coverAmount(cover,x,y){
+  const n=cover.resolution,values=cover.amount??cover.covered,unit=cover.amount?1/255:1;
+  const gx=(x-cover.offsetX)/cover.quad-.5,gy=(y-cover.offsetY)/cover.quad-.5,c=Math.floor(gx),r=Math.floor(gy),fx=gx-c,fy=gy-r;
+  const at=(a,b)=>a>=0&&b>=0&&a<n&&b<n?values[b*n+a]:0,v=at(c,r);
+  if(v===at(c+1,r)&&v===at(c,r+1)&&v===at(c+1,r+1))return v*unit;  // inside a uniform patch: most of the world
+  return ((v*(1-fx)+at(c+1,r)*fx)*(1-fy)+(at(c,r+1)*(1-fx)+at(c+1,r+1)*fx)*fy)*unit;
+}
+
+/** One presentation mask from two core-owned habitat grids, on the primary's lattice.
+ * The primary grid wins throughout its domain, including its bare cells (paths, water,
+ * homes). Past it, the coarser continuation is read between its own sample points into
+ * `amount` (0..255), so a 32 m stamp's edge fades across the 8 m lattice instead of standing
+ * in 32 m blocks (ground-seams review, finding 6); `covered` keeps the even split. Grass
+ * reaches at most one outer cell past a published sample, fading to nothing there.
  */
 export function mergeGroundCover(primary,outer){
   if(!outer)return primary;
-  const quad=primary.quad,offsetX=Math.min(primary.offsetX,outer.offsetX),offsetY=Math.min(primary.offsetY,outer.offsetY);
-  if(Math.abs((primary.offsetX-offsetX)/quad-Math.round((primary.offsetX-offsetX)/quad))>1e-6||Math.abs((primary.offsetY-offsetY)/quad-Math.round((primary.offsetY-offsetY)/quad))>1e-6)throw Error('habitat grids must share the primary lattice');
-  const highX=Math.max(primary.offsetX+primary.resolution*primary.quad,outer.offsetX+outer.resolution*outer.quad),highY=Math.max(primary.offsetY+primary.resolution*primary.quad,outer.offsetY+outer.resolution*outer.quad);
-  const resolution=Math.ceil(Math.max(highX-offsetX,highY-offsetY)/quad),covered=new Uint8Array(resolution*resolution);
-  const at=(cover,x,y)=>{const col=Math.floor((x-cover.offsetX)/cover.quad),row=Math.floor((y-cover.offsetY)/cover.quad);return col>=0&&row>=0&&col<cover.resolution&&row<cover.resolution?cover.covered[row*cover.resolution+col]:0;};
+  const quad=primary.quad,grow=d=>Math.ceil(Math.max(0,d)/quad)*quad;
+  const offsetX=primary.offsetX-grow(primary.offsetX-outer.offsetX),offsetY=primary.offsetY-grow(primary.offsetY-outer.offsetY);
+  const highX=Math.max(primary.offsetX+primary.resolution*quad,outer.offsetX+outer.resolution*outer.quad),highY=Math.max(primary.offsetY+primary.resolution*quad,outer.offsetY+outer.resolution*outer.quad);
+  const resolution=Math.ceil(Math.max(highX-offsetX,highY-offsetY)/quad),covered=new Uint8Array(resolution*resolution),amount=new Uint8Array(resolution*resolution);
+  const shiftX=Math.round((primary.offsetX-offsetX)/quad),shiftY=Math.round((primary.offsetY-offsetY)/quad);
   for(let row=0;row<resolution;row++)for(let col=0;col<resolution;col++){
-    const x=offsetX+(col+.5)*quad,y=offsetY+(row+.5)*quad;
-    const inside=x>=primary.offsetX&&y>=primary.offsetY&&x<primary.offsetX+primary.resolution*primary.quad&&y<primary.offsetY+primary.resolution*primary.quad;
-    covered[row*resolution+col]=at(inside?primary:outer,x,y);
+    const pc=col-shiftX,pr=row-shiftY;
+    const i=row*resolution+col;
+    amount[i]=pc>=0&&pr>=0&&pc<primary.resolution&&pr<primary.resolution
+      ?primary.covered[pr*primary.resolution+pc]*255
+      :Math.round(coverAmount(outer,offsetX+(col+.5)*quad,offsetY+(row+.5)*quad)*255);
+    covered[i]=+(amount[i]>=128);
   }
-  return {covered,resolution,quad,offsetX,offsetY,stampedCells:covered.reduce((sum,n)=>sum+n,0)};
+  return {covered,amount,resolution,quad,offsetX,offsetY,stampedCells:covered.reduce((sum,n)=>sum+n,0)};
 }
 
 /** The existing ground sampler represented on one aligned lattice. Outer

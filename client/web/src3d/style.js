@@ -173,9 +173,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       #include <color_fragment>
       ${meadow ? `if(vMeadowFade<=.001||vPlant<.5)discard;
       vec2 grassUv=(vec2(vPlace.x,-vPlace.z)-uCoverGrid.xy)/(uCoverGrid.z*uCoverGrid.w);
-      vec2 snowUv=(vec2(vPlace.x,-vPlace.z)-uSnowGrid.xy)/(uSnowGrid.z*uSnowGrid.w);
-      float meadowSnow=texture2D(uSnow,clamp(snowUv,0.,1.)).r*step(0.,snowUv.x)*step(0.,snowUv.y)*step(snowUv.x,1.)*step(snowUv.y,1.);
-      if(min(grassUv.x,grassUv.y)<0.||max(grassUv.x,grassUv.y)>1.||texture2D(uCover,grassUv).r<.5||meadowSnow>.03||vPlace.y<22.)discard;
+      // Roots were chosen from the same graded field (main.js), which already fades for snow,
+      // shore and slope; here only truly bare ground refuses a leaf, so the thinning is not
+      // clipped back to a hard line at one contour (ground-seams review).
+      if(min(grassUv.x,grassUv.y)<0.||max(grassUv.x,grassUv.y)>1.||texture2D(uCover,grassUv).r<.004)discard;
       diffuseColor.rgb = mix(diffuseColor.rgb*vLeafTone,vFlower,vPetal);` : ""}
       ${grassBlades?'diffuseColor.a*=vMeadowFade;':''}
       ${canopy?`// Individually cut out tapered leaves in crossed, bent cards.

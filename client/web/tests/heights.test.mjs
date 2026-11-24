@@ -15,7 +15,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { decodeGroundCover, GroundSampler, HeightGrid } from "../src3d/heights.js";
+import { decodeGroundCover, coverAmount, GroundSampler, HeightGrid } from "../src3d/heights.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..", "..", "..");
@@ -138,8 +138,10 @@ test("the ground cover mask decodes, and its own count agrees", () => {
   assert.equal(first.length, 3, "row, column, centre");
   const [[row, column, [cx, cy]]] = [[...first]];
   // Row 0 is minimum y, so the first stamped row's centre is near the south edge.
-  assert.ok(cy > -2044 && cy < 2044, `centre y ${cy}`);
-  assert.ok(cx === stamp.grid.offset_xy_m[0] + (column + 0.5) * 8, "the centre follows the file's own declared origin");
+  assert.ok(cy >= -2044 && cy <= 2044, `centre y ${cy}`);
+  // The core samples at vertices (y = offset + row * quad), so a cell's centre IS its sample point.
+  assert.equal(cx, stamp.grid.offset_xy_m[0] + column * 8, "the centre is the core's own sample point");
+  assert.equal(cover.offsetX + 4, stamp.grid.offset_xy_m[0], "the first cell spans the half cell either side of the first vertex");
   void row;
 });
 
@@ -192,4 +194,12 @@ test('half-texel border sampling clamps to the published edge instead of extrapo
   assert.equal(g.sample(-3,0),0);assert.equal(g.sample(0,-3),0);
   assert.equal(g.sample(11,0),100);assert.equal(g.sample(0,11),200);
   assert.equal(g.sample(-5,0),null);
+});
+
+test("coverAmount reads a cover between its sample points, as the shader's linear filter does", () => {
+  const cover = { covered: new Uint8Array([1, 0, 1, 0]), resolution: 2, quad: 8, offsetX: 0, offsetY: 0 };
+  assert.equal(coverAmount(cover, 4, 4), 1, "on a sample point, its own value");
+  assert.equal(coverAmount(cover, 8, 4), 0.5, "half way to a bare neighbour, half grass");
+  assert.equal(coverAmount({ ...cover, amount: new Uint8Array([255, 0, 51, 0]) }, 4, 12), 0.2, "amount is read in 255ths");
+  assert.equal(coverAmount(cover, -40, 4), 0, "nothing off the grid");
 });

@@ -5,6 +5,7 @@
 import {BufferGeometry,Float32BufferAttribute,InstancedBufferAttribute,InstancedMesh,Group,Matrix4,Quaternion,Vector3,Color,DoubleSide,Frustum,Sphere,DynamicDrawUsage} from '../vendor/three.module.min.js';
 import {toonMaterial} from './style.js';
 import {deterministicTurn,meadowViewFocus} from './groundcover.js';
+import {coverAmount} from './heights.js';
 
 const TILE=24,PITCH=.8;
 const random=(x,y)=>deterministicTurn(x,y)/(Math.PI*2);
@@ -71,7 +72,10 @@ export function buildGrassCanopy(cover,ground,{samples=0,batchTiles=1}={}){
   for(const layer of layers){layer.tiles=new Map();layer.bounds=new Map();layer.batches=new Map();}
   const matrix=new Matrix4(),position=new Vector3(),scale=new Vector3(),rotation=new Quaternion(),tilt=new Quaternion(),up=new Vector3(0,1,0),normal=new Vector3(),projection=new Matrix4(),frustum=new Frustum(),marginSphere=new Sphere();
   const stats={patches:cover.covered.reduce((sum,n)=>sum+n,0),tiles:0,clumps:0,nearClumps:0,triangles:0,visibleTiles:0,visibleTriangles:0,farClumps:0};
-  const contains=(x,y)=>{const col=Math.floor((x-cover.offsetX)/cover.quad),row=Math.floor((y-cover.offsetY)/cover.quad);return row>=0&&col>=0&&row<cover.resolution&&col<cover.resolution&&cover.covered[row*cover.resolution+col];};
+  // A root grows where the shared amount beats its own hash, so blades thin over the same
+  // ramp the terrain's sward fades over (heights.js coverAmount); callers asking "is this
+  // grass?" get the even split.
+  const contains=(x,y,root=.5)=>coverAmount(cover,x,y)>root;
   let frame=0;
   const release=mesh=>{mesh.dispose();mesh.geometry.dispose();};
   function tileAt(tx,ty,layer){
@@ -80,7 +84,7 @@ export function buildGrassCanopy(cover,ground,{samples=0,batchTiles=1}={}){
     for(let row=0;row<tile/pitch;row++)for(let col=0;col<tile/pitch;col++){
       const gx=tx*(tile/pitch)+col,gy=ty*(tile/pitch)+row;
       const x=(gx+.5)*pitch+(random(gx,gy)-.5)*pitch*.75,y=(gy+.5)*pitch+(random(gx+71,gy-39)-.5)*pitch*.75;
-      if(!contains(x,y))continue;const h=ground.height(x,y);if(h===null)continue;cells.push({x,y,h,gx,gy});
+      if(!contains(x,y,random(gx-53,gy+29)))continue;const h=ground.height(x,y);if(h===null)continue;cells.push({x,y,h,gx,gy});
     }
     if(!cells.length)return null;
     const geometry=layer.geometry.clone(),traits=new Float32Array(cells.length*3),tint=new Float32Array(cells.length*3).fill(1);

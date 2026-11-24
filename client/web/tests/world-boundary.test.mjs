@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {decodeGroundCover,mergeGroundCover,landscapeHeightGrid,HeightGrid,GroundSampler} from '../src3d/heights.js';
+import {decodeGroundCover,mergeGroundCover,coverAmount,landscapeHeightGrid,HeightGrid,GroundSampler} from '../src3d/heights.js';
 import {buildTerrainLod} from '../src3d/terrain-lod.js';
 import * as T from '../vendor/three.module.min.js';
 const repo=new URL('../../../',import.meta.url),read=p=>fs.readFileSync(new URL(p,repo));
@@ -19,13 +19,23 @@ test('outer habitat continues across dry block edges while primary exclusions re
  assert.deepEqual(primary.covered,new Uint8Array([1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1]));
 });
 
+test('a coarse outer stamp fades across the fine lattice instead of standing in blocks',()=>{
+ const primary={covered:new Uint8Array(4*4),resolution:4,quad:8,offsetX:-16,offsetY:-16};
+ const outer={covered:new Uint8Array(4*4),resolution:4,quad:32,offsetX:-64,offsetY:-64};outer.covered[1*4+2]=1;  // one stamped sample at (16,-16)
+ const merged=mergeGroundCover(primary,outer),amount=(x,y)=>merged.amount[Math.floor((y-merged.offsetY)/8)*merged.resolution+Math.floor((x-merged.offsetX)/8)]/255;
+ assert.ok(Math.abs(amount(20,-20)-coverAmount(outer,20,-20))<1/255,'the merged amount is the outer stamp read between its samples');
+ const ramp=[20,28,36,44].map(x=>amount(x,-20));
+ assert.ok(ramp.every((v,i)=>i===0||v<ramp[i-1])&&ramp[0]<1&&ramp.at(-1)>0,`grass thins away from the sample, not in a 32 m block: ${ramp}`);
+ assert.equal(amount(-12,-12),0,'the primary domain keeps its own answer');
+});
+
 test('published grass joins all four lowland edges without inventing cover on rock or water',()=>{
  const primary=decodeGroundCover(JSON.parse(read('shared/world/out/ground_cover.json'))),outer=decodeGroundCover(transition.grass),merged=mergeGroundCover(primary,outer);
  const at=(cover,x,y)=>{const c=Math.floor((x-cover.offsetX)/cover.quad),r=Math.floor((y-cover.offsetY)/cover.quad);return c>=0&&r>=0&&c<cover.resolution&&r<cover.resolution?cover.covered[r*cover.resolution+c]:0;};
  let adjacent=0;
  for(let k=-1900;k<=1900;k+=56)for(const [a,b]of [[[-2036,k],[-2060,k]],[[2036,k],[2060,k]],[[k,-2036],[k,-2060]],[[k,2036],[k,2060]]]){
   if(!at(primary,...a)||!at(outer,...b))continue;
-  assert.equal(at(merged,...a),1);assert.equal(at(merged,...b),1);adjacent++;
+  assert.equal(at(merged,...a),1);assert.ok(coverAmount(merged,...b)>0,`grass continues past the block edge at ${b}`);adjacent++;
  }
  assert.ok(adjacent>70,'the continuation must have a real subject on the current map');
  let copied=0;for(let row=0;row<primary.resolution;row+=5)for(let col=0;col<primary.resolution;col+=5){

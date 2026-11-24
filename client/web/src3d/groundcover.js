@@ -7,6 +7,7 @@
 import { InstancedMesh, Matrix4, Group, Quaternion, Vector3, Color, BufferGeometry, Float32BufferAttribute, InstancedBufferAttribute, DoubleSide } from "../vendor/three.module.min.js";
 import { toonMaterial, style } from "./style.js";
 import { mergePrimitives } from "./glb.js";
+import { coverAmount } from "./heights.js";
 
 /** Default tile size in metres; the block is 4096 m, so 512 m → 8×8, 1024 m → 4×4. */
 export const TILE_M = 512;
@@ -268,7 +269,10 @@ export function buildCloseMeadow(cover,ground,{flowerMix}={}){
   let lastX=Infinity,lastY=Infinity;
   const matrix=new Matrix4(),q=new Quaternion(),up=new Vector3(0,1,0),position=new Vector3(),scale=new Vector3(.72,.85,.72);
   const tilt=new Quaternion(),normal=new Vector3();
-  const contains=(x,y)=>{const col=Math.floor((x-cover.offsetX)/cover.quad),row=Math.floor((y-cover.offsetY)/cover.quad);return row>=0&&col>=0&&row<cover.resolution&&col<cover.resolution&&cover.covered[row*cover.resolution+col];};
+  // A root grows where the shared amount beats its own hash, so blades thin over the same
+  // ramp the terrain's sward fades over (heights.js coverAmount); callers asking "is this
+  // grass?" get the even split.
+  const contains=(x,y,root=.5)=>coverAmount(cover,x,y)>root;
   function update(camera,focus=meadowViewFocus(camera,ground)){
     style.meadowFocus.value.copy(focus);
     const cx=Math.round(focus.x/12)*12,cy=Math.round(-focus.z/12)*12;
@@ -284,7 +288,7 @@ export function buildCloseMeadow(cover,ground,{flowerMix}={}){
     for(let j=-41;j<=41;j++)for(let i=-41;i<=41;i++){
       if(i*i+j*j>41*41)continue;
       const gx=baseX+i,gy=baseY+j;
-      const x=gx*1.35+(fraction(gx,gy)-.5)*.8,y=gy*1.35+(fraction(gx+27,gy-61)-.5)*.8;if(!contains(x,y))continue;
+      const x=gx*1.35+(fraction(gx,gy)-.5)*.8,y=gy*1.35+(fraction(gx+27,gy-61)-.5)*.8;if(!contains(x,y,fraction(gx-53,gy+29)))continue;
       const h=ground.height(x,y);if(h===null)continue;
       const angle=deterministicTurn(x,y);
       const appearance=meadowAppearance(x,y,flowerMix);scale.set(.92*appearance.scale,.9*appearance.scale,.92*appearance.scale);

@@ -33,7 +33,7 @@ import {createRidgeCull} from './ridge-cull.js';
 import {buildForestField,forestField} from './forest-field.js';
 import {buildForestFloor} from './forest-floor.js';
 import {buildAdoptedRedwoods,releaseCrownSources} from './redwood-rendering.js';
-import { GroundSampler, HeightGrid, decodeGroundCover,mergeGroundCover,landscapeHeightGrid } from './heights.js';
+import { GroundSampler, HeightGrid, decodeGroundCover,mergeGroundCover,coverAmount,landscapeHeightGrid } from './heights.js';
 import { buildCloseMeadow, meadowViewFocus } from './groundcover.js';
 import {buildGrassCanopy} from './grass-canopy.js';
 import { parseGLB, applyImageBytes, mergePrimitives } from './glb.js';
@@ -170,7 +170,6 @@ export async function main() {
   const sourceFarGrid = new HeightGrid({ values: new Float32Array(farBytes), ...manifest.height_grids.far_field, kind: 'far field source' });
   const blockGrid = new HeightGrid({ values: applyGeologyTerrain(sourceBlockGrid.values,manifest.height_grids.block,geologyData?.terrain?.block), ...manifest.height_grids.block, kind: 'block' });
   const farGrid = new HeightGrid({ values: sourceFarGrid.values, ...manifest.height_grids.far_field, kind: 'far field' });
-  const sourceGround=new GroundSampler(sourceBlockGrid,sourceFarGrid);
   const geologyHeight=geologyData?createGeologySampler(geologyData):null;
   const riverData=await fetchData('shared/world/out/river_granite.json');
   const riverSurface=createRiverGranite(riverData);
@@ -251,28 +250,41 @@ export async function main() {
   forest.group.add(legacyForest.group,adoptedForest.group);forest.refreshStats();scene.add(forest.group);
   const treeShadows=buildTreeGroundShadows(placement,assets,ground,renderer,adoptedForest.shadowCrowns);scene.add(treeShadows.group);
   const blockCover=decodeGroundCover(stampData),cover=mergeGroundCover(blockCover,decodeGroundCover(transition.grass));
-  const coverTexture=new T.DataTexture(Uint8Array.from(cover.covered,v=>v*255),cover.resolution,cover.resolution,T.RedFormat);
-  coverTexture.minFilter=coverTexture.magFilter=T.LinearFilter;coverTexture.needsUpdate=true;
-  style.cover.value=coverTexture;style.coverGrid.value.set(cover.offsetX,cover.offsetY,cover.quad,cover.resolution);
-  style.snowGrid.value.set(snowStamp.grid.offset_xy_m[0],snowStamp.grid.offset_xy_m[1],snowStamp.grid.quad_size_m,snowStamp.grid.resolution);
+  // Snow depths are vertex samples (y = offset + row * quad), so a texel's centre sits on its vertex.
+  const snowQuad=snowStamp.grid.quad_size_m;
+  style.snowGrid.value.set(snowStamp.grid.offset_xy_m[0]-snowQuad/2,snowStamp.grid.offset_xy_m[1]-snowQuad/2,snowQuad,snowStamp.grid.resolution);
   const snowAt=createSnowSampler(snowStamp);
   const trail=createTrailSampler(worldmap),surfaceAt=createSurfaceSampler(rideConfig,snowAt,trail);
   const snowTexture=new T.DataTexture(Uint8Array.from(snowAt.depth,d=>Math.round(Math.min(1,d/snowStamp.model.max_depth_m)*255)),snowAt.resolution,snowAt.resolution,T.RedFormat);
   snowTexture.minFilter=snowTexture.magFilter=T.LinearFilter;snowTexture.needsUpdate=true;style.snow.value=snowTexture;
   const forestFloor=buildForestFloor(forestCover,forestSoil,ground,snowAt,(x,y)=>surfaceAt(x,y)==='trail');scene.add(forestFloor.group);
-  // Interpret the shared grass habitat as sunlit sward; keep shaded forest
-  // litter, snow, exposed rock and the authored trail tread clear of blades.
-  const grassCover={resolution:cover.resolution,quad:cover.quad,offsetX:cover.offsetX,offsetY:cover.offsetY,covered:cover.covered.slice()};
+  // ONE reading of the shared grass stamp: how much sunlit sward each cell carries, 0..255.
+  // The terrain's sward tint, the blades, balance and footsteps all read it, so no ground is
+  // painted green without grass or grows grass the terrain does not paint (ground-seams
+  // review, findings 2/3/5/11/12). Every test is a ramp matched to the shader's own ramp for
+  // the same material, not a cut, so sward and blades fade out together. Read at the cell's
+  // own sample point on the rendered ground. ponytail: this is this client's interpretation
+  // of the stamp; publish it from the core once a second client needs the same answer.
+  const ramp=(a,b,v)=>{const t=Math.min(1,Math.max(0,(v-a)/(b-a)));return t*t*(3-2*t);};
+  const grassCover={resolution:cover.resolution,quad:cover.quad,offsetX:cover.offsetX,offsetY:cover.offsetY,covered:new Uint8Array(cover.covered.length),amount:new Uint8Array(cover.covered.length)};
   for(let row=0;row<cover.resolution;row++)for(let col=0;col<cover.resolution;col++){
-    const i=row*cover.resolution+col;if(!grassCover.covered[i])continue;
-    const x=cover.offsetX+col*cover.quad,y=cover.offsetY+row*cover.quad,h=ground.height(x,y);
-    const soilGround=sourceGround;
-    const sourceHeight=soilGround.height(x,y);
-    const slopePitch=4;
-    const slope=Math.hypot((soilGround.height(x+slopePitch,y)??h)-(soilGround.height(x-slopePitch,y)??h),(soilGround.height(x,y+slopePitch)??h)-(soilGround.height(x,y-slopePitch)??h))/(2*slopePitch);
+    const i=row*cover.resolution+col,stamped=cover.amount?cover.amount[i]/255:cover.covered[i];if(!stamped)continue;
+    const x=cover.offsetX+(col+.5)*cover.quad,y=cover.offsetY+(row+.5)*cover.quad,h=ground.height(x,y);
+    if(h===null||surfaceAt(x,y)==='trail')continue;
     const baseHeight=blockGrid.sample(x,y)??farGrid.sample(x,y),rockHeight=geologyHeight?.(x,y);
-    if((riverSurface.granite(x,y)??0)>.22||h===null||h<23||sourceHeight>1100||slope>.72||(rockHeight!=null&&rockHeight>baseHeight)||snowAt(x,y)>.03||surfaceAt(x,y)==='trail'||forestSoil.sample(x,y)>.48)grassCover.covered[i]=0;
+    if(rockHeight!=null&&rockHeight>baseHeight)continue;  // a granite roof over the soil
+    // Slope of the drawn terrain lattice itself (the soil's surface; rock roofs are tested above).
+    const soil=(sx,sy)=>landscapeGrid.sample(sx,sy)??h,pitch=4,slope=Math.hypot(soil(x+pitch,y)-soil(x-pitch,y),soil(x,y+pitch)-soil(x,y-pitch))/(2*pitch);
+    const grass=stamped*ramp(22,24,h)                       // style.js: sward smoothstep(22,24) over the shore
+      *(1-ramp(.03,.14,snowAt(x,y)))                        // style.js: coreSnow smoothstep(.03,.14)
+      *(1-ramp(.12,.32,riverSurface.granite(x,y)??0))       // the river's granite banks
+      *(1-ramp(.55,.85,slope))                              // style.js: slopeMask smoothstep(.5,.78) plus its noise
+      *(1-ramp(.4,.56,forestSoil.sample(x,y)));             // crown shade hands the ground to litter
+    grassCover.amount[i]=Math.round(grass*255);grassCover.covered[i]=+(grassCover.amount[i]>0);
   }
+  const coverTexture=new T.DataTexture(grassCover.amount,cover.resolution,cover.resolution,T.RedFormat);
+  coverTexture.minFilter=coverTexture.magFilter=T.LinearFilter;coverTexture.needsUpdate=true;
+  style.cover.value=coverTexture;style.coverGrid.value.set(cover.offsetX,cover.offsetY,cover.quad,cover.resolution);
   const grassGl=renderer.getContext();
   const meadow = buildGrassCanopy(grassCover,ground,{samples:grassGl.getParameter(grassGl.SAMPLES),batchTiles:6});
   scene.add(meadow.group);
@@ -299,13 +311,21 @@ export async function main() {
   // profile remains the shared physical floor; this offset only clears pixels.
   const characterHeight=(x,y)=>{const z=walkHeight.floorHeight(x,y),t=walkHeight.trailAt(x,y);return z===null?null:t?.beyond===0?Math.max(z,t.z+TRAIL_SURFACE_LIFT):z;};
   // Balance (shared/activities/balance.js) reads the ground he stands on as the client draws
-  // it: snow from the core's stamp, grass where blades are drawn or forest litter lies,
-  // granite everywhere else that is bare. ponytail: the grass/bare split is this client's
-  // reading of the cover stamp; move it into the core once a second client needs it.
+  // it (groundSurface, below): snow, grass, litter or trail are soft; the rest is granite.
   const balanceConfig=await fetchData('shared/activities/balance.json');checkVersion(balanceConfig,1,'balance rules');
   const [tumbleHill,reactionTable,places]=await Promise.all([fetchData('shared/play/tumble-hill.json'),fetchData('shared/play/reactions.json'),fetchData('shared/play/places.json')]);
   checkVersion(places,1,'named places');
-  const balanceSurface=(x,y)=>snowAt(x,y)>.03?'snow':closeMeadow.contains(x,y)||forestSoil.sample(x,y)>.48||surfaceAt(x,y)==='trail'?'grass':'granite';
+  // What is underfoot, as this client draws it: one answer for balance and for footsteps.
+  // Snow keeps the riders' own .03 m (shared/activities/ride.js); grass is the field above.
+  const groundSurface=(x,y)=>{
+    if(snowAt(x,y)>.03)return 'snow';
+    if(surfaceAt(x,y)==='trail')return 'trail';
+    const base=blockGrid.sample(x,y)??farGrid.sample(x,y),rock=geologyHeight?.(x,y);
+    if((riverSurface.granite(x,y)??0)>.22||rock!=null&&rock>base)return 'stone';
+    if(coverAmount(grassCover,x,y)>=.5)return 'grass';
+    return forestSoil.sample(x,y)>.48?'litter':'bare';
+  };
+  const balanceSurface=(x,y)=>({snow:'snow',trail:'grass',grass:'grass',litter:'grass'})[groundSurface(x,y)]??'granite';
   const localHost=/^(localhost|127\.0\.0\.1|\[::1\]|.+\.localhost)$/.test(location.hostname);
   const experimentalParakite=localHost&&new URLSearchParams(location.search).has('rotational-parakite');
   // Parakite-only sites sit after the shared launches, so a launch index means the same thing in every mode.
@@ -383,13 +403,7 @@ export async function main() {
   // Unclassified bare ground uses a restrained earth/grit texture, not a new world tag.
   function footstepSurface(s){
     if(s.mode==='branch')return 'wood';
-    if(snowAt(s.x,s.y)>.03)return 'snow';
-    if((riverSurface.granite(s.x,s.y)??0)>.22)return 'stone';
-    const base=blockGrid.sample(s.x,s.y)??farGrid.sample(s.x,s.y),rock=geologyHeight?.(s.x,s.y);
-    if(rock!=null&&rock>base)return 'stone';
-    if(surfaceAt(s.x,s.y)==='trail')return 'gravel';
-    const col=Math.round((s.x-cover.offsetX)/cover.quad),row=Math.round((s.y-cover.offsetY)/cover.quad);
-    return col>=0&&row>=0&&col<cover.resolution&&row<cover.resolution&&cover.covered[row*cover.resolution+col]?'grass':'gravel';
+    return ({snow:'snow',stone:'stone',trail:'gravel',grass:'grass',litter:'grass'})[groundSurface(s.x,s.y)]??'gravel';
   }
   let foleySpeed=0;
   function updateFoley(dt){

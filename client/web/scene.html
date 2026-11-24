@@ -35,7 +35,19 @@
     button { border: 0; border-radius: 12px; background: transparent; color: #64745c; font: inherit; font-size: 12px; padding: 12px 17px; cursor: pointer; transition: background .15s; }
     nav button { white-space:nowrap; flex-shrink:0; }
     nav[aria-label="Places to pause"] { flex-wrap:wrap; max-width:calc(100vw - 340px); }
-    nav#cats { bottom:auto; top:112px; flex-wrap:wrap; max-width:calc(100vw - 420px); }
+    nav#cats {
+      --cats-top:112px;
+      top:var(--cats-top);
+      bottom:auto;
+      flex-direction:column;
+      max-width:min(12rem, calc(100vw - 56px));
+      max-height:min(18rem, 32dvh, max(3rem, calc(100dvh - var(--cats-top) - 180px)));
+      overflow-y:auto;
+      overscroll-behavior-y:contain;
+    }
+    nav#cats button { text-align:left; white-space:normal; overflow-wrap:anywhere; }
+    @media (max-width:960px) { nav#cats { --cats-top:220px; left:auto; right:28px; } }
+    @media (max-width:650px) { nav#cats { --cats-top:296px; right:14px; } }
     button[aria-pressed="true"] { color: #fffbed; background: #617555; }
     button:hover { background: #e4e8d4; color: #34483b; }
     button[aria-pressed="true"]:hover { background: #52684a; color: #fffbed; }

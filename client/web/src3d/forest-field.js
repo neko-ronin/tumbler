@@ -71,7 +71,7 @@ export function buildForestField(placement,assets,habitat,{stamp=null,resolution
  }
  const sampleCover=(x,y)=>{
   if(!cover)return sample(x,y);
-  const col=Math.floor((x-cover.offsetX)/cover.quad+.5),row=Math.floor((y-cover.offsetY)/cover.quad+.5);
+  const col=Math.floor((x-cover.offsetX)/cover.quad),row=Math.floor((y-cover.offsetY)/cover.quad);
   return col>=0&&row>=0&&col<cover.resolution&&row<cover.resolution?cover.covered[row*cover.resolution+col]:0;
  };
  return {texture,sample,sampleCover,stats:{trees,textureBytes:data.byteLength},dispose(){texture.dispose();coverTexture.dispose();forestField.ready.value=0;}};

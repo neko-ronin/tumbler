@@ -209,7 +209,7 @@ test('canopy tiles keep ground-tangent roots, respect the stamp and retain overl
     const roots=new Map();
     for(const mesh of canopy.group.children)for(let i=0;i<mesh.count;i++){
       mesh.getMatrixAt(i,matrix);const p=new T.Vector3().setFromMatrixPosition(matrix),up=new T.Vector3(0,1,0).transformDirection(matrix);
-      assert.ok(canopy.contains(p.x,-p.z));assert.ok(Math.abs(p.y-ground.height(p.x,-p.z))<1e-5);assert.ok(up.dot(expected)>.999999);
+      assert.ok(canopy.contains(p.x,-p.z,0),'no root stands where the stamp has no grass');assert.ok(Math.abs(p.y-ground.height(p.x,-p.z))<1e-5);assert.ok(up.dot(expected)>.999999);
       const traits=mesh.geometry.attributes.meadowTraits;
       roots.set([p.x,p.z].join(','),[...matrix.elements,traits.getX(i),traits.getY(i),traits.getZ(i)]);
     }return roots;

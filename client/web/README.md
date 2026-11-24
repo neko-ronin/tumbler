@@ -1,3 +1,16 @@
+# Ground seams — web v0.9.1, 2026-11-23
+
+The green ground and the grass blades now agree. Every grass stamp was read half a cell (4 m) off the
+core's sample points, and the shader's snow lookup 8 m off; the decoder now owns that convention. One
+graded grass field drives the terrain's sward tint, the blades, balance and footsteps, replacing eight
+on/off blade culls and a fifth copy in the blade shader, so blades thin where the sward fades instead of
+stopping on a line, and high ground is no longer green without grass. The 32 m outer stamp fades across
+the block edge instead of standing in 32 m squares. Review and matched before/after stills:
+`docs/reviews/ground-seams-2026-11-23/`.
+
+**Open:** the retired village circle, the 2 m riverbed step at x = 2048 and the ruled grass/granite edge at
+the falls are recorded there as decisions or unresolved. Load is about 0.4-1.0 s slower. Released as web v0.9.1.
+
 # River and lake — web v0.9.0, 2026-11-23
 
 The valley has a real river and lake: a layered water surface with reflections baked into probes, an underwater
