@@ -19,23 +19,23 @@
     },
     {
       "path": "client/web/data/reflections/probes-day.webp",
-      "sha256": "c2fef5ce69e3b4d5a057d4c6295248e6ea6dedf57974ed08f2fed40506eae1ae"
+      "sha256": "63d8ed1790993990e3bf9936f6e27da8ad2134bed2b3d58cb82b24e642cae418"
     },
     {
       "path": "client/web/data/reflections/probes-distance.png",
-      "sha256": "c5910768c8ed63097324fcd584bb55440111eb90c61a88cdb3939d4425aa71b5"
+      "sha256": "47a8b8b49549e3448d019437af9c48eea728da54a472e9cc43196b9da10470ba"
     },
     {
       "path": "client/web/data/reflections/probes-dusk.webp",
-      "sha256": "d168a6202d2114f7ed0ad614c38f26e78fbcc21ca5a7d51c1597e679af569883"
+      "sha256": "b9166d13f3f753184b7193033d4c04dca7326af4c27db4f171dc0254748369e0"
     },
     {
       "path": "client/web/data/reflections/probes-golden.webp",
-      "sha256": "78608fb0124b35262354291da76c472d3d1696cdbf3f16a8f5aa083d1ffb973b"
+      "sha256": "f1fc580f0b9e55d28f3ed45fec7531a6ae3c3d5008907a9365df1b4ce6858c08"
     },
     {
       "path": "client/web/data/reflections/probes.json",
-      "sha256": "21db09698d7f4a4b4eb3af929ab8485acf38c67ad4e66e7c1e7d881304eed407"
+      "sha256": "72b79ea30e5f4a9a2e61ea0862575efa2144ead91633444532f2d3d91c1d8aa0"
     },
     {
       "path": "client/web/scene.html",
@@ -735,7 +735,7 @@
     },
     {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "b50e13af3bed57ba089c48ecabcf598114b49f10adbc8907e7432ca54c247419"
+      "sha256": "26118e0e56043c9b6954db74d6788f0d2e5c41c14816a5c6a0f13adcbf50821b"
     },
     {
       "path": "shared/geometry/granite/surface.js",
@@ -791,7 +791,7 @@
     },
     {
       "path": "shared/geometry/river-granite/river_granite.glb",
-      "sha256": "6f9ccae2dddccdcbab362ec97b7c3b2aca077a54fe95d8ae3058da2cfb96e400"
+      "sha256": "39a448d8497844fa9408c42950088f040664a6fc79740afa1fb8da011286b193"
     },
     {
       "path": "shared/geometry/sports/bicycle.meshopt.glb",
@@ -987,7 +987,7 @@
     },
     {
       "path": "shared/world/out/ground_cover.json",
-      "sha256": "974cd2d3e81b20fe530734cbc7a32e32e28fdb0bbae908c317d3b4d1eb30015d"
+      "sha256": "28cb92f27f250b52de8dd46abf52ff151d2591d4e062db75257c754c18e04d2a"
     },
     {
       "path": "shared/world/out/horizon_map.png",
@@ -1003,11 +1003,11 @@
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256": "3d9c714a419daedc41904997bfc9971d178e82d4da406b2ba49f8c66bad3595e"
+      "sha256": "a18d5a20fb9c72e902d6107d929add32205a708a806eded42035f004e4e405cb"
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "4b17e5b6bb569db531911f89578b07ea3faaa6bf571f9f845866bada24baefd4"
+      "sha256": "d285564b25f0a943281d8ed77a0178c57998759b4d7220072d2f61b87361bfa1"
     },
     {
       "path": "shared/world/out/snow_cover.json",
@@ -1015,7 +1015,7 @@
     },
     {
       "path": "shared/world/worldmap.json",
-      "sha256": "e8033ca4fc499abe6731b9562c4d01511346c9b00a233b2ab278373089d1ce0b"
+      "sha256": "be480e6350d3220b2f852b953b2f3c8d6e55bca85dca95a0375b9e8d5c6e4c61"
     },
     {
       "path": "client/web/data/heightmap.f32",
@@ -1097,16 +1097,16 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "8d486234",
+  "commit": "dc78c431",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
       "path": "shared/world/worldmap.json",
-      "sha256_12": "e8033ca4fc49"
+      "sha256_12": "be480e6350d3"
     },
     {
       "path": "shared/world/out/placement.json",
-      "sha256_12": "3d9c714a419d"
+      "sha256_12": "a18d5a20fb9c"
     },
     {
       "path": "shared/world/out/fields_albedo.png",

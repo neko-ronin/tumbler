@@ -1536,8 +1536,8 @@
     {
       "asset": "dome/dome.glb",
       "facing_bearing_deg": null,
-      "foundation_m": 0.11,
-      "ground_z_m": 17.0291,
+      "foundation_m": 0.65,
+      "ground_z_m": 30.3856,
       "kind": "dome",
       "parts": [
         {
@@ -1550,9 +1550,9 @@
         }
       ],
       "position_m": [
-        2039.2064,
-        -413.7753,
-        17.084
+        1910.2812,
+        -575.3033,
+        30.8428
       ],
       "scale": [
         1.0,
@@ -2869,7 +2869,7 @@
     {
       "asset": "mooring/mooring_mast.glb",
       "facing_bearing_deg": null,
-      "ground_z_m": 30.4589,
+      "ground_z_m": 30.0428,
       "kind": "mooring_mast",
       "parts": [
         {
@@ -2882,9 +2882,9 @@
         }
       ],
       "position_m": [
-        1969.725,
-        -458.0987,
-        30.4589
+        1937.1406,
+        -541.6517,
+        30.0428
       ],
       "scale": [
         0.28,
@@ -2922,9 +2922,9 @@
         }
       ],
       "position_m": [
-        2047.3238,
-        -464.8877,
-        225.9598
+        2014.7394,
+        -548.4407,
+        225.5438
       ],
       "scale": [
         0.28,
@@ -728867,7 +728867,7 @@
     "version": 3
   },
   "worldmap": {
-    "sha256": "e8033ca4fc499abe6731b9562c4d01511346c9b00a233b2ab278373089d1ce0b",
+    "sha256": "be480e6350d3220b2f852b953b2f3c8d6e55bca85dca95a0375b9e8d5c6e4c61",
     "source": "shared/world/worldmap.json"
   }
 }

@@ -11525,6 +11525,7 @@
     ],
     "treeline_m": 1900.0,
     "max_slope_deg": 37.0,
+    "forest_seed": "bfe7f46909f3565b",
     "outer_forest": {
       "rule": "2026-11-23, the human: the forest beyond the valley follows the ecology (shared/ecology/outer_stand.py) and a budget, not the valley's density. Mountains carry main's count (70,158 of its 95,627 outer trees); the outer valley floor half of main's 25,469, and the other half moves into the valley meadow as grove clumps.",
       "mountain_trees": 70158,
@@ -26274,8 +26275,8 @@
         -418.0
       ],
       [
-        2039.2,
-        -413.8
+        1910.3,
+        -575.3
       ]
     ],
     "tree_rule": {
@@ -26300,6 +26301,6 @@
       "water_max_m": 500.0,
       "min_homesteads": 25
     },
-    "digest": "bfe7f46909f3565b"
+    "digest": "18228d4ba90ab36e"
   }
 }

@@ -4331,8 +4331,8 @@
   },
   "version": 1,
   "worldmap": {
-    "land_use_digest": "bfe7f46909f3565b",
-    "sha256": "e8033ca4fc499abe6731b9562c4d01511346c9b00a233b2ab278373089d1ce0b",
+    "land_use_digest": "18228d4ba90ab36e",
+    "sha256": "be480e6350d3220b2f852b953b2f3c8d6e55bca85dca95a0375b9e8d5c6e4c61",
     "source": "shared/world/worldmap.json"
   },
   "zones": [
