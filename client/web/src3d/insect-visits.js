@@ -147,7 +147,8 @@ export function createVisitorWatch({ecology,character,navigation,camera,focusEl}
     const bee=ecology.visits.bee.v,butterfly=ecology.visits.butterfly.v;
     character.gesture.shoo=bee.gesture;character.gesture.wave=bee.wave;
     character.gesture.nod=first?0:butterfly.focus;
-    let amount=butterfly.focus;
+    // The soft focus belongs to the live walk view: never over a menu, the map or a camera move.
+    let amount=walking&&!navigation.suspended&&!navigation.shotActive?butterfly.focus:0;
     if(focusEl){
       screen.copy(butterfly.pos).project(camera);
       if(screen.z>1||screen.z<-1)amount=0;

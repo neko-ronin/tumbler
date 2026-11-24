@@ -149,18 +149,22 @@ test('the T5 launch belongs to the core trailhead and clears actual rising terra
  }
  assert.ok(s.distance>150);
 });
-test('the Tumble Hill parakite launch glides clear of the apron and stays parakite-only',async()=>{
+test('the Tumble Hill parakite launch glides clear of the apron and its trees, and stays parakite-only',async()=>{
  const {GroundSampler,HeightGrid}=await import('../src3d/heights.js');
+ const {parseGLB:glbOf}=await import('../src3d/glb.js'),{buildWorldCollision}=await import('../src3d/collision.js');
  const read=p=>JSON.parse(readFileSync(new URL(p,import.meta.url))),manifest=read('../data/viewer.json'),world=read('../../../shared/world/worldmap.json');
  const grid=(path,metadata)=>{const b=readFileSync(new URL(path,import.meta.url));return new HeightGrid({...metadata,values:new Float32Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength))});};
  const ground=new GroundSampler(grid('../data/heightmap.f32',manifest.height_grids.block),grid('../data/farfield.f32',manifest.height_grids.far_field));
  const height=(x,y)=>ground.height(x,y)??0,launch=config.parakite_launches.find(l=>l.id==='tumble-hill');
  assert.ok(launch&&!config.launches.includes(launch));
  assert.deepEqual(launch.xy_m,read('../../../shared/play/tumble-hill.json').top_xy_m,'launches from the top of Tumble Hill');
+ // Trees count: a heading that clears the ground can still fly straight into the hill's grove.
+ const placement=read('../../../shared/world/out/placement.json'),glb=p=>{const b=readFileSync(new URL('../../../shared/geometry/'+p,import.meta.url));return glbOf(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));};
+ const hit=buildWorldCollision(placement,Object.fromEntries([...new Set(placement.instances.filter(i=>!['river','lake','hardstanding'].includes(i.kind)).map(i=>i.asset))].map(a=>[a,glb(a)])));
  let s=launchFlight(config,'parakite',launch,height,'calm');
  for(let i=0;i<1200;i++){
-  s=stepFlight(s,{},1/120,i/120,config,world.wind.direction_deg,height);
-  assert.equal(s.grounded,false,'the first ten seconds must clear the apron');
+  s=stepFlight(s,{},1/120,i/120,config,world.wind.direction_deg,height,hit);
+  assert.equal(s.grounded||!!s.collapsed,false,'the first ten seconds must clear the apron and its trees');
  }
  assert.ok(s.distance>150);
 });

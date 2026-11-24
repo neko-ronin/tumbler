@@ -37,3 +37,38 @@ for(const hz of [60,120,144])for(const [velocity,quality] of [[-1,'smooth'],[-6,
     assert.equal(nav.state.landingSpeed,landing.speed);assert.equal(nav.state.landingGroundSpeed,landing.ground);
   }finally{nav.dispose();cat.dispose();for(const [key,descriptor] of saved)descriptor?Object.defineProperty(globalThis,key,descriptor):delete globalThis[key];}
 });
+
+test('a parakite opens in first person and touchdown hands the camera back to the chase view',()=>{
+  const saved=new Map(['window','document','navigator'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+  for(const [key,value] of Object.entries({window:new EventTarget(),document:new EventTarget(),navigator:{getGamepads:()=>[]}}))Object.defineProperty(globalThis,key,{value,configurable:true});
+  const canvas=new EventTarget();canvas.focus=()=>{};canvas.setPointerCapture=()=>{};
+  const cat=createCharacter(parseGLB(readFileSync(new URL('../../../shared/geometry/'+player.asset,import.meta.url))),player);
+  const nav=createNavigation(new T.PerspectiveCamera(),canvas,{target:new T.Vector3(),setTarget(){},update(){}},{height:()=>0},rules,world,new T.Group(),()=>null,
+    {config:ride,rig:new T.Group(),meshes:{}},cat,player);
+  try{
+    nav.select('parakite');assert.equal(nav.view,'first');assert.equal(nav.state.grounded,false);
+    Object.assign(nav.state,{x:0,y:0,z:rules.landing_clearance_m+.001,vertical:-1,vario:-1});
+    nav.update(1/120);assert.equal(nav.state.grounded,true);
+    // Presentation trails the simulation by one step, so the camera changes when touchdown is drawn.
+    nav.update(1/120);assert.equal(nav.view,'chase');assert.equal(cat.object.visible,true);
+    nav.select('walk');nav.select('paraglider');assert.equal(nav.view,'chase','other wings open in the chase view');
+  }finally{nav.dispose();cat.dispose();for(const [key,descriptor] of saved)descriptor?Object.defineProperty(globalThis,key,descriptor):delete globalThis[key];}
+});
+
+test('after a crash he lies still a moment, then unhooks by himself onto his feet',()=>{
+  const saved=new Map(['window','document','navigator'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+  for(const [key,value] of Object.entries({window:new EventTarget(),document:new EventTarget(),navigator:{getGamepads:()=>[]}}))Object.defineProperty(globalThis,key,{value,configurable:true});
+  const canvas=new EventTarget();canvas.focus=()=>{};canvas.setPointerCapture=()=>{};
+  const cat=createCharacter(parseGLB(readFileSync(new URL('../../../shared/geometry/'+player.asset,import.meta.url))),player);
+  const nav=createNavigation(new T.PerspectiveCamera(),canvas,{target:new T.Vector3(),setTarget(){},update(){}},{height:()=>0},rules,world,new T.Group(),()=>null,
+    {config:ride,rig:new T.Group(),meshes:{}},cat,player);
+  try{
+    nav.select('parakite');Object.assign(nav.state,{x:0,y:0,z:rules.landing_clearance_m+.5,collapsed:true,vx:0,vy:0,vertical:-1,vario:-1});
+    let t=0;while(!nav.state.grounded&&t<5){nav.update(1/60);t+=1/60;}
+    assert.equal(nav.state.grounded,true,'the collapsed fall reaches the ground');assert.equal(nav.mode,'parakite');
+    for(let i=0;i<60;i++)nav.update(1/60);
+    assert.equal(nav.mode,'parakite','he lies still for a moment first');
+    for(let i=0;i<60;i++)nav.update(1/60);
+    assert.equal(nav.mode,'walk','then he is on his feet, unhooked');assert.equal(nav.view,'chase');
+  }finally{nav.dispose();cat.dispose();for(const [key,descriptor] of saved)descriptor?Object.defineProperty(globalThis,key,descriptor):delete globalThis[key];}
+});

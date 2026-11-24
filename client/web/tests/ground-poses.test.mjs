@@ -96,6 +96,9 @@ test('big drops land heavy for longer, sharp turns pivot, long idles look around
  const seen=new Set();for(let t=0;t<60;t+=.25){cat.update(.25,'idle',0);seen.add(cat.clip);}
  for(const step of config.idle_sequence)assert.ok(seen.has(step.clip),`idle reaches ${step.clip}`);
  assert.equal(cat.clip,config.idle_sequence.at(-1).clip,'he stays dozing until he moves');
+ // Drawing or sheathing the katana is something he is told to do: it wakes him without moving him.
+ for(let i=0;i<2;i++){cat.toggleKatana();cat.update(1/60,'idle',0);assert.equal(cat.sitting,false,'the katana wakes him');
+  for(let t=0;t<40;t+=.25)cat.update(.25,'idle',0);assert.equal(cat.clip,config.idle_sequence.at(-1).clip,'and he dozes off again');}
  cat.update(.2,'walk',3.5);assert.equal(cat.clip,'walk');
  for(let i=0;i<20;i++)cat.update(1/60,'walk',2,{accel:16});
  assert.ok(cat.model.rotation.x>.1,'speeding up pitches him forward');

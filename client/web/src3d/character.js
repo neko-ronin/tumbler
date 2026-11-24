@@ -167,6 +167,7 @@ export function createCharacter(asset, config) {
   }
   function startAttack(charged=false){
     if(!katana||!canAttack(lastPose))return;
+    wake();
     let name=katana.charge;
     if(!charged){
       object.updateWorldMatrix(true,true);
@@ -482,7 +483,10 @@ export function createCharacter(asset, config) {
     }
   }
   /** Draw when holstered, sheathe when drawn; ignored mid-transition or mid-attack. */
+  // Anything he is told to do wakes him: the idle sequence (and its doze) starts over.
+  function wake(){idleTime=0;}
   function toggleKatana(){
+    wake();
     if(katanaState==='holstered')playKatana('draw',.08);
     else if(katanaState==='drawn'||katanaState==='run')playKatana('sheathe',.08);
     return katanaState;
@@ -509,7 +513,7 @@ export function createCharacter(asset, config) {
     model.updateWorldMatrix(true,true);const head=gestureBones.head;if(!head)return out;
     head.localToWorld(out.top.copy(TOP_LOCAL));head.localToWorld(out.nose.copy(NOSE_LOCAL));return out;
   }
-  const api = { object, model, update, setScale, spike, toggleKatana, attack, setCharge, onCue:null, mixer, actions, gesture, anchors,
+  const api = { object, model, update, setScale, spike, wake, toggleKatana, attack, setCharge, onCue:null, mixer, actions, gesture, anchors,
     /** Animated planted feet measured before IK, for contact-driven presentation. */
     get footContacts(){return footContacts;},
     /** True while the idle sequence holds a seated pose (he has stood still long enough to sit). */

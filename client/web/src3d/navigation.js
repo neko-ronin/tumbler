@@ -73,14 +73,14 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   const cockpitForward=new T.Quaternion(0,1,0,0),headAttitude=new T.Quaternion();
   let pilotMotion=options.pilotMotion??'steady';
   let treeFraming=0,framedDistance=null,framedLift=0,framedLower=null;
-  let presentedGrounded=null,landingClipLeft=0,carried=null,tuckHeld=false,padDiveHeld=false,tape=null;
+  let crashRest=0,presentedDown=null,presentedGrounded=null,landingClipLeft=0,carried=null,tuckHeld=false,padDiveHeld=false,tape=null;
   function frameMatrix(frame,out){
     flightLeft.set(frame.left[0],frame.left[2],-frame.left[1]);
     flightUp.set(frame.up[0],frame.up[2],-frame.up[1]);
     flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
-  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];runToggled=false;runStick=0;queuedSlide=false;character.setCharge?.(false);queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
+  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];runToggled=false;runStick=0;queuedSlide=false;character.setCharge?.(false);queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;presentedDown=null;crashRest=0;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   // Player mode keeps to the controls a player is shown (no weather, wing or site cycling, no
   // Look-around launch); while a menu is open the world takes no input at all.
   let playerMode=false,suspended=false;
@@ -116,11 +116,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   canvas.addEventListener('wheel',wheel,{passive:false});
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointermove',move);
   const dead=v=>Math.abs(v??0)<.14?0:Math.sign(v)*(Math.abs(v)-.14)/.86;
+  // An airborne parakite start opens in first person; every other start, and every landing, in the chase view.
+  const startView=m=>m==='parakite'?'first':'chase';
   function toggleView(){manual();movementYaw=null;view=view==='chase'?'first':'chase';if(riding())ride.rig.visible=view==='chase';
     // The chase framing looks down at the pilot; a pilot looks along the flight path.
     if(view==='first'&&config.modes[mode])pitch=-.2;snap=true;}
   function select(next,site='0',arrival=null){
-    flightLesson=null;
+    flightLesson=null;character.wake?.();
     if(config.modes[mode])preferredFlightMode=mode;
     if(next==='walk'&&config.modes[mode]){changeHarness();return;}
     if(mode==='walk'&&config.modes[next]){
@@ -136,7 +138,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     // Look around → walk is one continuous shot: the camera glides from where it was down to the chase view.
     if(mode==='fly'&&next!=='fly')document.exitPointerLock?.();
     shot=(mode==='orbit'||mode==='fly')&&next==='walk'?{from:camera.position.clone(),q:camera.quaternion.clone(),fov:camera.fov,raw:new T.Vector3(),aim:new T.Quaternion(),t:0}:null;
-    clear();message='';parkedWing=null;mode=next;camera.fov=62;camera.updateProjectionMatrix();orbit.enabled=next==='orbit';rig.visible=config.modes[next]!==undefined;ride.rig.visible=riding()&&view==='chase';
+    clear();message='';parkedWing=null;mode=next;view=startView(next);camera.fov=62;camera.updateProjectionMatrix();orbit.enabled=next==='orbit';rig.visible=config.modes[next]!==undefined;ride.rig.visible=riding()&&view==='chase';
     character.object.visible=characterConfig.modes.includes(next);snap=true;
     if(next==='orbit'){orbit.setTarget(camera.position.x,camera.position.y,camera.position.z-20);return;}
     const direction=new T.Vector3();camera.getWorldDirection(direction);yaw=Math.atan2(-direction.x,-direction.z);pitch=0;
@@ -158,7 +160,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     siteIndex=Number(site)||0;
     if(!config.launches[siteIndex]||next!=='parakite'&&parakiteOnly(config.launches[siteIndex]))siteIndex=0;
-    state=startFlightChallenge(launchFlight(config,next,config.launches[siteIndex],height,weather),challengeId,config);yaw=0;pitch=-.34;
+    state=startFlightChallenge(launchFlight(config,next,config.launches[siteIndex],height,weather),challengeId,config);yaw=0;pitch=view==='first'?-.2:-.34;
     options.onFlightChange?.(next,siteIndex,weather);
     updateFlightPresentation(0);
   }
@@ -200,13 +202,23 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const hooked=mode==='walk'?reharnessWalk(state,characterConfig.walk,config,walkHeight,hitTest):null;
     if(!foot&&!hooked){message='Find clear, stable ground before changing harness';return false;}
     flightLesson=null;
-    pilotPosture.reset();presentedGrounded=null;landingClipLeft=0;
+    pilotPosture.reset();presentedGrounded=null;presentedDown=null;landingClipLeft=0;
     parkedWing=foot?{...state,pressure:0,engine:0,throttle:0,harnessed:false,launching:false}:null;
     state=foot??hooked;mode=foot?'walk':hooked.mode;accumulator=0;previousFlight=null;actionArmed=false;harnessArmed=false;actionHeld=false;message='';snap=true;view='chase';
     orbit.enabled=false;rig.visible=true;character.object.visible=true;
     if(foot){yaw=state.heading-Math.PI/2;pitch=-.24;character.object.rotation.set(0,state.heading+Math.PI/2,0);camera.fov=62;camera.updateProjectionMatrix();updateWalk(0,0,0);}
     else{yaw=0;pitch=-.34;updateFlightPresentation(0);}
     options.onFlightChange?.(mode,foot?siteIndex:'here',weather);return true;
+  }
+  const CRASH_REST_S=1.5;
+  function detachAfterCrash(){
+    crashRest=-Infinity;  // one attempt per crash
+    if(changeHarness())return;
+    // Hung up in a tree or on ground he cannot stand on: he climbs down to the nearest footing; the wing stays where it fell.
+    const spawn=walkSpawn(state.x,state.y,characterConfig.walk,walkHeight,hitTest);
+    if(!spawn)return;
+    const heading=state.heading;select('orbit');placeOnFoot(spawn[0],spawn[1],heading);shot=null;
+    options.onFlightChange?.('walk','here',weather);
   }
   function launchHere(){
     if(!config.modes[mode]||!state.grounded||state.launching)return false;
@@ -220,7 +232,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     preferredFlightMode=next;
     const launched=launchTreeFlight(config,preferredFlightMode,state,height,weather);
     clear();mode=preferredFlightMode;state=startFlightChallenge(launched,challengeId,config);message='';parkedWing=null;
-    rig.visible=true;ride.rig.visible=false;character.object.visible=true;orbit.enabled=false;snap=true;view='chase';yaw=0;pitch=-.34;
+    rig.visible=true;ride.rig.visible=false;character.object.visible=true;orbit.enabled=false;snap=true;view=startView(mode);yaw=0;pitch=view==='first'?-.2:-.34;
     options.onFlightChange?.(mode,'here',weather);updateFlightPresentation(0);return true;
   }
   /** Ride something the core moves (a gondola cabin): {x, y, z, heading} of the floor he stands on, every frame. */
@@ -235,7 +247,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   /** Step off onto the ground at [x, y], on foot. */
   function alight(x,y,heading){state={x,y,heading};carried=null;mode='gondola';select('walk');}
   /** Called on display refreshes between render frames: a controller A tap
-   * shorter than one 30 FPS frame is latched like a keyboard tap. */
+   * shorter than one render frame is latched like a keyboard tap. */
   function poll(){if(held())return;const pad=[...(navigator.getGamepads?.()??[])].find(p=>p?.connected);if(pad?.buttons[0]?.pressed)queuedPrimary=true;if(mode==='walk'&&pad?.buttons[11]?.pressed)queuedSlide=true;}
   function update(dt){
     if(suspended&&state?.guidedParakite)return;
@@ -321,6 +333,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
         feedbackTime=0;const strength=state.grounded?0:Math.min(.45,Math.abs(state.turbulence)*.07+Math.max(0,state.load-1)*.15);
         if(strength>.025)Promise.resolve(pad.vibrationActuator.playEffect('dual-rumble',{duration:110,strongMagnitude:strength*.4,weakMagnitude:strength})).catch(()=>{});
       }
+      // After a crash he unhooks by himself once he has lain still a moment: a crash leaves neither the
+      // attitude nor the room to relaunch. The guided tour and lessons keep their own retry.
+      if(state.grounded&&(state.collapsed||state.impact)&&!flightLesson&&!state.guidedParakite){crashRest+=dt;if(crashRest>=CRASH_REST_S)detachAfterCrash();}
+      else crashRest=0;
     }
     orbitAtCamera();
   }
@@ -545,6 +561,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       if(!pose.grounded&&!pose.collapsed){character.object.rotateX(-(pose.pilotPitch??0));character.object.rotateZ(pose.pilotRoll??-pose.bank*.25);}
     }
     if(!coupled)pilotMatrix.compose(character.object.position,character.object.quaternion,unitScale);
+    // Touching down or a wing collapse hands the camera back to the chase view.
+    const downed=!!(pose.grounded||pose.collapsed);
+    if(view==='first'&&downed&&presentedDown===false){view='chase';snap=true;yaw=0;pitch=-.34;}
+    presentedDown=downed;
     character.object.visible=view==='chase';
     // A collapsed wing falls plainly; a long fall gives one compact rebound, then rests.
     const heavyLanding=characterConfig.landing?.heavy;

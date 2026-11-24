@@ -20,10 +20,10 @@ const CONTROLS={
   stair:{title:'On a tree village stair',rows:[
     ['Climb or go down the stair',['WASD'],['L stick']],['Step off at a gallery, at a gap in the rail',['WASD'],['L stick']],
     ['Jump',['Space'],['A']],['Vault the handrail: a quick tap toward it',['Space'],['A']],['Slide down the handrail, held',['Shift'],['LB']],
-    ['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
+    ['First person',['V'],['L3']],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
   harness:{title:'Paramotor, on the ground',rows:[
     ['Start the take-off run',['Space'],['A']],['Steer',['A','D'],['L stick']],['Motor up, down',['R','F'],['RB','LB']],
-    ['Unhook and walk',['E'],['X']],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
+    ['Unhook and walk',['E'],['X']],['View',['V'],['Y']],['Look',['Drag','Arrows'],['R stick']],['Map',['Esc','M'],['Menu']]]},
   paraglider:{title:'Paraglider',rows:[
     ['Steer',['A','D'],['L stick']],['Speed bar, brakes',['W','S'],['L stick']],['Brake handles, left and right',['J','K'],['LT','RT']],
     ['Wingovers',['Shift','A','D'],['B','L stick']],['View',['V'],['Y']],
@@ -145,7 +145,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   }
 
   // ---- state
-  let open=false,sheetName='map',panning=false,closedAt=-Infinity,fadeTimer=0,baseFog=null,selected=places.find(p=>p.id==='tree-village')??places[0];
+  let open=false,sheetName='map',panning=false,arriving=null,closedAt=-Infinity,fadeTimer=0,baseFog=null,selected=places.find(p=>p.id==='tree-village')??places[0];
   const sceneShown=()=>open&&sheetName==='map';
   // The scene view shows the valley at the time a journey arrives at; anywhere else, the time it is.
   let shownLight=null;
@@ -166,7 +166,8 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
       clouds.clearRect.value.set((r.left-c.left)/c.width,(c.bottom-r.bottom)/c.height,(r.right-c.left)/c.width,(c.bottom-r.top)/c.height);
       layout();
     }
-    if(panning&&!navigation.shotActive)panning=false;
+    // The place's title shows once the camera has come to rest there.
+    if(panning&&!navigation.shotActive){panning=false;if(arriving){arrived(arriving);arriving=null;}}
     // Clear over the map while it shows; the clouds close back in with the pan down, or quickly without one.
     const shot=panning&&navigation.shot;
     clouds.clear.value=sceneShown()?1:shot?1-Math.min(1,shot.t/shot.seconds):Math.max(0,1-(performance.now()-closedAt)/MAP_FADE_MS);
@@ -203,7 +204,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   }
   function show(name){sheetName=name;sheet.hidden=name!=='map';controlsSheet.hidden=name!=='controls';menu.classList.toggle('scene',sceneShown());syncLight();if(name==='controls')renderControls();else{renderSide();hold();layout();}}
   function openMenu(){
-    if(open||navigation.suspended)return;open=true;navigation.suspend(true);shownLight=timeOfDay();
+    if(open||navigation.suspended)return;open=true;arriving=null;navigation.suspend(true);shownLight=timeOfDay();
     if(!drawn)frame.prepend(draw());
     menu.hidden=false;document.body.dataset.menu='open';cartouche.querySelector('.cartouche-time').textContent=TIME_LABELS[nextTimeOfDay()]??'';
     clearTimeout(fadeTimer);menu.classList.remove('leaving');select(nearestTo());show('map');requestAnimationFrame(()=>{hold();layout();});
@@ -212,7 +213,7 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   function close(restoreLight=true){if(!open)return;open=false;closedAt=performance.now();menu.classList.add('leaving');
     // Timed from the next frame: arriving somewhere blocks the thread longer than the fade itself.
     clearTimeout(fadeTimer);requestAnimationFrame(()=>{closedAt=performance.now();if(!open)fadeTimer=setTimeout(()=>{if(!open){menu.hidden=true;menu.classList.remove('scene','leaving');}},MAP_FADE_MS);});delete document.body.dataset.menu;navigation.suspend(false);canvas.focus();if(restoreLight)syncLight();}
-  function travel(){const p=selected,from=sceneShown()?camera.position.clone():null;close(false);arriveAt(p);shownLight=timeOfDay();arrived(p);if(from)panDown(from);}
+  function travel(){const p=selected,from=sceneShown()?camera.position.clone():null;close(false);arriveAt(p);shownLight=timeOfDay();if(from)panDown(from);if(panning)arriving=p;else arrived(p);}
   function arrived(p){toast.replaceChildren(el('strong',{textContent:p.label}),el('span',{textContent:TIME_LABELS[timeOfDay()]??''}));toast.classList.remove('shown');void toast.offsetWidth;toast.classList.add('shown');}
   function move(dx,dy){
     // The nearest place in the direction pressed, weighting distance by how far off the line it lies.
@@ -226,12 +227,21 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   // ---- the key card while playing
   // The card shows in full when an activity starts, then folds to where the map and all controls are,
   // so it is there when needed and out of the view the rest of the time.
-  let cardKey='',foldTimer=0;
-  const folded=()=>el('div',{className:'card-folded'},el('span',{textContent:'Map and all controls'}),el('span',{className:'control-keys'},glyph('Esc','key'),glyph('M','key')),el('span',{className:'control-pad'},glyph('Menu','pad')));
+  // Folded, it keeps the view switch (the card's own View / First person row) and the map; controller
+  // buttons show only while a controller is connected.
+  let cardKey='',cardPad=false,foldTimer=0;
+  const padConnected=()=>[...(navigator.getGamepads?.()??[])].some(p=>p?.connected);
+  const foldedPair=(label,keys,buttons,pad)=>[el('span',{textContent:label}),el('span',{className:'control-keys'},...keys.map(k=>glyph(k,'key'))),pad?el('span',{className:'control-pad'},...buttons.map(b=>glyph(b,'pad'))):null];
+  const folded=(k,pad)=>{const view=CONTROLS[k].rows.find(([action])=>action==='View'||action==='First person');
+    return el('div',{className:'card-folded'},...(view?foldedPair('View',view[1],view[2],pad):[]),...foldedPair('Map and all controls',['Esc','M'],['Menu'],pad));};
+  const fold=k=>{card.classList.add('folded');card.replaceChildren(el('h3',{textContent:CONTROLS[k].title}),folded(k,cardPad));};
   function cardState(){if(navigation.mode==='gondola')return 'gondola';if(navigation.mode==='walk'&&navigation.state?.mode==='stair')return 'stair';if(navigation.mode==='paramotor'&&navigation.state?.grounded&&!navigation.state?.launching)return 'harness';return CONTROLS[navigation.mode]?navigation.mode:null;}
-  function renderCard(){const k=cardState();if(k===cardKey)return;cardKey=k;card.hidden=!k;clearTimeout(foldTimer);if(!k)return;
+  function renderCard(){const k=cardState(),pad=padConnected();
+    // A controller connecting or leaving redraws the folded card in place.
+    if(k===cardKey){if(pad!==cardPad){cardPad=pad;if(k&&card.classList.contains('folded'))fold(k);}return;}
+    cardKey=k;cardPad=pad;card.hidden=!k;clearTimeout(foldTimer);if(!k)return;
     card.classList.remove('folded');card.replaceChildren(el('h3',{textContent:CONTROLS[k].title}),legend(CONTROLS[k].rows));
-    foldTimer=setTimeout(()=>{if(cardKey===k){card.classList.add('folded');card.replaceChildren(el('h3',{textContent:CONTROLS[k].title}),folded());}},12000);}
+    foldTimer=setTimeout(()=>{if(cardKey===k)fold(k);},12000);}
 
   // ---- the crown perch prompt
   // Shown on arriving at a launch perch, faded after a few seconds. The number keys launch at any

@@ -107,7 +107,7 @@
       "id": "tumble-hill",
       "label": "Tumble Hill",
       "xy_m": [-936, 958],
-      "heading_deg": 215,
+      "heading_deg": 195,
       "clearance_m": 8,
       "terrain_protection": false
     }

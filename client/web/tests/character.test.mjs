@@ -110,10 +110,12 @@ test('third-person navigation moves the cat, keeps the camera separate and hides
     assert.ok(camera.position.distanceTo(cat.object.position)>4);
     for(const mode of ['paraglider','parakite','paramotor']) {
       nav.select(mode);nav.update(1/60);
-      assert.equal(cat.object.visible,true);assert.equal(rig.visible,true);
+      // An airborne parakite start opens in first person, hiding him; every other start is the chase view.
+      assert.equal(nav.view,mode==='parakite'&&!nav.state.grounded?'first':'chase');
+      assert.equal(cat.object.visible,nav.view==='chase');assert.equal(rig.visible,true);
       if(nav.state.grounded){assert.equal(cat.clip,'idle','equipping on foot stays on the ground');nav.select(mode,0);nav.update(1/60);}
       assert.equal(cat.clip,'harness');
-      assert.ok(camera.position.distanceTo(cat.object.position)>8);
+      if(nav.view==='chase')assert.ok(camera.position.distanceTo(cat.object.position)>8);
     }
     for(const mode of ['bike','ski']) {
       nav.select(mode,ride.starts.find(start=>start.mode===mode).id);nav.update(1/60);

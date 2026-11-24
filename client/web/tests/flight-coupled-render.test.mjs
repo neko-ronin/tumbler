@@ -39,7 +39,9 @@ for(const mode of Object.keys(flight.modes))for(const scale of [1,.52])test(`${m
  assert.ok(actual.distanceTo(hip)<1e-7,'the lower equipment transform lands at the same hip');
  const pilot=pilotFrame(nav.state,rules),actualUp=new T.Vector3(0,1,0).applyQuaternion(character.object.quaternion);
  assert.ok(actualUp.distanceTo(worldPoint(pilot.up))<1e-8,'character orientation follows the shared pilot frame');
- const changeView=new Event('keydown');Object.defineProperty(changeView,'code',{value:'KeyV'});window.dispatchEvent(changeView);nav.update(0);
+ // The parakite already opens in first person; the other wings change to it with V.
+ assert.equal(nav.view,mode==='parakite'?'first':'chase');
+ if(nav.view!=='first'){const changeView=new Event('keydown');Object.defineProperty(changeView,'code',{value:'KeyV'});window.dispatchEvent(changeView);nav.update(0);}
  const eye=pilot.origin.map((v,i)=>v+pilot.up[i]*(rules.landing_clearance_m+.15));
  assert.equal(nav.view,'first');
  assert.ok(camera.position.distanceTo(worldPoint(eye))<1e-8,'first-person eye follows the pilot rather than the independent wing');
