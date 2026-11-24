@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import * as T from '../vendor/three.module.min.js';
 import {createResolutionGovernor,createQualityGate} from '../src3d/flight-quality.js';
 import {introShotEase} from '../src3d/navigation.js';
+import {openingShot} from '../src3d/opening-shot.js';
+import {toScene} from '../src3d/world.js';
 import {HeightGrid,GroundSampler} from '../src3d/heights.js';
 import {createGeologySampler,applyGeologyTerrain} from '../../../shared/geometry/granite/surface.js';
 import {createRiverGranite} from '../../../shared/activities/river-surface.js';
@@ -124,6 +126,28 @@ test('the shot easing reaches both ends at rest and never reverses',()=>{
  assert.ok(steps[0]<steps[8]&&steps.at(-1)<steps.at(-9),'both ends move slower than the middle');
  for(let i=1;i<steps.length;i++)assert.ok(steps[i]>=0,'progress never reverses');
  assert.equal(introShotEase(0),0);assert.equal(introShotEase(1),1);
+});
+
+test('the authored village tour frames Ronin before settling onto the chase camera',async t=>{
+ const {height,walkHeight}=villageGround(),{nav,camera}=cameraFixture(t,{height,walkHeight});
+ camera.aspect=1200/941;
+ const {ronin,target,waypoints,seconds,fov}=openingShot;
+ await nav.warmArrival(()=>{},{restore:false,arrival:{...ronin,yaw:ronin.heading+Math.PI/2,pitch:-.072}});
+ nav.introShot(waypoints.map(toScene),toScene(target),seconds,fov);
+ assert.ok(camera.position.distanceTo(toScene(waypoints[0]))<1e-6);
+ assert.equal(camera.fov,fov);
+
+ for(let frame=0;frame<180;frame++)nav.update(1/30);
+ camera.updateMatrixWorld();
+ const body=toScene([nav.state.x,nav.state.y,nav.state.z+1]).project(camera);
+ assert.ok(Math.abs(body.x)<.65&&Math.abs(body.y)<.8,'Ronin is visible during the descent');
+
+ for(let frame=180;frame<=270&&nav.shotActive;frame++)nav.update(1/30);
+ assert.equal(nav.shotActive,false);
+ const arrivalPosition=camera.position.clone(),arrivalAim=camera.quaternion.clone();
+ for(let frame=0;frame<6;frame++)nav.update(1/30);
+ assert.ok(camera.position.distanceTo(arrivalPosition)<.005,'arrival meets the live chase position');
+ assert.ok(camera.quaternion.angleTo(arrivalAim)<1e-3,'arrival meets the live chase aim');
 });
 
 test('the opening pan still arrives at the pose recorded before the timing change',t=>{

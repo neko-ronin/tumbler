@@ -378,16 +378,22 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     }
     composeFollowView(camera,target,lowerFraction,framingSubject,mode==='walk'?treeFraming:0);snap=false;
     if(shot?.path){
-      // The first load's tour: a centripetal Catmull-Rom through the spiral's waypoints that ends on the
+      // The first load's tour: a centripetal Catmull-Rom through the authored waypoints that ends on the
       // live chase pose, watching the village centre and handing the aim to him as it lands.
       shot.raw.copy(camera.position);shot.aim.copy(camera.quaternion);shot.t+=dt;
-      // Every channel rides the one ease k, so speed, turn and handoff each rise once and settle once.
+      // Use the eased path progress for the camera and bring Ronin into frame
+      // early on the descent. The last beat settles on the live chase aim.
       const u=Math.min(1,shot.t/shot.seconds),k=u*u*u*(u*(u*6-15)+10),end=shot.curve.points[shot.curve.points.length-1];
       if(end.distanceToSquared(shot.raw)>1e-4){end.copy(shot.raw);shot.curve.needsUpdate=true;shot.curve.updateArcLengths();}
       camera.position.copy(shot.curve.getPointAt(k));
-      shot.look.copy(shot.focus).lerp(target,k);
+      shot.look.copy(shot.focus).lerp(target,k*(2-k));
+      // Carry the chase camera's framing relative to its target, so blending
+      // does not pull the moving camera away from Ronin toward the final bearing.
+      shot.basis.lookAt(shot.raw,target,T.Object3D.DEFAULT_UP);
+      shot.chaseOffset.setFromRotationMatrix(shot.basis).invert().multiply(shot.aim);
+      shot.frameOffset.identity().slerp(shot.chaseOffset,k*k*k);
       shot.basis.lookAt(camera.position,shot.look,T.Object3D.DEFAULT_UP);
-      camera.quaternion.setFromRotationMatrix(shot.basis).slerp(shot.aim,k*k*k);
+      camera.quaternion.setFromRotationMatrix(shot.basis).multiply(shot.frameOffset);
       camera.fov=shot.fov+(62-shot.fov)*k;camera.updateProjectionMatrix();
       clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));
       if(u>=1)shot=null;
@@ -689,8 +695,9 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(mode!=='walk')return;
     const points=waypoints.map(p=>p.clone());  // the last is replaced by the live chase pose each frame
     shot={path:true,curve:new T.CatmullRomCurve3(points,false,'centripetal'),focus:focus.clone(),look:new T.Vector3(),basis:new T.Matrix4(),
+      chaseOffset:new T.Quaternion(),frameOffset:new T.Quaternion(),
       seconds,fov,raw:new T.Vector3(),aim:new T.Quaternion(),t:0,intro:true};
-    camera.position.copy(points[0]);camera.lookAt(focus);
+    camera.position.copy(points[0]);camera.lookAt(focus);camera.fov=fov;camera.updateProjectionMatrix();
     keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;drag=false;
   }
   /** Start the walk-in glide from a held pose (the trail map's overhead view) instead of where the
