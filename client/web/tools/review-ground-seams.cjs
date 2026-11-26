@@ -16,6 +16,10 @@ const poses={
  snowline:{at:[-316,1000,150],look:[-316,1332,0]},            // finding 3: the bald band below the snow
  meadowEye:{at:[600,-250,1.7],look:[600,-60,0]},              // finding 4: blade layer ends, landing meadow
  meadowLow:{at:[600,-250,8],look:[600,-20,0]},                // finding 4, a little higher
+ turfFeet:{at:[600,-250,1.7],look:[600,-245,0]},              // turf texture: ground at the player's feet
+ turfMid:{at:[600,-250,25],look:[600,-110,0]},                // turf texture: mid LOD band, 30 to 150 m
+ turfTop:{at:[600,-250,40],look:[600,-249.99,0]},             // turf texture: straight down, tiling at 40 m
+ turfTopHigh:{at:[600,-250,400],look:[600,-249.99,0]},        // turf texture: straight down, tiling at 400 m
  seamEast:{eye:[1930,40,330],target:[2120,20,420]},           // finding 5: river / granite / grass at the east edge
  topSeamEast:{eye:[2048,160,400],target:[2048,20,420.1]},     // finding 6: straight down on x = 2048
  falls:{at:[-484,610,30],look:[-484,790,30]},                 // finding 7: grass cap and granite at the falls

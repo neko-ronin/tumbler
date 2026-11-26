@@ -7,6 +7,7 @@ import {CLOUD_GROUND_LIGHT_GLSL} from './cloud-shadow-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
 import {GRANITE_GLSL,graniteTextures,mountainUniforms} from './granite-shading.js';
 import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
+import {TURF_SURFACE_GLSL} from './turf-texture.js';
 
 export const style = {
   time: { value: 0 },
@@ -24,6 +25,15 @@ export const style = {
   meadowAirFrom: {value:null},meadowAirTo: {value:null},
   meadowAirGrid: {value:new T.Vector4(-2048,-2048,4096,1)},meadowAirMix: {value:1},
   meadowFocus:{value:new T.Vector3()},
+  // Ground under the grass, as a multiple of TURF_REFERENCE: the colour at which the lit terrain
+  // matches the toon-lit blades on screen (docs/reviews/ground-turf-2026-11-25). Calibration knob.
+  turfGround:{value:new T.Vector3(.411,.426,.392)},
+  // Toon blades take more ambient light than the lit terrain: in tree shadow grass read 1.36x red,
+  // 1.30x blue over the ground. Lifts only the indirect light on ground under grass. Calibration knob.
+  turfShade:{value:new T.Vector3(1.56,1.15,1.53)},
+  // At grazing view the eye sees blade faces and light tips, not tops: the ground's colour
+  // there, as a multiple of turfGround, weighted by (1 - |view . up|) squared. Calibration knob.
+  turfGrazing:{value:new T.Vector3(1.28,1.11,1.)},
   // Where the map's wind blows TOWARD, in scene (x, z); main.js sets bearing and relative simulated strength.
   air: {value:null},
   airGrid: {value:new T.Vector4(0,0,640,0)},
@@ -94,6 +104,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       float sunlight=${material.userData.receiveActorShadow===false?'1.':'actorSunLight(vPlace)'}*${terrain||meadow?'cloudGroundLight(vPlace)':'cloudObjectLight(vPlace,uSun)'};
       reflectedLight.directDiffuse*=sunlight;reflectedLight.directSpecular*=sunlight;
       ${terrain||granite?`reflectedLight.indirectDiffuse*=mix(vec3(1.),granite.ambient*vec3(1.05,.95,.86),${terrain?'rockMask*(1.-coreSnow)':'stone'});`:''}
+      ${terrain?'reflectedLight.indirectDiffuse*=mix(vec3(1.),uTurfShade,sward);':''}
     `);
     shader.uniforms.uTime = style.time;
     shader.uniforms.uWind = style.wind;
@@ -105,7 +116,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     }
     if(meadow){shader.uniforms.uMeadowRange={value:new T.Vector2(...meadowRange)};shader.uniforms.uMeadowFocus=style.meadowFocus;}
     if(canopy)shader.uniforms.uCanopyStart={value:new T.Vector2(...canopyStart)};
-    if(terrain)Object.assign(shader.uniforms,forestUniforms());
+    if(terrain)Object.assign(shader.uniforms,forestUniforms(),{uTurfGround:style.turfGround,uTurfGrazing:style.turfGrazing,uTurfShade:style.turfShade});
     if(terrain||granite)Object.assign(shader.uniforms,mountainUniforms,graniteTextures());
     if(terrain){shader.uniforms.uWaterLevel=style.waterLevel;shader.uniforms.uWaterLevelGrid=style.waterLevelGrid;shader.uniforms.uUnderwater=style.underwater;}
     if(terrain||meadow){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;shader.uniforms.uSnowGrid=style.snowGrid;}
@@ -168,7 +179,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       ${terrain ? 'vUp = normalize(mat3(modelMatrix) * objectNormal);' : ''}
       #include <project_vertex>
     `);
-    shader.fragmentShader = ((terrain||granite)?GRANITE_GLSL:'')+(canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;uniform vec4 uSnowGrid;\n':'')+(terrain?'varying vec3 vUp;uniform sampler2D uWaterLevel;uniform vec4 uWaterLevelGrid;uniform float uUnderwater;\n'+FOREST_FIELD_GLSL+GROUND+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
+    shader.fragmentShader = ((terrain||granite)?GRANITE_GLSL:'')+(canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;uniform vec4 uSnowGrid;\n':'')+(terrain?'varying vec3 vUp;uniform sampler2D uWaterLevel;uniform vec4 uWaterLevelGrid;uniform float uUnderwater;uniform vec3 uTurfGround,uTurfGrazing,uTurfShade;\n'+FOREST_FIELD_GLSL+GROUND+TURF_SURFACE_GLSL+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
     shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
       #include <color_fragment>
       ${meadow ? `if(vMeadowFade<=.001||vPlant<.5)discard;
@@ -204,6 +215,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       float snowInside=step(0.,snowUv.x)*step(0.,snowUv.y)*step(snowUv.x,1.)*step(snowUv.y,1.);
       float lowBiome=1.-smoothstep(180.,360.,vPlace.y);
       float knownGround=1.-smoothstep(.46,.5,max(abs(stampUv.x-.5),abs(stampUv.y-.5)));
+      // Where grass grows, the ground is the blades' own fixed palette (grass keeps its
+      // colour; the turf is calibrated to it), free of the height bands and drift below.
+      float turfOnly=stamped*knownGround;
+      diffuseColor.rgb=mix(diffuseColor.rgb,TURF_REFERENCE,turfOnly);
       diffuseColor.rgb*=mix(vec3(1.),mix(vec3(.68,.65,.53),vec3(1.),stamped),lowBiome*knownGround);
       // Ground detail is noise at three scales, never a repeating wave:
       // meadow-sized lush/dry drifts, clumps, and grain that fades before it
@@ -211,8 +226,11 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       vec2 ground=vec2(vPlace.x,-vPlace.z);
       float footprint=max(length(dFdx(vPlace)),length(dFdy(vPlace)));
       float drift=fbm(ground*.0065),clump=fbm(ground*.075),grain=vnoise(ground*1.3);
-      diffuseColor.rgb*=mix(vec3(.84,.95,.85),vec3(1.16,1.06,.8),smoothstep(.25,.75,drift));
-      diffuseColor.rgb*=1.+(clump-.5)*.22*(1.-smoothstep(2.,8.,footprint))+(grain-.5)*.12*(1.-smoothstep(.25,.9,footprint));
+      diffuseColor.rgb*=mix(mix(vec3(.84,.95,.85),vec3(1.16,1.06,.8),smoothstep(.25,.75,drift)),vec3(1.),turfOnly);
+      // Turf (turf-texture.js): blades near, tussocks mid, then only this clump and
+      // drift noise, which never repeats. It replaces the grain that read as paint.
+      Turf turf=turfSurface(ground,footprint);
+      diffuseColor.rgb*=turf.albedo*turf.ao*(1.+(clump-.5)*.22*(1.-smoothstep(2.,8.,footprint)));
       // Rock where the ground is steep or high, with ragged edges; snow on
       // the high ground that is flat enough to hold it.
       float steep=length(vUp.xz)/max(.05,vUp.y);
@@ -284,8 +302,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       float sward=stamped*(1.-coreSnow)*(1.-rockMask)*(1.-snowMask)*smoothstep(22.,24.,vPlace.y)*mix(1.,smoothstep(1.,3.,shoreline),nearWater);
       vec4 grassAir=meadowAir(vPlace.xz);
       vec3 grass=meadowSurface(vPlace.xz,normalize(vUp),footprint,grassAir);
-      // Match the average canopy tone beneath the blade coverage fade.
-      diffuseColor.rgb*=mix(1.,grass.x*.54,sward);
+      // The ground under grass renders the colour of the blades above it: uTurfGround is
+      // calibrated by grass-on/grass-hidden captures, since terrain and toon blades light differently.
+      float grazing=1.-abs(dot(normalize(cameraPosition-vPlace),normalize(vUp)));
+      diffuseColor.rgb*=mix(vec3(1.),grass.x*uTurfGround*mix(vec3(1.),uTurfGrazing,grazing*grazing),sward);
       // The signed core gust travels through this field. Leaf-side exposure
       // amplifies its light/dark response without authoring another wave.
       diffuseColor.rgb*=1.+clamp(grassAir.z*.065,-.18,.18)*sward;
@@ -316,6 +336,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     }
     if(terrain||granite){
       shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
+        ${terrain?'float turfMask=(1.-rockMask)*(1.-coreSnow)*(1.-snowMask)*(1.-forestMask)*mix(1.,smoothstep(-.06,.03,shoreline),knownGround*nearWater);roughnessFactor=mix(roughnessFactor,turf.roughness,turfMask);':''}
         roughnessFactor=mix(roughnessFactor,granite.roughness,${terrain?'rockMask*(1.-coreSnow)':'stone'});
         ${terrain?'roughnessFactor=mix(roughnessFactor,.34,wetRock*(1.-coreSnow));':''}
       `);
@@ -328,7 +349,9 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
         normal=normalize(normal+mat3(viewMatrix)*granite.detail*${terrain?'rockMask*(1.-coreSnow)':'stone'});
         ${terrain?`// Rock breaks; it doesn't round. Part of each 8 m facet's true normal keeps the edges.
         if(rockMask>.001){vec3 facet=normalize(cross(dFdx(vViewPosition),dFdy(vViewPosition)));normal=normalize(mix(normal,facet*sign(dot(facet,normal)),.38*rockMask*(1.-coreSnow)*(1.-smoothstep(1.5,6.,footprint))));}`:''}
-        ${terrain?`vec3 grassLean=vec3(grassAir.x,0.,grassAir.y);
+        ${terrain?`// Turf normal map: texture v runs north, scene z south.
+        normal=normalize(normal+mat3(viewMatrix)*vec3(-turf.slope.x,0.,turf.slope.y)*.35*turfMask);
+        vec3 grassLean=vec3(grassAir.x,0.,grassAir.y);
         grassLean-=normalize(vUp)*dot(grassLean,normalize(vUp));
         // Transform a tangent-plane wind bend into view space for lighting.
         normal=normalize(normal-mat3(viewMatrix)*grassLean*(.055*grass.z*sward));`:''}
@@ -371,7 +394,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-granite-v21:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
+  material.customProgramCacheKey = () => `cozy-granite-v22:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
   return material;
 }
 

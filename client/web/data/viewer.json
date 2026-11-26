@@ -187,11 +187,11 @@
     },
     {
       "path": "client/web/src3d/granite-shading.js",
-      "sha256": "652930d47fa7a3c21cc3a81d874abeaba801550eee69f74ae1773097ee470fd5"
+      "sha256": "0fc9e89c762133cb952b1d785acdb249ab7c6ef0ad5709fdd1db10c6144617cb"
     },
     {
       "path": "client/web/src3d/grass-canopy.js",
-      "sha256": "3ba9abb9e78af7f0fe2025f83cf0d49a70417a32b08cb662aa4a112c062e5a91"
+      "sha256": "9c2d5f8bd0ae1643e1b80a03e1d2c82106645f40270f752d530f1f33ecdd2b00"
     },
     {
       "path": "client/web/src3d/groundcover.js",
@@ -327,7 +327,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "85dd46c126d6756d3ae69ba35e7ac11d9bcea7e338321f3e82d87ead8b452076"
+      "sha256": "f6404d22aea292f6f9624b7ae3a9e8bb2abf991cca31167bc7e1d9cf6da409ea"
     },
     {
       "path": "client/web/src3d/sun-pcf.js",
@@ -388,6 +388,10 @@
     {
       "path": "client/web/src3d/tumble-body.js",
       "sha256": "7c6e7f93e749da0506692723af5243488b24b039a6b0b2de389b19bb01cf9634"
+    },
+    {
+      "path": "client/web/src3d/turf-texture.js",
+      "sha256": "1c7350604481a5cba5a6a62b6184f942cc742ca4a69de97d051c2c32eed2b94a"
     },
     {
       "path": "client/web/src3d/underwater.js",
@@ -1096,7 +1100,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "c82a1719",
+  "commit": "213af93c",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

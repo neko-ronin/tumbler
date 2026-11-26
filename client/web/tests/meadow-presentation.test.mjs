@@ -336,3 +336,22 @@ test('batched grass retains every selected root and its wind attributes across a
     }
   }finally{raw.dispose();batch.dispose();}
 });
+
+test('dense near blades follow the camera and its view, not the player',async()=>{
+  const {buildGrassCanopy}=await import('../src3d/grass-canopy.js');
+  const cover={covered:new Uint8Array(192*192).fill(1),resolution:192,quad:8,offsetX:-768,offsetY:-768};
+  const canopy=buildGrassCanopy(cover,{height:()=>30}),camera=new T.PerspectiveCamera(52,16/9,.2,3000),frustum=new T.Frustum();
+  const dense=()=>canopy.group.children.filter(m=>m.visible&&m.name.startsWith('grass_dense_'));
+  try{
+    // A player far away must not pull dense grass to them: focus is passed but ignored for it.
+    camera.position.set(200,32,0);camera.lookAt(200,30,-20);camera.updateMatrixWorld();canopy.update(camera,new T.Vector3(0,30,0));
+    frustum.setFromProjectionMatrix(new T.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
+    const ahead=dense();assert.ok(ahead.length>0,'dense blades in front of the camera');
+    for(const m of ahead){assert.ok(frustum.intersectsSphere(m.boundingSphere));assert.ok(m.boundingSphere.center.distanceTo(camera.position)<24+m.boundingSphere.radius);}
+    const roots=ahead.reduce((n,m)=>n+m.count,0),blades=canopy.group.children.filter(m=>m.visible&&m.name.startsWith('grass_blades_')).reduce((n,m)=>n+m.count,0);
+    assert.ok(roots>0&&blades>0);
+    camera.lookAt(200,30,20);camera.updateMatrixWorld();canopy.update(camera,new T.Vector3(0,30,0));
+    assert.ok(dense().every(m=>!ahead.includes(m)||m.boundingSphere.center.distanceTo(camera.position)<m.boundingSphere.radius+1),'turning away stops drawing the tiles behind');
+    camera.position.set(200,90,0);camera.lookAt(200,30,0);camera.updateMatrixWorld();canopy.update(camera);assert.equal(dense().length,0,'none drawn from 60 m above the ground: the layer ends 24 m from the camera');
+  }finally{canopy.dispose();}
+});

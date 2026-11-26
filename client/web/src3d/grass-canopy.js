@@ -6,6 +6,7 @@ import {BufferGeometry,Float32BufferAttribute,InstancedBufferAttribute,Instanced
 import {toonMaterial} from './style.js';
 import {deterministicTurn,meadowViewFocus} from './groundcover.js';
 import {coverAmount} from './heights.js';
+import {GRASS_DARK,GRASS_LIGHT} from './turf-texture.js';
 
 const TILE=24,PITCH=.8;
 const random=(x,y)=>deterministicTurn(x,y)/(Math.PI*2);
@@ -15,7 +16,7 @@ const random=(x,y)=>deterministicTurn(x,y)/(Math.PI*2);
  */
 export function grassCardGeometry({distant=false}={}){
   const p=[],n=[],uv=[],color=[];
-  const dark=new Color('#385a28'),light=new Color('#819e4b');
+  const dark=GRASS_DARK,light=GRASS_LIGHT;
   for(const angle of [0,Math.PI/2]){
     const dx=Math.cos(angle),dz=Math.sin(angle);
     const rows=(distant?[0,1]:[0,.5,1]).map(t=>{
@@ -43,7 +44,7 @@ export function grassCardGeometry({distant=false}={}){
  */
 export function grassBladeGeometry(){
   const p=[],n=[],roots=[],colors=[],flex=[],uv=[];
-  const dark=new Color('#385a28'),light=new Color('#819e4b');
+  const dark=GRASS_DARK,light=GRASS_LIGHT;
   for(let i=0;i<24;i++){
     const angle=deterministicTurn(i,83),dx=Math.cos(angle),dz=Math.sin(angle);
     const radius=Math.sqrt(random(i,19))*.61,turn=deterministicTurn(i,29),root=new Vector3(Math.cos(turn)*radius,0,Math.sin(turn)*radius);
@@ -68,7 +69,11 @@ export function buildGrassCanopy(cover,ground,{samples=0,batchTiles=1}={}){
   // footprint. Width grows with spacing; height, air and terrain stay real.
   const farMaterial=toonMaterial({name:'distant_grass_canopy',...coverage},{meadow:true,canopy:true,canopyStart:[110,200],meadowRange:[320,620]});
   const blades=grassBladeGeometry(),bladeMaterial=toonMaterial({name:'near_grass_blades',vertexColors:true,side:DoubleSide,alphaToCoverage:samples>1,alphaHash:samples<=1},{meadow:true,grassBlades:true,meadowRange:[27,46]});
-  const layers=[{name:'canopy',tile:TILE,pitch:PITCH,start:0,end:218,material,geometry:prototype},{name:'distant',tile:48,pitch:2.4,start:102,end:628,material:farMaterial,geometry:distant},{name:'blades',tile:TILE,pitch:PITCH,start:0,end:54,material:bladeMaterial,geometry:blades}];
+  // Extra blades around the camera, not the player, and only in tiles its frustum meets
+  // (update culls every layer by camera distance and view). Roots on a 0.6 m grid fall
+  // between the 0.8 m grid's, clumps keep full size: about 2.8x the blades within ~20 m.
+  const denseMaterial=toonMaterial({name:'dense_grass_blades',vertexColors:true,side:DoubleSide,alphaToCoverage:samples>1,alphaHash:samples<=1},{meadow:true,grassBlades:true,meadowRange:[14,22]});
+  const layers=[{name:'canopy',tile:TILE,pitch:PITCH,start:0,end:218,material,geometry:prototype},{name:'distant',tile:48,pitch:2.4,start:102,end:628,material:farMaterial,geometry:distant},{name:'blades',tile:TILE,pitch:PITCH,start:0,end:54,material:bladeMaterial,geometry:blades},{name:'dense',tile:12,pitch:.6,width:1,start:0,end:24,material:denseMaterial,geometry:blades}];
   for(const layer of layers){layer.tiles=new Map();layer.bounds=new Map();layer.batches=new Map();}
   const matrix=new Matrix4(),position=new Vector3(),scale=new Vector3(),rotation=new Quaternion(),tilt=new Quaternion(),up=new Vector3(0,1,0),normal=new Vector3(),projection=new Matrix4(),frustum=new Frustum(),marginSphere=new Sphere();
   const stats={patches:cover.covered.reduce((sum,n)=>sum+n,0),tiles:0,clumps:0,nearClumps:0,triangles:0,visibleTiles:0,visibleTriangles:0,farClumps:0};
@@ -93,7 +98,7 @@ export function buildGrassCanopy(cover,ground,{samples=0,batchTiles=1}={}){
       const {x,y,h,gx,gy}=cells[i],east=ground.height(x+1,y)??h,west=ground.height(x-1,y)??h,north=ground.height(x,y+1)??h,south=ground.height(x,y-1)??h;
       normal.set((west-east)*.5,1,(north-south)*.5).normalize();
       position.set(x,h,-y);rotation.setFromAxisAngle(up,deterministicTurn(gx,gy));rotation.premultiply(tilt.setFromUnitVectors(up,normal));
-      const growth=.78+random(gx+17,gy-11)*.44,width=pitch/PITCH;scale.set(growth*width,growth,growth*width);
+      const growth=.78+random(gx+17,gy-11)*.44,width=layer.width??pitch/PITCH;scale.set(growth*width,growth,growth*width);
       matrix.compose(position,rotation,scale);mesh.setMatrixAt(i,matrix);
       traits.set([1,.87+random(gx-31,gy+57)*.26,deterministicTurn(gx+91,gy-13)],i*3);
     }
@@ -192,13 +197,13 @@ export function buildGrassCanopy(cover,ground,{samples=0,batchTiles=1}={}){
         if(!mesh)continue;
         const triangles=mesh.count*layer.geometry.attributes.position.count/3;
         stats.tiles++;stats.triangles+=triangles;
-        if(layer.name==='blades')stats.nearClumps+=mesh.count;else stats.clumps+=mesh.count;
+        if(layer.name==='blades'||layer.name==='dense')stats.nearClumps+=mesh.count;else stats.clumps+=mesh.count;
         if(layer.name==='distant')stats.farClumps+=mesh.count;
         if(mesh.visible){stats.visibleTiles++;stats.visibleTriangles+=triangles;if(batchTiles>1)visible.push([key,mesh]);}
       }
       if(batchTiles>1)submit(layer,visible);
     }
   }
-  function dispose(){for(const layer of layers){for(const {mesh}of layer.tiles.values())if(mesh)release(mesh);for(const {mesh}of layer.batches.values())release(mesh);layer.batches.clear();layer.tiles.clear();layer.bounds.clear();}group.clear();prototype.dispose();distant.dispose();blades.dispose();material.dispose();farMaterial.dispose();bladeMaterial.dispose();}
+  function dispose(){for(const layer of layers){for(const {mesh}of layer.tiles.values())if(mesh)release(mesh);for(const {mesh}of layer.batches.values())release(mesh);layer.batches.clear();layer.tiles.clear();layer.bounds.clear();}group.clear();prototype.dispose();distant.dispose();blades.dispose();material.dispose();farMaterial.dispose();bladeMaterial.dispose();denseMaterial.dispose();}
   return {group,update,dispose,stats,contains};
 }

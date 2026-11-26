@@ -6,6 +6,7 @@
  *  - spawn: the first load as a player gets it, 12 s after ready, nothing touched;
  *  - the rest: the free camera held at a pose (ground height + metres), golden light, adaptive resolution off.
  * Run each build back to back in the same quiet period; one run on a busy machine says nothing.
+ * REVIEW_EVAL runs a page expression before timing, for paired runs of one build with a layer switched off.
  */
 const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const label=process.argv[2]||'candidate',out=path.resolve(process.env.REVIEW_OUT||'output/playwright/frame-rate');fs.mkdirSync(out,{recursive:true});
@@ -37,6 +38,8 @@ const poses={
       trees:f.trees,near:f.near,mid:f.mid,far:f.far,ridgeHidden:f.adopted?.ridgeHidden??null,shadowProxies:f.shadowProxies};
    };
   });
+  // REVIEW_EVAL: a switch run in the page before timing (e.g. hide one layer for a paired run).
+  if(process.env.REVIEW_EVAL){report.eval=process.env.REVIEW_EVAL;report.evalResult=await page.evaluate(src=>(0,eval)(src),process.env.REVIEW_EVAL);}
   await page.waitForTimeout(12000);
   report.poses.spawn=await page.evaluate(ms=>pace(ms),seconds*1000);
   await page.evaluate(()=>{const t=tumbler;t.navigation.select('orbit');t.navigation.update=()=>{};t.controls.enabled=false;t.setLight?.('golden');});

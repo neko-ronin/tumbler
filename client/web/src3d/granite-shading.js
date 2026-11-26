@@ -15,6 +15,7 @@ function latticeNoise(x,y,seed){
 }
 export const MOUNTAIN_SLOPE_RANGE=1.5;
 let creases;
+import {groundLayers} from './turf-texture.js';
 /** Tileable ridged creases and pits: RG slope, B height. The band family follows
  * Prima's granite relief map (experiments/virtual-geometry/src/granite-map.js);
  * every frequency is whole cycles per tile, so the tile is exactly periodic.
@@ -49,11 +50,12 @@ function creaseRelief(){
   data[i+1]=Math.round(Math.max(0,Math.min(1,(at(r+1,c)-at(r-1,c))/span*6+.5))*255);
   data[i+2]=Math.round((heights[r*size+c]-low)/span*255);data[i+3]=255;
  }
- creases=new DataTexture(data,size,size,RGBAFormat);creases.wrapS=creases.wrapT=RepeatWrapping;
- creases.generateMipmaps=true;creases.minFilter=LinearMipmapLinearFilter;creases.magFilter=LinearFilter;creases.anisotropy=8;creases.needsUpdate=true;
+ // Layer 4 of the shared ground array (turf-texture.js): same bytes, wrap, mips and
+ // anisotropy as its own texture had, one sampler unit fewer for the terrain.
+ creases=groundLayers(data);
  return creases;
 }
-export const graniteTextures=()=>({uGraniteMinerals:{value:graniteMinerals()},uGraniteCreases:{value:creaseRelief()}});
+export const graniteTextures=()=>({uGraniteMinerals:{value:graniteMinerals()},uGroundLayers:{value:creaseRelief()}});
 /** Derive mountain-scale shading from the real heights, one texel per sample.
  * R gully strength, G exposure (0 valley, 1 ridge), BA the slope (dh/dx, dh/dy)
  * added by erosion that the height grid is too smooth to hold. Drainage runs on
@@ -148,7 +150,7 @@ export function graniteMinerals(){
  return minerals;
 }
 export const GRANITE_GLSL=`
-uniform sampler2D uGraniteMinerals;uniform sampler2D uGraniteCreases;uniform sampler2D uMountainMap;uniform vec4 uMountainGrid;
+uniform sampler2D uGraniteMinerals;uniform highp sampler2DArray uGroundLayers;uniform sampler2D uMountainMap;uniform vec4 uMountainGrid;
 float graniteHash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float graniteNoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
  return mix(mix(mix(graniteHash(i),graniteHash(i+vec3(1,0,0)),f.x),mix(graniteHash(i+vec3(0,1,0)),graniteHash(i+vec3(1,1,0)),f.x),f.y),
@@ -164,7 +166,7 @@ struct GraniteSurface{vec3 color;float relief;float roughness;float joints;float
 // prints a crosshatch from the blend weights (Prima's relief-map finding).
 vec4 graniteCreases(vec3 p,vec3 w,float scale){
  vec2 ax=p.yz*scale,ay=p.xz*scale,az=p.xy*scale;
- vec3 x=textureGrad(uGraniteCreases,ax,dFdx(ax),dFdy(ax)).rgb,y=textureGrad(uGraniteCreases,ay,dFdx(ay),dFdy(ay)).rgb,z=textureGrad(uGraniteCreases,az,dFdx(az),dFdy(az)).rgb;
+ vec3 x=textureGrad(uGroundLayers,vec3(ax,4.),dFdx(ax),dFdy(ax)).rgb,y=textureGrad(uGroundLayers,vec3(ay,4.),dFdx(ay),dFdy(ay)).rgb,z=textureGrad(uGroundLayers,vec3(az,4.),dFdx(az),dFdy(az)).rgb;
  vec3 sx=(vec3(0.,x.rg)-vec3(0.,.5,.5))*w.x,sy=(vec3(y.r,0.,y.g)-vec3(.5,0.,.5))*w.y,sz=(vec3(z.rg,0.)-vec3(.5,.5,0.))*w.z;
  return vec4(sx+sy+sz,x.b*w.x+y.b*w.y+z.b*w.z);
 }
