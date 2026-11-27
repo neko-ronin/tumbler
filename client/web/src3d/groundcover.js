@@ -259,6 +259,17 @@ function meadowUp(ground,x,y,result){
   return result.set((w-e)*.5,1,(n-s)*.5).normalize();
 }
 
+/** True where the terrain draws bare ground, so no grass grows whatever the coarser cover stamp says.
+ * style.js paints granite from a steepness (rise over run) of 0.5 to 0.78 above about 38 to 70 m (slopeMask),
+ * and lower down, where steep banks are earth, from 0.75 to 1.25 (wall). `hash` (0..1) spreads the cut over
+ * the same ragged band, so the sward's edge on a rim stays ragged too. */
+export function onRock(ground,x,y,hash){
+  const h=ground.height(x,y);if(h===null)return false;
+  const e=ground.height(x+1,y)??h,w=ground.height(x-1,y)??h,n=ground.height(x,y+1)??h,s=ground.height(x,y-1)??h;
+  const steep=Math.hypot((e-w)*.5,(n-s)*.5);
+  return h>60?steep>.42+.36*hash:steep>.65+.45*hash;
+}
+
 /** Dense local sward, regenerated on 12 m boundaries and faded before its rim. */
 export function buildCloseMeadow(cover,ground,{flowerMix}={}){
   const patch=buildMeadowPatch({range:[27,37],close:true}),capacity=6400;
@@ -288,7 +299,7 @@ export function buildCloseMeadow(cover,ground,{flowerMix}={}){
     for(let j=-41;j<=41;j++)for(let i=-41;i<=41;i++){
       if(i*i+j*j>41*41)continue;
       const gx=baseX+i,gy=baseY+j;
-      const x=gx*1.35+(fraction(gx,gy)-.5)*.8,y=gy*1.35+(fraction(gx+27,gy-61)-.5)*.8;if(!contains(x,y,fraction(gx-53,gy+29)))continue;
+      const x=gx*1.35+(fraction(gx,gy)-.5)*.8,y=gy*1.35+(fraction(gx+27,gy-61)-.5)*.8;if(!contains(x,y,fraction(gx-53,gy+29))||onRock(ground,x,y,fraction(gx+5,gy+83)))continue;
       const h=ground.height(x,y);if(h===null)continue;
       const angle=deterministicTurn(x,y);
       const appearance=meadowAppearance(x,y,flowerMix);scale.set(.92*appearance.scale,.9*appearance.scale,.92*appearance.scale);

@@ -48,8 +48,9 @@ function readAsset(key,asset){
     return {trunk:radialProfile(positions(prims.filter(p=>!foliage(p))),{band_m:2,to_h:base}),top_h:base,climb_top_h:top,
       crown:radialProfile(leaves,{band_m:1,percentile:.9})};
   }
-  // The tree village (its trees' decks, galleries and stairs, and the skybridges) is walked on, not only around.
-  const tree=key.startsWith('arboreal/village_tree'),solid=tree?prims.filter(p=>!foliage(p)):prims,walkable=key.startsWith('arboreal/');
+  // The tree village (its trees' decks, galleries and stairs, and the skybridges) and the trails' footbridges are
+  // walked on, not only around.
+  const tree=key.startsWith('arboreal/village_tree'),solid=tree?prims.filter(p=>!foliage(p)):prims,walkable=key.startsWith('arboreal/')||key.startsWith('footbridge/');
   return {crown:tree?radialProfile(positions(prims.filter(foliage)),{band_m:1,percentile:.9}):null,walkable,
     mesh:meshAsset(triangles(solid),2,{floors:walkable}),boxes:solid.map(p=>({box:p.geometry.boundingBox,matrix:p.local}))};
 }

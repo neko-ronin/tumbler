@@ -129,6 +129,16 @@ test("interpolation is interpolation: between two samples, halfway is halfway", 
   assert.ok(Math.abs(half - (h0 + h1) / 2) < 1e-6, `${half} vs ${(h0 + h1) / 2}`);
 });
 
+test("the sample lies on the drawn triangles, even on a cliff", () => {
+  // terrain.js splits every cell on its south-west to north-east diagonal. A tiny grid with one
+  // tall corner: bilinear would read 2.5 at the centre of the cell, the triangles read the diagonal's 5.
+  const grid = new HeightGrid({ values: new Float32Array([0, 0, 0, 10]), resolution: 2, quad_size_m: 8, offset_xy_m: [0, 0], min_m: 0, max_m: 10 });
+  assert.equal(grid.sample(4, 4), 5);
+  assert.equal(grid.sample(6, 2), 2.5, "east of the diagonal: the (0,0) (8,0) (8,8) triangle");
+  assert.equal(grid.sample(2, 6), 2.5, "west of it: the (0,0) (8,8) (0,8) triangle");
+  assert.equal(grid.sample(8, 8), 10);
+});
+
 test("the ground cover mask decodes, and its own count agrees", () => {
   const cover = decodeGroundCover(stamp);
   assert.equal(cover.resolution, 512, "the stamp rides the block's own grid");

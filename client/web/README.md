@@ -1394,6 +1394,10 @@ node --test client/web/tests/assets.test.mjs \
   client/web/tests/world.test.mjs client/web/tests/rendering.test.mjs
 ```
 
+**Traversal:** for anything a player walks on, `client/web/tools/puppet.cjs <route.json> <out>` drives the real
+character along a route in the running game and exits 0 only if it arrives without losing footing. The workflow, route
+format and traps are in [docs/traversal/WORKFLOW.md](../../docs/traversal/WORKFLOW.md).
+
 The toon pass passed all 54 focused checks. `node --test client/web/tests/*.test.mjs`
 also includes the older 2D suite; its last full run had 11 failures, documented
 in [BUILD-STATUS.md](BUILD-STATUS.md). Do not describe the whole web suite as green.

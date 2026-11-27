@@ -163,8 +163,9 @@ test('the opening pan still arrives at the pose recorded before the timing chang
  // quaternion came out unchanged to the last digit, only y dropped 1.77 m with the ground.
  // Re-recorded again on the 2026-11-20 ground (fresh terrain solve), navigation unchanged: x, z and
  // the quaternion again identical to the last digit; y rose 0.446 m where the ground under the
- // arrival rose 0.443 m (51.001 -> 51.445).
- const pos=[-668.7233338790853,55.20117297527855,-437.9041673488567];
+ // arrival rose 0.443 m (51.001 -> 51.445). Re-recorded on 2026-11-26 when ground height moved from a
+ // bilinear patch to the drawn triangles (heights.js): same ground, y rose 0.0137 m, x and z unchanged.
+ const pos=[-668.7233338790853,55.21490636227196,-437.9041673488567];
  const q=[0.024461544171433813,0.33089570530035856,-0.008580646377993287,0.9433112092932338];
  f.camera.position.toArray().forEach((v,i)=>assert.ok(Math.abs(v-pos[i])<.01,`arrival x${i}: ${v} vs ${pos[i]}`));
  f.camera.quaternion.toArray().forEach((v,i)=>assert.ok(Math.abs(v-q[i])<1e-3,`arrival q${i}: ${v} vs ${q[i]}`));

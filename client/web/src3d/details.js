@@ -22,7 +22,10 @@ export function buildTethers(placement,assets){
 /** Roads follow the surface; mountain treads use the shared centreline. Stone
  * batter ties a raised downhill edge back into the slope instead of drawing
  * a vertical paper skirt. One mesh keeps the full trail network inexpensive. */
-export function buildTrails(worldmap,ground){
+export function buildTrails(worldmap,ground,spans=[]){
+  // Where a footbridge carries the trail ({x, y, ux, uy, half}: centre, unit direction, half-length), the deck is
+  // the way across, so the ribbon stops at its abutments instead of draping into the gorge under it.
+  const bridged=(x,y)=>spans.some(s=>Math.abs((x-s.x)*s.ux+(y-s.y)*s.uy)<s.half&&Math.abs((x-s.x)*s.uy-(y-s.y)*s.ux)<3);
   const positions=[],indices=[],colors=[],wallUV=[],built=new Set();
   const granite=new T.Color('#a59f91'),grus=new T.Color('#a59882'),soil=new T.Color('#887661');
   const color=new T.Color(),groundAt=(x,y)=>ground.height(x,y)??0;
@@ -67,7 +70,9 @@ export function buildTrails(worldmap,ground){
       };
       let previous=section(0);
       for(let j=1;j<=steps;j++){
-        const next=section(j/steps);quad(previous[0].top,previous[1].top,next[0].top,next[1].top,profile?grus:soil);
+        const next=section(j/steps),mid=(j-.5)/steps;
+        if(bridged(a[0]+(b[0]-a[0])*mid,a[1]+(b[1]-a[1])*mid)){previous=next;continue;}
+        quad(previous[0].top,previous[1].top,next[0].top,next[1].top,profile?grus:soil);
         if(profile)for(let k=0;k<2;k++){
           const p=previous[k],q=next[k];
           if(Math.max(p.fill,q.fill)>.18){

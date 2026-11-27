@@ -4,7 +4,7 @@
  */
 import {BufferGeometry,Float32BufferAttribute,InstancedBufferAttribute,InstancedMesh,Group,Matrix4,Quaternion,Vector3,Color,DoubleSide,Frustum,Sphere,DynamicDrawUsage} from '../vendor/three.module.min.js';
 import {toonMaterial} from './style.js';
-import {deterministicTurn,meadowViewFocus} from './groundcover.js';
+import {deterministicTurn,meadowViewFocus,onRock} from './groundcover.js';
 import {coverAmount} from './heights.js';
 import {GRASS_DARK,GRASS_LIGHT} from './turf-texture.js';
 
@@ -89,7 +89,7 @@ export function buildGrassCanopy(cover,ground,{samples=0,batchTiles=1}={}){
     for(let row=0;row<tile/pitch;row++)for(let col=0;col<tile/pitch;col++){
       const gx=tx*(tile/pitch)+col,gy=ty*(tile/pitch)+row;
       const x=(gx+.5)*pitch+(random(gx,gy)-.5)*pitch*.75,y=(gy+.5)*pitch+(random(gx+71,gy-39)-.5)*pitch*.75;
-      if(!contains(x,y,random(gx-53,gy+29)))continue;const h=ground.height(x,y);if(h===null)continue;cells.push({x,y,h,gx,gy});
+      if(!contains(x,y,random(gx-53,gy+29))||onRock(ground,x,y,random(gx+5,gy+83)))continue;const h=ground.height(x,y);if(h===null)continue;cells.push({x,y,h,gx,gy});
     }
     if(!cells.length)return null;
     const geometry=layer.geometry.clone(),traits=new Float32Array(cells.length*3),tint=new Float32Array(cells.length*3).fill(1);

@@ -11,9 +11,9 @@
  *
  * It samples and it interpolates. It does not generate ground, does not decide
  * where anything stands, and does not know the ground is grass. The one thing
- * it adds of its own is the bilinear interpolation between published samples,
- * which is the client's own interpolation of the core's own numbers and is
- * labelled as interpolation in what it returns.
+ * it adds of its own is the interpolation between published samples, on the
+ * same two triangles per cell the terrain draws, so what stands on the ground
+ * stands on the ground the player sees.
  */
 
 /**
@@ -86,9 +86,12 @@ export class HeightGrid {
     const h10 = this.at(y0, x1);
     const h01 = this.at(y1, x0);
     const h11 = this.at(y1, x1);
-    const south = h00 + (h10 - h00) * tx;
-    const north = h01 + (h11 - h01) * tx;
-    return south + (north - south) * ty;
+    // On the drawn triangles, not bilinear: every cell is split on its south-west to north-east
+    // diagonal (terrain.js, terrain-lod.js). On a cliff the bilinear patch stood up to 20 m off the
+    // visible faces, and the player walked inside the rock or over air.
+    return tx >= ty
+      ? h00 + (h10 - h00) * tx + (h11 - h10) * ty
+      : h00 + (h11 - h01) * tx + (h01 - h00) * ty;
   }
 }
 

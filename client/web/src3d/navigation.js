@@ -41,6 +41,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   let air=worldmap.wind;
   const refreshAir=()=>{air=worldmap.wind.diurnal?{...worldmap.wind,phase:timeOfDay}:worldmap.wind;};
   refreshAir();
+  let puppet=null;
   let queuedSlide=false,queuedBranch=false,actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const director=createFollowCamera(),boom=createCameraBoom(),range=createFollowRange();
   let movementYaw=null,lastInput=[0,0],terrainLift=0;
@@ -447,6 +448,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const busy=character.attacking===true;
     const planted=character.charging&&state.grounded;
     const input={x:planted?0:movement.x,y:planted?0:-movement.z,run:(state.mode==='swim'?runToggled:tuckHeld)&&!planted,run_amount:planted?0:runStick,jump:actionHeld,tuck:tuckHeld,stick:[x,y],pitch,branch:queuedBranch,slide:queuedSlide};
+    // A dev puppet (client/web/tools/puppet.cjs) steers in the world frame instead of the camera's, through the
+    // same walking, balance and collision as a player. It returns {x, y, run} (x east, y north) or null to let go.
+    const drive=puppet?.(state);
+    if(drive){input.x=drive.x;input.y=drive.y;input.stick=[0,Math.hypot(drive.x,drive.y)];input.run=!!drive.run;input.jump=!!drive.jump;}
     if(tape&&dt>0)tape.frames.push([1,input,Math.round(dt*1e4)/1e4]);
     state=stepMoves(state,input,dt,characterConfig.walk,
       {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height,balance:options.balance});
@@ -728,7 +733,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     camera.position.copy(position);camera.quaternion.copy(quaternion);
   }
   function suspend(on){suspended=!!on;if(suspended){keys.clear();queuedPrimary=queuedHarness=hop=queuedSlide=false;}}
-  return {setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,introShot,glideFrom,update,poll,clear,changeHarness,launchHere,launchFromTree,get preferredFlightMode(){return preferredFlightMode;},set preferredFlightMode(next){if(config.modes[next])preferredFlightMode=next;},carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
+  return {set puppet(fn){puppet=typeof fn==='function'?fn:null;},get puppet(){return puppet;},setPlayerMode,suspend,get suspended(){return suspended;},placeOnFoot,recordTape,stopTape,replayTape,constrainCamera(){clearCameraTerrain(camera.position,height,cameraTerrainRadius(camera));},cameraProfile:policy,select,warmArrival,introShot,glideFrom,update,poll,clear,changeHarness,launchHere,launchFromTree,get preferredFlightMode(){return preferredFlightMode;},set preferredFlightMode(next){if(config.modes[next])preferredFlightMode=next;},carry,alight,setWeather,setTimeOfDay,setChallenge,setPilotMotion,fixedEnvironmentSampler,sampleFloor:height,sampleEnvironment(x,y,z){return renderAir.sample(x,y,z);},setEffects(value){effects=value;},get message(){return message;},get underwater(){return mode==='walk'&&underwater;},get weather(){return weather;},get siteIndex(){return siteIndex;},get view(){return view;},get mode(){return mode;},get state(){return state;},get shot(){return shot;},cancelShot(){shot=null;},get shotActive(){return shot!==null;},get air(){return state&&config.modes[mode]?sampleAir(config,air,state,time,height):null;},get timeOfDay(){return timeOfDay;},
     prepareFlightLesson,beginFlightLesson,placeGuidedFlight,endGuidedFlight,endFlightLesson(){flightLesson=null;},get flightLesson(){return flightLesson;},
     dispose(){renderAir.dispose();window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);window.removeEventListener('blur',clear);window.removeEventListener('gamepaddisconnected',clear);document.removeEventListener('visibilitychange',clear);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointermove',move);}};
 }

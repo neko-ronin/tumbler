@@ -536,10 +536,10 @@
       "packed": "granite/terrain_patch.meshopt.glb",
       "mode": "exact",
       "worst_mm": 0,
-      "source_bytes": 21091792,
-      "source_sha256": "75b44857d7a73e2175518a9f4fbd2e549bf89489fd7d4519924db29ec7812040",
-      "bytes": 7363368,
-      "sha256": "57074727135af102164023f2fa11d1ab5363d82d2232610d0c94943f172a9a19"
+      "source_bytes": 21173440,
+      "source_sha256": "ec105a00f9c0710a6bc8dd578b41b0b1fa8ac1197572a92f8826634ebf54b4b5",
+      "bytes": 7392184,
+      "sha256": "a7565296aca92407096b150010b3bc7517a6b63e53dbf954d0e1750401acb463"
     },
     "homestead/homestead.glb": {
       "packed": "homestead/homestead.meshopt.glb",

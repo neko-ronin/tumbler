@@ -59,16 +59,16 @@
  },
  "distance": "probes-distance.png",
  "inputs": {
-  "shared/world/worldmap.json": "bf99121bf42cdfc65e780c3cfe81d94c3504afd56cd28c6d6b83c72d5cba54c3",
-  "shared/world/out/placement.json": "738a6a6564e6d6a998ee3864f05da35f3bca99d0dba2bb5eb15110a4905771c0",
-  "client/web/data/heightmap.f32": "4d32d4a4765fda05aa051e295b38def3847bab02a823d43bacbd919b569feff5",
+  "shared/world/worldmap.json": "3f1d645d5b97b6ca377babacd5a344dfc7ac6836aee34226cbd7b448b6cb9645",
+  "shared/world/out/placement.json": "3e12ee6afda66e6df1d2ecdeaf8502c5a0e21e72418a5b0932b587a34b32286e",
+  "client/web/data/heightmap.f32": "95ce1e9d91a2ca8ab97a4ea36f6962b4c483c0859d669f5151120d16446ebbc7",
   "client/web/data/farfield.f32": "9c8b8539d26970b392ef410bece780351d8c0de0d02e7836338ffe5e7ed79ada",
   "shared/world/out/horizon_range.json": "2ff0e42cc4087ca3033e7d62e4c35a32530913d0bf46d110a51fc5329f1b8ee9",
   "shared/world/out/horizon_map.png": "eb799a0e9b49bf63ce11974af7bdbcdb9a952aadd3ccd488a2873a0222237ae0",
-  "shared/world/out/river_granite.json": "122066ee23a8f5f5b0f6811b3842c13c24adcaaf05415dd48b1970da0155f8c6",
-  "shared/world/out/landscape_transition.json": "40dd9179d9019891ae533c181f17701ea06701c64860242aa9a40b9bdb4c1a9b",
-  "shared/geometry/granite/geology.json": "c572b73e0eb34703e8f1e1b3247cc7c6c693c0d80aa6a14d758db07118125d66",
+  "shared/world/out/river_granite.json": "ea1fd0d14d3c864ca2405555acaa2fe46b888c76c28a9f5bbee79020e133fbca",
+  "shared/world/out/landscape_transition.json": "2106d9c4b88bf35be2b04a6765fc73428549a95ff4eac484e211f473f6c7c82d",
+  "shared/geometry/granite/geology.json": "a32a7e5067087e442541f327b0b78ae966b5f3692f40eb9e670a4bd9f293aee8",
   "shared/geometry/tree-design/adopted-redwoods.json": "32613b3be4c4a810597b766bece169bd53650025bedbc7a20426c622788d0c26"
  },
- "bake_seconds": 241
+ "bake_seconds": 249
 }

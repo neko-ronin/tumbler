@@ -107,11 +107,9 @@ test("the placement record agrees with the ground it claims to stand on", () => 
     assert.notEqual(height, null, "every grounded placement must have sampled terrain");
     return Math.abs(height - instance.ground_z_m);
   });
-  // The core's ground_z_m was computed from the heightfield, and this client's
-  // sampler uses bilinear interpolation. The two differ by up to ~0.22 m across
-  // 6 instances (the grid is 8 m and the methods differ), which is the
-  // expected tolerance for two independent readings of the same raster. A real
-  // disagreement would be metres, not centimetres.
+  // The core's ground_z_m was computed from the heightfield, and both it and this client
+  // sample the terrain's drawn triangles; what is left is the raster's 16-bit quantisation
+  // and the granite patch over a few cells. A real disagreement would be metres.
   assert.ok(Math.max(...differences) < 0.5, "ground mismatch exceeds the grid sampling tolerance");
   assert.ok(differences.filter((difference) => difference > 0.05).length < 10, "too many ground mismatches");
 });

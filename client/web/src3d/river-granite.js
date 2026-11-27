@@ -4,8 +4,8 @@
 import * as T from '../vendor/three.module.min.js';
 import {terrainTileLevels} from './terrain-lod.js';
 import {toonMaterial} from './style.js';
-export function buildRiverGranite(surface,asset,terrain,assets,landscapeGrid){
- const data=surface.data,g=data.grid,group=new T.Group();group.name='downstream_granite';
+export function buildRiverGranite(surface,asset,terrain,assets,landscapeGrid,{name='downstream_granite'}={}){
+ const data=surface.data,g=data.grid,group=new T.Group();group.name=name;
  const source=asset.primitives[0].geometry,cols=g.columns,rows=g.rows,tiles=[];
  const material=toonMaterial({name:'wet_dry_river_granite',vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1},{terrain:true});
  const compile=material.onBeforeCompile;
@@ -86,7 +86,7 @@ export function buildRiverGranite(surface,asset,terrain,assets,landscapeGrid){
   baseCompile(shader);shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
    if(vPlace.x>${(bounds[0]+4).toFixed(1)}&&vPlace.x<${(bounds[2]-4).toFixed(1)}&&-vPlace.z>${(bounds[1]+4).toFixed(1)}&&-vPlace.z<${(bounds[3]-4).toFixed(1)})discard;`);
  };
- const baseKey=baseMaterial.customProgramCacheKey.bind(baseMaterial);baseMaterial.customProgramCacheKey=()=>baseKey()+':river-cutout-v3';baseMaterial.needsUpdate=true;
+ const baseKey=baseMaterial.customProgramCacheKey.bind(baseMaterial);baseMaterial.customProgramCacheKey=()=>baseKey()+`:river-cutout-v3:${bounds.join(',')}`;baseMaterial.needsUpdate=true;
  const stats={tiles:tiles.length,batches:batches.size,sourceTriangles:(cols-1)*(rows-1)*2,triangles:0,lodCounts:[0,0,0,0],maxProjectedError:0,plants:0};
  // Sedge groups are client interpretation of a plant/density habitat stamp.
  const plantAsset=assets['waterside/sedge.glb'];

@@ -76,6 +76,8 @@ export function fallsPath(worldmap,height,{rows=44,columns=10,width:scale=4}={})
 
 // The cascade's water stands this far over the bed it runs on, rising to the sheet's top at the lip.
 const CASCADE_OVER_M=.6;
+// How far either side of the stream's line the cascade looks for its bed.
+const BED_SEEK_M=12;
 
 /** The cascade above the lip: rows across the stream every `step` metres up its line from the lip, in world metres. */
 export function cascadePath(worldmap,height,path,{step=2.5,columns=8}={}){
@@ -83,14 +85,25 @@ export function cascadePath(worldmap,height,path,{step=2.5,columns=8}={}){
   // Point and direction (downstream) `d` metres up the stream's line from the lip.
   const at=d=>{let left=d;for(let i=line.length-1;i>0;i--){const [ax,ay]=line[i],[bx,by]=line[i-1],l=Math.hypot(bx-ax,by-ay);
     if(left<=l||i===1){const t=left/l;return [ax+(bx-ax)*t,ay+(by-ay)*t];}left-=l;}};
-  const rows=Math.round(run/step),grid=[];
+  const rows=Math.round(run/step),grid=[],frames=[];
   for(let i=0;i<=rows;i++){
     const d=run*(1-i/rows),[x,y]=at(d),[ux,uy]=at(d+6),[dx,dy]=at(Math.max(0,d-6));
     let fx=dx-ux,fy=dy-uy;const fn=Math.hypot(fx,fy);fx/=fn;fy/=fn;
+    // The map's control points are joined straight here, but the ground's gorge follows a spline through
+    // them: find the bed (the lowest ground across the line, nearest the line on a tie) within BED_SEEK_M.
+    let shift=0,low=Infinity;
+    for(let s=-BED_SEEK_M;s<=BED_SEEK_M;s+=.5){const h=height(x-fy*s,y+fx*s)+Math.abs(s)*.01;if(h<low){low=h;shift=s;}}
+    frames.push({d,x,y,fx,fy,shift});
+  }
+  // Smooth the bed's line over five rows, so the ribbon follows it without kinks.
+  const shifts=frames.map((_,i)=>{let sum=0,n=0;for(let k=Math.max(0,i-2);k<=Math.min(rows,i+2);k++){sum+=frames[k].shift;n++;}return sum/n;});
+  // Within 12 m of the lip the ribbon eases back onto the stream's line, which the falls' sheet starts from.
+  for(let i=0;i<=rows;i++){
+    const {d,fx,fy}=frames[i],shift=shifts[i]*Math.min(1,d/12),x=frames[i].x-fy*shift,y=frames[i].y+fx*shift;
     // Narrow up the bed, opening over the last 40 m to the sheet's lit core at the lip.
     const half=5+1.25*path.width*Math.pow(Math.max(0,1-d/40),1.5);
     // Steepness of the bed over the next few metres down: steps tumble whiter.
-    const fall=(height(...at(d+3))-height(...at(Math.max(0,d-3))))/Math.max(1,Math.min(6,d+3));
+    const back=Math.min(3,d),fall=(height(x-fx*3,y-fy*3)-height(x+fx*back,y+fy*back))/Math.max(1,3+back);
     const over=CASCADE_OVER_M+(Math.min(path.top,height(x,y)+1.45)-height(x,y)-CASCADE_OVER_M)*Math.max(0,1-d/12);
     const row=[];
     for(let j=0;j<=columns;j++){

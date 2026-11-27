@@ -56,6 +56,8 @@ const poses={
  shorePlayer:{eye:[-361,30.7,157],target:[-354.5,30.4,185],fov:30,light:'day',setup:{character:[-354.5,null,185],yaw:2.8}}, // low over the water, the player at the waterline (FOV 30)
  paraCliff:{eye:[-380,34,-250],target:[-430.25,34,-335.6],fov:25,light:'day',setup:{wing:[-550.1,72.6,-542.7],wingYaw:.53}},  // fallsBay's view, a paraglider half behind the west bay's rim (on its eye ray, 30 m past it)
 };
+// REVIEW_POSES_FILE=<json> adds (or overrides) views for one review without editing this list.
+if(process.env.REVIEW_POSES_FILE)Object.assign(poses,JSON.parse(fs.readFileSync(process.env.REVIEW_POSES_FILE,'utf8')));
 const chosen=process.env.REVIEW_POSES?process.env.REVIEW_POSES.split(','):Object.keys(poses);
 for(const k of Object.keys(poses))if(!chosen.includes(k))delete poses[k];else if(process.env.REVIEW_LIGHT)poses[k].light=process.env.REVIEW_LIGHT;
 (async()=>{
@@ -69,6 +71,13 @@ for(const k of Object.keys(poses))if(!chosen.includes(k))delete poses[k];else if
   const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
   page.on('pageerror',e=>{errors.push(e.message);console.error('pageerror',e.message);});page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   await page.addInitScript(()=>Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[]}));
+  // REVIEW_HEIGHTS=<file.f32>: a candidate block heightmap served in place of the published one, its manifest hash with it.
+  if(process.env.REVIEW_HEIGHTS){
+   const body=fs.readFileSync(process.env.REVIEW_HEIGHTS),sha256=require('node:crypto').createHash('sha256').update(body).digest('hex'),file='client/web/data/heightmap.f32';
+   await page.route(`**/${file}*`,route=>route.fulfill({body,contentType:'application/octet-stream'}));
+   await page.route('**/client/web/data/viewer.json*',async route=>{const response=await route.fetch(),manifest=await response.json();manifest.fetched.find(e=>e.path===file).sha256=sha256;route.fulfill({response,json:manifest});});
+   report.heights={file:process.env.REVIEW_HEIGHTS,sha256};
+  }
   // REVIEW_QUERY=water_look=clear (for example) is appended to the page's address.
   await page.goto((process.env.TUMBLER_REVIEW_URL||'http://127.0.0.1:8046')+'/client/web/scene.html'+(process.env.REVIEW_QUERY?'?'+process.env.REVIEW_QUERY:''));
   await page.waitForFunction(()=>window.tumbler&&document.body.classList.contains('ready'),null,{timeout:240000});

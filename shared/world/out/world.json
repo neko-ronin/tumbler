@@ -63,9 +63,9 @@
   },
   "outputs": [
     {
-      "bytes": 282827,
+      "bytes": 282862,
       "name": "heightmap.png",
-      "sha256": "758f8e1dac3af7252972a7166de3aac943b730a3dd6e2659051ae97b07799ec8"
+      "sha256": "1708cc788c3d5c72f4f5a24951706b2d56747c402c34bbb01b921be4bf5b9582"
     },
     {
       "bytes": 15460,
@@ -78,9 +78,9 @@
       "sha256": "c6170cd8901f52986295edd8120c3596958065e39b93e0b0ec2753667b92ca47"
     },
     {
-      "bytes": 1049133,
+      "bytes": 1049132,
       "name": "farfield_height.png",
-      "sha256": "14eac9ef39d081dd4faf6e632a42ae2cd16bb92199cd3f6ca17f1d462b4ae877"
+      "sha256": "be511c6487c161aecc53c4ed830b4162c757718898472b24389cf7c629c900d0"
     }
   ],
   "params": {
@@ -2250,7 +2250,7 @@
     }
   ],
   "worldmap": {
-    "sha256": "d82b6a76a8c10a54c07867ce041852522a0dcc7c9ad0f0c05ea67c29a8cd5dcd",
+    "sha256": "3f1d645d5b97b6ca377babacd5a344dfc7ac6836aee34226cbd7b448b6cb9645",
     "source": "shared/world/worldmap.json",
     "status": "signed-off",
     "version": 3

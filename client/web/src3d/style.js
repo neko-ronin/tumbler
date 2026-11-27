@@ -255,7 +255,19 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       diffuseColor.rgb=mix(diffuseColor.rgb,EARTH*mix(.8,1.1,clump),slopeMask*lowland*smoothstep(.35,.7,grain*.4+clump*.6+.15));
       float rockMask=max(max(slopeMask*(1.-lowland),wall*low),smoothstep(1620.,1980.,vPlace.y+(drift-.5)*160.));
       GraniteSurface granite=GraniteSurface(vec3(0.),0.,.96,0.,0.,vec3(0.),1.);
-      if(rockMask>.001)granite=graniteSurface(vPlace,normalize(vUp),footprint);
+      if(rockMask>.001){
+        granite=graniteSurface(vPlace,normalize(vUp),footprint);
+        // The valley's own walls (the lake's, the rock step's; below the mountains): near-vertical granite carries
+        // dark lichen and varnish streaks where water runs over the brow, and tan iron stain between them
+        // (Yosemite's walls; NPS). Stretched along the fall line, which only holds on a wall this steep.
+        float face=smoothstep(1.,2.2,steep)*(1.-smoothstep(260.,320.,vPlace.y));
+        if(face>.001){
+          float streak=smoothstep(.5,.78,graniteNoise(vec3(vPlace.x*.045,vPlace.y*.0035,vPlace.z*.045)+17.)*.7
+            +graniteNoise(vec3(vPlace.x*.17,vPlace.y*.011,vPlace.z*.17)+29.)*.4)*face;
+          float oxide=smoothstep(.58,.84,graniteNoise(vec3(vPlace.x*.028,vPlace.y*.006,vPlace.z*.028)+41.))*face*(1.-streak);
+          granite.color*=mix(vec3(1.),vec3(.42,.40,.38),streak*.7)*mix(vec3(1.),vec3(1.07,.97,.86),oxide*.55);
+        }
+      }
       diffuseColor.rgb=mix(diffuseColor.rgb,granite.color,rockMask);
       float snowMask=smoothstep(1010.,1110.,vPlace.y+(clump-.5)*70.+(drift-.5)*90.)*(1.-smoothstep(.62,1.,steep+(clump-.5)*.35))*(1.-knownGround);
       diffuseColor.rgb=mix(diffuseColor.rgb,SNOW,snowMask);
@@ -347,8 +359,12 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
         normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*r1+dFdy(relief)*r2));
         // The baked slopes are mip-filtered, so they hold where bump derivatives cannot.
         normal=normalize(normal+mat3(viewMatrix)*granite.detail*${terrain?'rockMask*(1.-coreSnow)':'stone'});
-        ${terrain?`// Rock breaks; it doesn't round. Part of each 8 m facet's true normal keeps the edges.
-        if(rockMask>.001){vec3 facet=normalize(cross(dFdx(vViewPosition),dFdy(vViewPosition)));normal=normalize(mix(normal,facet*sign(dot(facet,normal)),.38*rockMask*(1.-coreSnow)*(1.-smoothstep(1.5,6.,footprint))));}`:''}
+        ${terrain?`// Rock breaks; it doesn't round. Part of each 8 m facet's true normal keeps the edges, but not on
+        // walls: there one 8 m cell spans 20 m or more of height and its two triangles face apart, so the
+        // facets print a row of light and dark fangs down every oblique wall. Walls keep the granite's relief.
+        // Under 260 to 320 m (the valley's walls, rims and feet, where curved brows and toes cross the grid
+        // obliquely) no facet at all: it printed narrow spikes up the foot of the falls' step (2026-11-26).
+        if(rockMask>.001){vec3 facet=normalize(cross(dFdx(vViewPosition),dFdy(vViewPosition)));normal=normalize(mix(normal,facet*sign(dot(facet,normal)),.38*rockMask*(1.-coreSnow)*(1.-smoothstep(1.5,6.,footprint))*(1.-smoothstep(1.,2.2,steep))*smoothstep(260.,320.,vPlace.y)));}`:''}
         ${terrain?`// Turf normal map: texture v runs north, scene z south.
         normal=normalize(normal+mat3(viewMatrix)*vec3(-turf.slope.x,0.,turf.slope.y)*.35*turfMask);
         vec3 grassLean=vec3(grassAir.x,0.,grassAir.y);
