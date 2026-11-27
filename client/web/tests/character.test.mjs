@@ -238,3 +238,15 @@ test('charge input survives drawing and jumping, airborne cleaves do not invent 
  for(let i=0;i<45;i++)cat.update(1/30,'idle');assert.equal(cat.expression,'relaxed');
  cat.dispose();
 });
+
+test('chained swings never bake the attack face into the ears: they come back to rest',()=>{
+ const cat=character();cat.update(.1,'idle');cat.toggleKatana();for(let i=0;i<300&&cat.katana!=='drawn';i++)cat.update(1/30,'idle');
+ const ear=cat.object.getObjectByName('ear.L'),head=cat.object.getObjectByName('head'),angle=()=>{cat.object.updateMatrixWorld(true);
+  return ear.getWorldQuaternion(new T.Quaternion()).angleTo(head.getWorldQuaternion(new T.Quaternion()));};
+ for(let i=0;i<30;i++)cat.update(1/30,'idle');const rest=angle();
+ // Each new swing starts mid-swing, the way a player chops while running.
+ for(let k=0;k<20;k++){cat.attack();for(let i=0;i<10;i++)cat.update(1/30,'run',6);}
+ for(let i=0;i<240&&cat.attacking;i++)cat.update(1/30,'idle');for(let i=0;i<60;i++)cat.update(1/30,'idle');
+ assert.ok(Math.abs(angle()-rest)<.02,`ear at rest ${rest.toFixed(3)} rad, after 20 swings ${angle().toFixed(3)} rad`);
+ cat.dispose();
+});

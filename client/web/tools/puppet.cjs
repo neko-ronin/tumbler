@@ -10,6 +10,7 @@
  * after the start. Every frame is logged (position, height, mode, balance phase and budget, surface). The game's
  * own chase camera is captured at the listed waypoints, so the render is checked on the same run.
  *
+ * PUPPET_EVAL=<page expression> is run when the route ends and its result recorded in the report.
  * Writes <out>/<name>.json (verdict, phase counts, the worst moments, a 5 Hz trace) and <out>/<name>-<k>.png.
  * Exit 0 when the route passes: every waypoint reached in time, no balance phase past `max_phase` (default
  * 'stumble': no trip, tumble, slide or roll), and every `above` footprint kept at or over its height.
@@ -45,6 +46,8 @@ const ORDER=['steady','stumble','trip','tumble','slide','recover','roll'];
     };
     requestAnimationFrame(tick);
   },route);
+  // PUPPET_START: a page expression run as the walk begins (e.g. keep swinging the katana while running).
+  if(process.env.PUPPET_START)await page.evaluate(src=>(0,eval)(src),process.env.PUPPET_START);
   const shots=new Set(route.shots??[]),taken=new Set(),limit=(route.timeout_s??90)*1000,t0=Date.now();
   let last=null,since=Date.now(),stuck=null;
   for(;;){
@@ -58,7 +61,13 @@ const ORDER=['steady','stumble','trip','tumble','slide','recover','roll'];
     if(Date.now()-since>5000){stuck=`no progress for 5 s at ${here} toward waypoint ${p.i}`;break;}
     if(Date.now()-t0>limit){stuck=`timed out at waypoint ${p.i}/${route.waypoints.length-1}`;break;}
   }
+  // PUPPET_ACT: a page expression run as the route ends, before the settle and the last shot (e.g. swing the katana).
+  if(process.env.PUPPET_ACT)await page.evaluate(src=>(0,eval)(src),process.env.PUPPET_ACT);
+  // PUPPET_SETTLE_MS: wait after the route ends before the last shot (e.g. for something to fade in).
+  if(process.env.PUPPET_SETTLE_MS)await page.waitForTimeout(Number(process.env.PUPPET_SETTLE_MS));
   await page.screenshot({path:path.join(out,`${route.name}-end.png`)});
+  // PUPPET_EVAL: a page expression run once the route ends (e.g. what the world did in reply); its result goes in the report.
+  const evalResult=process.env.PUPPET_EVAL?await page.evaluate(src=>(0,eval)(src),process.env.PUPPET_EVAL):undefined;
   const log=await page.evaluate(()=>{tumbler.navigation.puppet=null;puppetRun.done=true;return JSON.stringify(puppetRun.log);}).then(JSON.parse);
   // A busy GPU process can hold close() open; the verdict does not wait on it.
   await Promise.race([browser.close(),new Promise(done=>setTimeout(done,5000))]);
@@ -76,7 +85,7 @@ const ORDER=['steady','stumble','trip','tumble','slide','recover','roll'];
   }
   const verdict={route:route.name,pass:reached&&!fall&&!under.length&&!errors.length,reached,stuck,
     first_loss_of_footing:fall??null,lowest_budget:lowBudget,below:under,phase_frames:counts,frames:log.length,
-    seconds:log.at(-1)?.[0],page_errors:errors,columns:['t_s','x','y','z','mode','phase','budget','surface','waypoint'],
+    seconds:log.at(-1)?.[0],page_errors:errors,...(evalResult!==undefined?{eval:process.env.PUPPET_EVAL,evalResult}:{}),columns:['t_s','x','y','z','mode','phase','budget','surface','waypoint'],
     trace:log.filter((_,k)=>k%12===0)};
   fs.writeFileSync(path.join(out,`${route.name}.json`),JSON.stringify(verdict,null,1));
   console.log(JSON.stringify({route:route.name,pass:verdict.pass,reached,stuck,first_loss_of_footing:fall,lowest_budget:lowBudget,phase_frames:counts,below:under.length,seconds:verdict.seconds,errors:errors.length}));

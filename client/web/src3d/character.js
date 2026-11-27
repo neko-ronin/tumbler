@@ -154,7 +154,11 @@ export function createCharacter(asset, config) {
   const expressionNodes=['lid.L','lid_lower.L','ear.L','ear.R','eye.L'].map(n=>model.getObjectByName(n));
   const expressionBase=new Map(),face={lid:0,lower:0,ear:0,eye:0};let expression='relaxed';
   const bridgeBones=[];model.traverse(n=>{if(n.isBone)bridgeBones.push(n);});
-  function captureBridge(){bridge={time:0,poses:bridgeBones.map(b=>({b,q:b.quaternion.clone(),p:b.position.clone()}))};}
+  // The bridge starts from each bone's animated pose, under this frame's overlays (leg reach, gesture,
+  // expression), which are restored and reapplied every frame. Capturing them instead bakes them in:
+  // each new swing then added the attack face's ear tilt again, until the ears folded under the beanie.
+  function basePose(b){return legPose.find(([bone])=>bone===b)?.[1]??gestureBase.get(b)??expressionBase.get(b)??b.quaternion;}
+  function captureBridge(){bridge={time:0,poses:bridgeBones.map(b=>({b,q:basePose(b).clone(),p:b.position.clone()}))};}
   // Airborne sword cuts only own the upper body. The ballistic jump retains
   // its legs and root; no authored jump may overwrite the physical arc.
   if(katana){

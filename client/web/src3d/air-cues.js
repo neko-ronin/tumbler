@@ -39,6 +39,7 @@ export function createMeadowAir(sample,ground,{size=64,span=4096,x=-2048,z=-2048
     const data=new Float32Array(size*size*4);
     const texture=new T.DataTexture(data,size,size,T.RGBAFormat,T.FloatType);
     texture.minFilter=texture.magFilter=T.NearestFilter;texture.needsUpdate=true;
+    texture.userData.mean=[0,0];
     return texture;
   });
   const heights=new Float32Array(size*size);
@@ -47,14 +48,15 @@ export function createMeadowAir(sample,ground,{size=64,span=4096,x=-2048,z=-2048
     heights[row*size+col]=(ground.height(px,py)??0)+2;
   }
   style.meadowAirGrid.value.set(x,z,span,size);
-  let elapsed=0,initialized=false,from=0,to=1;
+  let elapsed=0,initialized=false,from=0,to=1,initialTurn=true;
   function fill(texture){
-    const data=texture.image.data;
+    const data=texture.image.data;let mx=0,mz=0;
     for(let row=0;row<size;row++)for(let col=0;col<size;col++){
       const at=(row*size+col)*4;
       const air=sample(x+(col+.5)*span/size,-(z+(row+.5)*span/size),heights[row*size+col]);
-      data[at]=air.wx;data[at+1]=-air.wy;data[at+2]=air.gust??0;data[at+3]=air.intensity;
+      data[at]=air.wx;data[at+1]=-air.wy;data[at+2]=air.gust??0;data[at+3]=air.intensity;mx+=air.wx;mz-=air.wy;
     }
+    texture.userData.mean=[mx/(size*size),mz/(size*size)];
     texture.needsUpdate=true;
   }
   function update(dt){
@@ -63,6 +65,14 @@ export function createMeadowAir(sample,ground,{size=64,span=4096,x=-2048,z=-2048
     else if(elapsed>=1/hz){[from,to]=[to,from];fill(grids[to]);elapsed%=1/hz;}
     style.meadowAirFrom.value=grids[from];style.meadowAirTo.value=grids[to];
     style.meadowAirMix.value=Math.min(1,elapsed*hz);
+    // The grass's cat's paws (MEADOW_LIFE_GLSL) travel with the field's mean wind. Integrating it,
+    // rather than velocity x time, keeps the pattern continuous when the weather changes.
+    const t=style.meadowAirMix.value,[ax,az]=grids[from].userData.mean,[bx,bz]=grids[to].userData.mean;
+    const vx=ax+(bx-ax)*t,vz=az+(bz-az)*t,speed=Math.hypot(vx,vz),drift=style.meadowDrift.value;
+    drift.x+=vx*dt;drift.y+=vz*dt;
+    // The pattern's frame turns slowly: a quick turn would swing gusts far from the origin across the view.
+    if(speed>.05){const k=initialTurn?1:1-Math.exp(-dt/20);drift.z+=(vx/speed-drift.z)*k;drift.w+=(vz/speed-drift.w)*k;
+      const n=Math.hypot(drift.z,drift.w)||1;drift.z/=n;drift.w/=n;initialTurn=false;}
   }
   return {update,textures:grids,dispose(){grids.forEach(t=>t.dispose());}};
 }

@@ -21,6 +21,16 @@ export function buildEcology(habitats,meadowData,assets,ground,cover,renderer,sa
   const dragon=make('waterside/dragonfly.glb',habitats.habitats.length*3);
   const wings=make('waterside/dragonfly_wings.glb',habitats.habitats.length*3);
   const duck=rafts.length?make('waterside/duck.glb',rafts.reduce((n,x)=>n+x.r.count,0)):null;
+  // Rings on the water: a fish rising, a frog plopping in, a duck's wake. Additive, so a ring fades by darkening.
+  const RINGS=64,ringMesh=(()=>{const g=new T.RingGeometry(.82,1,40);g.rotateX(-Math.PI/2);
+    const m=new T.InstancedMesh(g,new T.MeshBasicMaterial({color:'#ffffff',transparent:true,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}),RINGS);
+    m.name='water_rings';m.frustumCulled=false;m.count=0;m.setColorAt(0,tint.set('#000000'));group.add(m);return m;})();
+  const rings=[];let ringSeed=7;
+  // A fixed sequence, not Math.random(), so two captures of one build agree (visual-review LESSONS).
+  const chance=()=>{ringSeed=(Math.imul(1664525,ringSeed)+1013904223)>>>0;return ringSeed/4294967296;};
+  const ripple=(x,y,z,size=1,life=2.4)=>{if(rings.length>=RINGS)rings.shift();rings.push({x,y,z,size,life,age:0});};
+  // Frogs: sit on their roost, turn now and then, and leap for the water when someone comes close.
+  const frogState=new Map(habitats.habitats.map(h=>[h.id,h.frog_roosts_m.map((p,i)=>({mode:'sit',t:0,yaw:Math.sin(h.seed+i)*3,next:4+((h.seed*7+i*3)%9)}))]));
   const plantRecords=habitats.plantings.map(p=>({...p,scale:[p.scale,p.scale,p.scale]}));
   const bankForest=buildStylizedForest({instances:plantRecords},assets,renderer,{filter:r=>!isRock(r),name:'bank_plantings',tileM:128,enterM:85,leaveM:110});group.add(bankForest.group);
   const rocks=buildRockLod(plantRecords.filter(isRock),assets);group.add(rocks.group);
@@ -127,14 +137,29 @@ float band(float z,float lo,float hi){return smoothstep(lo-.0025,lo+.0025,z)*(1.
     const swim=(h,school)=>{
       const [cx,cy,surface]=h.centre_m,[tx,ty]=h.along;
       const dx=camera.position.x-cx,dy=-camera.position.z-cy;
-      stepSchool(school,dt,[dx*tx+dy*ty,-dx*ty+dy*tx,camera.position.y-surface]);
-      school.fish.forEach(f=>{
+      stepSchool(school,dt,player?.hidden?[1e4,1e4,1e4]:[dx*tx+dy*ty,-dx*ty+dy*tx,camera.position.y-surface]);
+      // Now and then one fish rises to take something off the surface (a ring), and one in four leaps clear.
+      school.nextRise??=time+2+chance()*8;
+      if(time>=school.nextRise&&!school.leap){
+        const i=Math.floor(chance()*school.fish.length),f=school.fish[i];
         const x=cx+tx*f.p[0]-ty*f.p[1],y=cy+ty*f.p[0]+tx*f.p[1];
+        if(chance()<.25)school.leap={i,t:0};else ripple(x,y,surface+.03,.5+f.size*.3,2);
+        school.nextRise=time+3+chance()*9;
+      }
+      school.fish.forEach((f,i)=>{
+        let x=cx+tx*f.p[0]-ty*f.p[1],y=cy+ty*f.p[0]+tx*f.p[1];
         const floor=ground.height(x,y)??surface-2;
-        const z=Math.max(floor+.10,surface+f.p[2]);if(z>surface-.1)return;
+        let z=Math.max(floor+.10,surface+f.p[2]),pitch=0;
         const vx=tx*f.v[0]-ty*f.v[1],vy=ty*f.v[0]+tx*f.v[1];
-        const heading=Math.atan2(vx,-vy);
-        place(fish,nf,x,y,z,heading,f.size);place(tail,nf,x,y,z,heading+Math.sin(time*(8+Math.hypot(...f.v)*8)+f.phase)*.3,f.size);nf++;
+        const heading=Math.atan2(vx,-vy),leap=school.leap?.i===i?school.leap:null;
+        if(leap){
+          // A 0.6 s arc out of the water and back along the fish's heading, nose up then down.
+          const u=leap.t/.6,speed=Math.max(.6,Math.hypot(vx,vy));
+          if(leap.t===0)ripple(x,y,surface+.03,.6,1.6);
+          x+=vx/speed*u*.9;y+=vy/speed*u*.9;z=surface+Math.sin(Math.PI*u)*(.35+.2*f.size)-.05;pitch=-Math.cos(Math.PI*u)*1.1;  // +z-facing model: negative pitch is nose up
+          leap.t+=dt;if(leap.t>=.6){ripple(x,y,surface+.03,.9,2.2);school.leap=null;}
+        }else if(z>surface-.1)return;
+        place(fish,nf,x,y,z,heading,f.size,0,pitch);place(tail,nf,x,y,z,heading+Math.sin(time*(8+Math.hypot(...f.v)*8)+f.phase)*.3,f.size,0,pitch);nf++;
       });
     };
     for(const h of habitats.habitats){
@@ -142,22 +167,56 @@ float band(float z,float lo,float hi){return smoothstep(lo-.0025,lo+.0025,z)*(1.
       if(Math.hypot(cx-camera.position.x,-cy-camera.position.z)>230||camera.position.y>surface+150)continue;
       swim(h,schools.get(h.id));
       for(let i=0;i<3;i++){
-        const [x,y,z]=h.shore_m;const phase=time*.7+h.seed+i*2.1;
-        const px=x+Math.sin(phase)*3,py=y+Math.cos(phase*.73)*2,pz=z+1.0+Math.sin(phase*1.7)*.35;
-        place(dragon,nd,px,py,pz,phase,.9);place(wings,nd,px,py,pz,phase,.9);nd++;
+        // Hover in place, then dart to the next perch in the air: a dragonfly's hunting beat, not a loop.
+        const [x,y,z]=h.shore_m,period=1.6+((h.seed+i*.37)%1)*1.4,clock=time/period+h.seed*.13+i*.41,n=Math.floor(clock),u=clock-n;
+        const at=k=>[x+(rnd(k,h.seed+i)-.5)*7,y+(rnd(k,h.seed+i+9)-.5)*5,z+.5+rnd(k,h.seed+i+17)*1.1];
+        const a=at(n),b=at(n+1),dart=smooth(.78,1,u);
+        const px=a[0]+(b[0]-a[0])*dart+Math.sin(time*7+i)*.03,py=a[1]+(b[1]-a[1])*dart+Math.cos(time*6+i)*.03,pz=a[2]+(b[2]-a[2])*dart+Math.sin(time*5+i*2)*.04;
+        const heading=Math.atan2(b[0]-a[0],-(b[1]-a[1]));
+        place(dragon,nd,px,py,pz,heading,.9);place(wings,nd,px,py,pz,heading,.9);nd++;
       }
+      const watcher=player?.active?player.top:camera.position,frogs=frogState.get(h.id);
       for(const [i,p] of h.frog_roosts_m.entries()){
-        const hop=Math.max(0,Math.sin(time*.4+h.seed+i)-.92)*2;
-        place(frog,nr++,p[0],p[1],p[2]+hop,Math.sin(h.seed+i)*3,1);
+        const f=frogs[i],near=!player?.hidden&&Math.hypot(watcher.x-p[0],-watcher.z-p[1])<3.2&&Math.abs(watcher.y-p[2])<4;f.t+=dt;
+        let x=p[0],y=p[1],z=p[2],yaw=f.yaw,s=1;
+        if(f.mode==='sit'){
+          // A throat that pulses, a turn every few seconds, and a leap for the water when someone comes close.
+          s=1+Math.max(0,Math.sin(time*5+i*2))*.04;
+          if(f.t>f.next){f.t=0;f.next=5+chance()*9;f.yaw+=(chance()-.5)*1.6;}
+          z+=Math.max(0,Math.sin(Math.min(1,f.t/.25)*Math.PI))*.06;
+          if(near){const wx=h.centre_m[0]-p[0],wy=h.centre_m[1]-p[1],d=Math.hypot(wx,wy)||1;f.mode='leap';f.t=0;f.dir=[wx/d,wy/d];f.yaw=Math.atan2(wx,-wy);}
+        }else if(f.mode==='leap'){
+          const u=Math.min(1,f.t/.5);x+=f.dir[0]*u*1.7;y+=f.dir[1]*u*1.7;z=p[2]+(h.centre_m[2]-p[2])*u+Math.sin(Math.PI*u)*.45;
+          if(u>=1){ripple(x,y,h.centre_m[2]+.03,.5,1.8);f.mode='under';f.t=0;f.next=8+chance()*10;}
+        }else{
+          // Under the water until all is quiet, then back on its roost.
+          if(f.t<f.next||near){f.t=near?0:f.t;continue;}
+          f.mode='sit';f.t=0;f.next=4+chance()*6;
+        }
+        place(frog,nr++,x,y,z,yaw,s);
       }
     }
     for(const {h,school} of deepSchools)if(near(h.centre_m))swim(h,school);
     for(const {r,raft} of rafts){
       if(!near(r.centre_m))continue;
       const [cx,cy,surface]=r.centre_m;
-      stepRaft(raft,dt,[camera.position.x-cx,-camera.position.z-cy,camera.position.y-surface]);
-      for(const d of raft.ducks)place(duck,nk++,cx+d.p[0],cy+d.p[1],surface+.012*Math.sin(time*1.3+d.phase),Math.atan2(d.v[0],-d.v[1]),d.size);
+      stepRaft(raft,dt,player?.hidden?[1e4,1e4,1e4]:[camera.position.x-cx,-camera.position.z-cy,camera.position.y-surface]);
+      for(const d of raft.ducks){
+        const x=cx+d.p[0],y=cy+d.p[1],speed=Math.hypot(d.v[0],d.v[1]);
+        // Dabbling: every quarter minute or so a calm duck upends, tail to the sky, then rights itself.
+        const u=((time+d.phase*9)/(15+d.phase*2))%1,up=d.behaviour==='flee'?0:smooth(0,.03,u)*(1-smooth(.12,.16,u));
+        if(up>.5&&!d.wasUp)ripple(x,y,surface+.02,.35,1.4);d.wasUp=up>.5;
+        // A wake behind a duck on the move.
+        d.wakeAt=(d.wakeAt??0)+dt;if(d.wakeAt>(speed>.3?.35:2.6)){d.wakeAt=0;ripple(x-d.v[0]/Math.max(.01,speed)*.25,y-d.v[1]/Math.max(.01,speed)*.25,surface+.02,.3,speed>.3?1.6:2.2);}
+        place(duck,nk++,x,y,surface+.012*Math.sin(time*1.3+d.phase)-.06*up,Math.atan2(d.v[0],-d.v[1]),d.size,0,1.75*up);  // models face +z: a positive pitch puts the head down, tail up
+      }
     }
+    let nring=0;
+    for(let i=rings.length-1;i>=0;i--){const r=rings[i];r.age+=dt;if(r.age>=r.life){rings.splice(i,1);continue;}
+      const u=r.age/r.life,fade=(1-u)*(1-u)*smooth(0,.08,u);
+      position.set(r.x,r.z,-r.y);quat.identity();scale.setScalar(r.size*(.15+u*1.1));
+      ringMesh.setMatrixAt(nring,matrix.compose(position,quat,scale));ringMesh.setColorAt(nring++,tint.setScalar(.32*fade));}
+    ringMesh.count=nring;ringMesh.instanceMatrix.needsUpdate=true;if(ringMesh.instanceColor)ringMesh.instanceColor.needsUpdate=true;
     for(const [mesh,n] of [[fish,nf],[tail,nf],[dragon,nd],[wings,nd],[frog,nr],...(duck?[[duck,nk]]:[])]){mesh.count=n;mesh.instanceMatrix.needsUpdate=true;}
     for(const {species,mesh} of meadowMeshes){
       let n=0,nf=0;const butterfly=species.kind==='butterfly',seed=mesh.geometry.getAttribute('aSeed'),calmAttr=mesh.geometry.getAttribute('aCalm'),ids=species.ids;
@@ -180,7 +239,7 @@ float band(float z,float lo,float hi){return smoothstep(lo-.0025,lo+.0025,z)*(1.
           z=floor+species.height_m[0]+(.5+.5*Math.sin(time*(butterfly?.35:1)+i))* (species.height_m[1]-species.height_m[0])+bob;
           // Scared off its wander by a player on the move; back to it once calm (insect-visits.js).
           const rule=FLEE[species.kind];
-          if(rule){const o=species.flee;fleeStep(o,i*4,px,py,z,watcher.active&&watcher.moving?[watcher.top.x,-watcher.top.z,watcher.top.y-.6]:null,dt,rule);px+=o[i*4];py+=o[i*4+1];z+=o[i*4+2];}
+          if(rule){const o=species.flee;fleeStep(o,i*4,px,py,z,watcher.active&&watcher.moving&&!watcher.hidden?[watcher.top.x,-watcher.top.z,watcher.top.y-.6]:null,dt,rule);px+=o[i*4];py+=o[i*4+1];z+=o[i*4+2];}
           if(visit&&visit.claim(i,px,z,-py,watcher))guest=visit.v;
         }
         let roll=Math.sin(time*1.7+i*2.1)*.4,pitch=Math.sin(time*2.3+i)*.3-.1,calm=0,wings=1;

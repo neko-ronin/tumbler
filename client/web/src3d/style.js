@@ -6,7 +6,7 @@ import {TREE_SHADOW_GLSL,treeShadowUniforms} from './tree-shadows.js';
 import {CLOUD_GROUND_LIGHT_GLSL} from './cloud-shadow-field.js';
 import {ATMOSPHERE_SKY_GLSL} from './atmosphere-sky.js';
 import {GRANITE_GLSL,graniteTextures,mountainUniforms} from './granite-shading.js';
-import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL} from './meadow-shading.js';
+import {MEADOW_AIR_GLSL,MEADOW_SURFACE_GLSL,MEADOW_BEND_GLSL,MEADOW_LIFE_GLSL,MEADOW_PUSH_GLSL,MEADOW_CURE_GLSL} from './meadow-shading.js';
 import {TURF_SURFACE_GLSL} from './turf-texture.js';
 
 export const style = {
@@ -25,6 +25,10 @@ export const style = {
   meadowAirFrom: {value:null},meadowAirTo: {value:null},
   meadowAirGrid: {value:new T.Vector4(-2048,-2048,4096,1)},meadowAirMix: {value:1},
   meadowFocus:{value:new T.Vector3()},
+  // Gust pattern's downwind travel (metres, scene x/z) and unit direction; air-cues.js integrates it.
+  meadowDrift:{value:new T.Vector4(0,0,1,0)},
+  // Where the grass is pressed down: the player, then a short trail (xyz scene, w strength).
+  meadowPush:{value:[0,1,2,3].map(()=>new T.Vector4())},
   // Ground under the grass, as a multiple of TURF_REFERENCE: the colour at which the lit terrain
   // matches the toon-lit blades on screen (docs/reviews/ground-turf-2026-11-25). Calibration knob.
   turfGround:{value:new T.Vector3(.411,.426,.392)},
@@ -112,29 +116,40 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
     shader.uniforms.uSun = style.sun;
     if(terrain||meadow){
       shader.uniforms.uMeadowAirFrom=style.meadowAirFrom;shader.uniforms.uMeadowAirTo=style.meadowAirTo;
-      shader.uniforms.uMeadowAirGrid=style.meadowAirGrid;shader.uniforms.uMeadowAirMix=style.meadowAirMix;
+      shader.uniforms.uMeadowAirGrid=style.meadowAirGrid;shader.uniforms.uMeadowAirMix=style.meadowAirMix;shader.uniforms.uMeadowDrift=style.meadowDrift;
     }
-    if(meadow){shader.uniforms.uMeadowRange={value:new T.Vector2(...meadowRange)};shader.uniforms.uMeadowFocus=style.meadowFocus;}
+    if(meadow){shader.uniforms.uMeadowRange={value:new T.Vector2(...meadowRange)};shader.uniforms.uMeadowFocus=style.meadowFocus;shader.uniforms.uMeadowPush=style.meadowPush;}
     if(canopy)shader.uniforms.uCanopyStart={value:new T.Vector2(...canopyStart)};
     if(terrain)Object.assign(shader.uniforms,forestUniforms(),{uTurfGround:style.turfGround,uTurfGrazing:style.turfGrazing,uTurfShade:style.turfShade});
     if(terrain||granite)Object.assign(shader.uniforms,mountainUniforms,graniteTextures());
     if(terrain){shader.uniforms.uWaterLevel=style.waterLevel;shader.uniforms.uWaterLevelGrid=style.waterLevelGrid;shader.uniforms.uUnderwater=style.underwater;}
     if(terrain||meadow){shader.uniforms.uCover=style.cover;shader.uniforms.uCoverGrid=style.coverGrid;shader.uniforms.uSnow=style.snow;shader.uniforms.uSnowGrid=style.snowGrid;}
-    shader.vertexShader = (canopy?'uniform vec2 uCanopyStart;varying vec2 vGrassUv;varying float vGrassSeed;\n':'')+((terrain||meadow)?MEADOW_AIR_GLSL:'')+AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? MEADOW_BEND_GLSL+'uniform vec2 uMeadowRange;uniform vec3 uMeadowFocus; varying float vMeadowFade; attribute float petal; attribute vec3 flowerTint; attribute vec3 bladeRoot; attribute float flex; attribute float plant; attribute vec3 meadowTraits; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.vertexShader;
+    shader.vertexShader = (canopy?'uniform vec2 uCanopyStart;varying vec2 vGrassUv;varying float vGrassSeed;\n':'')+((terrain||meadow)?MEADOW_AIR_GLSL:'')+AIR_GLSL+'uniform float uTime; varying vec3 vPlace;\n' + (terrain ? 'varying vec3 vUp;\n' : '') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? MEADOW_BEND_GLSL+'uniform sampler2D uCover;uniform vec4 uCoverGrid;\n'+MEADOW_LIFE_GLSL+MEADOW_PUSH_GLSL+'varying vec3 vStand;varying float vGust;varying float vSeeding;varying float vDry;uniform vec2 uMeadowRange;uniform vec3 uMeadowFocus; varying float vMeadowFade; attribute float petal; attribute vec3 flowerTint; attribute vec3 bladeRoot; attribute float flex; attribute float plant; attribute vec3 meadowTraits; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.vertexShader;
     if(meadow)shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
       vec3 root=(instanceMatrix*vec4(bladeRoot,1.)).xyz;
-      vPlant=step(plant,meadowTraits.x);
+      // plant > 0: shows where the drift reaches it; < 0: only where the drift stays below (groundcover.js).
+      vPlant=plant<0.?step(meadowTraits.x,-plant):step(plant,meadowTraits.x);
       // Interleave clump endings across twelve metres rather than tracing
       // the moving window with a single circular contour.
       float fadeOffset=(meadowTraits.y-1.)*40.;
       vMeadowFade=1.-smoothstep(uMeadowRange.x+fadeOffset,uMeadowRange.y+fadeOffset,distance(root,${meadowFocused?'uMeadowFocus':'cameraPosition'}));
       ${canopy?'vMeadowFade*=smoothstep(uCanopyStart.x+fadeOffset,uCanopyStart.y+fadeOffset,distance(root,cameraPosition));':''}
       vec3 meadowPosition=vec3(bladeRoot.x,0.,bladeRoot.z);
+      float seeding,dry;vec4 stand=meadowStand(root,seeding,dry);
+      // Seeding grasses stand in seeding and dry stands, not evenly everywhere.
+      if(plant<0.)vPlant*=step(.3,seeding+dry*.5);
+      vStand=stand.rgb;vDry=dry;vSeeding=seeding*smoothstep(.3,.8,position.y-bladeRoot.y);vGust=0.;
       // Coarse tile culling also submits plants beyond the fade and unused
       // blossom forms. They need no eight-read air interpolation or flex work.
       if(vMeadowFade>.001&&vPlant>.5){
       vec4 air=meadowAir(root.xz);
       float speed=length(air.xy);
+      // Cat's paws ride the shared air: a passing gust leans a stand further and a lull lets it rise.
+      float gust=meadowGust(root.xz,0.),reach=speed/(speed+1.2);
+      vGust=gust*reach;
+      air.xy*=1.+(gust*3.4-.5)*reach;
+      // Pressed aside where something walks through it (uMeadowPush), not by the wind.
+      air.xy+=meadowPush(root)*14.;
       // Core vectors/gusts drive the lean. Small, independently phased tip
       // flutter is a plant response to that air's roughness, not another gust.
       vec3 localWind=vec3(air.x,0.,air.y)*mat3(instanceMatrix);
@@ -147,8 +162,10 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       float flutter=(sin(uTime*(2.6+flex)+phase)+.45*sin(uTime*5.3+phase*.7))*.14*air.w*speed/(speed+2.);
       localWind+=vec3(-localWind.z,0.,localWind.x)*flutter;
       vec3 coefficient=meadowBendCoefficient(localWind,flex);
-      meadowPosition=meadowBentPosition(position,bladeRoot,coefficient);
-      objectNormal=meadowBentNormal(objectNormal,position,bladeRoot,coefficient);
+      // A stand's height scales each blade about its own base.
+      vec3 grown=vec3(position.x,bladeRoot.y+(position.y-bladeRoot.y)*stand.a,position.z);
+      meadowPosition=meadowBentPosition(grown,bladeRoot,coefficient);
+      objectNormal=meadowBentNormal(objectNormal,grown,bladeRoot,coefficient);
       ${canopy||grassBlades?`// Keep the silhouette: coverage fades instead of flattening
       // the broad carrier onto the terrain.`:`
       meadowPosition.y*=vMeadowFade;objectNormal.y/=max(.03,vMeadowFade);`}
@@ -179,7 +196,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       ${terrain ? 'vUp = normalize(mat3(modelMatrix) * objectNormal);' : ''}
       #include <project_vertex>
     `);
-    shader.fragmentShader = ((terrain||granite)?GRANITE_GLSL:'')+(canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;uniform vec4 uSnowGrid;\n':'')+(terrain?'varying vec3 vUp;uniform sampler2D uWaterLevel;uniform vec4 uWaterLevelGrid;uniform float uUnderwater;uniform vec3 uTurfGround,uTurfGrazing,uTurfShade;\n'+FOREST_FIELD_GLSL+GROUND+TURF_SURFACE_GLSL+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? 'varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
+    shader.fragmentShader = ((terrain||granite)?GRANITE_GLSL:'')+(canopy?'varying vec2 vGrassUv;varying float vGrassSeed;\n'+GROUND:'')+(terrain||meadow?'uniform sampler2D uCover;uniform sampler2D uSnow;uniform vec4 uCoverGrid;uniform vec4 uSnowGrid;\n':'')+(terrain?'varying vec3 vUp;uniform sampler2D uWaterLevel;uniform vec4 uWaterLevelGrid;uniform float uUnderwater;uniform vec3 uTurfGround,uTurfGrazing,uTurfShade;\n'+FOREST_FIELD_GLSL+GROUND+TURF_SURFACE_GLSL+MEADOW_AIR_GLSL+MEADOW_SURFACE_GLSL:'')+'uniform float uTime; uniform vec3 uSun; varying vec3 vPlace;\n' + (terrain?MEADOW_LIFE_GLSL:'') + (foliage ? 'varying float vTreeHue;\n' : '') + (meadow ? MEADOW_CURE_GLSL+'varying vec3 vStand;varying float vGust;varying float vSeeding;varying float vDry;varying float vMeadowFade; varying float vPetal; varying vec3 vFlower; varying float vPlant; varying float vLeafTone;\n' : '') + shader.fragmentShader;
     shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
       #include <color_fragment>
       ${meadow ? `if(vMeadowFade<=.001||vPlant<.5)discard;
@@ -188,7 +205,11 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       // shore and slope; here only truly bare ground refuses a leaf, so the thinning is not
       // clipped back to a hard line at one contour (ground-seams review).
       if(min(grassUv.x,grassUv.y)<0.||max(grassUv.x,grassUv.y)>1.||texture2D(uCover,grassUv).r<.004)discard;
-      diffuseColor.rgb = mix(diffuseColor.rgb*vLeafTone,vFlower,vPetal);` : ""}
+      // Stand colour and seeding tips (MEADOW_LIFE_GLSL), the same field the sward beneath uses.
+      diffuseColor.rgb = mix(meadowCure(diffuseColor.rgb*vLeafTone*vStand,vDry)*mix(vec3(1.),vec3(1.3,.98,.72),vSeeding),vFlower,vPetal);
+      // A gust lays blades over and they show their paler, sky-lit faces: the travelling sheen.
+      // Laid over, blades show pale, silvery faces: the band reads lighter and less saturated.
+      diffuseColor.rgb=mix(diffuseColor.rgb,mix(diffuseColor.rgb*vec3(1.2,1.22,1.08),vec3(dot(diffuseColor.rgb,vec3(.3,.59,.11)))*vec3(1.08,1.16,1.02),.3)+.04,clamp(vGust*1.7,0.,.9)*(1.-vPetal));` : ""}
       ${grassBlades?'diffuseColor.a*=vMeadowFade;':''}
       ${canopy?`// Individually cut out tapered leaves in crossed, bent cards.
       float bladeCoordinate=vGrassUv.x*28.,bladeId=floor(bladeCoordinate);
@@ -318,6 +339,12 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       // calibrated by grass-on/grass-hidden captures, since terrain and toon blades light differently.
       float grazing=1.-abs(dot(normalize(cameraPosition-vPlace),normalize(vUp)));
       diffuseColor.rgb*=mix(vec3(1.),grass.x*uTurfGround*mix(vec3(1.),uTurfGrazing,grazing*grazing),sward);
+      // The blades' own stands and cat's paws (MEADOW_LIFE_GLSL), so the far meadow, drawn
+      // only as this sward, breaks up and carries the same gusts as the grass near by.
+      float turfSeeding,turfDry;vec4 turfStand=meadowStand(vPlace,turfSeeding,turfDry);
+      diffuseColor.rgb=mix(diffuseColor.rgb,meadowCure(diffuseColor.rgb*turfStand.rgb,turfDry)*mix(vec3(1.),vec3(1.18,.97,.8),turfSeeding*.6),sward);
+      float airSpeed=length(grassAir.xy);
+      diffuseColor.rgb*=1.+meadowGust(vPlace.xz,footprint)*airSpeed/(airSpeed+1.2)*.42*sward;
       // The signed core gust travels through this field. Leaf-side exposure
       // amplifies its light/dark response without authoring another wave.
       diffuseColor.rgb*=1.+clamp(grassAir.z*.065,-.18,.18)*sward;
@@ -410,7 +437,7 @@ export function toonMaterial(parameters = {}, { meadow = false, terrain = false,
       `);
     }
   };
-  material.customProgramCacheKey = () => `cozy-granite-v22:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
+  material.customProgramCacheKey = () => `cozy-granite-v27:${+granite}:${+meadow}:${+terrain}:${+foliage}:${horizonM?1:0}:${+meadowFocused}:${+canopy}:${+grassBlades}:${+(material.userData.receiveActorShadow!==false)}`;
   return material;
 }
 

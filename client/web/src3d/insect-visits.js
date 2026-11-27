@@ -124,8 +124,8 @@ export function createVisit(kind){
 
 /** Feeds the player's state to the visits and shows their effects: the shoo wave, the nod, and the eye
  * settling on a butterfly (everything but that spot softens, via a masked backdrop blur on #focus). */
-export function createVisitorWatch({ecology,character,navigation,camera,focusEl}){
-  const player={active:false,still:0,moving:false,sitting:false,yaw:0,top:new T.Vector3(),nose:new T.Vector3()};
+export function createVisitorWatch({ecology,character,navigation,camera,focusEl,coverAt=()=>0,coverEl=null}){
+  const player={active:false,still:0,moving:false,sitting:false,hidden:false,cover:0,yaw:0,top:new T.Vector3(),nose:new T.Vector3()};
   const forward=new T.Vector3(),screen=new T.Vector3(),edge=new T.Vector3(),right=new T.Vector3();
   ecology.setPlayer(player);
   return {player,update(dt){
@@ -134,6 +134,11 @@ export function createVisitorWatch({ecology,character,navigation,camera,focusEl}
     player.moving=!walking||(st.speed??0)>.1||(!!st.jumpPhase&&st.jumpPhase!=='grounded');
     player.still=player.moving?0:player.still+dt;
     player.sitting=character.sitting;
+    // Deep in a fern thicket the walker is hidden: frogs and insects no longer take them for a threat.
+    // The cover eases in and out so brushing past one crown doesn't flicker it; a green edge shows it.
+    const deep=walking?coverAt(st.x,st.y,st.z):0;player.cover+=(deep-player.cover)*Math.min(1,dt*4);
+    player.hidden=walking&&player.cover>.55;
+    if(coverEl){const show=walking&&!navigation.suspended?Math.max(0,(player.cover-.35)/.4):0;coverEl.hidden=show<.01;coverEl.style.setProperty('--c',Math.min(1,show).toFixed(3));}
     forward.set(0,0,1).applyQuaternion(character.object.quaternion);player.yaw=Math.atan2(forward.x,forward.z);
     character.anchors(player);
     const first=navigation.view==='first';

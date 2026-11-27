@@ -165,6 +165,9 @@
     #focus{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:var(--f,0);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
       -webkit-mask-image:radial-gradient(circle at var(--x,50%) var(--y,60%),transparent 0 var(--r,40px),#000 calc(var(--r,40px) + 16vmin));mask-image:radial-gradient(circle at var(--x,50%) var(--y,60%),transparent 0 var(--r,40px),#000 calc(var(--r,40px) + 16vmin))}
     #focus[hidden]{display:none}
+    /* Hidden in a fern thicket: fronds' green shade closing in at the edges. Driven by insect-visits.js. */
+    #cover{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:var(--c,0);transition:opacity .3s;background:radial-gradient(ellipse at 50% 55%,transparent 38%,rgba(10,24,8,.5) 68%,rgba(5,14,4,.88) 100%)}
+    #cover[hidden]{display:none}
 
     /* ---- Development and player interfaces. The player sees only .player-ui; the panels above are development tools. */
     body[data-ui-mode="player"] :is(header.panel,.lighting,.activities,.weather,nav,details.panel,.flight-guide,#help,.tumble-label,#course-retry,#flight-readout) { display:none !important; }
@@ -375,6 +378,7 @@
   </section>
   <div id="world" inert aria-busy="true">
   <div id="focus" aria-hidden="true" hidden></div>
+  <div id="cover" aria-hidden="true" hidden></div>
   <main id="stage"><canvas id="canvas" tabindex="0" aria-label="Tumbler countryside. Drag to orbit, right-drag to pan, scroll to approach."></canvas></main>
   <header class="panel"><span class="sunmark" aria-hidden="true">☼</span><div><h1>Tumbler <span id="version" class="version"></span></h1><div id="status" role="status">Opening the countryside…</div></div></header>
   <div class="panel lighting"><label for="light">The light</label><select id="light"><option value="golden">Golden hour</option><option value="day">Clear morning</option><option value="dusk">Evening glow</option></select></div>

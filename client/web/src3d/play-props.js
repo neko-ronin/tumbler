@@ -69,9 +69,10 @@ export function createPlayProps({hill,table,height,scene,cue=()=>{}}){
   const things=props.map(p=>p.live);
   // Particles: camera-facing quads, coloured per instance, each with its own fall.
   const pool=new T.InstancedMesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({side:T.DoubleSide,transparent:true,opacity:.9,depthWrite:false}),PARTICLES);
-  pool.frustumCulled=false;pool.count=0;pool.setColorAt(0,new T.Color());group.add(pool);
+  // In the scene, not the hill's group: swing clippings fly anywhere the walker is.
+  pool.frustumCulled=false;pool.count=0;pool.setColorAt(0,new T.Color());pool.name='play_particles';scene.add(pool);
   const bits=[],FALL={blades:[6,1.5,.06],leaves:[4,2,.08],seeds:[.25,1.2,.035],juice:[9,.4,.05],spores:[.15,1.6,.03],straw:[7,1.4,.07],snow:[3,1.8,.07]};
-  const spinQ=new T.Quaternion(),m4=new T.Matrix4(),pos=new T.Vector3(),scl=new T.Vector3(),col=new T.Color(),up=new T.Vector3(0,1,0);
+  const turnQ=new T.Quaternion(),view=new T.Vector3(0,0,1),spinQ=new T.Quaternion(),m4=new T.Matrix4(),pos=new T.Vector3(),scl=new T.Vector3(),col=new T.Color(),up=new T.Vector3(0,1,0);
   function spray(p,reaction,dir){
     const k=reaction.particles;if(!k)return;
     const [g,drag,size]=FALL[k.kind],o=p.root.position;
@@ -95,7 +96,8 @@ export function createPlayProps({hill,table,height,scene,cue=()=>{}}){
   const hide=(p,on)=>{(p.top===p.body?p.body:p.top).visible=!on;if(p.halves)for(const h of p.halves)h.visible=!on;};
   function update(dt,camera,bodies=[]){
     group.visible=camera.position.distanceTo(props[0].root.position)<DRAW_M+300;
-    if(!group.visible||!(dt>0))return;
+    if(!(dt>0))return;
+    if(group.visible){
     for(const b of bodies)for(const t of bumpHits(table,things,[b.x,b.y],b.speed,b.radius??.35)){const p=props.find(q=>q.live===t);react(p,'bump',[b.x-(b.vx??0),b.y-(b.vy??0)]);}
     for(const p of props){
       p.cool=Math.max(0,p.cool-dt);p.t+=dt;const r=p.reaction,t=p.t;
@@ -130,14 +132,35 @@ export function createPlayProps({hill,table,height,scene,cue=()=>{}}){
         if(f.vy===0&&Math.hypot(f.vx,f.vz)<.05){p.fly=null;p.anim=null;if(r.respawn_s){p.gone=r.respawn_s;hide(p,true);}}
       }
     }
+    }
     let n=0;
     for(let k=bits.length-1;k>=0;k--){
       const b=bits[k];b.life-=dt;if(b.life<=0){bits.splice(k,1);continue;}
       const d=Math.exp(-b.drag*dt);b.vx*=d;b.vz*=d;b.vy=b.vy*d-b.g*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;
-      const floor=height(b.x,-b.z);if(floor!==null&&b.y<floor+.02){b.y=floor+.02;b.vx=b.vz=b.vy=0;}
-      m4.compose(pos.set(b.x,b.y,b.z),camera.quaternion,scl.setScalar(b.size*Math.min(1,b.life*2)));pool.setMatrixAt(n,m4);pool.setColorAt(n++,col.set(b.color));
+      const floor=height(b.x,-b.z);if(floor!==null&&b.y<floor+.02){b.y=floor+.02;b.vx=b.vz=b.vy=0;b.spinV=0;}
+      // Clippings are strips that tumble about the view axis; other bits are square and still.
+      b.spin=(b.spin??0)+(b.spinV??0)*dt;turnQ.setFromAxisAngle(view,b.spin).premultiply(camera.quaternion);const sz=b.size*Math.min(1,b.life*2);
+      m4.compose(pos.set(b.x,b.y,b.z),turnQ,scl.set(sz,sz*(b.stretch??1),sz));pool.setMatrixAt(n,m4);pool.setColorAt(n++,col.set(b.color));
     }
     pool.count=n;pool.instanceMatrix.needsUpdate=true;if(pool.instanceColor)pool.instanceColor.needsUpdate=true;
+  }
+  /** Clippings thrown up along a katana blow's arc, by what grows there: `cover` is {grass, fern}, each
+   * 0 to 1. Decoration only: the plants themselves are never cut, moved or changed. */
+  const CLIP={grass:[['blades','#6f9a45'],['blades','#86ab52'],['blades','#5a8238'],['straw','#c8b77e']],
+   fern:[['leaves','#2f5a2a'],['leaves','#3d6a2c'],['leaves','#4f7f36']],petals:[['seeds','#f1efe6'],['seeds','#7d8fd6'],['seeds','#e8894a'],['seeds','#e9d35a']]};
+  function clippings(from,heading,cover,heavy=false){
+    const reach=table.actions.swing.reach_m,half=table.actions.swing.arc_deg*Math.PI/360;
+    const amount=Math.min(1,cover.grass+cover.fern);if(amount<.1)return 0;
+    const count=Math.round((heavy?60:40)*amount);let made=0;
+    for(let n=0;n<count&&bits.length<PARTICLES;n++){
+      const r=Math.random,a=heading+(r()*2-1)*half,d=.5+r()*(reach-.5),x=from[0]+Math.cos(a)*d,y=from[1]+Math.sin(a)*d,floor=height(x,y);if(floor===null)continue;
+      const pick=r()<cover.fern/Math.max(amount,.01)?CLIP.fern:r()<.12?CLIP.petals:CLIP.grass,[kind,color]=pick[Math.floor(r()*pick.length)],[g,drag,size]=FALL[kind];
+      // Flung along the blade's sweep (across the facing), outward and up.
+      const sweep=a+Math.PI/2*(r()<.5?1:-1),s=1.5+r()*2.5,out=.5+r()*1.2;
+      bits.push({x,y:floor+(kind==='leaves'?.4+r()*.9:.15+r()*.5),z:-y,vx:Math.cos(sweep)*s*.6+Math.cos(a)*out,vy:1+r()*2.2,vz:-(Math.sin(sweep)*s*.6+Math.sin(a)*out),
+        g,drag,size:size*(.6+r()*.5)*(kind==='seeds'?1.3:.8),stretch:kind==='blades'?3.5+r()*2:kind==='leaves'?2.2+r():kind==='straw'?3:1,spin:r()*6.3,spinV:(r()*2-1)*9,life:1.4+r()*1.6,color});made++;
+    }
+    return made;
   }
   /** A katana blow from [x, y] facing `heading` (rad, from east). Returns what it touched. */
   function swing(from,heading){
@@ -146,5 +169,5 @@ export function createPlayProps({hill,table,height,scene,cue=()=>{}}){
     for(const t of hits)react(props.find(p=>p.live===t),'swing',from);
     return hits.map(t=>t.id);
   }
-  return {group,update,swing,react,props,dispose(){group.traverse(n=>{if(n.isMesh){n.geometry.dispose();n.material.dispose();}});scene.remove(group);}};
+  return {group,update,swing,clippings,react,props,dispose(){group.traverse(n=>{if(n.isMesh){n.geometry.dispose();n.material.dispose();}});pool.geometry.dispose();pool.material.dispose();scene.remove(group);scene.remove(pool);}};
 }

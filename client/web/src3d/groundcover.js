@@ -240,6 +240,23 @@ export function buildMeadowPatch({range=[150,225],close=false}={}) {
       triangle(inner,outer,edge,white,root,flex,plant,1);
     }
   }
+  // Seeding grasses. `plant` > 0 shows a form where the drift (meadowTraits.x) reaches it, so
+  // blossoms gather in drifts; < 0 shows it where the drift stays below, so seeding grasses fill
+  // the grassy ground between the flowers rather than standing among them. (Taller, broad-leaved
+  // wet-meadow plants are their own layer: wet-meadow.js.)
+  const straw=new Color('#cbbd86'),awn=new Color('#e2d9ae'),stalk=new Color('#6c8a45');
+  const spot=(i,r)=>{const a=deterministicTurn(i,57);return [Math.cos(a)*r,0,Math.sin(a)*r];};
+  // Seeding grass (timothy, brome): tall bare stems with a narrow spindle of seed, crossed so it reads from any side.
+  for(let i=0;i<(close?5:3);i++){
+    const root=spot(i+10,(close?.35:1.6)+fraction(i,23)*(close?.5:1.6)),h=.85+fraction(i,37)*.35,lean=(fraction(i,41)-.5)*.12,flex=1.05;
+    const top=[root[0]+lean,h,root[2]+lean*.5],base=[root[0]+lean*.7,h-.22,root[2]+lean*.35];
+    triangle([root[0]-.006,0,root[2]],[root[0]+.006,0,root[2]],base,stalk,root,flex,-.42);
+    for(const a of [deterministicTurn(i,61),deterministicTurn(i,61)+Math.PI/2]){
+      const dx=Math.cos(a)*.011,dz=Math.sin(a)*.011;
+      triangle([base[0]-dx,base[1],base[2]-dz],[base[0]+dx,base[1],base[2]+dz],top,straw,root,flex,-.42);
+      triangle([base[0]-dx,base[1],base[2]-dz],top,[base[0]+dx*.4,base[1]+.05,base[2]+dz*.4],awn,root,flex,-.42);
+    }
+  }
   const geometry=new BufferGeometry();
   geometry.setAttribute('position',new Float32BufferAttribute(positions,3));
   geometry.setAttribute('color',new Float32BufferAttribute(colors,3));

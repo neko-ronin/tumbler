@@ -39,7 +39,7 @@
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "2353faa953b002d2a64a7e747faab679b1b6bb22d44c41254468456b71bafe2f"
+      "sha256": "66eb1937291550277bcfb92018c65409b94fe9909f21485226fdd95d6ce7cd31"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -47,7 +47,7 @@
     },
     {
       "path": "client/web/src3d/air-cues.js",
-      "sha256": "0959fe8b6960e9230635f9338260108c3616a0911799efdbe32df803a7462f86"
+      "sha256": "2773dd47e2afc750527f78a456d62493e003686673d0689a80861653de7014ea"
     },
     {
       "path": "client/web/src3d/asset-bytes.js",
@@ -75,7 +75,7 @@
     },
     {
       "path": "client/web/src3d/character.js",
-      "sha256": "9e649dc7101d367c4ed76216a663edd326e0216844355d1aea42ab14e90b8862"
+      "sha256": "4a572ab9dcaa259d9d07b0f07ccf3419ffd4034db46d98ec077876ca47a2be8e"
     },
     {
       "path": "client/web/src3d/cloud-field.js",
@@ -111,7 +111,7 @@
     },
     {
       "path": "client/web/src3d/ecology.js",
-      "sha256": "1706f51e76bd2fd2d947b6e90d98839c6ce0e12ab6997215875dac16581a1142"
+      "sha256": "d4a4c97d043839a6e837874396c1025f22e57882395a3a9fd89275257df84695"
     },
     {
       "path": "client/web/src3d/falls.js",
@@ -159,7 +159,7 @@
     },
     {
       "path": "client/web/src3d/forest-floor.js",
-      "sha256": "d43e32c7de1563fc8c705eb2566a9ebc62995fd055f45c8086e84e4a34d9a91d"
+      "sha256": "d455b01f7ba1b4580bf765c36f86150df6cc513bf4a3ddd829a71e612a86bfdd"
     },
     {
       "path": "client/web/src3d/forest.js",
@@ -195,7 +195,7 @@
     },
     {
       "path": "client/web/src3d/groundcover.js",
-      "sha256": "fa37473bb081bcbe4bf3613e20a913bf9c5c5ccb3321087451441061f4d803ea"
+      "sha256": "41166890c9208809f38a4172bffbe9aa006fa5cff59138f6d525059a532f2626"
     },
     {
       "path": "client/web/src3d/heights.js",
@@ -203,7 +203,7 @@
     },
     {
       "path": "client/web/src3d/insect-visits.js",
-      "sha256": "03420d00872efd7e4f5b7723185f9ed3269b9743eb05230bb7d04a028dc1ddde"
+      "sha256": "2400d83b5ba40611269c37d5c48a6cbcd790389c8c137b19df57ee0341dacc1a"
     },
     {
       "path": "client/web/src3d/katana-fx.js",
@@ -215,11 +215,11 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "aae6f3c3cb39ede38327c4cec195b72f44d1ea9d1da10f7b7cdf35efb288e7f8"
+      "sha256": "5c3b0cb14cb83337f25466b2a04856af4110f73170e2d1d1a05038fea20841b9"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
-      "sha256": "e4e15a7ef1a3c0b3bd2b9f44806596645211c8194d7199dc06df6d3e6a0de483"
+      "sha256": "6be4b5bc60fe8312f3eeee59dc93a680f890e9f7b8f55c1dd0738c019fc1700d"
     },
     {
       "path": "client/web/src3d/mirror.js",
@@ -291,7 +291,7 @@
     },
     {
       "path": "client/web/src3d/play-props.js",
-      "sha256": "5a430a06b90922202a24594809e442e5b17a14396b5155d66809689316531d21"
+      "sha256": "c95a75a3ca3470c60f2409e05334eec348c0e72705ce86f2a2370f2592ec999a"
     },
     {
       "path": "client/web/src3d/player-ui.js",
@@ -327,7 +327,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "d717069573a2bbc2b9d381e1fee654d36c24c416e6c709d2d4478e3d02f7d549"
+      "sha256": "312fd46d90ea42b5ff48b1a2fd4fb44c73902e49ae4e7a13a0ebc3110ca13a48"
     },
     {
       "path": "client/web/src3d/sun-pcf.js",
@@ -399,7 +399,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "75237b97d8540606ea37ddef2abcd6ba9ce0070b7df5022c1308f43037942491"
+      "sha256": "76d30a113338d95784cd90c7d76d0d85557d39e812e11acdfae1283ef6ebf93a"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -408,6 +408,10 @@
     {
       "path": "client/web/src3d/water-audio.js",
       "sha256": "592d7245d40cf4c3c7b62e8a560a0ef20f8c634ddcbede403391e9a4313fbabd"
+    },
+    {
+      "path": "client/web/src3d/wet-meadow.js",
+      "sha256": "ffc8a16a03e17e5936fdbed2d4cb8cb68a7884c4eeb201a2f4dbc4c3306e400e"
     },
     {
       "path": "client/web/src3d/world.js",
@@ -1112,7 +1116,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "9a3ae3c1",
+  "commit": "f670ece6",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

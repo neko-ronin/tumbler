@@ -1,3 +1,22 @@
+# Meadow life — web v0.12.0, 2026-11-27
+
+The meadow moves and varies. Gust patches about 8 × 20 m, inside swells about 25 × 60 m, drift downwind,
+leaning the blades and turning them pale as they lay over. Grass dries with distance from the river and lake
+and height above them, from the terrain's own water field worked out once at load, so the valley floor by the
+water stays fresh green and stands differ in hue and height. Corn lilies (*Veratrum*, about 1.6 m, broad pleated
+leaves) stand in clumps on wet ground near the water; seeding grasses grow in the drier stands. Grass parts
+round the walker and closes behind.
+
+Ferns grow in thickets under the forest: 18-frond crowns 1.25–1.85 m tall with lobed pinnae, packed into
+continuous stands. They part round the walker, and deep in one the cat is hidden: frogs, insects, fish and
+ducks ignore it and the screen edges darken. Sword swings throw decorative grass, fern and petal clippings
+(no plant changes). Frogs leap for the water, fish rise and leap, ducks upend to feed, dragonflies dart.
+Fixed: the cat's ears folded under the beanie a little more with every chained swing.
+
+**Open:** frame cost measured only under load (the ferns below ±10% there; the meadow about 5–8% in grass
+views); not measured on an idle M2 Air. The cat does not crouch. Review record:
+`docs/reviews/meadow-life-2026-11-26/`. Released as web v0.12.0.
+
 # River seams — web v0.11.1, 2026-11-27
 
 The river reads as one water from its source to its mouth. Overlapping water blends once per pixel (a stencil

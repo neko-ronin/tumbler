@@ -36,7 +36,7 @@ test('every windborne mote spawns inside its eviction circle and keeps drifting 
   for(const density of [meadow.windborne.per_hectare,400]){
     const ecology=buildEcology({habitats:[],plantings:[]},{species:[],windborne:{per_hectare:density}},
       assets,{height:()=>0},{contains:()=>true},null,()=>({wx:2,wy:1,lift:0}));
-    const debris=ecology.group.children.find(c=>c.isInstancedMesh&&c.material.isMeshBasicMaterial);
+    const debris=ecology.group.children.find(c=>c.isInstancedMesh&&c.material.isMeshBasicMaterial&&c.material.map);  // motes are sprites; water rings have no map
     const camera={position:new T.Vector3(0,2,0)},matrix=new T.Matrix4();
     const positions=()=>Array.from({length:debris.count},(_,i)=>{
       debris.getMatrixAt(i,matrix);return [matrix.elements[12],matrix.elements[14]];

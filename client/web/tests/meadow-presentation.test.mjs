@@ -109,7 +109,7 @@ test('local leaves taper along curved centre lines with valid smooth normals and
       assert.ok(point.toArray().concat(root.toArray(),normal.toArray()).every(Number.isFinite));
       assert.ok(Math.abs(normal.length()-1)<1e-6,'lighting normals remain unit vectors');
       assert.equal(root.y,0,'all plants stand on the patch tangent plane');assert.ok(f.getX(i)>0);
-      if(plant.getX(i)>0)continue;
+      if(plant.getX(i)!==0)continue;
       const key=root.toArray().join(','),points=leaves.get(key)??[];points.push(point);leaves.set(key,points);
     }
     const heights=[];
@@ -354,4 +354,43 @@ test('dense near blades follow the camera and its view, not the player',async()=
     assert.ok(dense().every(m=>!ahead.includes(m)||m.boundingSphere.center.distanceTo(camera.position)<m.boundingSphere.radius+1),'turning away stops drawing the tiles behind');
     camera.position.set(200,90,0);camera.lookAt(200,30,0);camera.updateMatrixWorld();canopy.update(camera);assert.equal(dense().length,0,'none drawn from 60 m above the ground: the layer ends 24 m from the camera');
   }finally{canopy.dispose();}
+});
+
+test('meadow stand noise spans its range and is packed beside the grass amount on the stamp grid',async()=>{
+  const {meadowStandAt,packMeadowStands}=await import('../src3d/meadow-shading.js');
+  let wet=0,dryish=0,seeding=0,n=0;
+  for(let x=-2000;x<2000;x+=37)for(let z=-2000;z<2000;z+=41){const s=meadowStandAt(x,z);n++;
+    for(const v of [s.moisture,s.stand,s.seeding])assert.ok(v>=0&&v<=1);
+    if(s.moisture>.6)dryish++;if(s.moisture<.4)wet++;if(s.seeding>.5)seeding++;}
+  // Dryness itself follows distance to water in the shader; the noise only needs both ends to roughen its edge.
+  assert.ok(dryish/n>.1&&wet/n>.1,`high ${dryish/n}, low ${wet/n}`);assert.ok(seeding/n>.03,`seeding ${seeding/n}`);
+  assert.deepEqual(meadowStandAt(123.4,-56.7),meadowStandAt(123.4,-56.7));
+  const cover={quad:8,resolution:64,offsetX:-256,offsetY:-256},amount=new Uint8Array(64*64).fill(7),px=packMeadowStands(amount,cover);
+  const s=meadowStandAt(-256+4,-(-256+4));
+  assert.equal(px.length,64*64*4);assert.equal(px[0],7,'red keeps the grass amount');
+  assert.ok(Math.abs(px[1]-s.moisture*255)<=1&&Math.abs(px[3]-s.seeding*255)<=1,'texel 0 is the south-west cell, (east, north) as the shader reads it');
+  const bare=new Uint8Array(64*64);bare[64*10+10]=200;const sparse=packMeadowStands(bare,cover);
+  assert.deepEqual([...sparse.subarray(0,4)],[0,128,128,0],'ground far from grass is neutral and never evaluated');
+  const beside=(64*10+11)*4,t=meadowStandAt(-256+11*8+4,-(-256+10*8+4));
+  assert.ok(Math.abs(sparse[beside+1]-t.moisture*255)<=1,'a cell beside grass is evaluated, so a bilinear read at the edge stays true');
+});
+
+test('corn lilies grow in clumps on wet ground by the water, never far from it, and stand over the grass',async()=>{
+  const {cornLilyChance,cornLilyGeometry}=await import('../src3d/wet-meadow.js');
+  assert.ok(cornLilyChance(20,.9,.9)>.5,'a lush clump beside the water is likely');
+  assert.equal(cornLilyChance(200,.9,.9),0,'none 200 m from water');
+  assert.equal(cornLilyChance(20,.3,.9),0,'none outside a stand');assert.equal(cornLilyChance(20,.9,.2),0,'none between clumps');
+  const g=cornLilyGeometry(),p=g.attributes.position;let top=0;
+  for(let i=0;i<p.count;i++)top=Math.max(top,p.getY(i));
+  assert.ok(top>.95,`taller than the 0.85 m grass (${top.toFixed(2)} m)`);
+  for(const name of ['bladeRoot','flex','petal','plant','color','normal'])assert.ok(g.attributes[name],`meadow material needs ${name}`);
+  g.dispose();
+});
+
+test('meadow dryness follows the water: green beside it, drying with distance and height, noise only at the edge',async()=>{
+  const {meadowDrynessAt}=await import('../src3d/meadow-shading.js');
+  assert.equal(meadowDrynessAt(20,2,1),0,'beside the river even the driest noise stays green');
+  assert.equal(meadowDrynessAt(700,80,.5),1,'far from water and high above it, ordinary ground is dry');
+  assert.ok(meadowDrynessAt(700,80,0)<1,'a wet patch there stays partly green: the noise roughens the edge');
+  assert.ok(meadowDrynessAt(450,40,.5)>meadowDrynessAt(150,5,.5),'drier with distance and height');
 });

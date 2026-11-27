@@ -12,6 +12,7 @@ import {stepScenicCourse} from '../../../shared/activities/scenic-course.js';
 import {createRiverGranite} from '../../../shared/activities/river-surface.js';
 import {buildRiverGranite} from './river-granite.js';
 import {createAirCues,createMeadowAir} from './air-cues.js';
+import {packMeadowStands,meadowDrynessAt,waterFieldSampler} from './meadow-shading.js';
 /** Browser composition only: the core remains the source of the world. */
 import * as T from '../vendor/three.module.min.js';
 import { createOrbitControls } from './controls.js';
@@ -36,6 +37,7 @@ import {buildForestFloor} from './forest-floor.js';
 import {buildAdoptedRedwoods,releaseCrownSources} from './redwood-rendering.js';
 import { GroundSampler, HeightGrid, decodeGroundCover,mergeGroundCover,coverAmount,landscapeHeightGrid } from './heights.js';
 import { buildCloseMeadow, meadowViewFocus } from './groundcover.js';
+import { buildCornLilies } from './wet-meadow.js';
 import {buildGrassCanopy} from './grass-canopy.js';
 import { parseGLB, applyImageBytes, mergePrimitives } from './glb.js';
 import { makeSky, style } from './style.js';
@@ -289,13 +291,18 @@ export async function main() {
       *(1-ramp(.4,.56,forestSoil.sample(x,y)));             // crown shade hands the ground to litter
     grassCover.amount[i]=Math.round(grass*255);grassCover.covered[i]=+(grassCover.amount[i]>0);
   }
-  const coverTexture=new T.DataTexture(grassCover.amount,cover.resolution,cover.resolution,T.RedFormat);
+  // Red is the grass amount; green, blue and alpha carry the meadow's stands (meadow-shading.js).
+  const packStart=performance.now(),waterField=waterFieldSampler(style.waterLevel.value,style.waterLevelGrid.value,T.DataUtils.fromHalfFloat);
+  const coverBytes=packMeadowStands(grassCover.amount,cover,{dryness:(east,north,moisture)=>{const w=waterField(east,north);return meadowDrynessAt(w.distance,(ground.height(east,north)??w.level)-w.level,moisture);}});
+  const coverTexture=new T.DataTexture(coverBytes,cover.resolution,cover.resolution,T.RGBAFormat);coverTexture.userData.packMs=performance.now()-packStart;
   coverTexture.minFilter=coverTexture.magFilter=T.LinearFilter;coverTexture.needsUpdate=true;
   style.cover.value=coverTexture;style.coverGrid.value.set(cover.offsetX,cover.offsetY,cover.quad,cover.resolution);
   const grassGl=renderer.getContext();
   const meadow = buildGrassCanopy(grassCover,ground,{samples:grassGl.getParameter(grassGl.SAMPLES),batchTiles:6});
   scene.add(meadow.group);
   const closeMeadow = buildCloseMeadow(grassCover,ground,{flowerMix:stampData.density.flower_colour_mix});scene.add(closeMeadow.mesh);
+  // Corn lilies stand over the grass in the wet ground by the water (wet-meadow.js).
+  const cornLilies=buildCornLilies(grassCover,ground);scene.add(cornLilies.mesh);
   const ecology=buildEcology({...habitats,plantings:[...habitats.plantings,...aquatic.plantings],deep_schools:aquatic.deep_schools,rafts:aquatic.rafts},meadowData,assets,ground,closeMeadow,renderer,(x,y,z)=>navigation.sampleEnvironment(x,y,z));scene.add(ecology.group);
   // A footbridge's length is its asset's extent along its own +Z (shared/geometry/footbridge/build.py).
   const spans=placement.instances.filter(i=>i.kind==='footbridge').map(i=>{
@@ -408,8 +415,12 @@ export async function main() {
   const tutor=stageOrganoidTutor({config:organoidConfig,organoid,soundscape,clip:organoidCues[organoidConfig.tutor.call.clip],
     panel:document.getElementById('organoid-tip'),navigation,characterScale:()=>characterConfig.scale,
     anchors:{'tumble-hill':tumbleHill.fall_line_xy_m,gondola:gondolaLine.stations.map(s=>s.xy_m)}});
-  const visitors=createVisitorWatch({ecology,character,navigation,camera,focusEl:document.getElementById('focus')});
-  character.onCue=name=>{soundscape.cue(name);if(['swish','swish_heavy','spin','impact'].includes(name)&&navigation.mode==='walk')play.swing([navigation.state.x,navigation.state.y],navigation.state.heading??0);};
+  const visitors=createVisitorWatch({ecology,character,navigation,camera,focusEl:document.getElementById('focus'),coverAt:forestFloor.coverAt,coverEl:document.getElementById('cover')});
+  character.onCue=name=>{soundscape.cue(name);if(['swish','swish_heavy','spin','impact'].includes(name)&&navigation.mode==='walk'){
+    const s=navigation.state,from=[s.x,s.y],heading=s.heading??0;play.swing(from,heading);
+    // Grass, fern and petal clippings along the blade's arc: decoration only, the plants are untouched.
+    if(name!=='impact'){const ahead=[s.x+Math.cos(heading),s.y+Math.sin(heading)];
+      play.clippings(from,heading,{grass:coverAmount(grassCover,...ahead),fern:forestFloor.coverAt(ahead[0],ahead[1],s.z)},name!=='swish');}}};
   const foleyEvents=createFoleyEvents(name=>soundscape.cue(name));
   // Interpret existing physical/stamped facts; never infer a material from color.
   // Unclassified bare ground uses a restrained earth/grit texture, not a new world tag.
@@ -838,7 +849,16 @@ export async function main() {
   setLight('golden');
 
   const player=()=>navigation.mode==='orbit'?null:navigation.mode==='fly'?{x:camera.position.x,y:-camera.position.z,z:camera.position.y}:navigation.state;
-  const meadowFocus=meadowViewFocus(camera,ground,undefined,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
+  // Grass pressed aside by the player and springing back behind them (MEADOW_PUSH_GLSL): where they
+  // stand, then three earlier footholds that fade over 2.5 s. A pilot aloft is too high to touch it.
+  const pressed=[];let pressClock=0;
+  const pressMeadow=(who,dt)=>{
+    pressClock+=dt;const slots=style.meadowPush.value;
+    if(who&&(!pressed.length||Math.hypot(who.x-pressed[0].x,who.y-pressed[0].y)>.45)){pressed.unshift({x:who.x,y:who.y,z:who.z,at:pressClock});pressed.length=Math.min(pressed.length,3);}
+    slots[0].set(who?.x??0,who?.z??-1e4,-(who?.y??0),who?1:0);
+    for(let i=0;i<3;i++){const p=pressed[i];slots[i+1].set(p?.x??0,p?.z??-1e4,-(p?.y??0),p?Math.max(0,1-(pressClock-p.at)/2.5)*.8:0);}
+  };
+  const meadowFocus=meadowViewFocus(camera,ground,undefined,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);cornLilies.update(camera,meadowFocus);
 
   let frame = 0, contextLost = false, stopped = false, lastFrame = 0, lastStamp = 0;
   let presenting=false,presentedOnce=false,openingFrame=null,audioPrepared=false;
@@ -850,7 +870,7 @@ export async function main() {
   const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gorgeGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
   window.tumbler = { underwater, mirror:{get enabled(){return reflectionSelect.value!=='off';},set enabled(on){reflectionSelect.value=on?'layered':'off';},
-    get mode(){return reflectionSelect.value;},set mode(v){if(['off','mirror','layered'].includes(v))reflectionSelect.value=v;},layered,movers,probes:probeData,keep:mirrorKeep,get stats(){return reflectionSelect.value==='layered'?layered?.stats:mirror?.stats;},get target(){return mirror?.target;},get scale(){return mirror?.scale;},set scale(v){if(mirror)mirror.scale=v;},get reach(){return mirror?.reach;},set reach(v){if(mirror)mirror.reach=v;}},falls,organoid,tutor,parakiteTour,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,gorgeGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+    get mode(){return reflectionSelect.value;},set mode(v){if(['off','mirror','layered'].includes(v))reflectionSelect.value=v;},layered,movers,probes:probeData,keep:mirrorKeep,get stats(){return reflectionSelect.value==='layered'?layered?.stats:mirror?.stats;},get target(){return mirror?.target;},get scale(){return mirror?.scale;},set scale(v){if(mirror)mirror.scale=v;},get reach(){return mirror?.reach;},set reach(v){if(mirror)mirror.reach=v;}},falls,organoid,tutor,parakiteTour,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,gorgeGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, cornLilies, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;startup.rendered=false;startup.playing=false;
     loading.show();status.textContent='Letting the light settle…';
@@ -866,7 +886,7 @@ export async function main() {
     const warmOptions={
       prepare(){
         terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);gorgeGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow();
-        meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);
+        meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);cornLilies.update(camera,meadowFocus);
         airCues.update(camera,0);ecology.update(camera,elapsed);sky.position.copy(camera.position);
         const wind=navigation.sampleEnvironment(camera.position.x,-camera.position.z,camera.position.y);
         style.wind.value.set(wind.wx/Math.max(1,flightConfig.wind.speed_mps),-wind.wy/Math.max(1,flightConfig.wind.speed_mps));
@@ -1040,7 +1060,7 @@ export async function main() {
     playerVisibility.update(character.object.position.clone().add(new T.Vector3(0,1.1*characterConfig.scale,0)),spotlight&&!organoid.active&&navigation.mode!=='orbit'&&navigation.mode!=='fly'&&navigation.view==='chase',characterConfig.scale,treePlay);
     underwater.update(Math.min(delta,50)/1000,{...lightPresets[lightName],name:lightName},canvas.height);soundscape.setUnderwater(underwater.depth);airCues.update(camera,Math.min(delta,50)/1000);meadowAir.update(Math.min(delta,50)/1000);
     generators.update(Math.min(delta,50)/1000);
-    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);gorgeGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow(false,true);meadowViewFocus(camera,ground,meadowFocus,player());meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);play.update(Math.min(delta,50)/1000,camera,[...(onFoot?[onFoot]:[]),...folk.api.world.cats.filter(c=>c.body.mode==='walk').map(c=>({...c.body.state,radius:.25}))]);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit),paraSignals.sample);updateFoley(Math.min(delta,50)/1000);
+    terrain.update(camera,canvas.height);riverGranite.update(camera,canvas.height);gorgeGranite.update(camera,canvas.height);forest.update(camera,shadowCentre);forestFloor.update(camera);updateShadow(false,true);meadowViewFocus(camera,ground,meadowFocus,player());pressMeadow(player(),Math.min(delta,50)/1000);meadow.update(camera,meadowFocus);closeMeadow.update(camera,meadowFocus);cornLilies.update(camera,meadowFocus);visitors.update(Math.min(delta,50)/1000);play.update(Math.min(delta,50)/1000,camera,[...(onFoot?[onFoot]:[]),...folk.api.world.cats.filter(c=>c.body.mode==='walk').map(c=>({...c.body.state,radius:.25}))]);ecology.update(camera,elapsed);soundscape.update(camera,navigation,(kind,maxM,limit)=>ecology.nearby(kind,camera,maxM,limit),paraSignals.sample);updateFoley(Math.min(delta,50)/1000);
 
     // The canopy owns its view-focused tile budget and conservative wind bounds.
     const flight=navigation.state;
@@ -1137,7 +1157,7 @@ export async function main() {
     try { contextLost=false;cloudPass.lighting.update(true);cloudPass.shadows.update(true);forest.rebuildImpostors();distantTreeShadows.update(style.sun.value,true);ecology.rebuildImpostors();updateShadow(true);await prepareFirstView(); }
     catch(error){stopped=true;loading.fail(error);console.error(error);}
   });
-  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();gorgeGranite.dispose();geology?.dispose();terrain.dispose();distantTreeShadows.dispose();forest.dispose();treeShadows.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();tutor.dispose();parakiteTour.dispose();organoid.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();mirror?.dispose();layered?.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
+  window.addEventListener('pagehide', e => { if (!e.persisted) { stopped = true; cancelAnimationFrame(frame); riverGranite.dispose();gorgeGranite.dispose();geology?.dispose();terrain.dispose();distantTreeShadows.dispose();forest.dispose();treeShadows.dispose();ecology.dispose();airCues.dispose();forestLitterTexture.dispose();litterBitmap.close();forestFloor.dispose();forestSoil.dispose();meadowAir.dispose();meadowWind.dispose();meadow.dispose();cornLilies.dispose();tutor.dispose();parakiteTour.dispose();organoid.dispose();soundscape.dispose();navigation.dispose();firstPerson.dispose();flightRig.dispose();character.dispose();folk.dispose();gondola.dispose();actorShadows.dispose();cloudPass.dispose();mirror?.dispose();layered?.dispose();paraPass.dispose();controls.dispose(); renderer.dispose(); } });
   await prepareFirstView();
   if(requestedOrganoid){
     toTumbleHill();
