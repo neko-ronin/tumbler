@@ -1,4 +1,4 @@
-# River seams — web v0.10.1, 2026-11-27
+# River seams — web v0.11.1, 2026-11-27
 
 The river reads as one water from its source to its mouth. Overlapping water blends once per pixel (a stencil
 mark), so the turquoise fans at tight bends and the doubled tint where the river met its reaches and the lake are
@@ -13,7 +13,7 @@ the lake's probes rebuilt.
 **Open:** graded trails are stale against main's terrain (`trails.py write --check` failed before this change and
 still does; routes were left as published). Five other shared checks that failed on main still fail (aquatic,
 figure claims, flying hulls, two measurement records). Not measured: frame time, the speed-wing view in flight.
-Released as web v0.10.1.
+Released as web v0.11.1.
 
 # Map over the valley — web v0.10.0, 2026-11-23
 
