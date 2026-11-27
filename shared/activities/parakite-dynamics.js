@@ -306,7 +306,7 @@ export function advanceRotationalParakite(state, config, dt, steer, airAt) {
     'Wing deflated · raise handles briefly, then centre') :
     left < .65 ? 'Left wing folded · steer right gently' : right < .65 ? 'Right wing folded · steer left gently' :
     state.load < .2 ? 'Lines slack · ease the pull' : state.stall > .2 ? 'Low energy · ease handles' :
-    state.vario > 1 ? 'Flare · climbing' : Math.abs(state.bank) > .72 && state.vario < -4 ? 'Spiral · ease the turn' : 'Parakite';
+    state.vario > 1 ? 'Flare · climbing' : Math.abs(state.bank) > .72 && state.vario < -4 ? 'Spiral · ease the turn' : 'Speed wing';
 }
 
 /** Project the rigid state after an external world contact. Account for

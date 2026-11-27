@@ -18,7 +18,7 @@ test('trim polar fits a positive wing drag budget and rejects excessive pilot dr
     const zeroBudget=mass*9.81*Math.sin(gamma)/q;
     assert.throws(()=>coupledPolar(mode,{...c,pilot_drag_area_m2:zeroBudget*1.01}),/Infeasible coupled trim polar.*pilot drag.*total trim drag/);
   }
-  assert.throws(()=>coupledPolar(source.modes.parakite,{...source.coupled,pilot_drag_area_m2:.44}),/Infeasible coupled trim polar for Parakiting/);
+  assert.throws(()=>coupledPolar(source.modes.parakite,{...source.coupled,pilot_drag_area_m2:.44}),/Infeasible coupled trim polar for Speedflying/);
 });
 
 function orbit(relativeSpeed=10){

@@ -67,8 +67,8 @@
   "shared/world/out/horizon_map.png": "eb799a0e9b49bf63ce11974af7bdbcdb9a952aadd3ccd488a2873a0222237ae0",
   "shared/world/out/river_granite.json": "ea1fd0d14d3c864ca2405555acaa2fe46b888c76c28a9f5bbee79020e133fbca",
   "shared/world/out/landscape_transition.json": "2106d9c4b88bf35be2b04a6765fc73428549a95ff4eac484e211f473f6c7c82d",
-  "shared/geometry/granite/geology.json": "a32a7e5067087e442541f327b0b78ae966b5f3692f40eb9e670a4bd9f293aee8",
+  "shared/geometry/granite/geology.json": "ba78745c2813e84f52fc514943443b2774332a6104a7f754ad1a80b9c6527ba6",
   "shared/geometry/tree-design/adopted-redwoods.json": "32613b3be4c4a810597b766bece169bd53650025bedbc7a20426c622788d0c26"
  },
- "bake_seconds": 249
+ "bake_seconds": 242
 }

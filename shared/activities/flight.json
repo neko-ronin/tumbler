@@ -33,7 +33,7 @@
       "ground_drag_relief": 0.23
     },
     "parakite": {
-      "label": "Parakiting",
+      "label": "Speedflying",
       "trim_mps": 24.0,
       "sink_mps": 2.1,
       "turn_rps": 1.15,

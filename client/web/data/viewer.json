@@ -19,27 +19,27 @@
     },
     {
       "path": "client/web/data/reflections/probes-day.webp",
-      "sha256": "c0b77242fee8d778bf5ecc7ec7fcee1f6129d2c9dbbb705632bd2e06961cc336"
+      "sha256": "00576263bb5fd6ab0ce5a7eeb963f76f4cc69980edb4d458edfbf7d07b0d0f52"
     },
     {
       "path": "client/web/data/reflections/probes-distance.png",
-      "sha256": "66955a89953a2e449c9135930a1fb3ca0cbb5ced1012e45b94c93bbab0c4ff6d"
+      "sha256": "570245d8eee72a02c1d6ac22250129ea2f85e38874de951ea7a421f43f060ab1"
     },
     {
       "path": "client/web/data/reflections/probes-dusk.webp",
-      "sha256": "540bad09385e645e89bf356b4559402fe7794fdbc6a9ce138a7f8c8a17ad7322"
+      "sha256": "c0c1e536c348a28659cbabbea39cd9539fbbb3509d9a50a3560575283d25ad39"
     },
     {
       "path": "client/web/data/reflections/probes-golden.webp",
-      "sha256": "3ab808e8b6417ab3f6b77053caad15dac57e8dd826bdab05011da829ca4941f5"
+      "sha256": "416a5ee9a597fb1ee6262f3ececa5a3d1c35fbfda4011259bcd1e63a06472856"
     },
     {
       "path": "client/web/data/reflections/probes.json",
-      "sha256": "c30146f7e920702bb5fd76f977b22484fbf478a45e258aa6e64d38a9bdf7daa4"
+      "sha256": "10710e451e66b99e0914ede9a8a0cc3eb39c62b86c93a52af3d2642319106fbc"
     },
     {
       "path": "client/web/scene.html",
-      "sha256": "772d928baf5b3cf8c743502e4b4b57acde37f802e987bf890cc1d3ede2f002ad"
+      "sha256": "2353faa953b002d2a64a7e747faab679b1b6bb22d44c41254468456b71bafe2f"
     },
     {
       "path": "client/web/src3d/actor-shadow.js",
@@ -295,7 +295,7 @@
     },
     {
       "path": "client/web/src3d/player-ui.js",
-      "sha256": "1363dd195da32c3b7a66bf99f525e83c295d4018e4d97299897378e4a4ea68f5"
+      "sha256": "c1a40012acefcbdb969c8511943dc7b5b5b4564ae7ba89ed3e0166bd2192ee13"
     },
     {
       "path": "client/web/src3d/player-visibility.js",
@@ -475,7 +475,7 @@
     },
     {
       "path": "shared/activities/flight.json",
-      "sha256": "e1be6af8d18cd8e4c338f57508bd17cccd1adb831d30bf8efc46fde3c0fff0b6"
+      "sha256": "dfba516bd1ed9b96197d5332cfa1793f6f4a177cef4410cc7762648219d7e086"
     },
     {
       "path": "shared/activities/forest-spacing.js",
@@ -503,7 +503,7 @@
     },
     {
       "path": "shared/activities/parakite-dynamics.js",
-      "sha256": "0f0ecc7f146fa36a080eb9c1c7bd2c27b162bfac6e2c2b7142c639886b5f7280"
+      "sha256": "372c80f0a9d7d3a89b5c349f8b771759e71584183f7a79da35522d1b7ca40fd8"
     },
     {
       "path": "shared/activities/parakite-follow.js",
@@ -751,7 +751,7 @@
     },
     {
       "path": "shared/geometry/granite/geology.json",
-      "sha256": "a32a7e5067087e442541f327b0b78ae966b5f3692f40eb9e670a4bd9f293aee8"
+      "sha256": "ba78745c2813e84f52fc514943443b2774332a6104a7f754ad1a80b9c6527ba6"
     },
     {
       "path": "shared/geometry/granite/surface.js",
@@ -963,7 +963,7 @@
     },
     {
       "path": "shared/npc/folk.json",
-      "sha256": "8684ea0040f92705ffa67f215abb7459019e26d6f8584ce7e3e40d7f552e95ad"
+      "sha256": "b90c1e37767121b33f9b4b5c87e65b89e9d6d3c8b75f418a5738298fb06a9c34"
     },
     {
       "path": "shared/npc/mind.js",
@@ -979,7 +979,7 @@
     },
     {
       "path": "shared/play/places.json",
-      "sha256": "60e13e08a687f6a39fd9b4c6e7ec1b043178b09f0c45372044a9c262286263d8"
+      "sha256": "ab4681d9e8719cf094898032f2caca66246d9207af315480b0f69ce7a76c5ff9"
     },
     {
       "path": "shared/play/reactions.js",
@@ -1112,7 +1112,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "a14b96c7",
+  "commit": "d0f2ae85",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

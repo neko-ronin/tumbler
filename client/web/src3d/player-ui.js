@@ -32,7 +32,7 @@ const CONTROLS={
     ['Steer',['A','D'],['L stick']],['Speed bar, brakes',['W','S'],['L stick']],['Brake handles, left and right',['J','K'],['LT','RT']],
     ['Motor up, down',['R','F'],['RB','LB']],['Wingovers',['Shift','A','D'],['B','L stick']],['View',['V'],['Y']],
     ['Look',['Drag','Arrows'],['R stick']],['After landing, unhook',['E'],['X']],['Map',['Esc','M'],['Menu']]]},
-  parakite:{title:'Parakite',rows:[
+  parakite:{title:'Speedflying',rows:[
     ['Steer',['A','D'],['L stick']],['Dive, flare',['W','S'],['L stick']],['Handles, left and right',['J','K'],['LT','RT']],
     ['Wingovers',['Shift','A','D'],['B','L stick']],['View',['V'],['Y']],['Look',['Drag','Arrows'],['R stick']],
     ['After landing, unhook',['E'],['X']],['Map',['Esc','M'],['Menu']]]},
@@ -40,7 +40,7 @@ const CONTROLS={
 };
 const MENU_CONTROLS={
   map:[['Choose a place',['Arrows','WASD','Click'],['D-pad','L stick']],['Travel there',['Enter'],['A']],
-    ['Fly the parakite from North Wall',['L'],['Y']],['Fly the parakite from Tumble Hill',['H'],['X']],['All controls',['Tab'],['RB']],['Back to the valley',['Esc'],['B','Menu']]],
+    ['Fly the speed wing from North Wall',['L'],['Y']],['Fly the speed wing from Tumble Hill',['H'],['X']],['All controls',['Tab'],['RB']],['Back to the valley',['Esc'],['B','Menu']]],
   controls:[['Back to the map',['Tab'],['LB']],['Back to the valley',['Esc'],['B','Menu']]],
 };
 
@@ -48,7 +48,7 @@ const el=(tag,props={},...children)=>{const n=Object.assign(document.createEleme
 const glyph=(label,kind)=>el('span',{className:`glyph glyph-${kind} glyph-${label.length>2?'word':'key'}`,textContent:label});
 const paraModes=new Set(['paraglider','parakite','paramotor']);
 // What a giant redwood's crown perch offers, in the order of its number keys.
-const PERCH_MODES=[['parakite','Parakite'],['paraglider','Paraglider'],['paramotor','Paramotor']];
+const PERCH_MODES=[['parakite','Speed wing'],['paraglider','Paraglider'],['paramotor','Paramotor']];
 function controlRow([action,keys,pad]){
   const keyCell=keys.length?keys.map(k=>glyph(k,'key')):[el('span',{className:'glyph-none',textContent:'not on the keyboard'})];
   return el('div',{className:'control-row'},el('span',{className:'control-action',textContent:action}),el('span',{className:'control-keys'},...keyCell),el('span',{className:'control-pad'},...pad.map(b=>glyph(b,'pad'))));
@@ -187,11 +187,11 @@ export function createPlayerUI({places,arriveAt,startParakite,navigation,ground,
   function nearestTo(){const s=navigation.state;if(!s)return selected;return places.reduce((a,p)=>Math.hypot(p.arrive_xy_m[0]-s.x,p.arrive_xy_m[1]-s.y)<Math.hypot(a.arrive_xy_m[0]-s.x,a.arrive_xy_m[1]-s.y)?p:a);}
   function renderSide(){
     const actions=[el('button',{type:'button',className:'action action-primary',onclick:travel},'Travel to ',selected.label),
-      el('button',{type:'button',className:'action',onclick:()=>{close();startParakite();}},'Fly the parakite from North Wall'),
-      el('button',{type:'button',className:'action',onclick:()=>{close();startParakite('tumble-hill');}},'Fly the parakite from Tumble Hill')];
+      el('button',{type:'button',className:'action',onclick:()=>{close();startParakite();}},'Fly the speed wing from North Wall'),
+      el('button',{type:'button',className:'action',onclick:()=>{close();startParakite('tumble-hill');}},'Fly the speed wing from Tumble Hill')];
     if(learnParakite&&navigation.mode==='walk')actions.push(el('button',{type:'button',className:'action',onclick:()=>{
       close();if(!learnParakite())notice('Look for Juno on open ground.');
-    }},'Learn parakiting with Juno'));
+    }},'Learn speedflying with Juno'));
     side.replaceChildren(el('h3',{className:`side-name side-${selected.kind}`,textContent:selected.label}),el('p',{className:'side-about',textContent:selected.about}),
       el('div',{className:'actions'},...actions),legend(MENU_CONTROLS.map,{caption:'This map'}));
   }
