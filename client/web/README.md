@@ -1,3 +1,20 @@
+# River seams — web v0.10.1, 2026-11-27
+
+The river reads as one water from its source to its mouth. Overlapping water blends once per pixel (a stencil
+mark), so the turquoise fans at tight bends and the doubled tint where the river met its reaches and the lake are
+gone. The river is one ribbon with one material along the joined line, its depth read from the ground the terrain
+draws and its current carried on the vertices. The riverbed meets the block's at both block edges: the far-field
+carve eases from the block's 3 m depth to 5 m over 400 m instead of stepping 2 m, which drew a line across the
+water. The upstream entry's banks slope instead of standing as a 5 m wall, the terrain's water level covers the
+whole landscape instead of clamping past the block, and the ribbon stops at its bank. Terrain is main's solve plus
+this change only (11,976 cells, none in the block); 132 trees re-seated in height; snow cover, river granite and
+the lake's probes rebuilt.
+
+**Open:** graded trails are stale against main's terrain (`trails.py write --check` failed before this change and
+still does; routes were left as published). Five other shared checks that failed on main still fail (aquatic,
+figure claims, flying hulls, two measurement records). Not measured: frame time, the speed-wing view in flight.
+Released as web v0.10.1.
+
 # Map over the valley — web v0.10.0, 2026-11-23
 
 The trail map and the overhead view of the valley are one view: the menu always shows the game camera

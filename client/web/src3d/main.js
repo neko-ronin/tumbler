@@ -19,7 +19,7 @@ import {buildStreamingTerrain} from './terrain-lod.js';
 import {buildGeology} from './geology.js';
 import {setMountainMap,mountainMapStats} from './granite-shading.js';
 import {createGeologySampler,applyGeologyTerrain} from '../../../shared/geometry/granite/surface.js';
-import { buildHorizonRange, buildWater, buildRiverReaches } from './terrain.js';
+import { buildHorizonRange, buildWater } from './terrain.js';
 import { buildPlacements, buildForest } from './placements.js';
 import {buildFalls} from './falls.js';
 import {createMirror} from './mirror.js';
@@ -226,8 +226,8 @@ export async function main() {
   if(geology)scene.add(geology.group);
   const riverGranite=buildRiverGranite(riverSurface,assets[riverData.geometry],terrain,assets,landscapeGrid);scene.add(riverGranite.group);
   const gorgeGranite=buildRiverGranite(gorgeSurface,assets[gorgeData.geometry],terrain,assets,landscapeGrid,{name:'cascade_gorge'});scene.add(gorgeGranite.group);
-  const water = buildWater(placement.instances.filter(i => i.kind === 'river' || i.kind === 'lake'), assets, blockGrid,worldmap);
-  scene.add(water, buildRiverReaches(worldmap, farGrid, riverSurface));
+  const water = buildWater(placement.instances.filter(i => i.kind === 'river' || i.kind === 'lake'), assets, blockGrid,worldmap,{bedGrid:landscapeGrid,riverSurface});
+  scene.add(water);
   const fallsWidth=+new URLSearchParams(location.search).get('falls_width');
   // The two other water looks, for the final comparison (phase 14): ?water_look=clear or ?water_look=deep.
   style.waterLook.value={clear:1,deep:2}[new URLSearchParams(location.search).get('water_look')]??0;

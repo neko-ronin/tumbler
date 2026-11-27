@@ -315,7 +315,9 @@ export const COMPOSITE_GLSL=`
  * drawn: after the static opaque world, before anything with renderOrder above SNAPSHOT_ORDER.
  * `then` runs right after the copy, still inside the pass (three nests renders, as its Reflector does). */
 export function createSnapshot(renderer,source,then=()=>{}){
-  const target=new T.WebGLRenderTarget(1,1,{depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)});
+  // The depth blit below needs the source's own depth format (it carries stencil, clouds.js); a mismatch fails silently.
+  const depth=new T.DepthTexture(1,1,source.depthTexture?.type??T.UnsignedIntType);depth.format=source.depthTexture?.format??T.DepthFormat;
+  const target=new T.WebGLRenderTarget(1,1,{stencilBuffer:source.stencilBuffer,depthTexture:depth});
   target.texture.colorSpace=source.texture.colorSpace;target.texture.minFilter=target.texture.magFilter=T.LinearFilter;target.texture.generateMipmaps=false;
   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute([0,0,0,0,0,0,0,0,0],3));
   const marker=new T.Mesh(geometry,new T.MeshBasicMaterial({colorWrite:false,depthWrite:false,depthTest:false}));

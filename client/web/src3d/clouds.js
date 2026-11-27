@@ -22,7 +22,9 @@ export const CLOUD_NEAR_M=6500,CLOUD_FAR_STEPS=40;
 export const CLOUD_MIN_STEP_M=10;
 export const isDistantCell=cell=>Math.max(Math.abs(cell.centre_xy_m[0]),Math.abs(cell.centre_xy_m[1]))>CLOUD_NEAR_M;
 export function createCloudPass(renderer,scene,camera,atmosphereByTime,ground){
-  const opaque=new T.WebGLRenderTarget(1,1,{samples:Math.min(4,renderer.capabilities.maxSamples),depthTexture:new T.DepthTexture(1,1,T.UnsignedIntType)});
+  // Depth with stencil: the water marks each pixel it covers so overlapping water blends once (style.js waterMaterial).
+  const opaqueDepth=new T.DepthTexture(1,1,T.UnsignedInt248Type);opaqueDepth.format=T.DepthStencilFormat;
+  const opaque=new T.WebGLRenderTarget(1,1,{samples:Math.min(4,renderer.capabilities.maxSamples),stencilBuffer:true,depthTexture:opaqueDepth});
   opaque.texture.colorSpace=T.LinearSRGBColorSpace;
   const cloudy=new T.WebGLRenderTarget(1,1,{depthBuffer:false});
   const volumes=new T.Scene(),size=new T.Vector2();

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import * as T from '../vendor/three.module.min.js';
-import {composeLayers,clusterIndex,encodeDistance,decodeDistance,packDistance,unpackDistance,probeUv,probeDirection,assembleProbe,PROBE_FACES,PROBE_FILE,BAKE_INPUTS} from '../src3d/reflections.js';
+import {composeLayers,clusterIndex,encodeDistance,decodeDistance,packDistance,unpackDistance,probeUv,probeDirection,assembleProbe,PROBE_FACES,PROBE_FILE,BAKE_INPUTS,createSnapshot} from '../src3d/reflections.js';
 
 const root=new URL('../../../',import.meta.url);
 const SKY=[.5,.6,.9],CLIFF=[.4,.4,.38],TREE=[.05,.2,.08],RIDGE=[.6,.6,.62],WING=[.9,.2,.1];
@@ -90,4 +90,13 @@ test('the baked probes match the world data they were baked from',()=>{
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(new URL(path,root))).digest('hex'),hash,`${path} changed since the bake: rerun bake-reflections.cjs`);
  for(const name of [...Object.values(manifest.colour),manifest.distance])assert.ok(fs.existsSync(new URL(name,file)),name);
  assert.deepEqual(Object.keys(manifest.colour).sort(),['day','dusk','golden']);
+});
+
+test('the mid-pass snapshot copies depth in the main pass\'s own depth-stencil format (a mismatched blit fails silently)',()=>{
+  const depth=new T.DepthTexture(1,1,T.UnsignedInt248Type);depth.format=T.DepthStencilFormat;
+  const source=new T.WebGLRenderTarget(1,1,{stencilBuffer:true,depthTexture:depth});
+  const {target}=createSnapshot({},source);
+  assert.equal(target.depthTexture.type,T.UnsignedInt248Type);
+  assert.equal(target.depthTexture.format,T.DepthStencilFormat);
+  assert.equal(target.stencilBuffer,true);
 });

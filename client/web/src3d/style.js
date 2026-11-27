@@ -464,40 +464,26 @@ export function surfaceSpeeds(polyline,halfWidths=null){
   });
 }
 
-/** Surface speeds for the block's river and each outer reach, computed once over the whole river (upstream reach,
- * block, downstream reach) so the current is continuous where they meet; each piece alone gave 0.3 against 0.9 m/s
- * at the west edge and 1.1 against 0.5 at the east (2026-11-22). Returns {block, [reach id]: speeds}. */
-export function riverSpeeds(worldmap){
-  const block=worldmap.water?.bodies?.find(b=>b.kind==='river'&&b.polyline_xyz_m);
-  const reaches=worldmap.mountains?.enclosure?.river_reaches??[];
-  if(!block)return {};
-  const near=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])<1;
-  const line=block.polyline_xyz_m,widths=block.half_widths_m??line.map(()=>30);
-  const up=reaches.find(r=>near(r.polyline_xyz_m[0],line[0])),down=reaches.find(r=>near(r.polyline_xyz_m[0],line.at(-1)));
-  const widthsOf=r=>r.half_widths_m??r.polyline_xyz_m.map(()=>r.half_width_m);
-  const upLine=up?up.polyline_xyz_m.slice(1).reverse():[],upW=up?widthsOf(up).slice(1).reverse():[];
-  const downLine=down?down.polyline_xyz_m.slice(1):[],downW=down?widthsOf(down).slice(1):[];
-  const all=surfaceSpeeds([...upLine,...line,...downLine],[...upW,...widths,...downW]);
-  const out={block:all.slice(upLine.length,upLine.length+line.length)};
-  // The block's line carried on into each reach for about 200 m: its current's coordinates (flow and channel
-  // textures) then run straight through the block edge instead of radiating from its last point.
-  const reach=(points,max=200)=>{let run=0,k=0;while(k<points.length&&run<max){run+=k?Math.hypot(points[k][0]-points[k-1][0],points[k][1]-points[k-1][1]):0;k++;}return k;};
-  const a=reach([...upLine].reverse()),b=reach(downLine);
-  const from=upLine.length-a,to=upLine.length+line.length+b;
-  const joined=[...upLine,...line,...downLine],joinedW=[...upW,...widths,...downW];
-  out.extended={line:joined.slice(from,to),widths:joinedW.slice(from,to),speeds:all.slice(from,to)};
-  if(up)out[up.id]=[out.block[0],...all.slice(0,upLine.length).reverse()];
-  if(down)out[down.id]=[out.block.at(-1),...all.slice(upLine.length+line.length)];
-  return out;
+// One float texture per height grid: the river reads the whole 3009² landscape (36 MB), and building it per
+// material would upload it again for every piece of water drawn on it.
+const heightTextures = new WeakMap();
+function heightTexture(grid) {
+  let heights = heightTextures.get(grid);
+  if (!heights) {
+    heights = new T.DataTexture(grid.values, grid.resolution, grid.resolution, T.RedFormat, T.FloatType);
+    heights.minFilter = heights.magFilter = T.LinearFilter;
+    heights.needsUpdate = true;
+    heightTextures.set(grid, heights);
+  }
+  return heights;
 }
 
-export function waterMaterial(grid, river, polyline=null, { ribbon = false, riverSurface = null, halfWidths = null, speeds = null } = {}) {
-  const heights = new T.DataTexture(grid.values, grid.resolution, grid.resolution, T.RedFormat, T.FloatType);
-  heights.minFilter = heights.magFilter = T.LinearFilter;
-  heights.needsUpdate = true;
+/** `vertexCurrent`: the mesh carries its current per vertex (`current`: flow x, flow z, m/s; `channel`: seconds
+ * along, metres across) instead of the textures below, which are too coarse over the whole river's 24 km. */
+export function waterMaterial(grid, river, polyline=null, { vertexCurrent = false, riverSurface = null, halfWidths = null } = {}) {
+  const heights = heightTexture(grid);
   const flowSize=128,flowBytes=new Uint8Array(flowSize*flowSize*4);
-  // `speeds`: the whole river's (riverSpeeds), so a piece's current runs on across the block edge.
-  const fall=speeds??surfaceSpeeds(polyline,halfWidths);
+  const fall=surfaceSpeeds(polyline,halfWidths);
   // Seconds the current takes to reach each polyline point: patterns drawn in this time ride at
   // the local speed and never shear, however long the clock runs.
   const seconds=[0];for(let i=1;i<fall.length;i++)seconds.push(seconds[i-1]+Math.hypot(polyline[i][0]-polyline[i-1][0],polyline[i][1]-polyline[i-1][1])*2/(fall[i-1]+fall[i]));
@@ -540,21 +526,26 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false, rive
   let riverBed=null;
   if(riverSurface){const g=riverSurface.data.grid;riverBed=new T.DataTexture(Float32Array.from(g.heights_m),g.columns,g.rows,T.RedFormat,T.FloatType);riverBed.minFilter=riverBed.magFilter=T.NearestFilter;riverBed.needsUpdate=true;}
   return new T.ShaderMaterial({
-    name: ribbon ? 'river_reach_optical' : river ? 'river_optical' : 'reservoir_optical', transparent: true, depthWrite: false, premultipliedAlpha: true, side: T.DoubleSide,
-    defines: {...(ribbon?{RIBBON:''}:{}),...(riverSurface?{RIVER_BED:''}:{})},
+    name: river ? 'river_optical' : 'reservoir_optical', transparent: true, depthWrite: false, premultipliedAlpha: true, side: T.DoubleSide,
+    // Each pixel takes water once per frame: where ribbon rows fold on a bend, or the river and the lake
+    // overlap, a second layer would blend the tint twice into a visible fan or band (2026-11-26 seam marks).
+    // ponytail: the first water drawn at a pixel wins, so a farther surface could hide a nearer one where two
+    // separate waters overlap on screen; a depth-only water prepass fixes that if a view ever shows it.
+    stencilWrite: true, stencilRef: 1, stencilFunc: T.NotEqualStencilFunc, stencilZPass: T.ReplaceStencilOp,
+    defines: {...(vertexCurrent?{VERTEX_CURRENT:''}:{}),...(riverSurface?{RIVER_BED:''}:{})},
     uniforms: { ...sunShadowUniforms(),uTime: style.time, uSun: style.sun, uWarmth: style.warmth, uHeights: { value: heights },
       uRiverBed:{value:riverBed},uRiverOrigin:{value:new T.Vector3(...(riverSurface?.data.grid.offset_xy_m??[0,0]),riverSurface?.data.grid.sample_m??4)},uRiverSize:{value:new T.Vector2(riverSurface?.data.grid.columns??1,riverSurface?.data.grid.rows??1)},
       uGrid: { value: new T.Vector4(grid.offsetX, grid.offsetY, grid.quad, grid.resolution) },
       uLook:style.waterLook,uCloudDome:style.cloudDome,uCloudDomeMatrix:style.cloudDomeMatrix,uCloudDomeOn:style.cloudDomeOn,uProbeColour:style.probeColour,uProbeDistance:style.probeDistance,uProbeInfo:style.probeInfo,uProbePoints:style.probePoints,uMirror:style.mirror,uMirrorMatrix:style.mirrorMatrix,uMirrorLevel:style.mirrorLevel,uMirrorOn:style.mirrorOn,uAir:style.air,uAirGrid:style.airGrid,uWind:style.wind,uFlow:{value:flow},uChannel:{value:current},uRiver: { value: river ? 1 : 0 }, ...T.UniformsUtils.merge([T.UniformsLib.fog]) },
     fog: true,
     vertexShader: `varying vec3 vPlace; varying vec3 vView;
-      #ifdef RIBBON
-        attribute float across; varying float vAcross;
+      #ifdef VERTEX_CURRENT
+        attribute vec3 current; attribute vec2 channel; varying vec3 vCurrent; varying vec2 vChannel;
       #endif
       #include <fog_pars_vertex>
       void main(){vPlace=(modelMatrix*vec4(position,1.)).xyz;vView=cameraPosition-vPlace;
-      #ifdef RIBBON
-        vAcross=across;
+      #ifdef VERTEX_CURRENT
+        vCurrent=current;vChannel=channel;
       #endif
       vec4 mvPosition=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mvPosition;
       #include <fog_vertex>
@@ -566,8 +557,8 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false, rive
       uniform sampler2D uProbeColour,uProbeDistance,uCloudDome; uniform mat4 uCloudDomeMatrix; uniform float uCloudDomeOn; uniform vec4 uProbeInfo; uniform vec3 uProbePoints[8];
       uniform float uTime; uniform float uLook; uniform float uRiver; uniform vec3 uSun; uniform sampler2D uHeights; uniform sampler2D uFlow; uniform sampler2D uChannel; uniform vec4 uGrid;
       varying vec3 vPlace; varying vec3 vView;
-      #ifdef RIBBON
-        varying float vAcross;
+      #ifdef VERTEX_CURRENT
+        varying vec3 vCurrent; varying vec2 vChannel;
       #endif
       #include <fog_pars_fragment>
       float hash(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
@@ -624,9 +615,13 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false, rive
         vec2 uv=((world-uGrid.xy)/uGrid.z+.5)/uGrid.w;
         float depth=max(0.,vPlace.y-bed(world));
         vec2 p=vPlace.xz;
-        vec3 current=texture2D(uFlow,uv).rgb;
-        vec2 flow=normalize(current.rg*2.-1.+vec2(1e-4,0.));
-        float speed=current.b*3.;
+        #ifdef VERTEX_CURRENT
+          vec2 flow=normalize(vCurrent.xy+vec2(1e-4,0.));float speed=vCurrent.z;
+        #else
+          vec3 current=texture2D(uFlow,uv).rgb;
+          vec2 flow=normalize(current.rg*2.-1.+vec2(1e-4,0.));
+          float speed=current.b*3.;
+        #endif
         // Mean of the two pixel axes: the long axis alone flattens grazing water.
         vec2 axes=vec2(length(dFdx(p)),length(dFdy(p)));float footprint=(axes.x+axes.y)*.5,calm,streak;
         vec2 slope=ripples(p,flow,speed,footprint,calm,streak);
@@ -724,7 +719,11 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false, rive
         // shows up close, where the ripples already carry the flow.
         float carried=0.;
         if(uRiver>.5){
-          vec2 ch=texture2D(uChannel,uv).rg;
+          #ifdef VERTEX_CURRENT
+            vec2 ch=vChannel;
+          #else
+            vec2 ch=texture2D(uChannel,uv).rg;
+          #endif
           float running=smoothstep(.8,1.2,speed)*smoothstep(.06,.3,footprint),wide=fwidth(ch.y)+.01,go=ch.x-uTime;
           // Foam lines: thin, long, nearly parallel to the banks (twenty times longer than their spacing).
           float lines=smoothstep(.86,.98,1.-abs(noised(vec2(go/100.,ch.y/6.)+vec2(3.1,0.)).x*2.-1.))*(1.-smoothstep(.25,.7,wide/6.));
@@ -748,13 +747,6 @@ export function waterMaterial(grid, river, polyline=null, { ribbon = false, rive
         opacity=max(opacity,fresnel*.94*mix(.5,1.,smoothstep(.5,3.5,depth)))*edge;
         opacity=max(opacity,foam*.25*smoothstep(0.,.08,depth));
         opacity=max(opacity,carried*.8*edge);
-        #ifdef RIBBON
-          // A reach on the coarse far-field grid has no bank fine enough to
-          // end it, so the ribbon's own edges fade instead.
-          #ifndef RIVER_BED
-          opacity*=1.-smoothstep(.55,1.,abs(vAcross));
-          #endif
-        #endif
         col+=light*edge/max(opacity,.3);
         gl_FragColor=vec4(col,opacity);
         #include <tonemapping_fragment>

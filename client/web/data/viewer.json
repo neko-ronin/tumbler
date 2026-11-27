@@ -19,23 +19,23 @@
     },
     {
       "path": "client/web/data/reflections/probes-day.webp",
-      "sha256": "00576263bb5fd6ab0ce5a7eeb963f76f4cc69980edb4d458edfbf7d07b0d0f52"
+      "sha256": "a5dff1a35df96e75db18097f7802aadcbde3b26ac3fdc92945e7e56273a27440"
     },
     {
       "path": "client/web/data/reflections/probes-distance.png",
-      "sha256": "570245d8eee72a02c1d6ac22250129ea2f85e38874de951ea7a421f43f060ab1"
+      "sha256": "a8284360280b50d01cb6725dedf52fa77f0a04952ee86f7d3f0517c4e0505f2b"
     },
     {
       "path": "client/web/data/reflections/probes-dusk.webp",
-      "sha256": "c0c1e536c348a28659cbabbea39cd9539fbbb3509d9a50a3560575283d25ad39"
+      "sha256": "97514743e2738d9b1ddbcaf2eeec009394b83470a085e460b4037f15509f8f80"
     },
     {
       "path": "client/web/data/reflections/probes-golden.webp",
-      "sha256": "416a5ee9a597fb1ee6262f3ececa5a3d1c35fbfda4011259bcd1e63a06472856"
+      "sha256": "cf36e4635ecf53414fc74407efcdb3426926c85e6c1b9c28f993f95c05827e48"
     },
     {
       "path": "client/web/data/reflections/probes.json",
-      "sha256": "10710e451e66b99e0914ede9a8a0cc3eb39c62b86c93a52af3d2642319106fbc"
+      "sha256": "64794a7e0cfa278e8dc95bbf3b87a1fa962a85fe295754fa9893ecba240d8421"
     },
     {
       "path": "client/web/scene.html",
@@ -95,7 +95,7 @@
     },
     {
       "path": "client/web/src3d/clouds.js",
-      "sha256": "243111b5ddabb63b43196e35562825200aab112cc8a63c6cf5906fde93068f1f"
+      "sha256": "5af7da52a487450887cd9e0e42e291ac34aa0aed5f2c9b53f7ae8935e056baba"
     },
     {
       "path": "client/web/src3d/collision.js",
@@ -215,7 +215,7 @@
     },
     {
       "path": "client/web/src3d/main.js",
-      "sha256": "6de7f9a81cda5025ad84a0327ccfad971049e733f36f439e752009250785d817"
+      "sha256": "aae6f3c3cb39ede38327c4cec195b72f44d1ea9d1da10f7b7cdf35efb288e7f8"
     },
     {
       "path": "client/web/src3d/meadow-shading.js",
@@ -311,7 +311,7 @@
     },
     {
       "path": "client/web/src3d/reflections.js",
-      "sha256": "4e97898bab9abfeb3f814140380de8794b5462b41296ec86e3cca4019db63289"
+      "sha256": "2d9c1d83dc7fd383848aeef2e3b9604cb33e879916ce2ad2e8c65e17e3cb0a29"
     },
     {
       "path": "client/web/src3d/ridge-cull.js",
@@ -327,7 +327,7 @@
     },
     {
       "path": "client/web/src3d/style.js",
-      "sha256": "58cfe2584c849202ad73e80bfd199e2e5781c66cde4728fd9969b3aa14d57764"
+      "sha256": "d717069573a2bbc2b9d381e1fee654d36c24c416e6c709d2d4478e3d02f7d549"
     },
     {
       "path": "client/web/src3d/sun-pcf.js",
@@ -343,7 +343,7 @@
     },
     {
       "path": "client/web/src3d/terrain.js",
-      "sha256": "9b8d50cd38e154723a7606b115e6147b630f3f36973d6a6a29edbe0b2d8ba6ce"
+      "sha256": "3740fffaf67dae7e8f77b3c759cbc86cc1693ecdad10dc12e7af66296e379610"
     },
     {
       "path": "client/web/src3d/tree-atlas.js",
@@ -399,7 +399,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "e4995799b9802dcddf0d7f13f50697131e3236cd283930f288f930a711624006"
+      "sha256": "3a097b488f4b34c5a01d816201c10059f34f877577eee3a04e55826dc9ab8c15"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -803,7 +803,7 @@
     },
     {
       "path": "shared/geometry/river-granite/river_granite.glb",
-      "sha256": "edd084c75fc1a5691a5468ccd84251bd1bbd82de6b36804fb0944f3ebb78d124"
+      "sha256": "9d3a1c2061992f7f81287a1553716dab3b3262d443c259a9211c0f9508efe5d4"
     },
     {
       "path": "shared/geometry/sports/bicycle.meshopt.glb",
@@ -1015,7 +1015,7 @@
     },
     {
       "path": "shared/world/out/landscape_transition.json",
-      "sha256": "2106d9c4b88bf35be2b04a6765fc73428549a95ff4eac484e211f473f6c7c82d"
+      "sha256": "d634d9a5f3c73932d1d9ac4058f6e5315e669e0421a8710216125d0ca14fd822"
     },
     {
       "path": "shared/world/out/placement.json",
@@ -1023,11 +1023,11 @@
     },
     {
       "path": "shared/world/out/river_granite.json",
-      "sha256": "ea1fd0d14d3c864ca2405555acaa2fe46b888c76c28a9f5bbee79020e133fbca"
+      "sha256": "bac78f03222bf4c8179c7c2c15773b080bf31976a1b2724f6765f400523c8ec9"
     },
     {
       "path": "shared/world/out/snow_cover.json",
-      "sha256": "6152d4b0ecb39afa8c851c4e5c4735d6b55bb02f82b2491f0bfed14a21f87fc0"
+      "sha256": "a0e8039748f0ee7fac6bd261824d2955dbe95019014f0827261aba30f866aaef"
     },
     {
       "path": "shared/world/worldmap.json",
@@ -1039,7 +1039,7 @@
     },
     {
       "path": "client/web/data/farfield.f32",
-      "sha256": "9c8b8539d26970b392ef410bece780351d8c0de0d02e7836338ffe5e7ed79ada"
+      "sha256": "2bef4ffc24edfc34184b4ddb740ca950d06f4a55b597550432bb42510dd0d7a0"
     }
   ],
   "packed": {
@@ -1112,7 +1112,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "d0f2ae85",
+  "commit": "d86e6dc3",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {
