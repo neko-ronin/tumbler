@@ -23,7 +23,7 @@ function deform(x,y,z,mode,state,inflation,clock,out){
   const t=T.MathUtils.clamp(.52-(z+span*span*depth*.23)/chord,0,1);
   const centre=mode.canopy_height_m-mode.arc_m*span*span+chord*.055*Math.sin(Math.PI*t);
   const skin=T.MathUtils.smoothstep(y,2.8,3.6);
-  const pressure=state.pressure??1,bank=state.bank??0;
+  const pressure=state.rotation?T.MathUtils.lerp(state.rotation.pressure[0],state.rotation.pressure[1],across):state.pressure??1,bank=state.bank??0;
   // Approximate B/C riser travel about the forward A attachment. Pulling
   // lowers the rear section; release lowers incidence. No bank-only twist.
   const aRow=(.52-.15)*chord-span*span*depth*.23;
@@ -39,7 +39,7 @@ function deform(x,y,z,mode,state,inflation,clock,out){
   const load=T.MathUtils.clamp((state.load??1)-1,-1,2),opened=(mode.arc_m??0)*span*span*load*.07;
   // Lost cell pressure folds the nose first, on the half that lost it. tuckSide
   // is positive for the right half (-X); zero folds both, as a frontal does.
-  const low=T.MathUtils.clamp((.82-pressure)/.82,0,1),side=state.tuckSide??0;
+  const low=T.MathUtils.clamp((.82-pressure)/.82,0,1),side=state.rotation?0:state.tuckSide??0;
   const front=1-T.MathUtils.smoothstep(t,.04,.58),share=T.MathUtils.clamp(1-side*span,0,1);
   const fold=low*front*share*chord*(.62+.18*Math.sin(x*3.4+clock*11));
   const py=y+weight*(ripple-pull-flex+incidence+flutter+opened-fold+(y-centre)*(pressure-1)*.45*skin-(state.rollRate??0)*span*.08);
@@ -122,15 +122,63 @@ function coupledFitWeights(primitives,cloth){
   }
   return weights;
 }
+// Suspension cascades are disconnected capped beams in the source glTF.
+// Bind their vertices to the two cap centres once, so changing body frames
+// moves each taut segment as one straight beam. Triangle ordering is irrelevant.
+function suspensionBindings(primitives,cloth){
+  const adjacent=new Map();let offset=0;
+  const pointIndex=vertex=>cloth.indices[vertex];
+  for(const primitive of primitives.filter(p=>p.alphaMode==='OPAQUE')){
+    const count=primitive.geometry.index?.count??primitive.geometry.attributes.position.count;
+    if(primitive.materialName==='suspension_cascade')for(let i=offset;i<offset+count;i+=3){
+      const triangle=[pointIndex(i),pointIndex(i+1),pointIndex(i+2)];
+      for(const point of triangle){
+        if(!adjacent.has(point))adjacent.set(point,new Set());
+        for(const other of triangle)adjacent.get(point).add(other);
+      }
+    }
+    offset+=count;
+  }
+  const bindings=new Array(cloth.points.length),segments=[],seen=new Set();
+  for(const first of adjacent.keys()){
+    if(seen.has(first))continue;
+    const component=[first];seen.add(first);
+    for(const point of component)for(const other of adjacent.get(point))if(!seen.has(other)){seen.add(other);component.push(other);}
+    // The most distant pair gives the longitudinal direction of a thin beam.
+    let distance=0,a,b;
+    for(const i of component)for(const j of component){
+      const squared=cloth.points[i].distanceToSquared(cloth.points[j]);
+      if(squared>distance){distance=squared;a=i;b=j;}
+    }
+    const direction=cloth.points[b].clone().sub(cloth.points[a]).normalize();
+    const ordered=component.toSorted((i,j)=>cloth.points[i].dot(direction)-cloth.points[j].dot(direction));
+    const centre=indices=>indices.reduce((v,i)=>v.add(cloth.points[i]),new T.Vector3()).multiplyScalar(1/indices.length);
+    const min=cloth.points[ordered[0]].dot(direction),max=cloth.points[ordered.at(-1)].dot(direction);
+    const cap=(end)=>ordered.filter(i=>Math.abs(cloth.points[i].dot(direction)-end)<(max-min)*.1);
+    let low=centre(cap(min)),high=centre(cap(max));
+    if(low.y>high.y)[low,high]=[high,low];
+    const axis=high.clone().sub(low),lengthSquared=axis.lengthSq();
+    const segment={low,high,axis:axis.normalize(),start:new T.Vector3(),end:new T.Vector3(),lowDeformed:new T.Vector3(),highDeformed:new T.Vector3(),rotation:new T.Quaternion(),side:(low.x+high.x)<0?0:1};
+    segments.push(segment);
+    for(const index of component){
+      const point=cloth.points[index];
+      const along=point.clone().sub(low).dot(high.clone().sub(low))/lengthSquared;
+      const radial=point.clone().sub(low.clone().lerp(high,along));
+      bindings[index]={segment,along,radial};
+    }
+  }
+  return {bindings,segments};
+}
+
 // The merged rig is a non-indexed triangle stream. Cache only the lower
 // equipment that can move between cloth ticks, including every triangle whose
 // normal changes when any one of its corners moves. Sewn sail normals stay in
 // the 30 Hz cloth cache; these attachment triangles are deliberately crisp.
-function attachmentIndices(cloth,pilotFit,coupledFit){
+function attachmentIndices(cloth,pilotFit,coupledFit,lineBindings){
   const points=[],vertices=[],triangles=[];
-  for(let i=0;i<cloth.points.length;i++)if(pilotFit[i]||coupledFit[i])points.push(i);
-  for(let i=0;i<cloth.indices.length;i++)if(pilotFit[cloth.indices[i]]||coupledFit[cloth.indices[i]])vertices.push(i);
-  for(let i=0;i<cloth.indices.length;i+=3)if([0,1,2].some(k=>pilotFit[cloth.indices[i+k]]||coupledFit[cloth.indices[i+k]]))triangles.push(i);
+  for(let i=0;i<cloth.points.length;i++)if(pilotFit[i]||coupledFit[i]||lineBindings[i])points.push(i);
+  for(let i=0;i<cloth.indices.length;i++)if(pilotFit[cloth.indices[i]]||coupledFit[cloth.indices[i]]||lineBindings[cloth.indices[i]])vertices.push(i);
+  for(let i=0;i<cloth.indices.length;i+=3)if([0,1,2].some(k=>pilotFit[cloth.indices[i+k]]||coupledFit[cloth.indices[i+k]]||lineBindings[cloth.indices[i+k]]))triangles.push(i);
   return {attachmentPoints:Uint32Array.from(points),attachmentVertices:Uint32Array.from(vertices),attachmentTriangles:Uint32Array.from(triangles),
     attachmentStart:triangles[0]??0,attachmentEnd:triangles.length?triangles.at(-1)+3:0};
 }
@@ -184,7 +232,8 @@ export function createFlightRig(assets,config,{parakiteLivery}={}){
     mesh.castShadow=true;mesh.frustumCulled=false;
     const cloth=clothPoints(mesh.geometry);
     const pilotFit=pilotFitWeights(primitives,cloth),coupledFit=coupledFitWeights(primitives,cloth);
-    wings[name]={mesh,...cloth,pilotFit,coupledFit,controlFit:controlFitWeights(primitives,cloth),...attachmentIndices(cloth,pilotFit,coupledFit),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives),closeIndex:closeDrawIndex(primitives,cloth),cacheKey:null,floors:[]};group.add(mesh);
+    const suspension=suspensionBindings(primitives,cloth);
+    wings[name]={mesh,...cloth,pilotFit,coupledFit,...suspension,controlFit:controlFitWeights(primitives,cloth),...attachmentIndices(cloth,pilotFit,coupledFit,suspension.bindings),smooth:smoothSkinGroups(primitives,cloth.rest),inflation:1,attachedIndex:mesh.geometry.index,releasedIndex:releasedDrawIndex(primitives),closeIndex:closeDrawIndex(primitives,cloth),cacheKey:null,floors:[]};group.add(mesh);
   }
   const source=assets[config.motor_asset].primitives;
   const cage=mergePrimitives(source.filter(p=>p.materialName!=='propeller'),'opaque');
@@ -267,7 +316,21 @@ export function createFlightRig(assets,config,{parakiteLivery}={}){
     const slopeZ=grounded?floorAt(0,-2.5)-floorAt(0,-3.5):0;
     const slope2=slopeX*slopeX+slopeZ*slopeZ;
     const slack=pilotTransform?Math.max(0,state.coupled?.lineSlackM??0):0;
+    const sideSlack=pilotTransform?state.coupled?.lineSlackBySideM:null;
     sagDirection.fromArray(presentation.lineSagDirection??[0,-1,0]);
+    if(sideSlack)for(const segment of w.segments){
+      for(const [rest,cached,target] of [[segment.low,segment.lowDeformed,segment.start],[segment.high,segment.highDeformed,segment.end]]){
+        // Upper endpoints share the sail's 30 Hz deformation clock; only
+        // the independent pilot transform advances between cloth ticks.
+        if(refresh||segment.cacheTick===undefined)deform(rest.x,rest.y,rest.z,config.modes[name],state,w.inflation,clock,cached);
+        target.copy(cached);
+        const weight=1-T.MathUtils.smoothstep(rest.y,1.8,3.1);
+        pilotPoint.copy(target).applyMatrix4(pilotTransform);target.lerp(pilotPoint,weight);
+      }
+      segment.cacheTick=tick;
+      normal.copy(segment.end).sub(segment.start).normalize();
+      segment.rotation.setFromUnitVectors(segment.axis,normal);
+    }
     const selected=refresh?null:w.attachmentPoints,count=selected?selected.length:points.length;
     for(let k=0;k<count;k++){
       const i=selected?selected[k]:k;
@@ -303,6 +366,13 @@ export function createFlightRig(assets,config,{parakiteLivery}={}){
         const floor=floorAt(point.x,point.z);
         point.y+=floor*sag;
         point.y=Math.max(point.y,floor);
+      }
+      const binding=sideSlack&&w.bindings[i];
+      if(binding){
+        const {segment,along,radial}=binding;
+        point.copy(segment.start).lerp(segment.end,along);
+        pilotPoint.copy(radial).applyQuaternion(segment.rotation);point.add(pilotPoint);
+        point.addScaledVector(sagDirection,Math.max(0,sideSlack[segment.side])*.5*Math.sin(Math.PI*T.MathUtils.clamp(along,0,1)));
       }
       moved[i*3]=point.x;moved[i*3+1]=point.y;moved[i*3+2]=point.z;
     }

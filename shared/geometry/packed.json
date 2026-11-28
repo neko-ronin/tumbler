@@ -329,10 +329,10 @@
       "packed": "flight/parakite.meshopt.glb",
       "mode": "float",
       "worst_mm": 0.276,
-      "source_bytes": 1025160,
-      "source_sha256": "f09126b413413297879a6a780c7e17c91ac207c14c645eece898dc6e13929778",
-      "bytes": 157580,
-      "sha256": "0f948ed33ef9f5a6db31e4153b79e627fdb3ea62401bc71711a2697a3ed55494"
+      "source_bytes": 1079596,
+      "source_sha256": "cffa4348ee7d407bf6194704bc2ed15bbe615dfb08b4191270eb0d2bac7865b6",
+      "bytes": 162488,
+      "sha256": "5405b7c5db6743b4fe3b9291f0bd1493e262c8ac18593e88a7f16ba78249f7ff"
     },
     "flight/paramotor.glb": {
       "packed": "flight/paramotor.meshopt.glb",

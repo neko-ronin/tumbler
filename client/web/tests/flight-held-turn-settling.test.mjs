@@ -25,17 +25,27 @@ test('section lift is normal to flow and span, including sideslip and degenerate
 // Product regression: a moderate, held turn in still air should settle rather
 // than retain conspicuous side-to-side cycling. This is a game acceptance
 // target, not a measured real-wing damping coefficient or universal period.
-for(const mode of ['paraglider','parakite','paramotor'])test(`${mode}: a held ordinary turn settles its lateral suspension motion`,{todo:mode==='parakite'&&'rotational parakite: a held turn keeps tightening slowly toward its spiral, so bank is not constant to 1e-6'},()=>{
+for(const mode of ['paraglider','parakite','paramotor'])test(`${mode}: a held ordinary turn settles its lateral suspension motion`,()=>{
   const rules={...config,ceiling_m:1e6,world_limit_m:1e6,thermals:[],wind:{speed_mps:0,gust_mps:0},
     weather:{soaring:{wind_scale:0,gust_scale:0,thermal_scale:0,turbulence_mps:0}}};
-  let s=launchFlight(rules,mode,{xy_m:[0,0],heading_deg:0,clearance_m:2500},flat);const rows=[];
+  let s=launchFlight(rules,mode,{xy_m:[0,0],heading_deg:0,clearance_m:2500},flat);const rows=[],early=[];
   for(let tick=0;tick<28*120;tick++){
     s=stepFlight(s,{turn:tick<360?0:.4},1/120,tick/120,rules,270,flat);
-    if(tick<=18*120)continue;
+    if(tick<=8*120)continue;
     const c=s.coupled,r=c.wingPosition.map((v,i)=>v-c.pilotPosition[i]);
-    rows.push({bank:s.bank,line:Math.atan2(-Math.sin(s.heading)*r[0]+Math.cos(s.heading)*r[1],r[2])});
+    (tick<=18*120?early:rows).push({bank:s.bank,line:Math.atan2(-Math.sin(s.heading)*r[0]+Math.cos(s.heading)*r[1],r[2])});
   }
   const range=key=>Math.max(...rows.map(r=>r[key]))-Math.min(...rows.map(r=>r[key]));
+  if(mode==='parakite'){
+    // The owner chose the raw recovery arc: a held input approaches a
+    // descending spiral rather than an actuated fixed bank.
+    for(const key of ['bank','line']){
+      const earlier=Math.max(...early.map(r=>r[key]))-Math.min(...early.map(r=>r[key]));
+      assert.ok(range(key)<earlier*.5,`${key} oscillation decays while steering stays held`);
+    }
+    assert.ok(s.pressure>.99&&s.vario<-10,'the tightening turn keeps support and costs height');
+    return;
+  }
   assert.ok(range('bank')<1e-6,'hold an actually steady bank, with no gusts or camera');
   assert.ok(range('line')<3*Math.PI/180,`late lateral swing remains ${(range('line')*180/Math.PI).toFixed(2)} degrees peak-to-peak`);
 });

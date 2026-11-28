@@ -159,7 +159,12 @@ function evaluate(state, rig, gravity, loads, previousTensions) {
   // Their hands on the brake lines and their posture resist body rotation
   // against the canopy; that internal moment acts on both bodies.
   const relativeSpin = add(pilot.angularVelocity, wing.angularVelocity, -1);
-  const harness = relativeSpin.map(value => -(rig.harnessDampingNms ?? 0) * value);
+  // The risers cannot carry a stabilizing couple while slack. Fade the
+  // fitted harness damping as either group unloads, and restore it at a
+  // loaded catch. The 0.35 half-weight transition is game tuning.
+  const support = geometry.length ? Math.max(0, Math.min(1, ...geometry.map(line =>
+    (line.slackM > LINE_TAUT_M ? 0 : line.tensionN) / (rig.pilot.massKg * 9.81 / 2 * .35)))) : 0;
+  const harness = relativeSpin.map(value => -(rig.harnessDampingNms ?? 0) * support * value);
   pilotLoads.torque = add(pilotLoads.torque, harness);
   wingLoads.torque = add(wingLoads.torque, harness, -1);
   const tensions = lineTensions(pilot, wing, rig, geometry, pilotLoads, wingLoads);

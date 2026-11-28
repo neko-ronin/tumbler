@@ -24,20 +24,22 @@ for(const mode of Object.keys(source.modes))test(`${mode}: a small sideways cano
   assert.ok(swing<.3,`sideways motion four seconds after disturbance: ${swing.toFixed(3)} degrees peak-to-peak`);
 });
 
-for(const mode of Object.keys(source.modes))test(`${mode}: steering release settles without suppressing the turn`,{todo:mode==='parakite'&&'rotational parakite: a released steep turn rolls out over several seconds (the recovery arc), not a swing'},()=>{
+for(const mode of Object.keys(source.modes))test(`${mode}: steering release settles without suppressing the turn`,()=>{
   for(const direction of [-1,1]){
     let s=launchFlight(still,mode,{xy_m:[0,0],heading_deg:0,clearance_m:2500},()=>0);
     const late=[];let headingAtRelease;
-    for(let tick=0;tick<14*120;tick++){
+    const end=mode==='parakite'?22:14,lateAt=end-4;
+    for(let tick=0;tick<end*120;tick++){
       s=stepFlight(s,{turn:tick>=360&&tick<960?direction*.8:0},1/120,tick/120,still,270,()=>0);
       if(tick===959)headingAtRelease=s.heading;
-      if(tick>=10*120){
+      if(tick>=lateAt*120){
         const c=s.coupled,r=c.wingPosition.map((v,i)=>v-c.pilotPosition[i]);
         late.push(Math.atan2(-Math.sin(s.heading)*r[0]+Math.cos(s.heading)*r[1],r[2]));
       }
     }
     assert.ok(direction*headingAtRelease<-.2,'the requested bank still turns the actual trajectory');
     const swing=(Math.max(...late)-Math.min(...late))*180/Math.PI;
+    if(mode==='parakite')assert.ok(s.pressure>.99&&Math.abs(s.bank)<.01&&Math.abs(s.vario)<5,'the raw arc returns to a supported glide');
     assert.ok(swing<1.5,`post-turn lateral motion: ${swing.toFixed(3)} degrees peak-to-peak`);
   }
 });

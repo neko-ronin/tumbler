@@ -62,7 +62,7 @@ test('headwind alters ground track without changing still-air airspeed or granti
  assert.ok(Math.abs(head.speed-tail.speed)<1e-10);assert.ok(Math.abs(head.z-tail.z)<1e-10);assert.ok(head.groundSpeed<tail.groundSpeed);assert.ok(head.z<initial.z);
 });
 
-test('parakite neutral is best-glide travel; a right turn releases the outside left handle',{todo:'rotational parakite in free flight: recheck deep-brake release'},()=>{
+test('parakite handle travel and active deep-stall recovery preserve the ordinary input mapping',()=>{
  const s=launchFlight(still,'parakite',site,flat);
  const neutral=stepFlight(s,{},1/120,0,still,270,flat),right=stepFlight(s,{turn:1},1/120,0,still,270,flat);
  assert.equal(neutral.handleLeft,.45);assert.equal(neutral.handleRight,.45);
@@ -72,7 +72,7 @@ test('parakite neutral is best-glide travel; a right turn releases the outside l
  let deep={...s,z:1500},maxStall=0,minPressure=1,heldSpeed=0;
  for(let i=0;i<960;i++){deep=stepFlight(deep,{brake:1},1/120,i/120,still,270,flat);maxStall=Math.max(maxStall,deep.stall);minPressure=Math.min(minPressure,deep.pressure);heldSpeed+=deep.speed/960;}
  assert.ok(maxStall>.2);assert.ok(minPressure<.8);
- const released=fly('parakite',{},12,still,deep);
+ const released=fly('parakite',t=>({brake:t<4?-1:0}),14,still,deep);
  assert.ok(released.brakeLeft<.001&&released.brakeRight<.001,'release removes the deep-brake command');
  assert.ok(released.speed>heldSpeed);assert.ok(released.stall<.05);assert.ok(released.pressure>.8);
 });

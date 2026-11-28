@@ -277,6 +277,7 @@ export function advanceRotationalParakite(state, config, dt, steer, airAt) {
   state.coupled = {
     pilotPosition: pilot.position, wingPosition: wing.position, pilotVelocity: velocity, wingVelocity: wing.velocity,
     lineSlackM: (lines[0].slackM + lines[1].slackM) / 2,
+    lineSlackBySideM: lines.map(line => line.slackM),
     energyJ: rotation.ledger.energyJ, initialEnergyJ: rotation.ledger.initialEnergyJ,
     massKg: model.rig.pilot.massKg + model.rig.wing.massKg,
   };
@@ -303,7 +304,7 @@ export function advanceRotationalParakite(state, config, dt, steer, airAt) {
   const opening = rotation.sections.every((section, i) => section.mouthPressure > Math.max(.35, rotation.pressure[i]));
   const bilateral = Math.min(left, right) < .65 && Math.abs(left - right) < .2;
   state.figure = bilateral ? (opening ? 'Wing opening · centre the handles' :
-    'Wing deflated · raise handles briefly, then centre') :
+    'Wing deflated · raise handles to rebuild flow') :
     left < .65 ? 'Left wing folded · steer right gently' : right < .65 ? 'Right wing folded · steer left gently' :
     state.load < .2 ? 'Lines slack · ease the pull' : state.stall > .2 ? 'Low energy · ease handles' :
     state.vario > 1 ? 'Flare · climbing' : Math.abs(state.bank) > .72 && state.vario < -4 ? 'Spiral · ease the turn' : 'Speed wing';

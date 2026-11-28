@@ -1,3 +1,15 @@
+# Speedflying recovery — web v0.13.0, 2026-11-27
+
+Ronin can rotate independently when suspension support unloads during a collapse,
+surge or catch. Loaded flight retains its existing controls, loops and barrel
+rolls. Each wing half shows its own pressure and suspension slack; recovery cues
+ask for restored flow and support. No extra maneuver modifier is required.
+
+The release retains the newer world, first-person flight entry and automatic
+return to walking after an unguided crash. Full Juno escort replay, physical
+controller acceptance and sustained rendering performance remain open. See the
+[integration record](../../docs/reviews/para-flight-rebase-2026-11-27/README.md).
+
 # Parkour and camera follow — web v0.12.1, 2026-11-27
 
 The maintenance yard is disabled in the game. The robot encounter and

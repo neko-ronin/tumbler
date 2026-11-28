@@ -143,7 +143,7 @@
     },
     {
       "path": "client/web/src3d/flight-rig.js",
-      "sha256": "cf0a2af222cc3c67064aec26fba47e5aec3d15f7d6167ffd25ee70c504b5085d"
+      "sha256": "4c078dc75de53fe2924dba1278cb39f7cc8b9d602a384c5ab1b34a0313dd6350"
     },
     {
       "path": "client/web/src3d/folk.js",
@@ -227,7 +227,7 @@
     },
     {
       "path": "client/web/src3d/navigation.js",
-      "sha256": "0d0fd2b8ac1fd1eb3e3f9c0f20208cf7330cf825909b807c0484d38d4ae3a23f"
+      "sha256": "46d8f7de0d9161ed38ec074e708bd4609bafb7c0206f4564eaa2ec9f66b17aa1"
     },
     {
       "path": "client/web/src3d/opening-shot.js",
@@ -271,7 +271,7 @@
     },
     {
       "path": "client/web/src3d/parakite-practice.js",
-      "sha256": "f49ecc1ff39ad16ce6a560a630886ecef467602c0ac1b6a855a544758fa71b61"
+      "sha256": "6a647c59331477d50fdbeef568e6e154a30da7847da624efa73f02449e7f74f9"
     },
     {
       "path": "client/web/src3d/parakite-tour.js",
@@ -403,7 +403,7 @@
     },
     {
       "path": "client/web/src3d/version.js",
-      "sha256": "a322f155681dcad745aa2832be6d4ca764e333113101815a139f7f006dc71c92"
+      "sha256": "9c3d8297781fe7e91fc6d4e3d7a6dd7a388d4113ee9150b52735a655ef474274"
     },
     {
       "path": "client/web/src3d/visibility-feather.js",
@@ -511,7 +511,7 @@
     },
     {
       "path": "shared/activities/parakite-dynamics.js",
-      "sha256": "372c80f0a9d7d3a89b5c349f8b771759e71584183f7a79da35522d1b7ca40fd8"
+      "sha256": "a1941ecbd04d19c7e3f00c1e176ea36eaa46fa9ed40b8dc94dd3bad7edb89a0c"
     },
     {
       "path": "shared/activities/parakite-follow.js",
@@ -535,7 +535,7 @@
     },
     {
       "path": "shared/activities/rotational-flight.js",
-      "sha256": "132b54c1c7d2ce22cda17778b877b23e1e97d64aead370f5efc8c9dca43dceb8"
+      "sha256": "e2380f6d1c9b47f5017cedfde2ead6e79b5e2a5b4481bd028294ad0fa40752f8"
     },
     {
       "path": "shared/activities/salvage.js",
@@ -723,7 +723,7 @@
     },
     {
       "path": "shared/geometry/flight/parakite.meshopt.glb",
-      "sha256": "0f948ed33ef9f5a6db31e4153b79e627fdb3ea62401bc71711a2697a3ed55494"
+      "sha256": "5405b7c5db6743b4fe3b9291f0bd1493e262c8ac18593e88a7f16ba78249f7ff"
     },
     {
       "path": "shared/geometry/flight/paramotor.meshopt.glb",
@@ -1128,7 +1128,7 @@
     "shared/geometry/waterside/sedge.glb": "shared/geometry/waterside/sedge.meshopt.glb"
   },
   "generator": "client/web/tools/make_viewer_data.py",
-  "commit": "5d5b263e",
+  "commit": "2b57c0a3",
   "notice": "The browser draws exported core geography and runs the engine-neutral shared flight, ski and bike rules. Fetched source/data/asset hashes identify this local build; commit is only a generation label.",
   "sources": [
     {

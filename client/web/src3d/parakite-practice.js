@@ -54,7 +54,7 @@ const lessons = {
       pull: 'Switch from dive to pull after a short beat. Hold the pull through the loop.',
       rotate: 'Carry the pull over the top. Release as you come back around.',
       exit: 'Centre the controls and let the dive settle.',
-      'lost-load': 'The rig lost its support. Ease the pull. If both sides fold, raise the handles briefly, then centre.',
+      'lost-load': 'The rig lost its support. Ease the pull. If both sides fold, raise the handles until flow returns, then centre.',
       passed: 'Full loop with the wing supported, then back to glide.',
     },
   },

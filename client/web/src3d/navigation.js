@@ -547,9 +547,13 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       pose.coupled={...state.coupled};
       for(const key of ['pilotPosition','wingPosition'])pose.coupled[key]=state.coupled[key].map((v,i)=>previousFlight.coupled[key][i]+(v-previousFlight.coupled[key][i])*alpha);
       pose.coupled.lineSlackM=previousFlight.coupled.lineSlackM+(state.coupled.lineSlackM-previousFlight.coupled.lineSlackM)*alpha;
+      if(state.coupled.lineSlackBySideM&&previousFlight.coupled.lineSlackBySideM)
+        pose.coupled.lineSlackBySideM=state.coupled.lineSlackBySideM.map((value,i)=>
+          previousFlight.coupled.lineSlackBySideM[i]+(value-previousFlight.coupled.lineSlackBySideM[i])*alpha);
     }
     if(state.rotation&&previousFlight.rotation){
       pose.rotation={...state.rotation};
+      pose.rotation.pressure=state.rotation.pressure.map((value,i)=>previousFlight.rotation.pressure[i]+(value-previousFlight.rotation.pressure[i])*alpha);
       for(const body of ['pilot','wing']){
         const orientation=interpolatedAttitude.fromArray(previousFlight.rotation[body].orientation)
           .slerp(nextAttitude.fromArray(state.rotation[body].orientation),alpha).toArray();

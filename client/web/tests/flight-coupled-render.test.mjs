@@ -74,3 +74,38 @@ test('coupled harness and motor follow the full pilot transform; only slack casc
   assert.ok(coupled.motor.quaternion.angleTo(new T.Quaternion().setFromRotationMatrix(transform))<1e-7);
  }finally{rigs.forEach(r=>r.dispose());}
 });
+
+
+for(const packed of [false,true])test(`rotational lines stay straight and sag per side (${packed?'packed':'source'})`,()=>{
+ const sources=packed?{...assets,[flight.modes.parakite.wing_asset]:parseGLB(readFileSync(new URL('../../../shared/geometry/flight/parakite.meshopt.glb',import.meta.url)))}:assets;
+ const rigs=[createFlightRig(sources,flight),createFlightRig(sources,flight)];
+ try{
+  const transform=new T.Matrix4().compose(new T.Vector3(.3,-.25,.2),
+    new T.Quaternion().setFromEuler(new T.Euler(2.1,0,.25)),new T.Vector3(1,1,1));
+  const state={mode:'parakite',pressure:1,grounded:false,rotation:{pressure:[1,1]},
+    coupled:{lineSlackM:0,lineSlackBySideM:[0,0]}};
+  const view={pilotTransform:transform,pilotAttachment:player.flight_attachment.position_m};
+  rigs[0].update(.1,state,view);
+  rigs[1].update(.1,{...state,coupled:{lineSlackM:.2,lineSlackBySideM:[.4,0]}},view);
+  const full=rigs[0].wings.parakite,slack=rigs[1].wings.parakite;
+  assert.equal(full.segments.length,54,'all source suspension beams are bound');
+  let moving=0,held=0;
+  for(let i=0;i<full.bindings.length;i++){
+    const binding=full.bindings[i];if(!binding)continue;
+    const {segment,along,radial}=binding;
+    const position=new T.Vector3().fromArray(full.moved,i*3);
+    const centre=segment.start.clone().lerp(segment.end,along);
+    const expected=centre.add(radial.clone().applyQuaternion(segment.rotation));
+    assert.ok(position.distanceTo(expected)<2e-6,'a taut beam retains a straight, rigid cross-section');
+    const other=new T.Vector3().fromArray(slack.moved,i*3);
+    if(segment.side===1){assert.ok(position.distanceTo(other)<2e-6,'loaded-side lines keep their own geometry');held++;}
+    else if(position.distanceTo(other)>1e-5)moving++;
+  }
+  assert.ok(held>100);
+  assert.ok(moving>100,'mid-segment vertices visibly sag on the unloaded side');
+  const upper=full.segments.filter(s=>s.high.y>3.1).map(s=>({segment:s,end:s.end.clone()}));
+  rigs[0].update(.001,state,view);
+  for(const {segment,end} of upper)assert.ok(segment.end.distanceTo(end)<1e-10,
+    'upper line attachments stay with the cached sail between cloth ticks');
+ }finally{for(const rig of rigs)rig.dispose();}
+});
