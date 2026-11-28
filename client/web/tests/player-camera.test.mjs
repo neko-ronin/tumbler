@@ -59,9 +59,9 @@ test('camera areas feather by height and location, restrict activity, and apply 
  const area={id:'test',min:[0,0,0],max:[10,10,10],feather_m:2,activities:['walk'],settings:{distance:9.4}};
  const data={...policy,areas:[area]};
  assert.equal(cameraProfile(data,'walk',[5,5,5]).distance,9.4);
- assert.equal(cameraProfile(data,'walk',[1,5,5]).distance,7.4);
- assert.equal(cameraProfile(data,'walk',[0,5,5]).distance,5.4);
- assert.equal(cameraProfile(data,'walk',[5,5,11]).distance,5.4);
+ assert.equal(cameraProfile(data,'walk',[1,5,5]).distance,(profile.distance+area.settings.distance)/2);
+ assert.equal(cameraProfile(data,'walk',[0,5,5]).distance,profile.distance);
+ assert.equal(cameraProfile(data,'walk',[5,5,11]).distance,profile.distance);
  assert.equal(cameraProfile(data,'climb',[5,5,5]).distance,6.9);
  assert.throws(()=>cameraProfile({...data,version:2},'walk',[0,0,0]));
 });

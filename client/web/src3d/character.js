@@ -199,6 +199,8 @@ export function createCharacter(asset, config) {
   }
   /** A clip cue: the effects and the hit-stop/shake it calls for, then the client's sound. */
   function cue(name){
+    const landed=katanaState==='attack'&&name===(chargeActive?'impact':'swish')&&api.onStrike?.(chargeActive);
+    if(landed){hitStop=.056;shake=.105;}
     if(name==='impact'&&!grounded(lastPose))name='swish_heavy';
     fx?.cue(name);
     if(name==='impact'){hitStop=.11;shake=.2;}
@@ -218,7 +220,8 @@ export function createCharacter(asset, config) {
     tumbleBody.restore();
     lastSpeed=speed;
     const jump=context.jump;
-    const sliding=context.slide?.sliding&&config.slide_clip;
+    const dodging=context.slide?.dodging;
+    const sliding=(context.slide?.sliding||dodging)&&config.slide_clip;
     // A big drop lands in a deep crouch over the (longer) shared landing phase.
     const heavy=jump?.jumpPhase==='landing'&&config.landing&&jump.landingSpeed>config.landing.heavy_mps;
     // Bounce and tumble after a high fall play their own clips when the contract names them.
@@ -291,7 +294,8 @@ export function createCharacter(asset, config) {
       // S0 holds the tuck upright (frame 10, hips at 360°) and turns the whole body itself.
       action.time=['tumble','roll'].includes(bal.phase)?d*(spike.mode==='s0'?10:tumbleFrame(bal.spin))/TUMBLE_FRAMES:bal.phase==='slide'?d:d*Math.min(1,bal.progress??0);
     }else if(sliding){
-      const u=Math.min(1,(context.slide.slideTime??0)/(config.walk.slide?.duration_s??1));
+      const u=dodging?1-context.slide.dodgeLeft/config.walk.parkour.dodge_s:
+        Math.min(1,(context.slide.slideTime??0)/(config.walk.slide?.duration_s??1));
       action.paused=true;action.time=action.getClip().duration*(u<.12?u/.12*.18:u>.82?.75+(u-.82)/.18*.25:.18+(u-.12)/.70*.57);
     }else action.paused=false;
     // A gait clip names the speed at which its planted paws stay put.
@@ -495,6 +499,10 @@ export function createCharacter(asset, config) {
     else if(katanaState==='drawn'||katanaState==='run')playKatana('sheathe',.08);
     return katanaState;
   }
+  function interruptAttack(){
+    pendingAttack=false;pendingCharge=false;
+    if(katanaState==='attack')playKatana('drawn',.09);
+  }
   /** Each press starts a pose-adaptive cut immediately; never queues a combo. */
   function attack(){
     if(!katana?.attacks.length||!canAttack(lastPose)||chargeActive)return katanaState;
@@ -517,7 +525,7 @@ export function createCharacter(asset, config) {
     model.updateWorldMatrix(true,true);const head=gestureBones.head;if(!head)return out;
     head.localToWorld(out.top.copy(TOP_LOCAL));head.localToWorld(out.nose.copy(NOSE_LOCAL));return out;
   }
-  const api = { object, model, update, setScale, spike, wake, toggleKatana, attack, setCharge, onCue:null, mixer, actions, gesture, anchors,
+  const api = { object, model, update, setScale, spike, wake, toggleKatana, attack, interruptAttack, setCharge, onCue:null, onStrike:null, mixer, actions, gesture, anchors,
     /** Animated planted feet measured before IK, for contact-driven presentation. */
     get footContacts(){return footContacts;},
     /** True while the idle sequence holds a seated pose (he has stood still long enough to sit). */

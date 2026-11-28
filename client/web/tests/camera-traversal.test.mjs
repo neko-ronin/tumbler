@@ -178,7 +178,11 @@ test('displayed follow range holds its anchor initially and fully returns at the
  const focus=new T.Vector3(f.nav.state.x,f.nav.state.z+1.1,-f.nav.state.y);f.camera.updateMatrixWorld();
  assert.ok(earlyRange>=6.9&&earlyRange<=7+1e-9,'initial range lag opens a bounded gap');
  assert.ok(Math.abs(f.camera.position.distanceTo(focus)-policy.profiles.walk.distance)<1e-8);
- assert.ok(Math.abs(focus.project(f.camera).y+.5)<1e-8,'tracked body anchor stays three quarters down the screen');
+ f.pad.axes.fill(0);
+ for(let i=0;i<120;i++)f.nav.update(1/60);
+ f.camera.updateMatrixWorld();
+ focus.set(f.nav.state.x,f.nav.state.z+1.1,-f.nav.state.y);
+ assert.ok(Math.abs(focus.project(f.camera).y+policy.profiles.walk.screen_lower_fraction)<1e-6,'idle framing settles after the travel lead');
 });
 
 test('lower framing shifts an already off-centre body halfway toward the bottom',()=>{
@@ -197,7 +201,7 @@ test('tree traversal centres the body while ground traversal keeps its lower com
  const body=new T.Vector3(f.nav.state.x,f.nav.state.z+1.1,-f.nav.state.y).project(f.camera);
  assert.ok(Math.abs(body.y)<.02,`climbing body NDC y=${body.y}`);
  for(const mode of ['climb','branch','tree-jump'])assert.equal(policy.profiles[mode].screen_lower_fraction,0);
- assert.equal(policy.profiles.walk.screen_lower_fraction,.5);
+ assert.ok(policy.profiles.walk.screen_lower_fraction>0&&policy.profiles.walk.screen_lower_fraction<.5);
 });
 
 test('running corrects a side view sooner in time than walking, using actual movement speed',t=>{

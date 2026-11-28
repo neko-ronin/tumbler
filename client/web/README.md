@@ -1,3 +1,14 @@
+# Parkour and camera follow — web v0.12.1, 2026-11-27
+
+The maintenance yard is disabled in the game. The robot encounter and
+equipment prototype are retained in the source.
+
+**Ctrl / R3** dodges at low speed and slides at a run. Hold **Shift / LB** to
+dodge at running speed. Jump during a slide for a longer bound, or release
+movement and jump in the air to trim drift before landing. The ground chase
+camera looks into your movement and widens the view around Ronin.
+See the [review](../../docs/reviews/parkour-salvage-2026-11-27/) for evidence.
+
 # Meadow life — web v0.12.0, 2026-11-27
 
 The meadow moves and varies. Gust patches about 8 × 20 m, inside swells about 25 × 60 m, drift downwind,

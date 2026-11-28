@@ -44,7 +44,8 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
   let puppet=null;
   let queuedSlide=false,queuedBranch=false,actionArmed=false,harnessArmed=false,actionHeld=false,queuedPrimary=false,queuedHarness=false,message='',parkedWing=null,underwater=false;
   const director=createFollowCamera(),boom=createCameraBoom(),range=createFollowRange();
-  let movementYaw=null,lastInput=[0,0],terrainLift=0;
+  let movementYaw=null,lastInput=[0,0],terrainLift=0,manualLeadDelay=0;
+  const groundLead=new T.Vector3(),leadGoal=new T.Vector3(),leadAim=new T.Vector3();
   // Keyboard movement runs on foot by default; the left stick's own travel ramps the pace to a
   // full run. Held Shift is the tuck on foot and feeds the fast-climb flag. In water, Shift is a
   // toggle for the dive, as it always was. `clear()` retires both.
@@ -81,10 +82,14 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     flightForward.set(frame.forward[0],frame.forward[2],-frame.forward[1]);
     return out.makeBasis(flightLeft,flightUp,flightForward).setPosition(frame.origin[0],frame.origin[2],-frame.origin[1]);
   }
-  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();terrainLift=0;movementYaw=null;lastInput=[0,0];runToggled=false;runStick=0;queuedSlide=false;character.setCharge?.(false);queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;presentedDown=null;crashRest=0;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
+  const clear=()=>{treeFraming=0;framedDistance=null;framedLift=0;framedLower=null;director.reset();boom.reset();range.reset();groundLead.set(0,0,0);manualLeadDelay=0;terrainLift=0;movementYaw=null;lastInput=[0,0];runToggled=false;runStick=0;queuedSlide=false;character.setCharge?.(false);queuedBranch=false;for(const code of ['Space','KeyE'])if(keys.has(code))blockedActions.add(code);keys.clear();drag=false;accumulator=0;previousFlight=null;pilotPosture.reset();presentedGrounded=config.modes[mode]?(state?.grounded??null):null;presentedDown=null;crashRest=0;landingClipLeft=0;actionArmed=false;harnessArmed=false;actionHeld=false;queuedPrimary=false;queuedHarness=false;hop=false;};
   // Player mode keeps to the controls a player is shown (no weather, wing or site cycling, no
   // Look-around launch); while a menu is open the world takes no input at all.
   let playerMode=false,suspended=false;
+  const onGroundMoves=()=>mode==='walk'&&state&&(!state.mode||state.mode==='ground');
+  const canFight=()=>onGroundMoves()&&!state.dodging&&!options.combatStun?.();
+  const attack=()=>{if(canFight())character.attack?.();};
+  const interact=()=>{if(onGroundMoves())options.interact?.(state);};
   function key(e,down){
     // A control may receive focus between press and release. Always retire
     // the held key, while leaving form key presses to the form itself.
@@ -96,20 +101,21 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(down&&!e.repeat&&e.code==='KeyF'&&mode==='walk')character.toggleKatana?.();
     if(down&&!e.repeat&&e.code==='ControlLeft'&&mode==='walk')queuedSlide=true;
     if(down&&!e.repeat&&(e.code==='ShiftLeft'||e.code==='ShiftRight')&&mode==='walk'&&state?.mode==='swim')runToggled=!runToggled;
-    if(down&&!e.repeat&&e.code==='KeyQ'&&mode==='walk')character.attack?.();
+    if(down&&!e.repeat&&e.code==='KeyQ')attack();
+    if(down&&!e.repeat&&e.code==='KeyI')interact();
     if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','KeyR','KeyF','KeyJ','KeyK','KeyE','ControlLeft'].includes(e.code)){if(down)keys.add(e.code);else keys.delete(e.code);if(e.target===canvas)e.preventDefault();}}
   const kd=e=>key(e,true),ku=e=>key(e,false);
   window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);window.addEventListener('blur',clear);
   document.addEventListener('visibilitychange',clear);window.addEventListener('gamepaddisconnected',clear);
   // An authored shot yields the moment the player takes the camera, so a drag,
   // a scroll or the stick never fights the interpolation.
-  const manual=()=>{shot=null;director.manual();};
+  const manual=()=>{shot=null;director.manual();manualLeadDelay=.65;};
   // The first load's glide from the village viewpoint down to him holds every input until it lands.
   const held=()=>suspended||shot?.intro===true;
   // On foot, a click that does not drag the view is an attack.
   let press=null;
   const down=e=>{if(mode==='orbit'||held())return;if(mode==='fly')canvas.requestPointerLock?.()?.catch?.(()=>{});drag=true;press={x:e.clientX,y:e.clientY,t:e.timeStamp};canvas.focus();canvas.setPointerCapture(e.pointerId);};
-  const up=e=>{drag=false;if(press&&mode==='walk'&&e.button===0&&e.timeStamp-press.t<300&&Math.hypot(e.clientX-press.x,e.clientY-press.y)<6)character.attack?.();press=null;};
+  const up=e=>{drag=false;if(press&&mode==='walk'&&e.button===0&&e.timeStamp-press.t<300&&Math.hypot(e.clientX-press.x,e.clientY-press.y)<6)attack();press=null;};
   const move=e=>{if(mode==='orbit'||held()||(!drag&&document.pointerLockElement!==canvas))return;if(e.movementX||e.movementY){manual();if(movementYaw!==null)movementYaw-=e.movementX*.003;}yaw-=e.movementX*.003;pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.003));};
   const cancel=()=>{drag=false;press=null;};
   canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('lostpointercapture',cancel);
@@ -291,9 +297,10 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       if(stickView&&mode==='walk')toggleView();
       if(mode==='walk'){
         queuedSlide=queuedSlide||edge(11)||keys.has('ControlLeft');
-        character.setCharge?.(!!pad?.buttons[7]?.pressed||keys.has('KeyR'));
+        character.setCharge?.(canFight()&&(!!pad?.buttons[7]?.pressed||keys.has('KeyR')));
       }
-      if(edge(1)&&mode==='walk')character.attack?.();
+      if(edge(1))attack();
+      if(edge(5))interact();
       if(changeWeather){const names=Object.keys(config.weather),i=names.indexOf(weather);setWeather(names[(i+1)%names.length]);}
     }
     if(mode==='orbit'){time+=Math.min(dt,.05);orbit.update();return;}
@@ -393,7 +400,17 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
       for(const foot of framingFeet)framingSubject.addScaledVector(foot.getWorldPosition(framingFoot),1/framingFeet.length);
       framingSubject.multiplyScalar(.5);
     }
-    composeFollowView(camera,target,lowerFraction,framingSubject,mode==='walk'?treeFraming:0);snap=false;
+    // Aim into actual travel without offsetting the boom pivot. A short
+    // filtered horizontal lead gives landings room, even during a side jump.
+    manualLeadDelay=Math.max(0,manualLeadDelay-dt);
+    const vx=state?.vx??0,vy=state?.vy??0;
+    const movingBack=-Math.sin(yaw)*vx+Math.cos(yaw)*vy<-.15*Math.hypot(vx,vy);
+    const lead=onGroundMoves()&&profile.screen_lower_fraction>0&&!drag&&!manualLeadDelay&&!movingBack;
+    leadGoal.set(lead?vx*.19:0,0,lead?-vy*.19:0).clampLength(0,1.5*characterConfig.scale);
+    if(snap)groundLead.set(0,0,0);
+    else groundLead.lerp(leadGoal,1-Math.exp(-dt*9));
+    leadAim.copy(target).addScaledVector(groundLead,mode==='walk'?1:0);
+    composeFollowView(camera,leadAim,lowerFraction,framingSubject,mode==='walk'?treeFraming:0);snap=false;
     if(shot?.path){
       // The first load's tour: a centripetal Catmull-Rom through the authored waypoints that ends on the
       // live chase pose, watching the village centre and handing the aim to him as it lands.
@@ -446,15 +463,18 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     const before=state.speed??0,beforeMode=state.mode,fromX=state.x,fromY=state.y;
     const water=options.walkHeight?.waterAt;
     const busy=character.attacking===true;
-    const planted=character.charging&&state.grounded;
-    const input={x:planted?0:movement.x,y:planted?0:-movement.z,run:(state.mode==='swim'?runToggled:tuckHeld)&&!planted,run_amount:planted?0:runStick,jump:actionHeld,tuck:tuckHeld,stick:[x,y],pitch,branch:queuedBranch,slide:queuedSlide};
+    const stunned=onGroundMoves()&&options.combatStun?.();
+    const dodgeRequest=queuedSlide&&(tuckHeld||(state.speed??0)<(characterConfig.walk.slide?.min_mps??0));
+    const planted=stunned||character.charging&&state.grounded&&!dodgeRequest;
+    const input={x:planted?0:movement.x,y:planted?0:-movement.z,run:(state.mode==='swim'?runToggled:tuckHeld)&&!planted,run_amount:planted?0:runStick,jump:!stunned&&actionHeld,tuck:tuckHeld,stick:[x,y],pitch,branch:queuedBranch,slide:!stunned&&queuedSlide};
     // A dev puppet (client/web/tools/puppet.cjs) steers in the world frame instead of the camera's, through the
     // same walking, balance and collision as a player. It returns {x, y, run} (x east, y north) or null to let go.
     const drive=puppet?.(state);
-    if(drive){input.x=drive.x;input.y=drive.y;input.stick=[0,Math.hypot(drive.x,drive.y)];input.run=!!drive.run;input.jump=!!drive.jump;}
+    if(drive){input.x=drive.x;input.y=drive.y;input.stick=[0,Math.hypot(drive.x,drive.y)];input.run=!!drive.run;input.run_amount=drive.run?1:0;input.jump=!!drive.jump;}
     if(tape&&dt>0)tape.frames.push([1,input,Math.round(dt*1e4)/1e4]);
     state=stepMoves(state,input,dt,characterConfig.walk,
       {height:walkHeight,hitTest,waterAt:water,floorHeight:options.walkHeight?.floorHeight??options.floorHeight??height,balance:options.balance});
+    if(stunned||state.dodging)character.interruptAttack?.();
     if(queuedBranch)message=state.mode==='climb'?'No branch within reach · climb or circle toward a limb':'';
     else if(x||y)message='';
     queuedBranch=false;queuedSlide=false;
@@ -483,7 +503,7 @@ export function createNavigation(camera,canvas,orbit,ground,config,worldmap,rig,
     if(bal){const p=options.balance.config.phases;bal.progress=bal.phase==='trip'?bal.t/p.trip_s:bal.phase==='recover'?bal.t/p.recover_s:0;}
     // The gait follows the speed the feet actually have, not a key.
     const gait=gaitFor(state.speed,characterConfig.walk,characterConfig.clips);
-    character.update(dt,onBark?'climb':swimming?'swim':down?'balance':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{balance:bal,slide:state.sliding?state:null,climb:onBark?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching||stair?state.z:floorUnder(state.x,state.y),groundHeight:branching?()=>state.z:floorUnder,knock:state.knock,knockSide:state.knockSide,bodyClip:stairClip??undefined,bodyTime:stairTime});
+    character.update(dt,onBark?'climb':swimming?'swim':down?'balance':jumping?'jump':state.speed>.05?gait:'idle',swimming?Math.hypot(state.speed,state.vz??0):state.speed,{balance:bal,slide:state.sliding||state.dodging?state:null,climb:onBark?state:null,swim:swimming?state:null,jump:jumping&&!climbing&&!swimming?state:null,turnRate:state.turnRate,accel:dt>0?(state.speed-before)/dt:0,facing:state.speed>.05?Math.atan2(Math.sin(turn),Math.cos(turn)):0,groundZ:branching||stair?state.z:floorUnder(state.x,state.y),groundHeight:branching?()=>state.z:floorUnder,knock:state.knock,knockSide:state.knockSide,bodyClip:stairClip??undefined,bodyTime:stairTime});
     if(parkedWing)rig.userData.flightUpdate?.(dt,parkedWing);
     const profile=policy();let distanceFollow=false,distanceEase=0,distanceStart=false;
     if(view==='chase'){const auto=director.step(dt,yaw,pitch,state.heading-Math.PI/2,state.speed>.15&&!busy,profile,drag,climbing,Math.hypot(state.x-fromX,state.y-fromY));yaw=auto.yaw;pitch=auto.pitch;boom.rotate(auto.transport??0);distanceFollow=auto.distanceFollow??false;distanceEase=auto.distanceEase??0;distanceStart=auto.distanceStart??false;}

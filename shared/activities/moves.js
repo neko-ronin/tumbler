@@ -32,7 +32,7 @@ export function stepGround(state,input,dt,config,world,height=world.height){
     return {...s,balance:{...b,vx:s.vx,vy:s.vy}};
   }
   const k=b.control;
-  return {...stepWalk(state,{...input,x:(input.x??0)*k,y:(input.y??0)*k,jump:b.phase==='steady'&&input.jump},dt,config,height,world.hitTest),balance:b};
+  return {...stepWalk(state,{...input,x:(input.x??0)*k,y:(input.y??0)*k,jump:b.phase==='steady'&&input.jump,slide:b.phase==='steady'&&input.slide},dt,config,height,world.hitTest),balance:b};
 }
 
 /** On foot or in the water, and nothing else (no trees, stairs or branches): the player's moves use it, and so
@@ -97,6 +97,7 @@ function takesHold(box,s,input,config){
   const dx=box.trunk.x-s.x,dy=box.trunk.y-s.y,distance=Math.hypot(dx,dy);
   const magnitude=Math.hypot(input.x??0,input.y??0);
   const aim=distance>1e-6&&magnitude>1e-6?(dx*input.x+dy*input.y)/(distance*magnitude):0;
+  if(s.dodging)return false;
   if(!s.grounded)return aim>-.35;
   return !s.sliding&&s.jumpPhase==='grounded'&&magnitude>=.5&&aim>.7&&trunkGap(box,s,config)<=config.radius_m+.02;
 }

@@ -84,17 +84,29 @@ export function stepWalk(state,input,dt,config,height,hitTest){
   const near=(x,y)=>ring.some(([dx,dy])=>deckAt(x+dx,y+dy)!==null);
   const body=(...at)=>at.some(([x,y])=>near(x,y))?[.9,1.5]:[r,.9,1.5];
   s.grounded??=true;s.jumpPhase??='grounded';s.jumpTime??=0;s.jumpCount??=0;s.vz??=0;s.vx??=0;s.vy??=0;
-  const magnitude=Math.hypot(input.x??0,input.y??0);
+  const inputX=input.x??0,inputY=input.y??0,magnitude=Math.hypot(inputX,inputY);
   // `run` is a held or toggled modifier. `run_amount` lets an analog client ask
   // for any pace from walk_mps (0) to run_mps (1), so a stick ramps continuously
   // to a full run; it never reaches the climb, swim or branch rules.
   const runAmount=Math.max(0,Math.min(1,input.run_amount??(input.run?1:0)));
   const speed=(config.walk_mps+(config.run_mps-config.walk_mps)*runAmount)*Math.min(1,magnitude);
-  const vx=magnitude?(input.x/magnitude)*speed:0,vy=magnitude?(input.y/magnitude)*speed:0;
+  const vx=magnitude?(inputX/magnitude)*speed:0,vy=magnitude?(inputY/magnitude)*speed:0;
   const edge=!!input.jump&&!s.jumpHeld;s.jumpHeld=!!input.jump;
   const slideEdge=!!input.slide&&!s.slideHeld;s.slideHeld=!!input.slide;
-  const slide=config.slide;
-  if(slide&&slideEdge&&s.grounded&&s.jumpPhase==='grounded'&&s.speed>=slide.min_mps){s.sliding=true;s.slideTime=0;}
+  const slide=config.slide,parkour=config.parkour;
+  const dodgeEdge=slideEdge&&parkour&&(input.tuck||(s.speed??0)<(slide?.min_mps??Infinity));
+  if(parkour){
+    s.dodgeLeft=Math.max(0,(s.dodgeLeft??0)-duration);
+    s.dodgeCooldown=Math.max(0,(s.dodgeCooldown??0)-duration);
+  }
+  if(dodgeEdge&&s.grounded&&s.jumpPhase==='grounded'&&!s.dodgeCooldown){
+    const dx=magnitude?inputX/magnitude:Math.cos(s.heading??0),dy=magnitude?inputY/magnitude:Math.sin(s.heading??0);
+    s.vx=dx*parkour.dodge_mps;s.vy=dy*parkour.dodge_mps;
+    s.sliding=false;
+    s.dodgeLeft=parkour.dodge_s;s.dodgeCooldown=parkour.dodge_cooldown_s;
+  }
+  if(slide&&!dodgeEdge&&slideEdge&&s.grounded&&s.jumpPhase==='grounded'&&s.speed>=slide.min_mps){s.sliding=true;s.slideTime=0;}
+  const spring=parkour&&edge&&s.sliding;
   if(s.sliding&&(!s.grounded||edge||s.slideTime>=slide.duration_s||s.speed<slide.stop_mps))s.sliding=false;
   if(s.sliding)s.slideTime+=duration;
   // A fresh press keeps for buffer_s, so one made just before touchdown still
@@ -111,6 +123,14 @@ export function stepWalk(state,input,dt,config,height,hitTest){
     const moving=Math.max(speed,s.speed??0)>.5;
     s.jumpStyle=moving?['leap','tuck','flip'][s.jumpTier-1]:s.jumpTier>1?'star':['celebrate','heel_click','star'][s.jumpCount%3];
     s.sliding=false;s.jumpCount++;s.jumpPhase='takeoff';s.jumpTime=0;s.jumpBuffer=0;
+    if(parkour){s.dodgeLeft=0;s.parkourJump=true;}
+    // Chained hops carry their existing momentum through the next takeoff.
+    if(parkour&&magnitude&&(spring||s.jumpTier===1)){
+      const pace=spring?Math.max(s.speed??0,parkour.spring_mps):Math.max(s.speed??0,Math.min(speed,parkour.jump_start_mps));
+      const along=spring?1:.45;
+      s.vx=s.vx*(1-along)+inputX/magnitude*pace*along;
+      s.vy=s.vy*(1-along)+inputY/magnitude*pace*along;
+    }
     if(!(config.accel_mps2<Infinity)){s.vx=vx;s.vy=vy;}
   }
   const heading=s.heading??0;
@@ -149,7 +169,7 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       const e=.2,hx=(height(s.x+e,s.y)-height(s.x-e,s.y))/(2*e),hy=(height(s.x,s.y+e)-height(s.x,s.y-e))/(2*e);
       if(Number.isFinite(hx)&&Number.isFinite(hy)){s.vx-=j.gravity_mps2*hx/(1+hx*hx+hy*hy)*step;s.vy-=j.gravity_mps2*hy/(1+hx*hx+hy*hy)*step;}
       const v=Math.hypot(s.vx,s.vy),decay=Math.max(0,1-slide.friction_mps2*step/(v||1));s.vx*=decay;s.vy*=decay;
-    }else if(s.grounded&&s.jumpPhase!=='takeoff'){
+    }else if(s.grounded&&s.jumpPhase!=='takeoff'&&!s.dodgeLeft){
       // Traction: speed up at accel_mps2, brake (release, reverse) at decel_mps2.
       // Contracts without them keep the original instant response. A tumble
       // ignores input and only brakes.
@@ -160,8 +180,8 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       const amount=Math.min(1,rate*step/(length||1));
       s.vx+=dx*amount;s.vy+=dy*amount;
     }
-    else if(!s.grounded&&s.jumpPhase!=='bounce'&&magnitude){
-      const dx=vx-s.vx,dy=vy-s.vy,length=Math.hypot(dx,dy),amount=Math.min(1,j.air_control_mps2*step/(length||1));
+    else if(!s.grounded&&s.jumpPhase!=='bounce'&&(magnitude||parkour&&s.parkourJump&&!input.jump)){
+      const dx=vx-s.vx,dy=vy-s.vy,length=Math.hypot(dx,dy),amount=Math.min(1,(magnitude?j.air_control_mps2:parkour.air_brake_mps2)*step/(length||1));
       s.vx+=dx*amount;s.vy+=dy*amount;
     }
     if(s.jumpPhase==='bounce'){
@@ -220,6 +240,7 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       if(Number.isFinite(floor)&&s.z<=floor){
         // A high fall bounces once (tumble_mps, rebound), then tumbles for tumble_s.
         const impact=-s.vz;s.z=floor;s.vz=0;s.jumpTime=0;
+        if(parkour)s.parkourJump=false;
         if(s.jumpPhase==='bounce'){
           s.grounded=true;s.jumpPhase='tumble';s.fallPitch=Math.atan2(Math.sin(s.fallPitch??0),Math.cos(s.fallPitch??0));
           s.fallRoll=Math.atan2(Math.sin(s.fallRoll??0),Math.cos(s.fallRoll??0));s.fallSpin=s.fallRollRate=0;
@@ -239,6 +260,7 @@ export function stepWalk(state,input,dt,config,height,hitTest){
       if(s.jumpTime>=(s.jumpPhase==='tumble'?j.tumble_s:landingTime(s,j))){s.jumpPhase='grounded';s.jumpTime=0;s.fallPitch=s.fallRoll=0;}
     }
   }
+  if(parkour)s.dodging=s.grounded&&s.dodgeLeft>0;
   s.groundZ=height(s.x,s.y)??state.groundZ??state.z;
   // On a structure's floor (for presentation: feet and shadow stand on it, not on the terrain below).
   s.deck=deckAt(s.x,s.y)!==null;

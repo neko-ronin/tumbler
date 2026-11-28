@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "robots": [[-706, 503], [-694, 505], [-699, 514]],
+  "equipment": [
+    {"id":"solar", "label":"Solar array", "xy":[-704, 497], "build":2, "repair":1},
+    {"id":"pump", "label":"Water pump", "xy":[-699, 498], "build":2, "repair":1}
+  ]
+}

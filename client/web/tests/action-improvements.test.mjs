@@ -46,3 +46,23 @@ test('cut choice responds to the live side and travel, without an attack sequenc
  assert.equal(chooseCut({side:-.1,lateralSpeed:4}),'backhand');
  assert.equal(chooseCut({side:.3}),'backhand','another fresh click still uses the live side');
 });
+
+test('directional dodge respects collision and a held input cannot restart it',()=>{
+ const wall={id:'wall',kind:'structure',min:[.8,-3,0],max:[1,3,3]};
+ const hit=createCollisionIndex([wall]),input={x:1,slide:true};
+ let s={x:0,y:0,z:0,heading:0,grounded:true,speed:0};
+ s=stepWalk(s,input,1/60,c,flat,hit);
+ assert.ok(s.dodging&&s.vx>8);
+ for(let i=0;i<60;i++)s=stepWalk(s,input,1/60,c,flat,hit);
+ assert.ok(s.x<.8&&s.x>.3);assert.equal(s.dodging,false);
+});
+
+test('jumping from a sprint slide carries more gap-crossing speed while release arrests drift',()=>{
+ const start={x:0,y:0,z:0,grounded:true,jumpPhase:'grounded',vx:8,vy:0,speed:8,heading:0};
+ const slide=stepWalk(start,{slide:true,x:1,run:true},1/60,c,flat);
+ const spring=stepWalk(slide,{jump:true,x:1,run:true},1/60,c,flat);
+ assert.equal(spring.jumpPhase,'airborne');assert.equal(spring.sliding,false);
+ assert.ok(spring.vx>start.vx);
+ const reined=stepWalk(spring,{},.05,c,flat);
+ assert.ok(reined.vx<spring.vx);assert.ok(reined.vz<spring.vz);
+});

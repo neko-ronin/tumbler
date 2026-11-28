@@ -14,9 +14,10 @@ const TIME_LABELS={golden:'Golden hour',dusk:'Evening',day:'Morning'};
 const CONTROLS={
   walk:{title:'On foot',rows:[
     ['Walk, runs by default',['WASD'],['L stick, push fully to run']],['Look',['Drag','Arrows'],['R stick']],
-    ['Jump',['Space'],['A']],['Tuck and roll, held',['Shift'],['LB']],['Dive in water, press to toggle; under, swim where you look and Space rises',['Shift'],['LB']],['Slide',['Ctrl'],['R3']],
+    ['Jump',['Space'],['A']],['Tuck and roll, held',['Shift'],['LB']],['Dive in water, press to toggle; under, swim where you look and Space rises',['Shift'],['LB']],['Dodge at low speed, slide at a run',['Ctrl'],['R3']],
+    ['Dodge at a run',['Shift + Ctrl'],['LB + R3']],['Bound out of a slide',['Space'],['A']],
     ['Draw the katana',['F'],['Y']],['Slash',['Q','Click'],['B']],['Charge, held',['R'],['RT']],
-    ['Grab a tree',['E'],['X']],['Launch from a giant redwood crown',['1','2','3'],['D-pad','X']],['First person',['V'],['L3']],['Board the gondola, on a station deck',['G'],['RB']],['Map',['Esc','M'],['Menu']]]},
+    ['Climb by moving into a trunk',['WASD'],['L stick']],['Launch from a giant redwood crown',['1','2','3'],['D-pad','X']],['First person',['V'],['L3']],['Build or service equipment nearby',['I'],['RB']],['Board the gondola, on a station deck',['G'],['RB']],['Map',['Esc','M'],['Menu']]]},
   stair:{title:'On a tree village stair',rows:[
     ['Climb or go down the stair',['WASD'],['L stick']],['Step off at a gallery, at a gap in the rail',['WASD'],['L stick']],
     ['Jump',['Space'],['A']],['Vault the handrail: a quick tap toward it',['Space'],['A']],['Slide down the handrail, held',['Shift'],['LB']],

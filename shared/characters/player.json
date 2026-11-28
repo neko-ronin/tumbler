@@ -97,6 +97,14 @@
       "leap_range_m": 14,
       "gravity_mps2": 24
     },
+    "parkour": {
+      "dodge_mps": 9.5,
+      "dodge_s": 0.17,
+      "dodge_cooldown_s": 0.48,
+      "spring_mps": 10.3,
+      "jump_start_mps": 5,
+      "air_brake_mps2": 6
+    },
     "slide": {
       "min_mps": 3,
       "stop_mps": 1.2,

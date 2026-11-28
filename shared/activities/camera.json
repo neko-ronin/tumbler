@@ -2,9 +2,9 @@
   "version": 1,
   "profiles": {
     "walk": {
-      "distance": 5.4,
+      "distance": 5.9,
       "lift": 0,
-      "pitch": -0.24,
+      "pitch": -0.31,
       "follow_rate": 1.1,
       "return_delay_s": 1.8,
       "follow_hold_s": 0,
@@ -14,7 +14,7 @@
       "follow_hold_fraction": 0,
       "follow_distance_m": 12,
       "follow_hold_m": 2,
-      "screen_lower_fraction": 0.5,
+      "screen_lower_fraction": 0.28,
       "follow_run_distance_m": 7.5,
       "follow_run_hold_m": 0.35,
       "follow_max_distance_m": 7,

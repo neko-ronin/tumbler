@@ -47,6 +47,7 @@ import { createResolutionGovernor, createQualityGate } from './flight-quality.js
 import {createFramePacer,WEB_FPS,WEB_FRAME_MS} from './frame-pacing.js';
 import { createFlightRig } from './flight-rig.js';
 import { createNavigation } from './navigation.js';
+import {createSalvageLayer} from './salvage.js';
 import { createCharacter } from './character.js';
 import { createFolkLayer } from './folk.js';
 import { createOrganoid } from './organoid-material.js';
@@ -352,7 +353,22 @@ export async function main() {
   const parakiteSites=[...flightConfig.parakite_launches??[],...practiceLaunch?[practiceLaunch]:[]];
   const practiceSite=practiceLaunch?flightConfig.launches.length+parakiteSites.length-1:-1;
   const playerFlight={...flightConfig,experimentalParakite,launches:[...flightConfig.launches,...parakiteSites]};
-  const navigation=createNavigation(camera,canvas,controls,ground,playerFlight,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,balance:{config:balanceConfig,surfaceAt:balanceSurface},firstPersonEye:()=>firstPerson.eye,firstPersonCollar:()=>firstPerson.collarBounds,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z)}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>{const sample=paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view);paraStreaks.update(sample,camera,view,effects);return sample;},haptics:()=>document.getElementById('haptics').checked});
+  // The maintenance yard prototype stays dormant until it is ready for players.
+  const maintenanceYardEnabled=false;
+  const yardPanel=document.getElementById('maintenance-yard');
+  const salvage=maintenanceYardEnabled?createSalvageLayer({
+    scene,panel:yardPanel,config:await fetchData('shared/activities/salvage.json'),height:walkHeight,hitTest,
+  }):null;
+  const navigation=createNavigation(camera,canvas,controls,ground,playerFlight,worldmap,rig,hitTest,{config:rideConfig,surfaceAt,snowAt,height:rideHeight,rig:rideRig,meshes:rideMeshes},character,characterConfig,{cameraPolicy,combatStun:()=>salvage?.state.stun>0,interact:player=>salvage?.interact(player),forestSpacingM:cameraSpacing.meanNearestM,walkHeight,floorHeight:walkHeight.floorHeight,characterHeight,balance:{config:balanceConfig,surfaceAt:balanceSurface},firstPersonEye:()=>firstPerson.eye,firstPersonCollar:()=>firstPerson.collarBounds,firstPersonBody:body=>firstPerson.update({...body,grips:[flightRig.getGripWorld(1,leftGrip),flightRig.getGripWorld(-1,rightGrip)],air:navigation.sampleEnvironment(body.state.x,body.state.y,body.state.z)}),onFlightChange:syncFlightUI,flightPresentation:(pose,view,dt,effects)=>{const sample=paraSignals.update(pose,navigation.sampleEnvironment(pose.x,pose.y,pose.z),dt,effects,view);paraStreaks.update(sample,camera,view,effects);return sample;},haptics:()=>document.getElementById('haptics').checked});
+  const yardPlayer=()=>{
+    const s=navigation.state;
+    return navigation.mode==='walk'&&(!s?.mode||s.mode==='ground')?s:null;
+  };
+  if(salvage){
+    character.onStrike=charged=>salvage.strike(yardPlayer(),charged);
+    yardPanel.querySelector('button').addEventListener('click',()=>salvage.interact(yardPlayer()));
+    salvage.update(0,null);
+  }
   onFoot=()=>groundModes.has(navigation.mode);
   // The world's generators turn in the same air the wing does. They are not
   // decoration on a timer: calm air slows them and the afternoon's up-valley
@@ -463,7 +479,7 @@ export async function main() {
     const key=list.map(([id])=>id).join();if(siteSelect.dataset.key===key)return;
     siteSelect.replaceChildren(...list.map(([id,label])=>new Option(label,id)));siteSelect.dataset.key=key;
   }
-  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',fly:'WASD: fly · Mouse: look (click to capture, Esc to release) · R: up · F: down · Hold Shift: slow',walk:'WASD: run · stick: walk, push fully to run ·Space / A: jump or wall push · Shift / LB: tuck and roll down a slope · Shift in water: dive toggle · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: slide · E / X: reharness · walk into a trunk to climb it · Drag / right stick: look',
+  const helps={orbit:'Drag to orbit · Right-drag to pan · Wheel to approach',fly:'WASD: fly · Mouse: look (click to capture, Esc to release) · R: up · F: down · Hold Shift: slow',walk:'WASD: run · stick: walk, push fully to run ·Space / A: jump or wall push · Shift / LB: tuck and roll down a slope · Shift in water: dive toggle · F / Y: katana · Click / Q / B: slash · Hold R / RT: charge, release to cleave · Ctrl / R3: dodge or slide · Jump out of a slide to bound · Shift + Ctrl / LB + R3: dodge while running · I / RB: work on equipment · E / X: reharness · walk into a trunk to climb it · Drag / right stick: look',
     parakite:'A/D steer · W dive / S flare · Drag to look · Launch to restart',
     ski:'A/D carve · W pole · S snowplough · Shift tuck ·Space hop · V view · Pad: stick, RT/LT, A hop, B tuck, Y view',
     bike:'A/D steer · W pedal · S brake · Shift crouch ·Space hop · V view · Pad: stick, RT/LT, A hop, B crouch, Y view'};
@@ -870,7 +886,7 @@ export async function main() {
   const visibilityToggle=document.getElementById('visibility-spotlight'),adaptiveToggle=document.getElementById('adaptive');
   const playerVisibility=createPlayerVisibility(camera,renderer,[placements.group,forest.group,geology?.group,riverGranite.group,gorgeGranite.group,gondola.group].filter(Boolean),[placements.group,gondola.group]);
   window.tumbler = { underwater, mirror:{get enabled(){return reflectionSelect.value!=='off';},set enabled(on){reflectionSelect.value=on?'layered':'off';},
-    get mode(){return reflectionSelect.value;},set mode(v){if(['off','mirror','layered'].includes(v))reflectionSelect.value=v;},layered,movers,probes:probeData,keep:mirrorKeep,get stats(){return reflectionSelect.value==='layered'?layered?.stats:mirror?.stats;},get target(){return mirror?.target;},get scale(){return mirror?.scale;},set scale(v){if(mirror)mirror.scale=v;},get reach(){return mirror?.reach;},set reach(v){if(mirror)mirror.reach=v;}},falls,organoid,tutor,parakiteTour,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,gorgeGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, cornLilies, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
+    get mode(){return reflectionSelect.value;},set mode(v){if(['off','mirror','layered'].includes(v))reflectionSelect.value=v;},layered,movers,probes:probeData,keep:mirrorKeep,get stats(){return reflectionSelect.value==='layered'?layered?.stats:mirror?.stats;},get target(){return mirror?.target;},get scale(){return mirror?.scale;},set scale(v){if(mirror)mirror.scale=v;},get reach(){return mirror?.reach;},set reach(v){if(mirror)mirror.reach=v;}},falls,organoid,tutor,parakiteTour,playerUI,setUiMode,arriveAt,places,startParakite,startParamotor,passTime,mountainMapStats,play,toTumbleHill,setTumbleMode, folk:folk.api,gondola,airCues,riverGranite,gorgeGranite,walkHeight,meadowAir,meadowWind,generators,startup,begin:beginGame,flightRig, distantTreeShadows, scene, camera, renderer, controls, navigation, character, firstPerson, paraSignals, paraPass, paraStreaks, soundscape, salvage, ride: { config: rideConfig, snowAt, surfaceAt, height: rideHeight, hitTest, worldmap, setActivity }, forest, treeShadows, cloudPass, actorShadows, ground, terrain, geology, speedflying, transition, forestFloor, forestSoil, ecology, closeMeadow, cornLilies, meadow, metrics, views, setView, setLight, provenance: {files:verifiedFiles}, stats: { terrain:terrain.stats,forest: forest.stats, meadow: meadow.stats, placements: placements.stats } };
   async function prepareFirstView(){
     presenting=false;startup.ready=false;startup.rendered=false;startup.playing=false;
     loading.show();status.textContent='Letting the light settle…';
@@ -1042,6 +1058,7 @@ export async function main() {
     parakiteTour.update(Math.min(delta,50)/1000,tourFoot);
     if(!organoid.active&&!parakiteTour.cinematic)navigation.update(Math.min(delta,50)/1000);
     playerUI.hold();
+    salvage?.update(Math.min(delta,50)/1000,yardPlayer(),{active:!navigation.suspended&&!organoid.active&&!parakiteTour.cinematic});
     const onFoot=navigation.mode==='walk'&&navigation.state?.mode!=='climb'&&navigation.state?.mode!=='swim'?navigation.state:null;
     const spotlight=visibilityToggle.checked;
     if(!flightConfig.modes[navigation.mode]){paraSignals.update(null,{},0,0);firstPerson.update({active:false});paraStreaks.update(null);}

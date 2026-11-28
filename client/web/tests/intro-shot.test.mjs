@@ -10,7 +10,7 @@ import {HeightGrid,GroundSampler} from '../src3d/heights.js';
 import {createGeologySampler,applyGeologyTerrain} from '../../../shared/geometry/granite/surface.js';
 import {createRiverGranite} from '../../../shared/activities/river-surface.js';
 import {createWalkHeight} from '../../../shared/activities/walk.js';
-import {cameraFixture,read,world,player} from './helpers/camera-fixture.mjs';
+import {cameraFixture,read,world,player,policy} from './helpers/camera-fixture.mjs';
 
 const event=(type,props)=>Object.assign(new Event(type),props);
 const uint8=bytes=>new Float32Array(Uint8Array.from(bytes).buffer);
@@ -115,7 +115,7 @@ test('the shot ends on the chase camera the walk itself would hold, at the new d
  assert.ok(arrivedQ.angleTo(f.camera.quaternion)<1e-3,'arrival orientation is already the settled chase view');
  f.camera.updateMatrixWorld();
  const body=new T.Vector3(f.nav.state.x,f.nav.state.z+1.1*player.scale,-f.nav.state.y).project(f.camera);
- assert.ok(Math.abs(body.x)<.01&&Math.abs(body.y+.5)<.02,`subject framed at ${body.x.toFixed(3)}, ${body.y.toFixed(3)}`);
+ assert.ok(Math.abs(body.x)<.01&&Math.abs(body.y+policy.profiles.walk.screen_lower_fraction)<.02,`subject framed at ${body.x.toFixed(3)}, ${body.y.toFixed(3)}`);
 });
 
 test('the shot easing reaches both ends at rest and never reverses',()=>{
@@ -150,23 +150,16 @@ test('the authored village tour frames Ronin before settling onto the chase came
  assert.ok(camera.quaternion.angleTo(arrivalAim)<1e-3,'arrival meets the live chase aim');
 });
 
-test('the opening pan still arrives at the pose recorded before the timing change',t=>{
- // Recorded from this worktree's village start with the pre-change shot (2.5 s,
- // symmetric smootherstep). Duration and easing may change; the arrival may not, beyond
- // the millimetres the ground under the village moved when the mountains were grown.
+test('the village orbit-to-walk shot arrives at the retuned chase pose',t=>{
+ // The 2026-11-27 parkour camera deliberately changes boom length and
+ // composition. Timing changes can still be checked against this arrival.
  const {height,walkHeight}=villageGround(),f=cameraFixture(t,{height,walkHeight});
  f.nav.select('orbit');f.camera.position.set(-672,73.8391,-442);f.camera.lookAt(-696,89.8391,-472);f.camera.updateMatrixWorld();
  f.nav.select('walk');
  let frames=0;while(f.nav.shotActive&&frames<200){f.nav.update(1/30);frames++;}
  assert.ok(frames>=SHOT_FRAMES&&frames<=SHOT_FRAMES+2,`the shot ran ${frames} frames`);
- // Height re-recorded after the river-and-lake re-sculpt lowered the village ground: x, z and the
- // quaternion came out unchanged to the last digit, only y dropped 1.77 m with the ground.
- // Re-recorded again on the 2026-11-20 ground (fresh terrain solve), navigation unchanged: x, z and
- // the quaternion again identical to the last digit; y rose 0.446 m where the ground under the
- // arrival rose 0.443 m (51.001 -> 51.445). Re-recorded on 2026-11-26 when ground height moved from a
- // bilinear patch to the drawn triangles (heights.js): same ground, y rose 0.0137 m, x and z unchanged.
- const pos=[-668.7233338790853,55.21490636227196,-437.9041673488567];
- const q=[0.024461544171433813,0.33089570530035856,-0.008580646377993287,0.9433112092932338];
+ const pos=[-668.419939,55.333758,-437.524924];
+ const q=[-.034586,.330785,.012132,.942994];
  f.camera.position.toArray().forEach((v,i)=>assert.ok(Math.abs(v-pos[i])<.01,`arrival x${i}: ${v} vs ${pos[i]}`));
  f.camera.quaternion.toArray().forEach((v,i)=>assert.ok(Math.abs(v-q[i])<1e-3,`arrival q${i}: ${v} vs ${q[i]}`));
 });
